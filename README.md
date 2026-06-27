@@ -12,6 +12,16 @@
 - **Funciona offline.** Registre cupons e consulte preços mesmo sem sinal.
 - **Dado confiável.** Vem direto do cupom fiscal, não de digitação.
 
+## Desenvolvimento
+Monorepo (npm workspaces) com três pacotes: [`shared/`](shared/) (tipos/contratos), [`backend/`](backend/) (parsers SEFAZ + API) e [`app/`](app/) (Expo — a partir da Camada 5). Banco em [`supabase/`](supabase/).
+
+```bash
+npm install        # instala todas as workspaces
+npm run check      # formatação + lint + tipos + testes (o mesmo que a CI roda)
+```
+
+Scripts úteis: `npm run lint`, `npm run typecheck`, `npm test`, `npm run format`. O passo a passo das etapas está em [`docs/11-catalogo-de-etapas.md`](docs/11-catalogo-de-etapas.md).
+
 ## Documentação
 A documentação completa do produto e da arquitetura está em [`docs/`](docs/). Comece por [`docs/00-visao-produto.md`](docs/00-visao-produto.md).
 

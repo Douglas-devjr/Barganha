@@ -1,0 +1,12 @@
+node_modules
+dist
+coverage
+.expo
+design
+supabase/migrations
+package-lock.json
+*.sqlite
+*.db
+
+# Documentação em prosa — formatação manual, fora do gate do Prettier.
+*.md

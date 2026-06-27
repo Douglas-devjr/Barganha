@@ -40,6 +40,9 @@ yarn-error.*
 # Cobertura de testes
 coverage/
 
+# TypeScript / build
+*.tsbuildinfo
+
 # Sistema operacional
 .DS_Store
 Thumbs.db
