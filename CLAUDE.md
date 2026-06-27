@@ -1,0 +1,53 @@
+# Barganha — Guia do Projeto (CLAUDE.md)
+
+> App mobile que escaneia cupons fiscais (NFC-e), monta uma base **colaborativa e anônima** de preços e diz, na gôndola, se um produto está **barato, na média ou caro** — sempre por unidade comparável (R$/kg, R$/L, R$/un).
+
+O nome do app é **Barganha** (a pasta do repositório se chama `Comparai`, nome de trabalho).
+
+---
+
+## Status
+Fase: **fim da ideação / início do desenvolvimento.** O escopo e as restrições já estão fechados (ver `docs/`). O design das telas será fornecido pelo dono do produto e definirá o ajuste final do modelo de dados.
+
+## Como navegar este repositório
+- **`docs/`** — a fonte da verdade do produto e da arquitetura. Leia antes de codar.
+  - `00-visao-produto.md` · `01-arquitetura.md` · `02-modelo-de-dados.md` · `03-captura-nfce-sefaz.md` · `04-privacidade-lgpd.md` · `05-offline-sync.md` · `06-comparacao-estatistica.md` · `07-roadmap-mvp.md` · `08-equipe-agentes.md`
+- **`.claude/agents/`** — o time de agentes especialistas. Delegue cada tarefa ao agente da área correspondente (ver `docs/08-equipe-agentes.md`).
+
+---
+
+## Decisões travadas (NÃO-NEGOCIÁVEIS)
+
+Toda contribuição de código ou design DEVE respeitar:
+
+1. **Captura QR-first.** Os dados vêm do **QR code da NFC-e** consultado na **SEFAZ** (estruturados), não de OCR. OCR é plano B futuro para cupons ECF antigos.
+2. **Parsing da SEFAZ roda no backend, nunca no app.** Um parser por estado. O app só envia o conteúdo do QR e guarda o **QR cru** de qualquer estado desde o dia 1, para processamento retroativo.
+3. **LGPD forte — nunca persistir dados pessoais.** CPF é descartado no parsing. Dois mundos de dados estritamente separados:
+   - **Privado** (`cupom`, `item_cupom`): histórico do usuário, idealmente no aparelho / escopo da conta. Contém `chave_acesso`.
+   - **Compartilhado** (`observacao_preco`): anônimo de nascença, itens **soltos** (sem amarrar à cesta), **sem** `usuario_id`, **sem** `chave_acesso`.
+4. **Geolocalização pela LOJA (via CNPJ), nunca rastreando o usuário.** Agregação principal por município; fallback hierárquico loja → cidade → região → UF.
+5. **Preço comparável sempre normalizado** para R$/kg, R$/L ou R$/un. Nunca comparar valor cru.
+6. **Veredito usa a faixa típica (mediana/percentis), nunca a média.** Promoção é exibida separada ("menor visto"), nunca colapsada num número único.
+7. **Offline obrigatório** para registrar cupom e consultar (cache escopado + delta sync). Dado de preço é minúsculo; sincronização incremental, não download total.
+
+> Se uma tarefa parecer exigir violar um destes pontos, **pare e levante a questão** em vez de prosseguir.
+
+---
+
+## Stack (base de trabalho — sujeita a ratificação)
+- **App:** React Native + **Expo** + **TypeScript**. Câmera/QR via `expo-camera`. Atualização OTA via EAS Update.
+- **Backend:** **PostgreSQL** (Supabase para começar). Parsers SEFAZ e agregações estatísticas como funções/jobs.
+- **Banco local (offline):** SQLite no dispositivo (ex.: `expo-sqlite` / Drizzle) para histórico privado + cache de estatísticas.
+- **Arquitetura:** app fino (captura + cache + UI) → backend Postgres (parsing por estado + base colaborativa + estatística geo) → cache de volta para o offline.
+
+## Convenções (a valerem quando o código começar)
+- TypeScript em todo lugar; tipos compartilhados entre app e backend quando possível.
+- Nomes de domínio em **português** (ex.: `produto_canonico`, `observacao_preco`); código/identificadores técnicos em inglês quando for idioma do framework.
+- Nada de segredos no repositório; usar variáveis de ambiente.
+- Toda escrita no banco compartilhado passa pela camada de anonimização — sem exceção.
+- Testes acompanham a feature (ver agente de QA).
+- Commits seguem o padrão semântico em PT-BR de `docs/09-padrao-commits.md` (agente `git-committer`).
+
+## Ambiente
+- SO de desenvolvimento: Windows 11. Shell primário: PowerShell (o Bash POSIX também está disponível).
+- Repositório ainda **não** versionado em git — sugerido `git init` antes do primeiro commit de código.

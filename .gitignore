@@ -1,0 +1,52 @@
+# Dependências
+node_modules/
+.pnp/
+.pnp.*
+
+# Expo / React Native
+.expo/
+.expo-shared/
+dist/
+web-build/
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+
+# Builds nativos
+/android/
+/ios/Pods/
+*.apk
+*.aab
+*.ipa
+
+# Ambiente / segredos (NUNCA commitar)
+.env
+.env.*
+!.env.example
+
+# Banco local / temporários
+*.sqlite
+*.sqlite3
+*.db
+
+# Logs
+*.log
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+
+# Cobertura de testes
+coverage/
+
+# Sistema operacional
+.DS_Store
+Thumbs.db
+
+# Editores
+.idea/
+*.swp
+
+# Artefatos do protótipo (Claude Design)
+design/code/support.js
