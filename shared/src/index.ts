@@ -1,24 +1,14 @@
 /**
- * @barganha/shared — tipos e utilitários compartilhados entre app e backend.
+ * @barganha/shared — contratos e tipos compartilhados entre app e backend.
  *
- * Por enquanto é a fundação (C0). Os contratos de domínio (`NotaEstruturada`,
- * DTOs de API) entram na Camada 1 (C1.3).
+ * Camada 1 (C1.3): modelo de domínio v1, contrato `NotaEstruturada`, DTOs de
+ * API e a fronteira de anonimização (C1.4). Tipos de domínio em português;
+ * mantidos em sincronia com supabase/migrations e docs/02-modelo-de-dados.md.
  */
 
-export const BARGANHA = {
-  nome: 'Barganha',
-  /** Versão do contrato compartilhado (app ↔ backend). */
-  versaoContrato: '0.0.0',
-} as const;
-
-/** Unidade-base de comparação de preço (nunca comparar valor cru). */
-export type UnidadeBase = 'kg' | 'L' | 'un';
-
-/**
- * Garante exaustividade em `switch` sobre uniões (parsers por estado,
- * escopos de estatística, etc.). Falha em tempo de compilação se um caso
- * novo não for tratado.
- */
-export function assertNever(valor: never): never {
-  throw new Error(`Caso não tratado: ${String(valor)}`);
-}
+export * from './core';
+export * from './dominio/enums';
+export * from './dominio/nota-estruturada';
+export * from './dominio/entidades';
+export * from './anonimizacao/gate';
+export * from './api/dtos';
