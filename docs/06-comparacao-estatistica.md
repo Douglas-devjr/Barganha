@@ -1,7 +1,18 @@
 # 06 — Comparação & Estatística
 
 ## Objetivo
-Dado um produto e um preço de prateleira, responder: **barato / na média / caro** — de forma confiável, robusta a promoções e a outliers, e relevante para a **região** do usuário.
+Dado um produto e um preço de prateleira, responder: **barato / na média / caro** — de forma confiável, robusta a promoções e a outliers, e relevante tanto ao **histórico do usuário** quanto à **região**.
+
+## Como o veredito é montado (decisões reconciliadas com o protótipo)
+O veredito combina **dois mundos**, exibidos juntos na tela "Verificar":
+1. **Seu histórico** (pessoal): o que *você* costuma pagar — seu típico, seu menor preço, em qual mercado.
+2. **Sua região** (colaborativo/anônimo): o típico, a faixa e o menor visto na sua cidade — o diferencial do Barganha, que dá valor mesmo a quem nunca comprou o item.
+
+Quando o usuário ainda não tem histórico de um produto, o veredito usa só a região; conforme ele compra, o ângulo pessoal aparece ao lado.
+
+**Entrada do produto** na tela "Verificar": **código de barras (caminho principal)** + **busca por nome (fallback)**.
+
+**Importante:** a estatística (dos dois mundos) usa **mediana e percentis**, nunca média — inclusive na UI o rótulo é "típico", não "médio" (ajuste em relação ao protótipo, que usava média ±5%).
 
 ## Normalização (pré-requisito)
 Todo preço é convertido para a **unidade base** do produto: **R$/kg**, **R$/L** ou **R$/un**, usando a `unidade` e a `quantidade` da NFC-e. Nunca se compara valor cru.
@@ -33,7 +44,7 @@ A comparação é **regional** (preço varia muito por município). Ao consultar
 Sempre há resposta, no nível mais específico possível, e a UI informa a base:
 > "baseado em 3 mercados na sua cidade"
 
-Mostrar **dois ângulos** quando houver dado: *vs. esta loja* e *vs. a região*.
+Mostrar os ângulos disponíveis: *seu histórico*, *vs. esta loja* e *vs. a região*.
 
 ## Veredito (exemplo)
 > **R$ 7,90/L** — acima do típico (R$ 6,50/L). Já vi por **R$ 5,99/L** no Atacadão há 3 semanas.
