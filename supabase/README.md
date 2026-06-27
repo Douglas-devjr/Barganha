@@ -9,16 +9,20 @@ conta do dono do produto — ver passo 4.
 
 ```
 supabase/
-├── config.toml                       # config do CLI (portas/serviços locais)
-├── seed.sql                          # dados de desenvolvimento (vazio por ora)
+├── config.toml                            # config do CLI (portas/serviços locais)
+├── seed.sql                               # dados de desenvolvimento (vazio por ora)
 └── migrations/
-    └── 20260627090000_baseline.sql   # extensões + enums (fundação)
+    ├── 20260627090000_baseline.sql        # extensões + enums (fundação, C0.4)
+    └── 20260627091000_dominio_tabelas.sql # tabelas do domínio v1 (C1.2)
 ```
 
-> A baseline traz só extensões (`pgcrypto`) e os enums (`status_cupom`,
-> `escopo_geo`). As **tabelas** (privado x compartilhado) entram na Camada 1
-> (C1.2). A escrita em `observacao_preco` é sempre via camada de anonimização
-> — ver `docs/04-privacidade-lgpd.md`.
+> A baseline traz extensões (`pgcrypto`) e os enums (`status_cupom`,
+> `escopo_geo`). A migration de domínio cria as **tabelas** dos dois mundos:
+> **privado** (`usuario`, `cupom`, `item_cupom`) e **compartilhado**
+> (`loja`, `produto_canonico`, `produto_alias`, `observacao_preco`,
+> `preco_estatistica`). A `observacao_preco` é anônima por construção (não tem
+> colunas de PII) e a escrita é sempre via gate de anonimização (C1.4) — ver
+> `docs/04-privacidade-lgpd.md`.
 
 ## Pré-requisitos
 
