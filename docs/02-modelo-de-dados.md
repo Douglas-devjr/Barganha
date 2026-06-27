@@ -1,6 +1,8 @@
-# 02 — Modelo de Dados (rascunho v0)
+# 02 — Modelo de Dados (v1)
 
-> **Rascunho** sujeito a ajuste quando o design das telas for fornecido. A separação entre dados **privados** e **compartilhados** é, porém, não-negociável (ver `04`).
+> **v1 implementado** na Camada 1 (C1): tabelas em `supabase/migrations/20260627091000_dominio_tabelas.sql` e tipos em `shared/src/dominio/`. Ajustes finos de campo podem vir com o design final das telas; o conjunto de entidades e a separação **privado**/**compartilhado** são, porém, não-negociáveis (ver `04`).
+>
+> Implementação: enums (`status_cupom`, `escopo_geo`) na baseline (C0.4); colunas de auditoria (`criado_em`/`atualizado_em`) acrescentadas às tabelas além dos campos de domínio abaixo.
 
 ## Mapa das entidades
 
@@ -117,5 +119,25 @@ Inserida **solta** (um item por linha, sem vínculo com a cesta, sem `usuario_id
 ---
 
 ## Regras de integridade ligadas à privacidade
-- A escrita em `observacao_preco` é feita **exclusivamente** pela camada de anonimização do backend, a partir de uma nota processada — **nunca** copiando `usuario_id`, `cupom_id` ou `chave_acesso`.
+- A escrita em `observacao_preco` é feita **exclusivamente** pela camada de anonimização do backend, a partir de uma nota processada — **nunca** copiando `usuario_id`, `cupom_id` ou `chave_acesso`. O **gate único** (`extrairObservacoesAnonimas` em `shared/src/anonimizacao/gate.ts`, C1.4) garante isso em tempo de compilação: a saída colapsa para `never` se ganhar um campo de PII, e só ele produz o tipo `ObservacaoAnonima` que a persistência aceita.
 - `preco_estatistica` é o que o app baixa para o cache offline (delta sync por `atualizado_em` + escopo da região do usuário).
+
+---
+
+## Mapeamento telas → entidades (v1)
+
+Telas do protótipo (`design/code`) e as entidades que cada uma consome:
+
+| Tela | Lê de | Observações |
+|---|---|---|
+| **Onboarding** (3 telas) | — | consentimento LGPD; cria `usuario` (mínimo). |
+| **Início** (home) | `cupom`, `item_cupom` | card de economia + últimas compras (privado, local). |
+| **Scanner** | `cupom` (`qr_payload`, `status`) | grava QR cru offline antes de tudo. |
+| **Nota fiscal** | `cupom` + `item_cupom` | itens parseados da nota; "Salvar no histórico". |
+| **Verificar** (gôndola) | `preco_estatistica` (cache) + `item_cupom` (histórico) | veredito híbrido: típico da região (mediana/p25/p75) **+** seu histórico; promoção à parte. |
+| **Produtos** (lista) | `produto_canonico` + `preco_estatistica` | produtos do histórico/região. |
+| **Detalhe do produto** | `produto_canonico` + `observacao_preco`/`preco_estatistica` | evolução 6 meses; menor visto. |
+| **Estatísticas** | `cupom`/`item_cupom` agregados | gastos por mês/categoria/onde economiza `[Pós]`. |
+| **Perfil** | `usuario` + `loja` (favoritas) | dados mínimos, mercados favoritos. |
+
+> O protótipo rotula o típico como "média ±5%"; o modelo v1 usa **mediana/percentis** (`preco_estatistica`), nunca média — ajuste já refletido em `06`.
