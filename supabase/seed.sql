@@ -1,0 +1,3 @@
+-- Seed de desenvolvimento (rodado por `supabase db reset`).
+-- Vazio na fundação. Dados de exemplo (lojas/produtos) podem entrar aqui
+-- quando as tabelas existirem (Camada 1+). NUNCA semear com dados pessoais.

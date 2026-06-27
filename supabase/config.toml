@@ -1,0 +1,25 @@
+# Configuração do Supabase CLI (ambiente local de desenvolvimento).
+# Regenerável com `supabase init`. Portas locais padrão; ajuste se colidirem.
+project_id = "barganha"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+port = 54322
+shadow_port = 54320
+# Versão do Postgres do projeto gerenciado (mantenha em sincronia com o dev).
+major_version = 15
+
+[studio]
+enabled = true
+port = 54323
+
+[auth]
+enabled = true
+# Auth mínima entra na Camada 4 (C4.3); avaliar conta anônima.
+site_url = "http://localhost:54321"
