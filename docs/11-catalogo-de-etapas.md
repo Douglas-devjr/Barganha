@@ -1,0 +1,157 @@
+# 11 — Catálogo de Etapas (como pedir uma implementação)
+
+Este documento dá um **nome e um código curto** a cada etapa do desenvolvimento (detalhadas em `10-plano-de-desenvolvimento.md`) e define **como citá-las no chat** para o Claude entender que deve **implementar** aquela etapa.
+
+---
+
+## Como citar no chat
+
+- **Implementar uma camada inteira:** escreva o código. Ex.: `C2`, ou “implementar C2”, ou “bora a Camada 2”.
+- **Implementar um sub-passo específico:** use o código com o ponto. Ex.: `C2.2` (parser RJ).
+- **Implementar uma faixa de camadas:** use o traço. Ex.: `C0–C1` ou “C5 a C7”.
+- **Fatia vertical (recomendada para começar):** `FV`.
+- **Só planejar / ver status (sem codar):** prefixe com **planejar** ou **status**. Ex.: “status C3”, “planejar C4”.
+
+### O que o Claude faz ao receber um código
+1. Confirma rapidamente o escopo se a etapa for grande; se for pequena/clara, já executa.
+2. Verifica **dependências** — se faltar uma camada anterior, avisa e sugere fazê-la antes.
+3. Aciona o(s) **agente(s) responsável(is)** da etapa.
+4. Implementa, escreve testes quando couber, e **commita** pelo padrão (`git-committer`, **sem co-autoria do Claude**).
+5. Reporta o que entregou e qual o próximo passo lógico.
+
+> Os códigos não são slash-commands — é só escrever no chat. Verbos como “implementar”, “construir”, “fazer”, “bora” são opcionais.
+
+---
+
+## Tokens especiais
+
+| Código | Nome | O que é |
+|---|---|---|
+| `FV` | **Fatia Vertical** | Fluxo fino ponta a ponta de **um cupom do RJ**: capturar → parsear → salvar → ver no histórico → veredito simples. Valida a integração antes de engrossar as camadas. Usa partes de C1, C2, C5, C6, C7. |
+| `MVP` | **Produto Mínimo** | Tudo marcado `[MVP]` no plano (C0–C7 essenciais + C8.1/C8.2 + C9 + C10). |
+
+---
+
+## Catálogo de camadas e sub-passos
+
+### `C0` — Fundação *(Setup & Tooling)* `[MVP]`
+| Código | Sub-passo |
+|---|---|
+| C0.1 | Monorepo (`app/`, `backend/`, `shared/`) |
+| C0.2 | Tooling: TS strict, ESLint, Prettier, EditorConfig |
+| C0.3 | CI (lint+test) + ambientes + segredos |
+| C0.4 | Provisionar Postgres/Supabase + base de migrations |
+*Responsáveis:* devops-engineer, tech-lead-arquiteto
+
+### `C1` — Domínio *(Modelo de Dados & Contratos)* `[MVP]`
+| Código | Sub-passo |
+|---|---|
+| C1.1 | Modelo de dados v1 mapeado às telas |
+| C1.2 | Migrations (lado privado + compartilhado) |
+| C1.3 | Tipos/contratos em `shared/` (`NotaEstruturada`, DTOs) |
+| C1.4 | Fronteira de anonimização (gate único de escrita) |
+*Responsáveis:* tech-lead-arquiteto, data-engineer, privacy-lgpd-specialist
+
+### `C2` — Captura *(Ingestão SEFAZ)* `[MVP]`
+| Código | Sub-passo |
+|---|---|
+| C2.1 | Endpoint de ingestão do QR + fila (retry/backoff) |
+| C2.2 | Parser **RJ** (fixtures/testes) |
+| C2.3 | Parser **SP** (fixtures/testes) |
+| C2.4 | Camada de anonimização (nota privada + `observacao_preco`) |
+| C2.5 | Status do cupom + reprocessamento retroativo |
+*Responsáveis:* sefaz-integration-engineer, backend-engineer
+
+### `C3` — Estatística *(Motor de Veredito)* `[MVP]`
+| Código | Sub-passo |
+|---|---|
+| C3.1 | Pipeline `preco_estatistica` (mediana/percentis/mín/máx/`n`) |
+| C3.2 | Decaimento temporal |
+| C3.3 | Escopos geo + fallback hierárquico (loja→município→região→UF) |
+| C3.4 | Casamento por EAN |
+| C3.5 | Casamento por texto (sem EAN, com confirmação) |
+| C3.6 | Detecção de promoção + veredito híbrido (pessoal + regional) |
+*Responsáveis:* data-scientist, data-engineer
+
+### `C4` — API *(Consulta & Sync)* `[MVP]`
+| Código | Sub-passo |
+|---|---|
+| C4.1 | Endpoints de consulta de estatística (com fallback) |
+| C4.2 | Delta sync (cursor por `atualizado_em` + escopo) |
+| C4.3 | Autenticação mínima |
+*Responsáveis:* backend-engineer, data-engineer, privacy-lgpd-specialist
+
+### `C5` — Esqueleto *(Fundação Mobile)* `[MVP]`
+| Código | Sub-passo |
+|---|---|
+| C5.1 | Projeto Expo + navegação (tabs + scan central) |
+| C5.2 | Design system (paleta `#0F766E`, Plus Jakarta Sans, componentes) |
+| C5.3 | SQLite local (espelho privado + cache de estatísticas) |
+| C5.4 | Cliente de API tipado (usa `shared/`) |
+*Responsáveis:* mobile-engineer, ux-designer
+
+### `C6` — Cupom *(Captura Offline-first)* `[MVP]`
+| Código | Sub-passo |
+|---|---|
+| C6.1 | Câmera/leitura de QR + grava QR cru local |
+| C6.2 | Fila de upload idempotente (`chave_acesso`) + retry |
+| C6.3 | Tela Nota fiscal + “Salvar no histórico” |
+| C6.4 | Onboarding (3 telas) + consentimento LGPD |
+*Responsáveis:* mobile-engineer, ux-designer, privacy-lgpd-specialist
+
+### `C7` — Veredito *(Consulta na Gôndola)* `[MVP]`
+| Código | Sub-passo |
+|---|---|
+| C7.1 | Tela Verificar (scan de barras + busca por nome) |
+| C7.2 | Veredito do cache local (offline) + refino online |
+| C7.3 | Exibição híbrida + linha de promoção + “última atualização” |
+| C7.4 | Produtos (lista) |
+| C7.5 | Detalhe do produto (gráfico de evolução 6 meses) |
+*Responsáveis:* mobile-engineer, ux-designer, data-scientist
+
+### `C8` — Histórico *(Histórico, Estatísticas & Perfil)*
+| Código | Sub-passo |
+|---|---|
+| C8.1 | Início: card de economia + últimas compras `[MVP]` |
+| C8.2 | Perfil: dados mínimos, mercados favoritos, preferências `[MVP]` |
+| C8.3 | Estatísticas (gastos por mês/categoria/onde economiza) `[Pós]` |
+| C8.4 | Economia acumulada + tendência + alertas de preço `[Pós]` |
+*Responsáveis:* mobile-engineer, ux-designer, product-manager
+
+### `C9` — Qualidade *(QA, Privacidade & Performance)* `[MVP]` *(transversal)*
+| Código | Sub-passo |
+|---|---|
+| C9.1 | Pirâmide de testes (unit→e2e) + fixtures de cupons |
+| C9.2 | Gate LGPD + checagem de re-identificação |
+| C9.3 | Performance (índices/EXPLAIN) + plano de escala |
+| C9.4 | Política de privacidade publicada |
+*Responsáveis:* qa-engineer, privacy-lgpd-specialist, data-engineer
+
+### `C10` — Lançamento *(Release & Operação)* `[MVP]`
+| Código | Sub-passo |
+|---|---|
+| C10.1 | Build EAS + Google Play (beta fechado → aberto) |
+| C10.2 | Observabilidade (telemetria por estado, alertas, backups) |
+| C10.3 | Lançamento faseado RJ + SP |
+*Responsáveis:* devops-engineer, product-manager
+
+### `C11` — Expansão *(Pós-lançamento)* `[Pós]`
+| Código | Sub-passo |
+|---|---|
+| C11.1 | Novos estados + reprocessamento retroativo |
+| C11.2 | iOS / App Store |
+| C11.3 | Lançamento manual de gôndola (com moderação) |
+| C11.4 | OCR de cupons ECF antigos |
+| C11.5 | Enriquecimento de produtos (nome/foto/categoria) |
+*Responsáveis:* conforme o item
+
+---
+
+## Exemplos de uso no chat
+- `FV` → “monta a fatia vertical do RJ ponta a ponta”.
+- `C0` ou “implementar C0” → faz toda a Fundação.
+- `C2.2` → só o parser do RJ, com testes.
+- `C5–C7` → o app do esqueleto ao veredito.
+- “status C3” → relatório da camada, **sem** codar.
+
+> Ordem sugerida: `C0 → C1 → FV → engrossar C2/C3/C4 + C5/C6/C7 → C8 → C9 → C10`.

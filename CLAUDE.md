@@ -11,7 +11,10 @@ Fase: **fim da ideação / início do desenvolvimento.** O escopo e as restriç�
 
 ## Como navegar este repositório
 - **`docs/`** — a fonte da verdade do produto e da arquitetura. Leia antes de codar.
-  - `00-visao-produto.md` · `01-arquitetura.md` · `02-modelo-de-dados.md` · `03-captura-nfce-sefaz.md` · `04-privacidade-lgpd.md` · `05-offline-sync.md` · `06-comparacao-estatistica.md` · `07-roadmap-mvp.md` · `08-equipe-agentes.md`
+  - `00-visao-produto.md` · `01-arquitetura.md` · `02-modelo-de-dados.md` · `03-captura-nfce-sefaz.md` · `04-privacidade-lgpd.md` · `05-offline-sync.md` · `06-comparacao-estatistica.md` · `07-roadmap-mvp.md` · `08-equipe-agentes.md` · `09-padrao-commits.md` · `10-plano-de-desenvolvimento.md` · `11-catalogo-de-etapas.md`
+
+## Códigos de etapa (como o dono pede implementações)
+O dono cita etapas pelo **código** definido em `docs/11-catalogo-de-etapas.md` (ex.: `C2`, `C2.2`, `C5–C7`, `FV`, `MVP`). Ao receber um código: confira dependências, acione o agente responsável, implemente e commite pelo padrão. Prefixos **planejar**/**status** = só planejar, sem codar.
 - **`.claude/agents/`** — o time de agentes especialistas. Delegue cada tarefa ao agente da área correspondente (ver `docs/08-equipe-agentes.md`).
 
 ---
