@@ -30,11 +30,10 @@ tipo(escopo): descrição curta no imperativo
 6. **Não dá push sem confirmação** do dono; commitar é livre, publicar não.
 7. Não usa `--no-verify`; se um hook falhar, investiga e corrige.
 
-## Rodapé obrigatório
-Toda mensagem de commit termina com:
-```
-Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>
-```
+## Co-autoria — PROIBIDO Claude
+**Nunca** adicione co-autoria do Claude às mensagens de commit. Não inclua nenhuma linha
+`Co-Authored-By: Claude ...` (nem qualquer variação que credite o assistente). Os commits
+saem **somente** no nome do autor configurado no git.
 
 ## Boas práticas
 - Prefira vários commits pequenos e coerentes a um grande.

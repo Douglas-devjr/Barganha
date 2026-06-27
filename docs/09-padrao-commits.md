@@ -47,6 +47,6 @@ chore: configura ESLint e Prettier
 
   BREAKING CHANGE: o campo `qr` passou a se chamar `qrPayload`.
   ```
-- Todo commit termina com o rodapé de co-autoria do assistente (padrão do projeto).
+- **Nunca** adicionar co-autoria do Claude (`Co-Authored-By: Claude ...`) — commits saem só no nome do autor do git.
 
 > O agente **git-committer** aplica este padrão automaticamente.
