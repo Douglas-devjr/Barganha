@@ -1,0 +1,16 @@
+# Normaliza fim de linha: LF no repositório e no working copy (mesmo no Windows).
+# Mantém o gate do Prettier consistente entre dev local e CI.
+* text=auto eol=lf
+
+# Binários — nunca normalizar.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.jks binary
+*.keystore binary
+*.p12 binary
+*.aab binary
+*.apk binary
