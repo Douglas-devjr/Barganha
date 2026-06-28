@@ -57,7 +57,12 @@ export interface ConsultaPrecoResponse {
 export interface DeltaSyncRequest {
   /** Cursor = maior `atualizado_em` recebido (ISO 8601); ausente = sync inicial. */
   cursor?: string;
-  /** Recorte geográfico do usuário (municípios onde compra). */
+  /**
+   * Chaves de `escopo_id` do recorte geográfico do usuário. Apesar do nome,
+   * aceita os DOIS níveis úteis ao fallback offline: `UF:Município` E o código
+   * de `UF`. Inclua ambos (ex.: `["RJ:Rio de Janeiro", "RJ"]`) para o cache ter
+   * a linha de UF quando o município tiver poucos dados.
+   */
   municipios?: string[];
   /** Produtos do histórico para manter no cache. */
   produtoCanonicoIds?: string[];
