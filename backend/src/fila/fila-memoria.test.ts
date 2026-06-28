@@ -46,6 +46,23 @@ describe('FilaMemoria (C2.1)', () => {
     expect(aoEsgotar).toHaveBeenCalledOnce();
   });
 
+  it('processa tarefa enfileirada durante o processamento (não trava)', async () => {
+    const vistos: string[] = [];
+    const fila = new FilaMemoria(
+      (t: { cupomId: string }) => {
+        vistos.push(t.cupomId);
+        if (t.cupomId === 'a') void fila.enfileirar({ cupomId: 'b' });
+        return Promise.resolve();
+      },
+      { dormir: semEspera },
+    );
+
+    await fila.enfileirar({ cupomId: 'a' });
+    await fila.ociosa();
+
+    expect(vistos).toEqual(['a', 'b']);
+  });
+
   it('processa várias tarefas em ordem (FIFO)', async () => {
     const vistos: string[] = [];
     const worker = vi.fn((t: { cupomId: string }) => {

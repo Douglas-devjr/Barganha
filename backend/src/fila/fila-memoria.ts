@@ -62,7 +62,10 @@ export class FilaMemoria implements FilaProcessamento {
 
   /** Resolve quando a fila esvazia e nada está em processamento (testes). */
   async ociosa(): Promise<void> {
-    await this.cicloAtual;
+    // Laço: uma tarefa enfileirada enquanto o ciclo terminava reativa a bomba.
+    while (this.bombeando || this.pendentes.length > 0) {
+      await this.cicloAtual;
+    }
   }
 
   private bombear(): void {
@@ -70,6 +73,8 @@ export class FilaMemoria implements FilaProcessamento {
     this.bombeando = true;
     this.cicloAtual = this.drenar().finally(() => {
       this.bombeando = false;
+      // Algo chegou na janela entre o último shift e este reset: re-bombeia.
+      if (this.pendentes.length > 0) this.bombear();
     });
   }
 
