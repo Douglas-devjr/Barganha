@@ -84,6 +84,16 @@ describe('Anonimizador (C2.4)', () => {
     expect(r.observacoes[1]).toMatchObject({ emPromocao: true, precoNormalizado: 5.29 });
   });
 
+  it('usa a UF canônica (da chave) na loja e no pool, ignorando o endereço', async () => {
+    const notaUfErrada: NotaEstruturada = {
+      ...NOTA,
+      loja: { ...NOTA.loja, uf: 'XX' }, // endereço com UF furada
+    };
+    const r = await new Anonimizador(catalogoFake()).anonimizar(notaUfErrada, CONTEXTO, 'RJ');
+    expect(r.loja.uf).toBe('RJ');
+    expect(r.observacoes.every((o) => o.uf === 'RJ')).toBe(true);
+  });
+
   it('NUNCA propaga PII para o pool (gate C1.4)', async () => {
     const r = await new Anonimizador(catalogoFake()).anonimizar(NOTA, CONTEXTO);
     const serializado = JSON.stringify(r.observacoes);

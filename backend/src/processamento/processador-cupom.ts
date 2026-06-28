@@ -45,11 +45,16 @@ export class ProcessadorCupom {
 
       const parser = this.registro.resolver(uf);
       const nota = await parser.parse(qr);
-      const resultado = await this.anonimizador.anonimizar(nota, {
-        usuarioId: cupom.usuarioId,
-        cupomId: cupom.id,
-        ...(cupom.chaveAcesso ? { chaveAcesso: cupom.chaveAcesso } : {}),
-      });
+      // UF da chave (cUF) é canônica — mais confiável que o endereço parseado.
+      const resultado = await this.anonimizador.anonimizar(
+        nota,
+        {
+          usuarioId: cupom.usuarioId,
+          cupomId: cupom.id,
+          ...(cupom.chaveAcesso ? { chaveAcesso: cupom.chaveAcesso } : {}),
+        },
+        uf,
+      );
 
       await this.repo.marcarProcessado(cupom.id, {
         loja: resultado.loja,

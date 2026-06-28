@@ -47,10 +47,18 @@ export interface ResultadoAnonimizacao {
 export class Anonimizador {
   constructor(private readonly catalogo: CatalogoProdutos) {}
 
+  /**
+   * @param ufCanonica UF derivada da CHAVE de acesso (cUF) — fonte mais
+   *   confiável que o endereço parseado; sobrepõe a UF da loja para a `loja` e
+   *   o pool. Ausente → cai para a UF do endereço.
+   */
   async anonimizar(
     nota: NotaEstruturada,
     contexto: ContextoPrivado,
+    ufCanonica?: string,
   ): Promise<ResultadoAnonimizacao> {
+    const uf = ufCanonica ?? nota.loja.uf;
+    const loja = { ...nota.loja, uf };
     const itensPrivados: ItemCupomNovo[] = [];
     const itensPool: ItemProcessado[] = [];
 
@@ -91,7 +99,7 @@ export class Anonimizador {
     // ENTRADA do gate: carrega contexto privado de propósito — é onde ele é
     // descartado, não propagado. A saída é anônima por construção (C1.4).
     const notaProcessada: NotaProcessada = {
-      loja: { cnpj: nota.loja.cnpj, municipio: nota.loja.municipio, uf: nota.loja.uf },
+      loja: { cnpj: loja.cnpj, municipio: loja.municipio, uf },
       observadoEm: nota.emitidoEm,
       itens: itensPool,
       usuarioId: contexto.usuarioId,
@@ -100,7 +108,7 @@ export class Anonimizador {
     };
 
     return {
-      loja: nota.loja,
+      loja,
       emitidoEm: nota.emitidoEm,
       itensPrivados,
       observacoes: extrairObservacoesAnonimas(notaProcessada),
