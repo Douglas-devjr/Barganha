@@ -37,6 +37,24 @@ ar, rede, banco) → retry com backoff exponencial. Erro **permanente** (layout,
 QR inválido) → cupom marcado `falha`, sem retry. UF sem parser → fica
 `qr_capturado` aguardando C2.5.
 
+## Camada 4 — API de Consulta & Sync (implementada)
+
+Endpoints que servem o app rápido e habilitam o offline (`docs/05`). Consulta e
+sync lêem **só o pool compartilhado anônimo** — não exigem conta (`docs/04`).
+
+- **C4.1 — Consulta de preço:** `POST /consulta/preco` resolve o produto por
+  **EAN** (principal) ou **nome** (fallback, casamento por texto de C3.5) e
+  devolve a faixa típica no nível mais específico com base suficiente, reusando o
+  **fallback geográfico** loja→município→região→UF (C3.3). Sem dado → **404**.
+- **C4.2 — Delta sync:** `POST /sync/estatisticas` baixa só o que mudou desde o
+  **cursor** (`atualizado_em`), no escopo do usuário (municípios + produtos do
+  histórico). Devolve as linhas + o novo cursor. Janela pequena por design
+  (`docs/05`); paginação por cursor composto fica para C9.3.
+- **C4.3 — Auth mínima:** `POST /conta/anonima` cria uma conta **sem dados
+  pessoais** (`docs/04`) e devolve o `usuarioId`. Endpoints **privados**
+  (ingestão) exigem `Authorization: Bearer <usuarioId>` (header legado
+  `x-usuario-id` aceito) e o `Autenticador` valida que a conta existe.
+
 ## Estrutura
 
 | Pasta | Responsabilidade |
@@ -45,10 +63,14 @@ QR inválido) → cupom marcado `falha`, sem retry. UF sem parser → fica
 | `anonimizacao/` | Normalização R$/base, casamento por EAN, anonimizador (usa o gate) |
 | `ingestao/` | Serviço de ingestão (C2.1) |
 | `processamento/` | Processador de cupom + reprocessamento retroativo (C2.5) |
+| `estatistica/` | Motor de veredito: agregação, escopos/fallback, pipeline, casamento por texto (C3) |
+| `consulta/` | Serviço de consulta de preço com fallback geo (C4.1) |
+| `sync/` | Serviço de delta sync incremental (C4.2) |
+| `auth/` | Conta anônima + autenticação mínima (C4.3) |
 | `fila/` | Fila com retry/backoff (porta + adaptador em memória) |
 | `persistencia/` | Portas + adaptador Supabase + adaptador em memória (testes) |
 | `sefaz/` | `ClienteSefaz` HTTP (real) e em memória (testes) |
-| `http/` | Servidor Fastify (`POST /ingestao/qr`, `GET /saude`) |
+| `http/` | Servidor Fastify (ingestão, conta, consulta, sync, `GET /saude`) |
 
 Portas e adaptadores: o domínio não conhece Supabase nem rede; tudo é injetado
 na raiz de composição (`composicao.ts`). Isso mantém a lógica testável sem

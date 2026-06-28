@@ -54,5 +54,10 @@ Toda a lógica que pode mudar (parsers por estado, regras de anonimização, est
 
 ## Decisões em aberto
 - Ratificação da stack (Expo/Supabase).
-- Detalhe do mecanismo de sync (timestamps vs. cursores) — a definir com o backend/data engineer.
-- Estratégia de auth anônima vs. conta — a definir com privacidade + produto.
+
+## Decisões fechadas na Camada 4 (C4)
+- **Mecanismo de sync:** delta por **cursor `atualizado_em`** (timestamp), escopo por
+  município + produtos do histórico. Janela pequena por design; cursor composto
+  p/ paginação fica para C9.3 (`docs/05`).
+- **Auth:** **conta anônima** (sem dados pessoais), `usuarioId` como Bearer; só
+  endpoints privados (ingestão) exigem conta — consulta e sync são anônimos.

@@ -17,7 +17,13 @@ import type { ObservacaoAnonima, PrecoEstatistica } from '@barganha/shared';
 import type { PostgrestError, SupabaseClient } from '@supabase/supabase-js';
 
 import type { CatalogoProdutos, SugestaoProduto } from '../anonimizacao/casamento';
-import type { CandidatoCanonico, FonteCandidatosTexto } from '../estatistica/casamento-texto';
+import type { RepositorioUsuario } from '../auth/tipos';
+import type { FonteProdutoConsulta } from '../consulta/tipos';
+import {
+  type CandidatoCanonico,
+  type FonteCandidatosTexto,
+  tokenizar,
+} from '../estatistica/casamento-texto';
 import { derivarEscopos, type LocalGeo } from '../estatistica/escopos';
 import type {
   FonteObservacoes,
@@ -25,6 +31,7 @@ import type {
   ObservacaoParaAgregacao,
   RepositorioEstatistica,
 } from '../estatistica/tipos';
+import type { FiltroDeltaSync, FonteDeltaSync } from '../sync/tipos';
 import type {
   CupomRegistro,
   DadosIngestao,
@@ -45,12 +52,29 @@ const num = (v: unknown): number | undefined => (v == null ? undefined : Number(
 export class RepositorioSupabase
   implements
     RepositorioCupom,
+    RepositorioUsuario,
     CatalogoProdutos,
+    FonteProdutoConsulta,
     FonteObservacoes,
     RepositorioEstatistica,
+    FonteDeltaSync,
     FonteCandidatosTexto
 {
   constructor(private readonly db: SupabaseClient) {}
+
+  // ───────────────────────── RepositorioUsuario (C4.3) ────────────────
+
+  async criarAnonimo(): Promise<string> {
+    const r = await this.db.from('usuario').insert({}).select('id').single();
+    if (r.error) falhar('criação de conta anônima', r.error);
+    return r.data.id;
+  }
+
+  async existe(id: string): Promise<boolean> {
+    const r = await this.db.from('usuario').select('id').eq('id', id).maybeSingle();
+    if (r.error) falhar('verificação de conta', r.error);
+    return r.data != null;
+  }
 
   async criarOuObterPorChave(dados: DadosIngestao): Promise<ResultadoIngestao> {
     if (dados.chaveAcesso) {
@@ -211,6 +235,32 @@ export class RepositorioSupabase
     return inserido.data.id;
   }
 
+  // ───────────────────────── FonteProdutoConsulta (C4.1) ──────────────
+
+  async obterProdutoPorEan(ean: string): Promise<string | undefined> {
+    const r = await this.db.from('produto_canonico').select('id').eq('ean', ean).maybeSingle();
+    if (r.error) falhar('consulta de produto por EAN', r.error);
+    return r.data?.id;
+  }
+
+  async candidatosPorNome(nome: string): Promise<CandidatoCanonico[]> {
+    // Pré-filtro barato: o token mais longo do nome (já normalizado) via ilike,
+    // reduzindo o conjunto a pontuar no serviço. Busca de texto plena fica p/ C9.3.
+    const tokens = tokenizar(nome).sort((a, b) => b.length - a.length);
+    const token = tokens[0];
+    if (!token) return [];
+    const r = await this.db
+      .from('produto_canonico')
+      .select('id, descricao_normalizada')
+      .not('descricao_normalizada', 'is', null)
+      .ilike('descricao_normalizada', `%${token}%`);
+    if (r.error) falhar('busca de produtos por nome', r.error);
+    return (r.data ?? []).map((p) => ({
+      produtoCanonicoId: p.id,
+      descricaoNormalizada: p.descricao_normalizada,
+    }));
+  }
+
   // ───────────────────────── FonteObservacoes (C3) ────────────────────
 
   async listarProdutosComObservacoes(desde?: string): Promise<string[]> {
@@ -278,6 +328,35 @@ export class RepositorioSupabase
       .eq('produto_canonico_id', produtoCanonicoId)
       .in('escopo_id', escopoIds);
     if (r.error) falhar('consulta de candidatos para fallback', r.error);
+    return (r.data ?? []).map((e) => ({
+      produtoCanonicoId: e.produto_canonico_id,
+      escopo: e.escopo,
+      escopoId: e.escopo_id,
+      unidadeBase: e.unidade_base,
+      mediana: num(e.mediana),
+      p25: num(e.p25),
+      p75: num(e.p75),
+      minimo: num(e.minimo),
+      maximo: num(e.maximo),
+      menorPromocional: num(e.menor_promocional),
+      nObservacoes: Number(e.n_observacoes),
+      atualizadoEm: e.atualizado_em,
+    }));
+  }
+
+  // ───────────────────────── FonteDeltaSync (C4.2) ────────────────────
+
+  async deltaEstatisticas(filtro: FiltroDeltaSync): Promise<PrecoEstatistica[]> {
+    let consulta = this.db.from('preco_estatistica').select('*');
+    if (filtro.desde) consulta = consulta.gt('atualizado_em', filtro.desde);
+    if (filtro.escopoIds && filtro.escopoIds.length > 0) {
+      consulta = consulta.in('escopo_id', filtro.escopoIds);
+    }
+    if (filtro.produtoCanonicoIds && filtro.produtoCanonicoIds.length > 0) {
+      consulta = consulta.in('produto_canonico_id', filtro.produtoCanonicoIds);
+    }
+    const r = await consulta.order('atualizado_em', { ascending: true }).limit(filtro.limite);
+    if (r.error) falhar('leitura do delta de estatísticas', r.error);
     return (r.data ?? []).map((e) => ({
       produtoCanonicoId: e.produto_canonico_id,
       escopo: e.escopo,

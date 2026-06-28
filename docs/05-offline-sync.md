@@ -1,5 +1,11 @@
 # 05 — Offline & Sincronização
 
+> **Lado servidor implementado** na Camada 4 (C4): `POST /sync/estatisticas`
+> (`backend/src/sync/`) baixa só o delta desde o cursor `atualizado_em`, no
+> escopo do usuário (municípios + produtos). `POST /consulta/preco`
+> (`backend/src/consulta/`) resolve o veredito online com fallback geo. Ambos
+> lêem só o pool anônimo. O lado app (cache SQLite + fila + cursor local) é C5–C7.
+
 ## Por que offline importa
 O caso de uso crítico — consultar um preço **no corredor do mercado** — acontece frequentemente com sinal ruim. Além disso, registrar um cupom não pode depender de conexão. Portanto: **offline-first**.
 

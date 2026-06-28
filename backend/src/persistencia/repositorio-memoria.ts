@@ -11,13 +11,20 @@ import type { Loja, ObservacaoAnonima, PrecoEstatistica, StatusCupom } from '@ba
 
 import type { ItemCupomNovo } from '../anonimizacao/anonimizador';
 import type { CatalogoProdutos, SugestaoProduto } from '../anonimizacao/casamento';
-import type { CandidatoCanonico, FonteCandidatosTexto } from '../estatistica/casamento-texto';
+import type { RepositorioUsuario } from '../auth/tipos';
+import type { FonteProdutoConsulta } from '../consulta/tipos';
+import {
+  type CandidatoCanonico,
+  type FonteCandidatosTexto,
+  tokenizar,
+} from '../estatistica/casamento-texto';
 import type {
   FonteObservacoes,
   LinhaEstatistica,
   ObservacaoParaAgregacao,
   RepositorioEstatistica,
 } from '../estatistica/tipos';
+import type { FiltroDeltaSync, FonteDeltaSync } from '../sync/tipos';
 import type {
   CupomRegistro,
   DadosIngestao,
@@ -48,12 +55,16 @@ interface ProdutoCanonicoInterno {
 export class RepositorioMemoria
   implements
     RepositorioCupom,
+    RepositorioUsuario,
     CatalogoProdutos,
+    FonteProdutoConsulta,
     FonteObservacoes,
     RepositorioEstatistica,
+    FonteDeltaSync,
     FonteCandidatosTexto
 {
   // Lado PRIVADO.
+  private readonly usuarios = new Set<string>();
   private readonly cupons = new Map<string, CupomInterno>();
   private readonly itensCupom: ItemCupomArmazenado[] = [];
   // Lado COMPARTILHADO (anônimo).
@@ -61,6 +72,18 @@ export class RepositorioMemoria
   private readonly produtosPorEan = new Map<string, ProdutoCanonicoInterno>();
   private readonly observacoes: ObservacaoAnonima[] = [];
   private readonly estatisticas = new Map<string, PrecoEstatistica>();
+
+  // ───────────────────────── RepositorioUsuario (C4.3) ────────────────
+
+  criarAnonimo(): Promise<string> {
+    const id = randomUUID();
+    this.usuarios.add(id);
+    return Promise.resolve(id);
+  }
+
+  existe(id: string): Promise<boolean> {
+    return Promise.resolve(this.usuarios.has(id));
+  }
 
   // ───────────────────────── RepositorioCupom ─────────────────────────
 
@@ -155,6 +178,23 @@ export class RepositorioMemoria
     return Promise.resolve(novo.id);
   }
 
+  // ───────────────────────── FonteProdutoConsulta (C4.1) ──────────────
+
+  obterProdutoPorEan(ean: string): Promise<string | undefined> {
+    return Promise.resolve(this.produtosPorEan.get(ean)?.id);
+  }
+
+  // Pré-filtro pelo token mais longo do nome (espelha o ilike do Supabase); o
+  // serviço ranqueia por similaridade entre os candidatos resultantes.
+  candidatosPorNome(nome: string): Promise<CandidatoCanonico[]> {
+    const token = tokenizar(nome).sort((a, b) => b.length - a.length)[0];
+    if (!token) return Promise.resolve([]);
+    const r = [...this.produtosPorEan.values()]
+      .filter((p) => p.descricaoNormalizada.includes(token))
+      .map((p) => ({ produtoCanonicoId: p.id, descricaoNormalizada: p.descricaoNormalizada }));
+    return Promise.resolve(r);
+  }
+
   // ───────────────────────── FonteObservacoes (C3) ────────────────────
 
   listarProdutosComObservacoes(desde?: string): Promise<string[]> {
@@ -211,6 +251,20 @@ export class RepositorioMemoria
     const r = [...this.estatisticas.values()].filter(
       (e) => e.produtoCanonicoId === produtoCanonicoId,
     );
+    return Promise.resolve(r);
+  }
+
+  // ───────────────────────── FonteDeltaSync (C4.2) ────────────────────
+
+  deltaEstatisticas(filtro: FiltroDeltaSync): Promise<PrecoEstatistica[]> {
+    const escopos = filtro.escopoIds ? new Set(filtro.escopoIds) : undefined;
+    const produtos = filtro.produtoCanonicoIds ? new Set(filtro.produtoCanonicoIds) : undefined;
+    const r = [...this.estatisticas.values()]
+      .filter((e) => (filtro.desde ? e.atualizadoEm > filtro.desde : true))
+      .filter((e) => (escopos ? escopos.has(e.escopoId) : true))
+      .filter((e) => (produtos ? produtos.has(e.produtoCanonicoId) : true))
+      .sort((a, b) => a.atualizadoEm.localeCompare(b.atualizadoEm))
+      .slice(0, filtro.limite);
     return Promise.resolve(r);
   }
 

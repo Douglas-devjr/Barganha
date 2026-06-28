@@ -5,7 +5,10 @@
  */
 
 import { Anonimizador } from './anonimizacao/anonimizador';
+import { Autenticador } from './auth/autenticador';
+import { ServicoConta } from './auth/servico-conta';
 import type { ConfigBackend } from './config/env';
+import { ServicoConsulta } from './consulta/servico-consulta';
 import { MatcherTexto } from './estatistica/casamento-texto';
 import { PipelineEstatistica } from './estatistica/pipeline';
 import { FilaMemoria } from './fila/fila-memoria';
@@ -18,6 +21,7 @@ import { criarClienteSupabase } from './persistencia/supabase';
 import { ProcessadorCupom } from './processamento/processador-cupom';
 import { ReprocessadorRetroativo } from './processamento/reprocessamento';
 import { ClienteSefazHttp } from './sefaz/cliente-sefaz-http';
+import { ServicoSync } from './sync/servico-sync';
 
 export interface Backend {
   servicoIngestao: ServicoIngestao;
@@ -27,6 +31,14 @@ export interface Backend {
   pipelineEstatistica: PipelineEstatistica;
   /** Casamento por texto (C3.5) p/ itens sem EAN. */
   matcherTexto: MatcherTexto;
+  /** API de consulta de preço com fallback geo (C4.1). */
+  servicoConsulta: ServicoConsulta;
+  /** Delta sync incremental do cache de estatística (C4.2). */
+  servicoSync: ServicoSync;
+  /** Conta anônima (C4.3). */
+  servicoConta: ServicoConta;
+  /** Autenticação mínima dos endpoints privados (C4.3). */
+  autenticacao: Autenticador;
 }
 
 export function montarBackend(config: ConfigBackend): Backend {
@@ -53,5 +65,21 @@ export function montarBackend(config: ConfigBackend): Backend {
   const pipelineEstatistica = new PipelineEstatistica(repo, repo);
   const matcherTexto = new MatcherTexto(repo);
 
-  return { servicoIngestao, reprocessador, registro, pipelineEstatistica, matcherTexto };
+  // C4 — API de consulta/sync (lê só o pool compartilhado) + auth mínima.
+  const servicoConsulta = new ServicoConsulta(repo, repo);
+  const servicoSync = new ServicoSync(repo);
+  const servicoConta = new ServicoConta(repo);
+  const autenticacao = new Autenticador(repo);
+
+  return {
+    servicoIngestao,
+    reprocessador,
+    registro,
+    pipelineEstatistica,
+    matcherTexto,
+    servicoConsulta,
+    servicoSync,
+    servicoConta,
+    autenticacao,
+  };
 }

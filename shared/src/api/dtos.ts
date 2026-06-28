@@ -21,6 +21,18 @@ export interface IngestaoQrResponse {
   status: StatusCupom;
 }
 
+// ───────────────────────────── Conta (C4.3) ─────────────────────────────
+
+/**
+ * Conta anônima. Sem nome/CPF (minimização LGPD, docs/04). O `usuarioId` é a
+ * credencial que o app guarda e envia como `Authorization: Bearer <id>` nos
+ * endpoints privados (ingestão). Consulta e delta sync são anônimos (lêem só o
+ * pool compartilhado) e NÃO exigem conta.
+ */
+export interface ContaAnonimaResponse {
+  usuarioId: string;
+}
+
 // ───────────────────────── Consulta veredito (C4.1) ─────────────────────
 
 /** Entrada na gôndola: EAN (principal) ou nome (fallback) + recorte geo. */
