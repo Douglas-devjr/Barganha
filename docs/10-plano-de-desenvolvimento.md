@@ -94,6 +94,7 @@ Legenda: **[MVP]** entra no produto mínimo · **[Pós]** fase posterior.
 - Pirâmide de testes (unit → integração → e2e) + fixtures de cupons reais.
 - **Gate LGPD** automatizado + checagem de re-identificação (`04`).
 - Performance de consulta (EXPLAIN/ANALYZE, índices) e plano de escala.
+- **Ingestão transacional** (C9.3.1): mover a escrita de `marcarProcessado` para uma função SQL (RPC) atômica — evita duplicar no pool em falha parcial do retry.
 - Política de privacidade publicada.
 
 *Responsáveis:* qa-engineer (lidera), privacy-lgpd-specialist, data-engineer. *Depende de:* contínuo

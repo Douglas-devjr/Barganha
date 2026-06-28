@@ -16,7 +16,11 @@ export interface PrecoNormalizado {
   precoNormalizado: number;
 }
 
-/** unidade da NFC-e → { base comparável, fator p/ converter o preço unitário }. */
+/**
+ * unidade da NFC-e → { base comparável, fator p/ converter o preço unitário }.
+ * Conservador de propósito: só unidades inequívocas. Ampliar/calibrar com dados
+ * reais em C3.4 (ex.: CX/PCT/FD e packs, que hoje ficam fora do pool).
+ */
 const MAPA_UNIDADES: Readonly<Record<string, { base: UnidadeBase; fator: number }>> = {
   KG: { base: 'kg', fator: 1 },
   KGS: { base: 'kg', fator: 1 },

@@ -68,7 +68,7 @@ Este documento dá um **nome e um código curto** a cada etapa do desenvolviment
 | C3.1 | Pipeline `preco_estatistica` (mediana/percentis/mín/máx/`n`) |
 | C3.2 | Decaimento temporal |
 | C3.3 | Escopos geo + fallback hierárquico (loja→município→região→UF) |
-| C3.4 | Casamento por EAN |
+| C3.4 | Casamento por EAN + calibração do mapa de unidades (hoje conservador; ampliar CX/PCT/FD/packs com dados reais) |
 | C3.5 | Casamento por texto (sem EAN, com confirmação) |
 | C3.6 | Detecção de promoção + veredito híbrido (pessoal + regional) |
 *Responsáveis:* data-scientist, data-engineer
@@ -124,6 +124,7 @@ Este documento dá um **nome e um código curto** a cada etapa do desenvolviment
 | C9.1 | Pirâmide de testes (unit→e2e) + fixtures de cupons |
 | C9.2 | Gate LGPD + checagem de re-identificação |
 | C9.3 | Performance (índices/EXPLAIN) + plano de escala |
+| C9.3.1 | Ingestão transacional: `marcarProcessado` numa função SQL (RPC) — hoje são escritas sequenciais e uma falha parcial após inserir no pool pode duplicar observações no retry |
 | C9.4 | Política de privacidade publicada |
 *Responsáveis:* qa-engineer, privacy-lgpd-specialist, data-engineer
 
