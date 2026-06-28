@@ -4,9 +4,17 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "dev": "tsx watch src/index.ts",
+    "start": "tsx src/index.ts"
   },
   "dependencies": {
-    "@barganha/shared": "*"
+    "@barganha/shared": "*",
+    "@supabase/supabase-js": "^2.108.2",
+    "fastify": "^5.8.5",
+    "node-html-parser": "^8.0.3"
+  },
+  "devDependencies": {
+    "tsx": "^4.22.4"
   }
 }
