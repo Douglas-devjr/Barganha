@@ -25,7 +25,11 @@ export interface ObservacaoParaAgregacao {
 
 /** Leitura do pool anônimo para o pipeline de agregação. */
 export interface FonteObservacoes {
-  /** Ids de produtos com observação (opcionalmente só os mexidos desde `desde`). */
+  /**
+   * Ids de produtos com observação. Com `desde`, só os que receberam observação
+   * NOVA desde então — recorte por INSERÇÃO (`criado_em`), não por emissão: um
+   * cupom antigo enviado hoje (offline-first) precisa entrar no recálculo (F1).
+   */
   listarProdutosComObservacoes(desde?: string): Promise<string[]>;
   /** Todas as observações de um produto (todos os escopos, dentro do que existe). */
   observacoesDoProduto(produtoCanonicoId: string): Promise<ObservacaoParaAgregacao[]>;

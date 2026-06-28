@@ -266,7 +266,9 @@ export class RepositorioSupabase
 
   async listarProdutosComObservacoes(desde?: string): Promise<string[]> {
     let consulta = this.db.from('observacao_preco').select('produto_canonico_id');
-    if (desde) consulta = consulta.gte('observado_em', desde);
+    // Sinal de "novo" = INSERÇÃO (criado_em), não emissão (observado_em): um
+    // cupom antigo enviado hoje (offline-first) precisa disparar recálculo (F1).
+    if (desde) consulta = consulta.gte('criado_em', desde);
     const r = await consulta;
     if (r.error) falhar('listagem de produtos com observação', r.error);
     return [...new Set((r.data ?? []).map((o) => o.produto_canonico_id as string))];

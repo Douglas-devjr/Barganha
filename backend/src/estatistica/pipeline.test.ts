@@ -1,3 +1,4 @@
+import { extrairObservacoesAnonimas } from '@barganha/shared';
 import { describe, expect, it } from 'vitest';
 
 import { RepositorioMemoria } from '../persistencia/repositorio-memoria';
@@ -90,5 +91,45 @@ describe('PipelineEstatistica (C3.1)', () => {
     const fonte = fonteCom([obs(6.0, LOJA_A), obs(6.4, LOJA_A), obs(6.8, LOJA_A)]);
     const total = await new PipelineEstatistica(fonte, repo, { referencia: REF }).recalcularTodos();
     expect(total).toBeGreaterThan(0);
+  });
+});
+
+describe('FonteObservacoes incremental por inserção (F1)', () => {
+  it('cupom de emissão ANTIGA enviado agora ainda dispara recálculo', async () => {
+    const repo = new RepositorioMemoria();
+    const { cupomId } = await repo.criarOuObterPorChave({
+      usuarioId: 'u',
+      chaveAcesso: 'k',
+      uf: 'RJ',
+      qrPayload: 'q',
+      capturadoEm: REF.toISOString(),
+    });
+    // Observação com emissão antiga (jan), mas inserida agora (offline-first).
+    const observacoes = extrairObservacoesAnonimas({
+      loja: { cnpj: '12345678000199', municipio: 'Rio de Janeiro', uf: 'RJ' },
+      observadoEm: '2026-01-01T12:00:00.000Z',
+      itens: [
+        { produtoCanonicoId: 'p-leite', precoNormalizado: 5, unidadeBase: 'L', emPromocao: false },
+      ],
+      usuarioId: 'u',
+      cupomId,
+    });
+    await repo.marcarProcessado(cupomId, {
+      loja: {
+        cnpj: '12345678000199',
+        razaoSocial: 'X',
+        endereco: 'Y',
+        municipio: 'Rio de Janeiro',
+        uf: 'RJ',
+      },
+      emitidoEm: '2026-01-01T12:00:00.000Z',
+      uf: 'RJ',
+      itensPrivados: [],
+      observacoes,
+    });
+
+    // Cursor em junho: por emissão (jan) o produto seria pulado; por inserção, não.
+    const ids = await repo.listarProdutosComObservacoes('2026-06-01T00:00:00.000Z');
+    expect(ids).toContain('p-leite');
   });
 });

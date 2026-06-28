@@ -70,7 +70,9 @@ export class RepositorioMemoria
   // Lado COMPARTILHADO (anônimo).
   private readonly lojas = new Map<string, Loja>();
   private readonly produtosPorEan = new Map<string, ProdutoCanonicoInterno>();
-  private readonly observacoes: ObservacaoAnonima[] = [];
+  // Pool com o instante de INSERÇÃO (criadoEm), separado da emissão (observadoEm),
+  // para o sinal incremental do pipeline ser por inserção (F1).
+  private readonly poolEntradas: { obs: ObservacaoAnonima; criadoEm: string }[] = [];
   private readonly estatisticas = new Map<string, PrecoEstatistica>();
 
   // ───────────────────────── RepositorioUsuario (C4.3) ────────────────
@@ -139,7 +141,8 @@ export class RepositorioMemoria
 
     // Pool anônimo é append-only (sem vínculo com o cupom — por isso o
     // reprocessamento só alveja cupons ainda não processados, C2.5).
-    this.observacoes.push(...dados.observacoes);
+    const agoraPool = new Date().toISOString();
+    for (const obs of dados.observacoes) this.poolEntradas.push({ obs, criadoEm: agoraPool });
 
     cupom.status = 'processado';
     cupom.lojaCnpj = dados.loja.cnpj;
@@ -199,15 +202,16 @@ export class RepositorioMemoria
 
   listarProdutosComObservacoes(desde?: string): Promise<string[]> {
     const ids = new Set<string>();
-    for (const o of this.observacoes) {
-      if (desde && o.observadoEm < desde) continue;
-      ids.add(o.produtoCanonicoId);
+    for (const e of this.poolEntradas) {
+      if (desde && e.criadoEm < desde) continue; // por inserção, não emissão (F1)
+      ids.add(e.obs.produtoCanonicoId);
     }
     return Promise.resolve([...ids]);
   }
 
   observacoesDoProduto(produtoCanonicoId: string): Promise<ObservacaoParaAgregacao[]> {
-    const r = this.observacoes
+    const r = this.poolEntradas
+      .map((e) => e.obs)
       .filter((o) => o.produtoCanonicoId === produtoCanonicoId)
       .map((o) => ({
         produtoCanonicoId: o.produtoCanonicoId,
@@ -287,7 +291,7 @@ export class RepositorioMemoria
   }
 
   observacoesDoPool(): readonly ObservacaoAnonima[] {
-    return this.observacoes;
+    return this.poolEntradas.map((e) => e.obs);
   }
 
   itensDoCupom(cupomId: string): ItemCupomArmazenado[] {
