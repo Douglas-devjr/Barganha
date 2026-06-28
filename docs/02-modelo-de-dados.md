@@ -35,6 +35,7 @@ Mínimo possível. Sem nome, sem CPF.
 | uf | char(2) | |
 | status | enum | `qr_capturado` · `processado` · `falha` |
 | qr_payload | text | conteúdo cru do QR (para reprocessamento) |
+| capturado_em | timestamptz | quando o app leu o QR (offline-first; difere de `criado_em`) |
 
 ### `item_cupom`
 | campo | tipo | nota |

@@ -9,8 +9,8 @@
  *
  * NOTA (atomicidade): `marcarProcessado` faz escritas sequenciais. Para
  * produção, mover para uma função SQL (RPC) que rode tudo numa transação —
- * acompanhar em performance/escala (C9.3). O reprocessamento (C2.5) só alveja
- * cupons não-`processado`, então não há dupla contagem no pool.
+ * registrado em C9.3.1. O reprocessamento (C2.5) só alveja cupons
+ * não-`processado`, então não há dupla contagem no pool.
  */
 
 import type { ObservacaoAnonima, PrecoEstatistica } from '@barganha/shared';
@@ -97,6 +97,7 @@ export class RepositorioSupabase
         chave_acesso: dados.chaveAcesso ?? null,
         uf: dados.uf ?? null,
         qr_payload: dados.qrPayload,
+        capturado_em: dados.capturadoEm,
         status: 'qr_capturado',
       })
       .select('id, status')
