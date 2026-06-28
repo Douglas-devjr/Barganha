@@ -1,0 +1,149 @@
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+
+import { describe, expect, it } from 'vitest';
+
+import { Anonimizador } from '../anonimizacao/anonimizador';
+import { FalhaBuscaSefazError } from '../erros';
+import { FilaMemoria } from '../fila/fila-memoria';
+import type { ClienteSefaz, ParserSefaz } from '../parsers/tipos';
+import type { QrNfce } from '../parsers/qr-payload';
+import { RegistroParsers } from '../parsers/registro';
+import { ParserRj } from '../parsers/rj';
+import { ParserSp } from '../parsers/sp';
+import { RepositorioMemoria } from '../persistencia/repositorio-memoria';
+import { ServicoIngestao } from '../ingestao/servico-ingestao';
+import { ProcessadorCupom } from './processador-cupom';
+import { ReprocessadorRetroativo } from './reprocessamento';
+
+const fix = (nome: string): string =>
+  readFileSync(fileURLToPath(new URL(`../parsers/__fixtures__/${nome}`, import.meta.url)), 'utf8');
+const HTML_RJ = fix('rj-nota-1.html');
+const HTML_SP = fix('sp-nota-1.html');
+
+const QR_RJ =
+  'https://www.fazenda.rj.gov.br/nfce/qrcode?p=33260612345678000199650010000000011000000016|2|1';
+const QR_SP =
+  'https://www.nfce.fazenda.sp.gov.br/qrcode?p=35260661585865000151650010000000011000000012|2|1';
+const CAPTURA = { capturadoEm: '2026-06-27T12:00:00.000Z' };
+const semEspera = (): Promise<void> => Promise.resolve();
+
+/** Monta a engrenagem completa de C2 com adaptadores em memória. */
+function montar(criarParsers: (cliente: ClienteSefaz) => ParserSefaz[], cliente: ClienteSefaz) {
+  const repo = new RepositorioMemoria();
+  const registro = new RegistroParsers(criarParsers(cliente));
+  const anonimizador = new Anonimizador(repo);
+  const processador = new ProcessadorCupom(repo, registro, anonimizador);
+  const fila = new FilaMemoria((t) => processador.processar(t.cupomId), { dormir: semEspera });
+  const servico = new ServicoIngestao(repo, fila);
+  const reprocessador = new ReprocessadorRetroativo(repo, registro, fila);
+  return { repo, registro, fila, servico, reprocessador };
+}
+
+const clienteRjSp = new (class implements ClienteSefaz {
+  buscarConsulta(qr: QrNfce): Promise<string> {
+    return Promise.resolve(qr.uf === 'RJ' ? HTML_RJ : HTML_SP);
+  }
+})();
+
+describe('Fluxo de captura C2 (ingestão → parse → anonimização → pool)', () => {
+  it('processa um cupom do RJ ponta a ponta (FV)', async () => {
+    const { repo, servico, fila } = montar((c) => [new ParserRj(c), new ParserSp(c)], clienteRjSp);
+
+    const res = await servico.ingerir('user-1', { qrPayload: QR_RJ, ...CAPTURA });
+    expect(res.status).toBe('qr_capturado');
+    await fila.ociosa();
+
+    expect(repo.statusDoCupom(res.cupomId)).toBe('processado');
+    // Lado privado: os 3 itens da nota do RJ.
+    expect(repo.itensDoCupom(res.cupomId)).toHaveLength(3);
+    // Lado compartilhado: só os 2 com EAN (banana sem EAN fica fora do pool).
+    const pool = repo.observacoesDoPool();
+    expect(pool).toHaveLength(2);
+    expect(pool[0]).toMatchObject({ lojaCnpj: '12345678000199', uf: 'RJ' });
+  });
+
+  it('processa SP com o mesmo serviço (parser resolvido por UF)', async () => {
+    const { repo, servico, fila } = montar((c) => [new ParserRj(c), new ParserSp(c)], clienteRjSp);
+    const res = await servico.ingerir('user-1', { qrPayload: QR_SP, ...CAPTURA });
+    await fila.ociosa();
+    expect(repo.statusDoCupom(res.cupomId)).toBe('processado');
+    expect(repo.observacoesDoPool().every((o) => o.uf === 'SP')).toBe(true);
+  });
+
+  it('é idempotente: reenviar o mesmo QR não duplica no pool', async () => {
+    const { repo, servico, fila } = montar((c) => [new ParserRj(c), new ParserSp(c)], clienteRjSp);
+
+    const r1 = await servico.ingerir('user-1', { qrPayload: QR_RJ, ...CAPTURA });
+    await fila.ociosa();
+    const r2 = await servico.ingerir('user-1', { qrPayload: QR_RJ, ...CAPTURA });
+    await fila.ociosa();
+
+    expect(r2.cupomId).toBe(r1.cupomId);
+    expect(r2.status).toBe('processado');
+    expect(repo.observacoesDoPool()).toHaveLength(2);
+  });
+
+  it('guarda QR de UF sem parser e reprocessa quando o parser entra (C2.5)', async () => {
+    // Só SP tem parser; o QR é do RJ → fica qr_capturado, sem ir ao pool.
+    const cliente = clienteRjSp;
+    const repo = new RepositorioMemoria();
+    const anonimizador = new Anonimizador(repo);
+
+    const registroSoSp = new RegistroParsers([new ParserSp(cliente)]);
+    const procSoSp = new ProcessadorCupom(repo, registroSoSp, anonimizador);
+    const filaSoSp = new FilaMemoria((t) => procSoSp.processar(t.cupomId), { dormir: semEspera });
+    const servico = new ServicoIngestao(repo, filaSoSp);
+
+    const res = await servico.ingerir('user-1', { qrPayload: QR_RJ, ...CAPTURA });
+    await filaSoSp.ociosa();
+    expect(repo.statusDoCupom(res.cupomId)).toBe('qr_capturado');
+    expect(repo.observacoesDoPool()).toHaveLength(0);
+
+    // Parser do RJ entra no ar → reprocessamento retroativo.
+    const registroComRj = new RegistroParsers([new ParserSp(cliente), new ParserRj(cliente)]);
+    const procComRj = new ProcessadorCupom(repo, registroComRj, anonimizador);
+    const filaComRj = new FilaMemoria((t) => procComRj.processar(t.cupomId), { dormir: semEspera });
+    const reproc = new ReprocessadorRetroativo(repo, registroComRj, filaComRj);
+
+    const n = await reproc.reprocessarUf('RJ');
+    await filaComRj.ociosa();
+
+    expect(n).toBe(1);
+    expect(repo.statusDoCupom(res.cupomId)).toBe('processado');
+    expect(repo.observacoesDoPool()).toHaveLength(2);
+  });
+
+  it('marca falha em erro permanente de parsing (sem retry)', async () => {
+    const clienteQuebrado = new (class implements ClienteSefaz {
+      buscarConsulta(): Promise<string> {
+        return Promise.resolve('<html><body>sem nota</body></html>');
+      }
+    })();
+    const { repo, servico, fila } = montar((c) => [new ParserRj(c)], clienteQuebrado);
+
+    const res = await servico.ingerir('user-1', { qrPayload: QR_RJ, ...CAPTURA });
+    await fila.ociosa();
+
+    expect(repo.statusDoCupom(res.cupomId)).toBe('falha');
+    expect(repo.observacoesDoPool()).toHaveLength(0);
+  });
+
+  it('dá retry em erro transitório da SEFAZ e conclui', async () => {
+    let tentativas = 0;
+    const clienteInstavel = new (class implements ClienteSefaz {
+      buscarConsulta(qr: QrNfce): Promise<string> {
+        tentativas++;
+        if (tentativas < 3) return Promise.reject(new FalhaBuscaSefazError('portal fora do ar'));
+        return Promise.resolve(qr.uf === 'RJ' ? HTML_RJ : HTML_SP);
+      }
+    })();
+    const { repo, servico, fila } = montar((c) => [new ParserRj(c)], clienteInstavel);
+
+    const res = await servico.ingerir('user-1', { qrPayload: QR_RJ, ...CAPTURA });
+    await fila.ociosa();
+
+    expect(tentativas).toBe(3);
+    expect(repo.statusDoCupom(res.cupomId)).toBe('processado');
+  });
+});

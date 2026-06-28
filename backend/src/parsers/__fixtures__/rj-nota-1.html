@@ -1,0 +1,62 @@
+<!doctype html>
+<!--
+  Fixture modelando o layout do portal NFC-e do RJ (tabela 1 linha/item).
+  NÃO é uma captura real — substituir por cupons reais na suíte de QA (C9.1).
+  Inclui uma linha de CPF de propósito para garantir que o parser a ignora.
+-->
+<html lang="pt-br">
+  <body>
+    <div class="conteudoab">
+      <div class="NFCCabecalho">
+        <h4>SUPERMERCADO MARACANA LTDA</h4>
+        <span>CNPJ: 12.345.678/0001-99</span>
+        <span class="endereco">Av. Atlantica, 500 - Copacabana - Rio de Janeiro/RJ</span>
+        <span>CONSUMIDOR: CPF 111.222.333-44</span>
+      </div>
+
+      <table class="toggle tabResultRJ">
+        <thead>
+          <tr>
+            <th>Descrição</th>
+            <th>Código</th>
+            <th>Qtd</th>
+            <th>Un</th>
+            <th>Vl Unit</th>
+            <th>Vl Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="linhaItem">
+            <td class="descItem">CAFE TORRADO 500G</td>
+            <td class="codItem">7890000000017</td>
+            <td class="qtdItem">2</td>
+            <td class="unItem">UN</td>
+            <td class="vlUnitItem">16,90</td>
+            <td class="vlTotalItem">33,80</td>
+          </tr>
+          <tr class="linhaItem">
+            <td class="descItem">LEITE INTEGRAL 1L</td>
+            <td class="codItem">7891000100103</td>
+            <td class="qtdItem">1</td>
+            <td class="unItem">UN</td>
+            <td class="vlUnitItem">5,29</td>
+            <td class="vlDescItem">0,50</td>
+            <td class="vlTotalItem">4,79</td>
+          </tr>
+          <tr class="linhaItem">
+            <td class="descItem">BANANA PRATA</td>
+            <td class="codItem">2000123</td>
+            <td class="qtdItem">1,235</td>
+            <td class="unItem">KG</td>
+            <td class="vlUnitItem"></td>
+            <td class="vlTotalItem">8,63</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="NFCRodape">
+        <span class="dataEmissao">Emissão: 20/06/2026 18:30:00</span>
+      </div>
+    </div>
+  </body>
+</html>

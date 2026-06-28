@@ -1,0 +1,70 @@
+# @barganha/backend
+
+Backend do Barganha: ingestão de NFC-e, parsers SEFAZ por estado, camada de
+anonimização e (a partir da Camada 4) API de consulta/sync. App fino, backend
+inteligente (ver `docs/01-arquitetura.md`).
+
+## Camada 2 — Captura & Ingestão (implementada)
+
+Fluxo de um cupom (`docs/03-captura-nfce-sefaz.md`):
+
+```
+POST /ingestao/qr ──▶ ServicoIngestao ──▶ cupom (qr_capturado) ──▶ FilaProcessamento
+                          (idempotente por chave)                        │
+                                                                          ▼
+   observacao_preco (pool anônimo) ◀── Anonimizador ◀── ParserSefaz ◀── ProcessadorCupom
+   item_cupom (histórico privado)  ◀──     (gate)          (RJ/SP)        (status + retry)
+```
+
+- **C2.1 — Ingestão:** `POST /ingestao/qr` recebe só o QR cru, valida a chave
+  (sem tocar a SEFAZ), grava o cupom de forma **idempotente por chave** e
+  enfileira o processamento. Responde **202** (assíncrono). QR de UF sem parser
+  é **guardado** para reprocessamento.
+- **C2.2 / C2.3 — Parsers RJ e SP:** `parse(qr) → NotaEstruturada` atrás de uma
+  interface comum. O parsing do HTML é puro e testado com fixtures
+  (`src/parsers/__fixtures__`); a busca na SEFAZ é um `ClienteSefaz` injetável.
+- **C2.4 — Anonimização:** separa os dois mundos — `item_cupom` (privado) e
+  `observacao_preco` **anônima e solta**, gerada **sempre** pelo gate único de
+  `@barganha/shared`. CPF/chave/usuário nunca cruzam (`docs/04`).
+- **C2.5 — Status & reprocessamento:** ciclo `qr_capturado → processado | falha`
+  e re-enfileiramento retroativo por UF quando um parser entra no ar / é
+  corrigido.
+
+### Decisões de retry (fila)
+
+A fila só repete quando o worker **lança**. Erro **transitório** (portal fora do
+ar, rede, banco) → retry com backoff exponencial. Erro **permanente** (layout,
+QR inválido) → cupom marcado `falha`, sem retry. UF sem parser → fica
+`qr_capturado` aguardando C2.5.
+
+## Estrutura
+
+| Pasta | Responsabilidade |
+|---|---|
+| `parsers/` | Identidade da NFC-e (chave/cUF/QR), interface `ParserSefaz`, RJ, SP, registro |
+| `anonimizacao/` | Normalização R$/base, casamento por EAN, anonimizador (usa o gate) |
+| `ingestao/` | Serviço de ingestão (C2.1) |
+| `processamento/` | Processador de cupom + reprocessamento retroativo (C2.5) |
+| `fila/` | Fila com retry/backoff (porta + adaptador em memória) |
+| `persistencia/` | Portas + adaptador Supabase + adaptador em memória (testes) |
+| `sefaz/` | `ClienteSefaz` HTTP (real) e em memória (testes) |
+| `http/` | Servidor Fastify (`POST /ingestao/qr`, `GET /saude`) |
+
+Portas e adaptadores: o domínio não conhece Supabase nem rede; tudo é injetado
+na raiz de composição (`composicao.ts`). Isso mantém a lógica testável sem
+infra e permite trocar peças (ex.: fila durável na infra de C10).
+
+## Rodar
+
+```bash
+# Variáveis (ver .env.example): SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, PORT
+npm run -w @barganha/backend dev      # servidor com reload (tsx)
+npm run -w @barganha/backend start    # servidor
+
+npm test            # testes (vitest, da raiz)
+npm run typecheck   # tsc --noEmit
+```
+
+> As fixtures de HTML **modelam** o layout de cada portal e não são capturas
+> reais — substituí-las/ampliá-las por cupons reais é tarefa da suíte de QA
+> (C9.1). Parsers são versionados para acompanhar mudanças de layout (`docs/03`).

@@ -1,0 +1,175 @@
+/**
+ * Adaptador de persistência EM MEMÓRIA — testes e dev local sem Supabase.
+ * Implementa `RepositorioCupom` e `CatalogoProdutos`, espelhando a separação
+ * privado/compartilhado em estruturas distintas. Expõe getters de inspeção
+ * para os testes verificarem o que entrou em cada mundo.
+ */
+
+import { randomUUID } from 'node:crypto';
+
+import type { Loja, ObservacaoAnonima, StatusCupom } from '@barganha/shared';
+
+import type { ItemCupomNovo } from '../anonimizacao/anonimizador';
+import type { CatalogoProdutos, SugestaoProduto } from '../anonimizacao/casamento';
+import type {
+  CupomRegistro,
+  DadosIngestao,
+  DadosNotaProcessada,
+  FiltroReprocessamento,
+  RepositorioCupom,
+  ResultadoIngestao,
+} from './tipos';
+
+interface CupomInterno extends CupomRegistro {
+  lojaCnpj?: string;
+  emitidoEm?: string;
+  capturadoEm: string;
+}
+
+interface ItemCupomArmazenado extends ItemCupomNovo {
+  id: string;
+  cupomId: string;
+}
+
+interface ProdutoCanonicoInterno {
+  id: string;
+  ean: string;
+  descricaoNormalizada: string;
+  unidadeBase: string;
+}
+
+export class RepositorioMemoria implements RepositorioCupom, CatalogoProdutos {
+  // Lado PRIVADO.
+  private readonly cupons = new Map<string, CupomInterno>();
+  private readonly itensCupom: ItemCupomArmazenado[] = [];
+  // Lado COMPARTILHADO (anônimo).
+  private readonly lojas = new Map<string, Loja>();
+  private readonly produtosPorEan = new Map<string, ProdutoCanonicoInterno>();
+  private readonly observacoes: ObservacaoAnonima[] = [];
+
+  // ───────────────────────── RepositorioCupom ─────────────────────────
+
+  criarOuObterPorChave(dados: DadosIngestao): Promise<ResultadoIngestao> {
+    if (dados.chaveAcesso) {
+      const existente = [...this.cupons.values()].find(
+        (c) => c.usuarioId === dados.usuarioId && c.chaveAcesso === dados.chaveAcesso,
+      );
+      if (existente) {
+        return Promise.resolve({ cupomId: existente.id, status: existente.status, novo: false });
+      }
+    }
+
+    const id = randomUUID();
+    this.cupons.set(id, {
+      id,
+      usuarioId: dados.usuarioId,
+      chaveAcesso: dados.chaveAcesso,
+      uf: dados.uf,
+      qrPayload: dados.qrPayload,
+      status: 'qr_capturado',
+      capturadoEm: dados.capturadoEm,
+    });
+    return Promise.resolve({ cupomId: id, status: 'qr_capturado', novo: true });
+  }
+
+  obterParaProcessamento(cupomId: string): Promise<CupomRegistro | undefined> {
+    const c = this.cupons.get(cupomId);
+    if (!c) return Promise.resolve(undefined);
+    return Promise.resolve({
+      id: c.id,
+      usuarioId: c.usuarioId,
+      uf: c.uf,
+      chaveAcesso: c.chaveAcesso,
+      qrPayload: c.qrPayload,
+      status: c.status,
+    });
+  }
+
+  marcarProcessado(cupomId: string, dados: DadosNotaProcessada): Promise<void> {
+    const cupom = this.cupons.get(cupomId);
+    if (!cupom) return Promise.reject(new Error(`Cupom ${cupomId} inexistente.`));
+
+    this.upsertLoja(dados.loja);
+
+    // Reprocessamento: substitui itens privados anteriores deste cupom.
+    for (let i = this.itensCupom.length - 1; i >= 0; i--) {
+      if (this.itensCupom[i]!.cupomId === cupomId) this.itensCupom.splice(i, 1);
+    }
+    for (const item of dados.itensPrivados) {
+      this.itensCupom.push({ ...item, id: randomUUID(), cupomId });
+    }
+
+    // Pool anônimo é append-only (sem vínculo com o cupom — por isso o
+    // reprocessamento só alveja cupons ainda não processados, C2.5).
+    this.observacoes.push(...dados.observacoes);
+
+    cupom.status = 'processado';
+    cupom.lojaCnpj = dados.loja.cnpj;
+    cupom.emitidoEm = dados.emitidoEm;
+    cupom.uf = dados.uf;
+    return Promise.resolve();
+  }
+
+  marcarFalha(cupomId: string): Promise<void> {
+    const cupom = this.cupons.get(cupomId);
+    if (cupom) cupom.status = 'falha';
+    return Promise.resolve();
+  }
+
+  listarParaReprocessar(filtro: FiltroReprocessamento): Promise<string[]> {
+    const elegiveis = [...this.cupons.values()]
+      .filter((c) => filtro.status.includes(c.status))
+      .filter((c) => (filtro.uf ? c.uf === filtro.uf : true))
+      .map((c) => c.id);
+    return Promise.resolve(filtro.limite ? elegiveis.slice(0, filtro.limite) : elegiveis);
+  }
+
+  // ───────────────────────── CatalogoProdutos ─────────────────────────
+
+  casarPorEan(ean: string, sugestao: SugestaoProduto): Promise<string> {
+    const existente = this.produtosPorEan.get(ean);
+    if (existente) return Promise.resolve(existente.id);
+
+    const novo: ProdutoCanonicoInterno = {
+      id: randomUUID(),
+      ean,
+      descricaoNormalizada: sugestao.descricaoNormalizada,
+      unidadeBase: sugestao.unidadeBase,
+    };
+    this.produtosPorEan.set(ean, novo);
+    return Promise.resolve(novo.id);
+  }
+
+  // ───────────────────────── Inspeção (testes) ────────────────────────
+
+  observacoesDoPool(): readonly ObservacaoAnonima[] {
+    return this.observacoes;
+  }
+
+  itensDoCupom(cupomId: string): ItemCupomArmazenado[] {
+    return this.itensCupom.filter((i) => i.cupomId === cupomId);
+  }
+
+  statusDoCupom(cupomId: string): StatusCupom | undefined {
+    return this.cupons.get(cupomId)?.status;
+  }
+
+  totalProdutos(): number {
+    return this.produtosPorEan.size;
+  }
+
+  totalLojas(): number {
+    return this.lojas.size;
+  }
+
+  private upsertLoja(loja: DadosNotaProcessada['loja']): void {
+    this.lojas.set(loja.cnpj, {
+      cnpj: loja.cnpj,
+      razaoSocial: loja.razaoSocial,
+      nomeFantasia: loja.nomeFantasia,
+      endereco: loja.endereco,
+      municipio: loja.municipio,
+      uf: loja.uf,
+    });
+  }
+}
