@@ -1,0 +1,30 @@
+{
+  "expo": {
+    "name": "Barganha",
+    "slug": "barganha",
+    "scheme": "barganha",
+    "version": "0.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "splash": {
+      "backgroundColor": "#0F766E",
+      "resizeMode": "contain"
+    },
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.barganha.app"
+    },
+    "android": {
+      "package": "com.barganha.app",
+      "adaptiveIcon": {
+        "backgroundColor": "#0F766E"
+      }
+    },
+    "plugins": ["expo-font", "expo-sqlite"],
+    "extra": {
+      "apiBaseUrl": "http://localhost:3000"
+    }
+  }
+}

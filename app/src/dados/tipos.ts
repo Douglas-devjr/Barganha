@@ -1,0 +1,66 @@
+/**
+ * C5.3 — Tipos das linhas do SQLite local. São o espelho OFFLINE do lado privado
+ * (docs/05) + o cache de estatísticas. Distinguem-se dos tipos de domínio de
+ * @barganha/shared porque carregam estado local de sincronização (id local,
+ * id de servidor, status de upload).
+ */
+
+import type { StatusCupom, UnidadeBase, EscopoGeo } from '@barganha/shared';
+
+/** Cupom no dispositivo. `id` é local (gerarIdLocal); `cupomIdServidor` chega
+ * após a ingestão. `qrPayload` é privado e nunca vai ao pool (docs/04). */
+export interface CupomLocal {
+  id: string;
+  cupomIdServidor: string | null;
+  qrPayload: string;
+  chaveAcesso: string | null;
+  capturadoEm: string;
+  status: StatusCupom;
+  lojaCnpj: string | null;
+  lojaNome: string | null;
+  emitidoEm: string | null;
+  uf: string | null;
+  criadoEm: string;
+  atualizadoEm: string;
+}
+
+/** Item de um cupom local (privado), preenchido quando a nota é processada. */
+export interface ItemCupomLocal {
+  id: string;
+  cupomLocalId: string;
+  produtoCanonicoId: string | null;
+  descricaoOriginal: string;
+  ean: string | null;
+  quantidade: number;
+  unidade: string;
+  valorUnitario: number;
+  valorTotal: number;
+  desconto: number | null;
+}
+
+/** Linha do cache de `preco_estatistica` baixada via delta sync (docs/05). */
+export interface CacheEstatistica {
+  produtoCanonicoId: string;
+  escopo: EscopoGeo;
+  escopoId: string;
+  unidadeBase: UnidadeBase;
+  mediana: number | null;
+  p25: number | null;
+  p75: number | null;
+  minimo: number | null;
+  maximo: number | null;
+  menorPromocional: number | null;
+  nObservacoes: number;
+  atualizadoEm: string;
+}
+
+/** Item da fila de upload (C6.2). Idempotência real por `chave_acesso` no
+ * backend; aqui guardamos o estado de retry. */
+export interface ItemFilaUpload {
+  cupomLocalId: string;
+  tentativas: number;
+  ultimaTentativaEm: string | null;
+  proximaTentativaEm: string | null;
+  ultimoErro: string | null;
+  criadoEm: string;
+}
