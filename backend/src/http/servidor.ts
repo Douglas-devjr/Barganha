@@ -94,6 +94,20 @@ export function construirServidor(deps: DependenciasHttp): FastifyInstance {
     },
   );
 
+  // ── Cupom do usuário (C6.3) — privado ──────────────────────────────
+  app.get<{ Params: { id: string } }>('/ingestao/cupom/:id', async (req, reply) => {
+    const usuarioId = await deps.autenticacao.resolver(req.headers);
+    if (!usuarioId) {
+      return reply.code(401).send({ erro: 'Usuário não identificado.' });
+    }
+    const cupom = await deps.servicoIngestao.obterCupom(usuarioId, req.params.id);
+    if (!cupom) {
+      // 404 também para cupom de outro dono — não vaza existência (docs/04).
+      return reply.code(404).send({ erro: 'Cupom não encontrado.' });
+    }
+    return reply.send(cupom);
+  });
+
   // ── Consulta de preço (C4.1) — anônima ─────────────────────────────
   app.post<{ Body: ConsultaPrecoRequest }>(
     '/consulta/preco',

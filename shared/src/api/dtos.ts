@@ -21,6 +21,44 @@ export interface IngestaoQrResponse {
   status: StatusCupom;
 }
 
+/**
+ * Item de uma nota já processada, devolvido ao DONO do cupom (lado privado).
+ * Espelha `ItemCupom` sem os ids internos — o app guarda no espelho local.
+ */
+export interface ItemNotaResponse {
+  produtoCanonicoId?: string;
+  descricaoOriginal: string;
+  ean?: string;
+  quantidade: number;
+  unidade: string;
+  valorUnitario: number;
+  valorTotal: number;
+  desconto?: number;
+}
+
+/**
+ * Estado de um cupom do próprio usuário (C6.3). A ingestão é assíncrona (202 +
+ * fila), então o app consulta este recurso PRIVADO (Bearer, escopo do dono) para
+ * acompanhar o parsing e exibir os itens quando `status = 'processado'`.
+ *
+ * É lado PRIVADO de ponta a ponta: só o dono lê, nunca toca o pool anônimo
+ * (docs/04). `loja` é a referência mínima para o cabeçalho da nota.
+ */
+export interface CupomResponse {
+  cupomId: string;
+  status: StatusCupom;
+  emitidoEm?: string;
+  uf?: string;
+  loja?: {
+    cnpj: string;
+    razaoSocial?: string;
+    nomeFantasia?: string;
+    municipio?: string;
+    uf?: string;
+  };
+  itens: ItemNotaResponse[];
+}
+
 // ───────────────────────────── Conta (C4.3) ─────────────────────────────
 
 /**

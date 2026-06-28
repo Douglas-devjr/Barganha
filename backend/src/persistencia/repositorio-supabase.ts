@@ -33,6 +33,7 @@ import type {
 } from '../estatistica/tipos';
 import type { FiltroDeltaSync, FonteDeltaSync } from '../sync/tipos';
 import type {
+  CupomComItens,
   CupomRegistro,
   DadosIngestao,
   DadosNotaProcessada,
@@ -134,6 +135,63 @@ export class RepositorioSupabase
       chaveAcesso: r.data.chave_acesso ?? undefined,
       qrPayload: r.data.qr_payload,
       status: r.data.status,
+    };
+  }
+
+  async obterDoUsuario(cupomId: string, usuarioId: string): Promise<CupomComItens | undefined> {
+    // Gate de acesso na própria consulta: `usuario_id` casa o dono.
+    const c = await this.db
+      .from('cupom')
+      .select('id, status, emitido_em, uf, loja_cnpj')
+      .eq('id', cupomId)
+      .eq('usuario_id', usuarioId)
+      .maybeSingle();
+    if (c.error) falhar('carga de cupom do usuário', c.error);
+    if (!c.data) return undefined;
+
+    const itensR = await this.db
+      .from('item_cupom')
+      .select(
+        'produto_canonico_id, descricao_original, ean, quantidade, unidade, valor_unitario, valor_total, desconto',
+      )
+      .eq('cupom_id', cupomId);
+    if (itensR.error) falhar('carga de itens do cupom', itensR.error);
+
+    let loja: CupomComItens['loja'];
+    if (c.data.loja_cnpj) {
+      const l = await this.db
+        .from('loja')
+        .select('cnpj, razao_social, nome_fantasia, municipio, uf')
+        .eq('cnpj', c.data.loja_cnpj)
+        .maybeSingle();
+      if (l.error) falhar('carga da loja do cupom', l.error);
+      if (l.data) {
+        loja = {
+          cnpj: l.data.cnpj,
+          ...(l.data.razao_social ? { razaoSocial: l.data.razao_social } : {}),
+          ...(l.data.nome_fantasia ? { nomeFantasia: l.data.nome_fantasia } : {}),
+          ...(l.data.municipio ? { municipio: l.data.municipio } : {}),
+          ...(l.data.uf ? { uf: l.data.uf } : {}),
+        };
+      }
+    }
+
+    return {
+      cupomId: c.data.id,
+      status: c.data.status,
+      ...(c.data.emitido_em ? { emitidoEm: c.data.emitido_em } : {}),
+      ...(c.data.uf ? { uf: c.data.uf } : {}),
+      ...(loja ? { loja } : {}),
+      itens: (itensR.data ?? []).map((i) => ({
+        ...(i.produto_canonico_id ? { produtoCanonicoId: i.produto_canonico_id } : {}),
+        descricaoOriginal: i.descricao_original,
+        ...(i.ean ? { ean: i.ean } : {}),
+        quantidade: Number(i.quantidade),
+        unidade: i.unidade,
+        valorUnitario: Number(i.valor_unitario),
+        valorTotal: Number(i.valor_total),
+        ...(i.desconto != null ? { desconto: Number(i.desconto) } : {}),
+      })),
     };
   }
 

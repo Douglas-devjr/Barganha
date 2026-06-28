@@ -26,6 +26,7 @@ import type {
 } from '../estatistica/tipos';
 import type { FiltroDeltaSync, FonteDeltaSync } from '../sync/tipos';
 import type {
+  CupomComItens,
   CupomRegistro,
   DadosIngestao,
   DadosNotaProcessada,
@@ -122,6 +123,41 @@ export class RepositorioMemoria
       chaveAcesso: c.chaveAcesso,
       qrPayload: c.qrPayload,
       status: c.status,
+    });
+  }
+
+  obterDoUsuario(cupomId: string, usuarioId: string): Promise<CupomComItens | undefined> {
+    const c = this.cupons.get(cupomId);
+    if (!c || c.usuarioId !== usuarioId) return Promise.resolve(undefined);
+    const loja = c.lojaCnpj ? this.lojas.get(c.lojaCnpj) : undefined;
+    return Promise.resolve({
+      cupomId: c.id,
+      status: c.status,
+      ...(c.emitidoEm ? { emitidoEm: c.emitidoEm } : {}),
+      ...(c.uf ? { uf: c.uf } : {}),
+      ...(loja
+        ? {
+            loja: {
+              cnpj: loja.cnpj,
+              ...(loja.razaoSocial ? { razaoSocial: loja.razaoSocial } : {}),
+              ...(loja.nomeFantasia ? { nomeFantasia: loja.nomeFantasia } : {}),
+              ...(loja.municipio ? { municipio: loja.municipio } : {}),
+              ...(loja.uf ? { uf: loja.uf } : {}),
+            },
+          }
+        : {}),
+      itens: this.itensCupom
+        .filter((i) => i.cupomId === cupomId)
+        .map((i) => ({
+          ...(i.produtoCanonicoId ? { produtoCanonicoId: i.produtoCanonicoId } : {}),
+          descricaoOriginal: i.descricaoOriginal,
+          ...(i.ean ? { ean: i.ean } : {}),
+          quantidade: i.quantidade,
+          unidade: i.unidade,
+          valorUnitario: i.valorUnitario,
+          valorTotal: i.valorTotal,
+          ...(i.desconto != null ? { desconto: i.desconto } : {}),
+        })),
     });
   }
 

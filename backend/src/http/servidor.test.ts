@@ -107,6 +107,51 @@ describe('Servidor HTTP', () => {
       expect(r.statusCode).toBe(401);
     });
 
+    it('GET /ingestao/cupom/:id devolve a nota processada ao dono', async () => {
+      const ing = await app.inject({
+        method: 'POST',
+        url: '/ingestao/qr',
+        headers: auth(),
+        payload: { qrPayload: QR_RJ, capturadoEm: '2026-06-27T12:00:00.000Z' },
+      });
+      const cupomId = ing.json().cupomId as string;
+      await fila.ociosa();
+
+      const r = await app.inject({
+        method: 'GET',
+        url: `/ingestao/cupom/${cupomId}`,
+        headers: auth(),
+      });
+      expect(r.statusCode).toBe(200);
+      const corpo = r.json();
+      expect(corpo.status).toBe('processado');
+      expect(corpo.itens.length).toBeGreaterThan(0);
+      expect(corpo.loja?.cnpj).toBeTruthy();
+    });
+
+    it('GET /ingestao/cupom/:id rejeita sem credencial (401)', async () => {
+      const r = await app.inject({ method: 'GET', url: '/ingestao/cupom/qualquer' });
+      expect(r.statusCode).toBe(401);
+    });
+
+    it('GET /ingestao/cupom/:id de outro dono responde 404', async () => {
+      const ing = await app.inject({
+        method: 'POST',
+        url: '/ingestao/qr',
+        headers: auth(),
+        payload: { qrPayload: QR_RJ, capturadoEm: '2026-06-27T12:00:00.000Z' },
+      });
+      const cupomId = ing.json().cupomId as string;
+
+      const outra = await app.inject({ method: 'POST', url: '/conta/anonima' });
+      const r = await app.inject({
+        method: 'GET',
+        url: `/ingestao/cupom/${cupomId}`,
+        headers: { authorization: `Bearer ${outra.json().usuarioId}` },
+      });
+      expect(r.statusCode).toBe(404);
+    });
+
     it('rejeita corpo sem qrPayload (400 — schema)', async () => {
       const r = await app.inject({
         method: 'POST',

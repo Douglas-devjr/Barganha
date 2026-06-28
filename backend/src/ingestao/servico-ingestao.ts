@@ -11,7 +11,7 @@
  * retroativo (C2.5). Erros só acontecem se o QR/chave forem inválidos.
  */
 
-import type { IngestaoQrRequest, IngestaoQrResponse } from '@barganha/shared';
+import type { CupomResponse, IngestaoQrRequest, IngestaoQrResponse } from '@barganha/shared';
 
 import type { FilaProcessamento } from '../fila/tipos';
 import { parseQrNfce } from '../parsers/qr-payload';
@@ -42,5 +42,32 @@ export class ServicoIngestao {
     }
 
     return { cupomId: resultado.cupomId, status: resultado.status };
+  }
+
+  /**
+   * C6.3 — Estado de um cupom do PRÓPRIO usuário (privado). O app consulta para
+   * acompanhar o parsing assíncrono e exibir os itens. `undefined` quando o
+   * cupom não existe ou é de outro dono — a camada HTTP traduz para 404.
+   */
+  async obterCupom(usuarioId: string, cupomId: string): Promise<CupomResponse | undefined> {
+    const cupom = await this.repo.obterDoUsuario(cupomId, usuarioId);
+    if (!cupom) return undefined;
+    return {
+      cupomId: cupom.cupomId,
+      status: cupom.status,
+      ...(cupom.emitidoEm ? { emitidoEm: cupom.emitidoEm } : {}),
+      ...(cupom.uf ? { uf: cupom.uf } : {}),
+      ...(cupom.loja ? { loja: cupom.loja } : {}),
+      itens: cupom.itens.map((i) => ({
+        ...(i.produtoCanonicoId ? { produtoCanonicoId: i.produtoCanonicoId } : {}),
+        descricaoOriginal: i.descricaoOriginal,
+        ...(i.ean ? { ean: i.ean } : {}),
+        quantidade: i.quantidade,
+        unidade: i.unidade,
+        valorUnitario: i.valorUnitario,
+        valorTotal: i.valorTotal,
+        ...(i.desconto != null ? { desconto: i.desconto } : {}),
+      })),
+    };
   }
 }

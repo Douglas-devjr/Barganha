@@ -49,6 +49,26 @@ export interface DadosNotaProcessada {
   observacoes: ObservacaoAnonima[];
 }
 
+/**
+ * Visão privada de um cupom já processado para devolver ao DONO (C6.3). Inclui o
+ * cabeçalho + itens; a `loja` é a referência mínima (vinda do pool, mas só lida
+ * para compor a nota do próprio usuário). Nunca cruza para o lado compartilhado.
+ */
+export interface CupomComItens {
+  cupomId: string;
+  status: StatusCupom;
+  emitidoEm?: string;
+  uf?: string;
+  loja?: {
+    cnpj: string;
+    razaoSocial?: string;
+    nomeFantasia?: string;
+    municipio?: string;
+    uf?: string;
+  };
+  itens: ItemCupomNovo[];
+}
+
 export interface FiltroReprocessamento {
   /** Restringe a uma UF (ex.: parser novo entrou no ar). */
   uf?: string;
@@ -62,6 +82,11 @@ export interface RepositorioCupom {
   criarOuObterPorChave(dados: DadosIngestao): Promise<ResultadoIngestao>;
   /** Carrega o cupom para processamento, ou `undefined` se não existir. */
   obterParaProcessamento(cupomId: string): Promise<CupomRegistro | undefined>;
+  /**
+   * Cupom + itens do PRÓPRIO usuário (C6.3). Restringe por `usuarioId` (gate de
+   * acesso): de outro dono ou inexistente → `undefined` (não vaza existência).
+   */
+  obterDoUsuario(cupomId: string, usuarioId: string): Promise<CupomComItens | undefined>;
   /** Grava nota privada + pool anônimo e marca o cupom como `processado`. */
   marcarProcessado(cupomId: string, dados: DadosNotaProcessada): Promise<void>;
   /** Marca o cupom como `falha` (erro permanente de parsing). */
