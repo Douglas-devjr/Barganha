@@ -79,6 +79,7 @@ Este documento dá um **nome e um código curto** a cada etapa do desenvolviment
 | C4.1 | Endpoints de consulta de estatística (com fallback) |
 | C4.2 | Delta sync (cursor por `atualizado_em` + escopo) |
 | C4.3 | Autenticação mínima |
+| C4.3.1 | Endurecer o token de conta: hoje o `usuarioId` (UUID) É o Bearer (sem segredo) — quem obtém o id ingere no histórico alheio. Evoluir p/ token/segredo próprio ou Supabase Auth/JWT |
 *Responsáveis:* backend-engineer, data-engineer, privacy-lgpd-specialist
 
 ### `C5` — Esqueleto *(Fundação Mobile)* `[MVP]`
@@ -125,6 +126,7 @@ Este documento dá um **nome e um código curto** a cada etapa do desenvolviment
 | C9.2 | Gate LGPD + checagem de re-identificação |
 | C9.3 | Performance (índices/EXPLAIN) + plano de escala |
 | C9.3.1 | Ingestão transacional: `marcarProcessado` numa função SQL (RPC) — hoje são escritas sequenciais e uma falha parcial após inserir no pool pode duplicar observações no retry |
+| C9.3.2 | Rate-limit/anti-abuso: `POST /conta/anonima` e consulta/sync são sem limite hoje (criação ilimitada de contas; scraping do pool público) |
 | C9.4 | Política de privacidade publicada |
 *Responsáveis:* qa-engineer, privacy-lgpd-specialist, data-engineer
 
