@@ -89,4 +89,14 @@ describe('resolverFallback (C3.3)', () => {
   it('sem candidatos → undefined', () => {
     expect(resolverFallback([], LOCAL)).toBeUndefined();
   });
+
+  it('com duas unidades-base no mesmo nível, escolhe a de maior base (n)', () => {
+    const candidatos = [
+      { ...estat('municipio', 'RJ:Rio de Janeiro', 3), unidadeBase: 'un' as const },
+      { ...estat('municipio', 'RJ:Rio de Janeiro', 40), unidadeBase: 'kg' as const },
+    ];
+    const r = resolverFallback(candidatos, LOCAL);
+    expect(r?.estatistica.unidadeBase).toBe('kg');
+    expect(r?.estatistica.nObservacoes).toBe(40);
+  });
 });

@@ -103,13 +103,18 @@ export function resolverFallback(
 ): ResultadoFallback | undefined {
   if (candidatos.length === 0) return undefined;
 
-  // Indexa por escopo a linha que casa com a chave do local (a mais específica
-  // por nível; em tese o repositório já trouxe no máximo uma por nível).
+  // Indexa por escopo a linha que casa com a chave do local. Pode haver mais de
+  // uma por (escopo, escopoId) quando o produto tem observações em unidades-base
+  // diferentes (mesmo EAN vendido por KG e por UN); fica com a de MAIOR base (n).
   const porEscopo = new Map<EscopoGeo, PrecoEstatistica>();
   for (const escopo of ORDEM_FALLBACK) {
     const chave = chaveEscopo(escopo, local, resolverRegiao);
     if (!chave) continue;
-    const linha = candidatos.find((c) => c.escopo === escopo && c.escopoId === chave);
+    let linha: PrecoEstatistica | undefined;
+    for (const c of candidatos) {
+      if (c.escopo !== escopo || c.escopoId !== chave) continue;
+      if (!linha || c.nObservacoes > linha.nObservacoes) linha = c;
+    }
     if (linha) porEscopo.set(escopo, linha);
   }
 
