@@ -100,7 +100,7 @@ Inserida **solta** (um item por linha, sem vínculo com a cesta, sem `usuario_id
 | preco_normalizado | numeric | já em R$/unidade_base |
 | unidade_base | text | kg / L / un |
 | em_promocao | bool | derivado do desconto / estatística |
-| observado_em | timestamptz | data de emissão da nota |
+| observado_em | timestamptz | **dia** de emissão (granularidade de dia no pool — o gate zera o horário para não reconstruir a cesta por `loja+horário`, ver `04`) |
 
 ### `preco_estatistica` — agregação para consulta rápida / cache
 | campo | tipo | nota |

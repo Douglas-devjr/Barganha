@@ -59,11 +59,31 @@ export interface NotaProcessada {
 }
 
 /**
+ * Granulariza o instante de emissão para o DIA civil (Brasil, -03:00).
+ *
+ * Anti re-identificação: sem isto, todos os itens de um cupom carregam o mesmo
+ * `observadoEm` ao segundo + o mesmo `lojaCnpj`, e um `GROUP BY (loja_cnpj,
+ * observado_em)` reconstruiria a cesta — o "estes itens juntos, neste horário"
+ * que o docs/04 manda quebrar. Dia basta para o decaimento temporal (meia-vida
+ * de semanas, docs/06).
+ */
+function diaDaObservacao(iso: string): string {
+  const instante = new Date(iso);
+  if (Number.isNaN(instante.getTime())) {
+    throw new Error(`observadoEm inválido: "${iso}".`);
+  }
+  // Desloca para -03:00 e toma a data civil; estampa meia-noite UTC.
+  const brasil = new Date(instante.getTime() - 3 * 60 * 60 * 1000);
+  return `${brasil.toISOString().slice(0, 10)}T00:00:00.000Z`;
+}
+
+/**
  * O GATE. Converte uma nota processada em observações anônimas soltas,
  * copiando apenas os campos permitidos — qualquer PII na entrada é ignorada
- * por construção (nunca é lida).
+ * por construção (nunca é lida) — e granularizando o horário para o dia.
  */
 export function extrairObservacoesAnonimas(nota: NotaProcessada): ObservacaoAnonima[] {
+  const observadoEm = diaDaObservacao(nota.observadoEm);
   return nota.itens.map((item): SemDadoPessoal<ObservacaoPrecoNova> => ({
     produtoCanonicoId: item.produtoCanonicoId,
     lojaCnpj: nota.loja.cnpj,
@@ -72,7 +92,7 @@ export function extrairObservacoesAnonimas(nota: NotaProcessada): ObservacaoAnon
     precoNormalizado: item.precoNormalizado,
     unidadeBase: item.unidadeBase,
     emPromocao: item.emPromocao,
-    observadoEm: nota.observadoEm,
+    observadoEm,
   })) as ObservacaoAnonima[];
 }
 

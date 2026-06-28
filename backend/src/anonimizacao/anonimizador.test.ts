@@ -75,7 +75,7 @@ describe('Anonimizador (C2.4)', () => {
       precoNormalizado: 16.9,
       unidadeBase: 'un',
       emPromocao: false,
-      observadoEm: '2026-06-20T21:30:00.000Z',
+      observadoEm: '2026-06-20T00:00:00.000Z',
     });
   });
 

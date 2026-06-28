@@ -30,8 +30,18 @@ describe('gate de anonimização (C1.4)', () => {
       precoNormalizado: 33.8,
       unidadeBase: 'kg',
       emPromocao: false,
-      observadoEm: '2026-06-20T18:30:00.000Z',
+      observadoEm: '2026-06-20T00:00:00.000Z',
     });
+  });
+
+  it('granulariza observadoEm para o dia (não reconstrói a cesta por horário)', () => {
+    const noite = notaExemplo();
+    // 22:30 -03:00 (= 01:30Z do dia seguinte) ainda é o dia civil 20 no Brasil.
+    noite.observadoEm = '2026-06-21T01:30:00.000Z';
+    const obs = extrairObservacoesAnonimas(noite);
+    for (const o of obs) {
+      expect(o.observadoEm).toBe('2026-06-20T00:00:00.000Z');
+    }
   });
 
   it('NUNCA propaga dado pessoal — nem chave, usuário ou cesta', () => {
