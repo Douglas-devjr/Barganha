@@ -1,5 +1,14 @@
 # 06 — Comparação & Estatística
 
+> **v1 implementado** na Camada 3 (C3). Núcleo puro e testável:
+> - **Veredito** (compartilhado, usado offline pelo app): `shared/src/estatistica/veredito.ts` — `classificarPreco`, `montarVeredito` (híbrido pessoal+regional), linha de promoção à parte.
+> - **Agregação** (C3.1/C3.2/C3.6): `backend/src/estatistica/agregacao.ts` — mediana/percentis **ponderados**, decaimento temporal por meia-vida, detecção de promoção (flag NFC-e + cerco IQR).
+> - **Escopos + fallback** (C3.3): `backend/src/estatistica/escopos.ts`.
+> - **Casamento por texto** (C3.5): `backend/src/estatistica/casamento-texto.ts` (só **sugere**; confirmação é curadoria).
+> - **Pipeline** (C3.1): `backend/src/estatistica/pipeline.ts` grava `preco_estatistica`. EAN (C3.4) já casa na ingestão (C2).
+>
+> Limiares (meia-vida, mínimos de `n`, limiar de similaridade, cerco de promoção) ficam em constantes marcadas **a calibrar com dados reais** — ver a seção final.
+
 ## Objetivo
 Dado um produto e um preço de prateleira, responder: **barato / na média / caro** — de forma confiável, robusta a promoções e a outliers, e relevante tanto ao **histórico do usuário** quanto à **região**.
 

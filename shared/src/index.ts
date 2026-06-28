@@ -12,3 +12,4 @@ export * from './dominio/nota-estruturada';
 export * from './dominio/entidades';
 export * from './anonimizacao/gate';
 export * from './api/dtos';
+export * from './estatistica/veredito';

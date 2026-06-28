@@ -6,6 +6,8 @@
 
 import { Anonimizador } from './anonimizacao/anonimizador';
 import type { ConfigBackend } from './config/env';
+import { MatcherTexto } from './estatistica/casamento-texto';
+import { PipelineEstatistica } from './estatistica/pipeline';
 import { FilaMemoria } from './fila/fila-memoria';
 import { ServicoIngestao } from './ingestao/servico-ingestao';
 import { RegistroParsers } from './parsers/registro';
@@ -21,6 +23,10 @@ export interface Backend {
   servicoIngestao: ServicoIngestao;
   reprocessador: ReprocessadorRetroativo;
   registro: RegistroParsers;
+  /** Motor estatístico (C3): recalcula `preco_estatistica` a partir do pool. */
+  pipelineEstatistica: PipelineEstatistica;
+  /** Casamento por texto (C3.5) p/ itens sem EAN. */
+  matcherTexto: MatcherTexto;
 }
 
 export function montarBackend(config: ConfigBackend): Backend {
@@ -42,5 +48,10 @@ export function montarBackend(config: ConfigBackend): Backend {
   const servicoIngestao = new ServicoIngestao(repo, fila);
   const reprocessador = new ReprocessadorRetroativo(repo, registro, fila);
 
-  return { servicoIngestao, reprocessador, registro };
+  // C3 — motor estatístico sobre o pool anônimo. O disparo (após ingestão ou
+  // num job agendado) é decidido na API/infra (C4/C10); aqui ele só é montado.
+  const pipelineEstatistica = new PipelineEstatistica(repo, repo);
+  const matcherTexto = new MatcherTexto(repo);
+
+  return { servicoIngestao, reprocessador, registro, pipelineEstatistica, matcherTexto };
 }

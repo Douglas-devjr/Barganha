@@ -1,0 +1,94 @@
+import { describe, expect, it } from 'vitest';
+
+import { RepositorioMemoria } from '../persistencia/repositorio-memoria';
+import { resolverFallback, type LocalGeo } from './escopos';
+import { PipelineEstatistica } from './pipeline';
+import type { FonteObservacoes, ObservacaoParaAgregacao } from './tipos';
+
+const REF = new Date('2026-06-28T00:00:00.000Z');
+const LOJA_A = '12345678000199';
+const LOJA_B = '99999999000100';
+
+function obs(
+  preco: number,
+  lojaCnpj: string,
+  dias = 1,
+  emPromocao = false,
+): ObservacaoParaAgregacao {
+  return {
+    produtoCanonicoId: 'p-leite',
+    unidadeBase: 'L',
+    lojaCnpj,
+    municipio: 'Rio de Janeiro',
+    uf: 'RJ',
+    precoNormalizado: preco,
+    emPromocao,
+    observadoEm: new Date(REF.getTime() - dias * 86_400_000).toISOString(),
+  };
+}
+
+function fonteCom(observacoes: ObservacaoParaAgregacao[]): FonteObservacoes {
+  return {
+    listarProdutosComObservacoes: () => Promise.resolve(['p-leite']),
+    observacoesDoProduto: () => Promise.resolve(observacoes),
+  };
+}
+
+describe('PipelineEstatistica (C3.1)', () => {
+  it('gera uma linha por escopo (loja, município, UF) a partir das observações', async () => {
+    const fonte = fonteCom([
+      obs(6.0, LOJA_A),
+      obs(6.5, LOJA_A),
+      obs(7.0, LOJA_B),
+      obs(7.2, LOJA_B),
+    ]);
+    const repo = new RepositorioMemoria();
+    const pipeline = new PipelineEstatistica(fonte, repo, { referencia: REF });
+
+    const n = await pipeline.recalcularProduto('p-leite');
+    expect(n).toBe(4); // 2 lojas + 1 município + 1 UF
+
+    const linhas = repo.estatisticasDoProduto('p-leite');
+    const escopos = linhas.map((l) => `${l.escopo}:${l.escopoId}`).sort();
+    expect(escopos).toEqual([
+      `loja:${LOJA_A}`,
+      `loja:${LOJA_B}`,
+      'municipio:RJ:Rio de Janeiro',
+      'uf:RJ',
+    ]);
+
+    // O nível UF agrega as 4 observações; a loja A, só as 2 dela.
+    const uf = linhas.find((l) => l.escopo === 'uf')!;
+    const lojaA = linhas.find((l) => l.escopo === 'loja' && l.escopoId === LOJA_A)!;
+    expect(uf.nObservacoes).toBe(4);
+    expect(lojaA.nObservacoes).toBe(2);
+  });
+
+  it('alimenta o fallback hierárquico (C3.3) de ponta a ponta', async () => {
+    // Loja A com poucas observações; UF com bastante.
+    const fonte = fonteCom([
+      obs(6.0, LOJA_A),
+      obs(6.5, LOJA_B),
+      obs(6.6, LOJA_B),
+      obs(6.7, LOJA_B),
+      obs(6.8, LOJA_B),
+    ]);
+    const repo = new RepositorioMemoria();
+    await new PipelineEstatistica(fonte, repo, { referencia: REF }).recalcularProduto('p-leite');
+
+    const local: LocalGeo = { lojaCnpj: LOJA_A, municipio: 'Rio de Janeiro', uf: 'RJ' };
+    const candidatos = await repo.candidatosFallback('p-leite');
+    const resolvido = resolverFallback(candidatos, local);
+
+    // A loja A só tem 1 observação (< mínimo) → sobe para município/UF.
+    expect(resolvido?.escopoResolvido).not.toBe('loja');
+    expect(resolvido?.estatistica.nObservacoes).toBeGreaterThanOrEqual(3);
+  });
+
+  it('recalcularTodos percorre os produtos com observação', async () => {
+    const repo = new RepositorioMemoria();
+    const fonte = fonteCom([obs(6.0, LOJA_A), obs(6.4, LOJA_A), obs(6.8, LOJA_A)]);
+    const total = await new PipelineEstatistica(fonte, repo, { referencia: REF }).recalcularTodos();
+    expect(total).toBeGreaterThan(0);
+  });
+});

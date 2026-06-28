@@ -13,10 +13,18 @@
  * cupons não-`processado`, então não há dupla contagem no pool.
  */
 
-import type { ObservacaoAnonima } from '@barganha/shared';
+import type { ObservacaoAnonima, PrecoEstatistica } from '@barganha/shared';
 import type { PostgrestError, SupabaseClient } from '@supabase/supabase-js';
 
 import type { CatalogoProdutos, SugestaoProduto } from '../anonimizacao/casamento';
+import type { CandidatoCanonico, FonteCandidatosTexto } from '../estatistica/casamento-texto';
+import { derivarEscopos, type LocalGeo } from '../estatistica/escopos';
+import type {
+  FonteObservacoes,
+  LinhaEstatistica,
+  ObservacaoParaAgregacao,
+  RepositorioEstatistica,
+} from '../estatistica/tipos';
 import type {
   CupomRegistro,
   DadosIngestao,
@@ -32,7 +40,16 @@ function falhar(contexto: string, erro: PostgrestError): never {
   throw new Error(`Supabase: ${contexto} — ${erro.message} (${erro.code ?? 's/ código'}).`);
 }
 
-export class RepositorioSupabase implements RepositorioCupom, CatalogoProdutos {
+const num = (v: unknown): number | undefined => (v == null ? undefined : Number(v));
+
+export class RepositorioSupabase
+  implements
+    RepositorioCupom,
+    CatalogoProdutos,
+    FonteObservacoes,
+    RepositorioEstatistica,
+    FonteCandidatosTexto
+{
   constructor(private readonly db: SupabaseClient) {}
 
   async criarOuObterPorChave(dados: DadosIngestao): Promise<ResultadoIngestao> {
@@ -192,6 +209,104 @@ export class RepositorioSupabase implements RepositorioCupom, CatalogoProdutos {
     }
     if (inserido.error) falhar('inserção de produto canônico', inserido.error);
     return inserido.data.id;
+  }
+
+  // ───────────────────────── FonteObservacoes (C3) ────────────────────
+
+  async listarProdutosComObservacoes(desde?: string): Promise<string[]> {
+    let consulta = this.db.from('observacao_preco').select('produto_canonico_id');
+    if (desde) consulta = consulta.gte('observado_em', desde);
+    const r = await consulta;
+    if (r.error) falhar('listagem de produtos com observação', r.error);
+    return [...new Set((r.data ?? []).map((o) => o.produto_canonico_id as string))];
+  }
+
+  async observacoesDoProduto(produtoCanonicoId: string): Promise<ObservacaoParaAgregacao[]> {
+    const r = await this.db
+      .from('observacao_preco')
+      .select(
+        'produto_canonico_id, unidade_base, loja_cnpj, municipio, uf, preco_normalizado, em_promocao, observado_em',
+      )
+      .eq('produto_canonico_id', produtoCanonicoId);
+    if (r.error) falhar('carga de observações do produto', r.error);
+    return (r.data ?? []).map((o) => ({
+      produtoCanonicoId: o.produto_canonico_id,
+      unidadeBase: o.unidade_base,
+      lojaCnpj: o.loja_cnpj,
+      ...(o.municipio ? { municipio: o.municipio } : {}),
+      ...(o.uf ? { uf: o.uf } : {}),
+      precoNormalizado: Number(o.preco_normalizado),
+      emPromocao: o.em_promocao,
+      observadoEm: o.observado_em,
+    }));
+  }
+
+  // ───────────────────────── RepositorioEstatistica (C3) ──────────────
+
+  async upsertEstatisticas(linhas: readonly LinhaEstatistica[]): Promise<void> {
+    if (linhas.length === 0) return;
+    const agora = new Date().toISOString();
+    const r = await this.db.from('preco_estatistica').upsert(
+      linhas.map((l) => ({
+        produto_canonico_id: l.produtoCanonicoId,
+        escopo: l.escopo,
+        escopo_id: l.escopoId,
+        unidade_base: l.unidadeBase,
+        mediana: l.mediana,
+        p25: l.p25,
+        p75: l.p75,
+        minimo: l.minimo,
+        maximo: l.maximo,
+        menor_promocional: l.menorPromocional ?? null,
+        n_observacoes: l.nObservacoes,
+        atualizado_em: agora,
+      })),
+      { onConflict: 'produto_canonico_id,escopo,escopo_id,unidade_base' },
+    );
+    if (r.error) falhar('upsert de estatísticas', r.error);
+  }
+
+  async candidatosFallback(
+    produtoCanonicoId: string,
+    local: LocalGeo,
+  ): Promise<PrecoEstatistica[]> {
+    const escopoIds = derivarEscopos(local).map((e) => e.escopoId);
+    if (escopoIds.length === 0) return [];
+    const r = await this.db
+      .from('preco_estatistica')
+      .select('*')
+      .eq('produto_canonico_id', produtoCanonicoId)
+      .in('escopo_id', escopoIds);
+    if (r.error) falhar('consulta de candidatos para fallback', r.error);
+    return (r.data ?? []).map((e) => ({
+      produtoCanonicoId: e.produto_canonico_id,
+      escopo: e.escopo,
+      escopoId: e.escopo_id,
+      unidadeBase: e.unidade_base,
+      mediana: num(e.mediana),
+      p25: num(e.p25),
+      p75: num(e.p75),
+      minimo: num(e.minimo),
+      maximo: num(e.maximo),
+      menorPromocional: num(e.menor_promocional),
+      nObservacoes: Number(e.n_observacoes),
+      atualizadoEm: e.atualizado_em,
+    }));
+  }
+
+  // ───────────────────────── FonteCandidatosTexto (C3.5) ──────────────
+
+  async listarCandidatos(unidadeBase: string): Promise<CandidatoCanonico[]> {
+    const r = await this.db
+      .from('produto_canonico')
+      .select('id, descricao_normalizada')
+      .eq('unidade_base', unidadeBase)
+      .not('descricao_normalizada', 'is', null);
+    if (r.error) falhar('listagem de candidatos para casamento por texto', r.error);
+    return (r.data ?? []).map((p) => ({
+      produtoCanonicoId: p.id,
+      descricaoNormalizada: p.descricao_normalizada,
+    }));
   }
 
   /** Escrita do pool — aceita SOMENTE `ObservacaoAnonima` (vinda do gate). */

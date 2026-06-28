@@ -7,10 +7,17 @@
 
 import { randomUUID } from 'node:crypto';
 
-import type { Loja, ObservacaoAnonima, StatusCupom } from '@barganha/shared';
+import type { Loja, ObservacaoAnonima, PrecoEstatistica, StatusCupom } from '@barganha/shared';
 
 import type { ItemCupomNovo } from '../anonimizacao/anonimizador';
 import type { CatalogoProdutos, SugestaoProduto } from '../anonimizacao/casamento';
+import type { CandidatoCanonico, FonteCandidatosTexto } from '../estatistica/casamento-texto';
+import type {
+  FonteObservacoes,
+  LinhaEstatistica,
+  ObservacaoParaAgregacao,
+  RepositorioEstatistica,
+} from '../estatistica/tipos';
 import type {
   CupomRegistro,
   DadosIngestao,
@@ -38,7 +45,14 @@ interface ProdutoCanonicoInterno {
   unidadeBase: string;
 }
 
-export class RepositorioMemoria implements RepositorioCupom, CatalogoProdutos {
+export class RepositorioMemoria
+  implements
+    RepositorioCupom,
+    CatalogoProdutos,
+    FonteObservacoes,
+    RepositorioEstatistica,
+    FonteCandidatosTexto
+{
   // Lado PRIVADO.
   private readonly cupons = new Map<string, CupomInterno>();
   private readonly itensCupom: ItemCupomArmazenado[] = [];
@@ -46,6 +60,7 @@ export class RepositorioMemoria implements RepositorioCupom, CatalogoProdutos {
   private readonly lojas = new Map<string, Loja>();
   private readonly produtosPorEan = new Map<string, ProdutoCanonicoInterno>();
   private readonly observacoes: ObservacaoAnonima[] = [];
+  private readonly estatisticas = new Map<string, PrecoEstatistica>();
 
   // ───────────────────────── RepositorioCupom ─────────────────────────
 
@@ -140,7 +155,82 @@ export class RepositorioMemoria implements RepositorioCupom, CatalogoProdutos {
     return Promise.resolve(novo.id);
   }
 
+  // ───────────────────────── FonteObservacoes (C3) ────────────────────
+
+  listarProdutosComObservacoes(desde?: string): Promise<string[]> {
+    const ids = new Set<string>();
+    for (const o of this.observacoes) {
+      if (desde && o.observadoEm < desde) continue;
+      ids.add(o.produtoCanonicoId);
+    }
+    return Promise.resolve([...ids]);
+  }
+
+  observacoesDoProduto(produtoCanonicoId: string): Promise<ObservacaoParaAgregacao[]> {
+    const r = this.observacoes
+      .filter((o) => o.produtoCanonicoId === produtoCanonicoId)
+      .map((o) => ({
+        produtoCanonicoId: o.produtoCanonicoId,
+        unidadeBase: o.unidadeBase,
+        lojaCnpj: o.lojaCnpj,
+        ...(o.municipio ? { municipio: o.municipio } : {}),
+        ...(o.uf ? { uf: o.uf } : {}),
+        precoNormalizado: o.precoNormalizado,
+        emPromocao: o.emPromocao,
+        observadoEm: o.observadoEm,
+      }));
+    return Promise.resolve(r);
+  }
+
+  // ───────────────────────── RepositorioEstatistica (C3) ──────────────
+
+  upsertEstatisticas(linhas: readonly LinhaEstatistica[]): Promise<void> {
+    for (const l of linhas) {
+      const chave = `${l.produtoCanonicoId}|${l.escopo}|${l.escopoId}|${l.unidadeBase}`;
+      this.estatisticas.set(chave, {
+        produtoCanonicoId: l.produtoCanonicoId,
+        escopo: l.escopo,
+        escopoId: l.escopoId,
+        unidadeBase: l.unidadeBase,
+        mediana: l.mediana,
+        p25: l.p25,
+        p75: l.p75,
+        minimo: l.minimo,
+        maximo: l.maximo,
+        ...(l.menorPromocional != null ? { menorPromocional: l.menorPromocional } : {}),
+        nObservacoes: l.nObservacoes,
+        atualizadoEm: new Date().toISOString(),
+      });
+    }
+    return Promise.resolve();
+  }
+
+  // O resolverFallback (C3.3) filtra por local; aqui devolvemos as linhas do
+  // produto (o parâmetro `local` da porta é dispensável neste adaptador).
+  candidatosFallback(produtoCanonicoId: string): Promise<PrecoEstatistica[]> {
+    const r = [...this.estatisticas.values()].filter(
+      (e) => e.produtoCanonicoId === produtoCanonicoId,
+    );
+    return Promise.resolve(r);
+  }
+
+  // ───────────────────────── FonteCandidatosTexto (C3.5) ──────────────
+
+  listarCandidatos(unidadeBase: string): Promise<CandidatoCanonico[]> {
+    const r = [...this.produtosPorEan.values()]
+      .filter((p) => p.unidadeBase === unidadeBase)
+      .map((p) => ({
+        produtoCanonicoId: p.id,
+        descricaoNormalizada: p.descricaoNormalizada,
+      }));
+    return Promise.resolve(r);
+  }
+
   // ───────────────────────── Inspeção (testes) ────────────────────────
+
+  estatisticasDoProduto(produtoCanonicoId: string): PrecoEstatistica[] {
+    return [...this.estatisticas.values()].filter((e) => e.produtoCanonicoId === produtoCanonicoId);
+  }
 
   observacoesDoPool(): readonly ObservacaoAnonima[] {
     return this.observacoes;
