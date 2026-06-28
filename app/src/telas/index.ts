@@ -7,3 +7,4 @@ export { PerfilTela } from './PerfilTela';
 export { ScannerTela } from './ScannerTela';
 export { NotaFiscalTela } from './NotaFiscalTela';
 export { ProdutoDetalheTela } from './ProdutoDetalheTela';
+export { OnboardingTela } from './OnboardingTela';

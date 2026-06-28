@@ -22,7 +22,16 @@
         "backgroundColor": "#0F766E"
       }
     },
-    "plugins": ["expo-font", "expo-sqlite"],
+    "plugins": [
+      "expo-font",
+      "expo-sqlite",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "O Barganha usa a câmera para ler o QR Code da nota fiscal."
+        }
+      ]
+    ],
     "extra": {
       "apiBaseUrl": "http://localhost:3000"
     }

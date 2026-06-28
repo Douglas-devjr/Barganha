@@ -100,6 +100,44 @@ export async function atualizarStatus(id: string, status: StatusCupom): Promise<
   ]);
 }
 
+/**
+ * C6.2 — Vincula o `cupomIdServidor` após o upload bem-sucedido, sem mexer nos
+ * itens (que só chegam quando o backend termina o parsing). `chaveAcesso` é
+ * preenchida se o servidor a devolveu (idempotência local passa a valer).
+ */
+export async function vincularServidor(
+  id: string,
+  cupomIdServidor: string,
+  status: StatusCupom,
+  chaveAcesso?: string,
+): Promise<void> {
+  await getBd().runAsync(
+    `UPDATE cupom_local
+        SET cupom_id_servidor = ?, status = ?, chave_acesso = COALESCE(?, chave_acesso),
+            atualizado_em = ?
+      WHERE id = ?`,
+    [cupomIdServidor, status, chaveAcesso ?? null, agoraIso(), id],
+  );
+}
+
+/**
+ * Cupons já enviados (têm id de servidor) mas ainda não finalizados — aguardam o
+ * parsing assíncrono. Base do polling de processamento (C6.2/C6.3).
+ */
+export async function listarAguardandoProcessamento(): Promise<CupomLocal[]> {
+  const linhas = await getBd().getAllAsync<LinhaCupom>(
+    `SELECT * FROM cupom_local
+      WHERE cupom_id_servidor IS NOT NULL AND status = 'qr_capturado'
+      ORDER BY capturado_em ASC`,
+  );
+  return linhas.map(mapearCupom);
+}
+
+/** Remove o cupom local (e, em cascata, itens e fila). Usado por "Descartar". */
+export async function excluir(id: string): Promise<void> {
+  await getBd().runAsync(`DELETE FROM cupom_local WHERE id = ?`, [id]);
+}
+
 /** Dados que o backend devolve após processar a nota (preenche a nota local). */
 export interface ResultadoProcessamento {
   cupomIdServidor: string;

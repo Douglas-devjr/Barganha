@@ -14,6 +14,7 @@ import type {
   ConsultaPrecoRequest,
   ConsultaPrecoResponse,
   ContaAnonimaResponse,
+  CupomResponse,
   DeltaSyncRequest,
   DeltaSyncResponse,
   IngestaoQrRequest,
@@ -71,6 +72,27 @@ export class ClienteApi {
     const token = await this.resolverToken();
     if (!token) throw new ErroApi(401, 'Sem conta para ingestão. Crie a conta anônima primeiro.');
     return this.requisitar<IngestaoQrResponse>('POST', '/ingestao/qr', req, token);
+  }
+
+  /**
+   * `GET /ingestao/cupom/:id` (C6.3) — PRIVADO: estado/itens do cupom do próprio
+   * usuário; exige Bearer. Usado para acompanhar o parsing assíncrono. Retorna
+   * `null` em 404 (cupom ainda não chegou ao servidor ou não é seu).
+   */
+  async obterCupom(cupomIdServidor: string): Promise<CupomResponse | null> {
+    const token = await this.resolverToken();
+    if (!token) throw new ErroApi(401, 'Sem conta para consultar o cupom.');
+    try {
+      return await this.requisitar<CupomResponse>(
+        'GET',
+        `/ingestao/cupom/${encodeURIComponent(cupomIdServidor)}`,
+        undefined,
+        token,
+      );
+    } catch (e) {
+      if (e instanceof ErroApi && e.status === 404) return null;
+      throw e;
+    }
   }
 
   /**

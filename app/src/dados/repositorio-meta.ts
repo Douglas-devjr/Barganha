@@ -11,6 +11,7 @@ import { getBd } from './bd';
 
 const CHAVE_CURSOR = 'cursor_delta';
 const CHAVE_USUARIO = 'usuario_id';
+const CHAVE_CONSENTIMENTO = 'consentimento_em';
 
 export async function obterMeta(chave: string): Promise<string | null> {
   const linha = await getBd().getFirstAsync<{ valor: string | null }>(
@@ -33,3 +34,12 @@ export const definirCursorDelta = (cursor: string): Promise<void> =>
 
 export const obterUsuarioId = (): Promise<string | null> => obterMeta(CHAVE_USUARIO);
 export const definirUsuarioId = (id: string): Promise<void> => definirMeta(CHAVE_USUARIO, id);
+
+/**
+ * C6.4 — Consentimento LGPD do onboarding. Guarda o instante (ISO) em que o
+ * usuário concordou; ausente = onboarding ainda não concluído. É o gate que
+ * decide a rota inicial (onboarding vs. abas) no boot.
+ */
+export const obterConsentimentoEm = (): Promise<string | null> => obterMeta(CHAVE_CONSENTIMENTO);
+export const registrarConsentimento = (): Promise<void> =>
+  definirMeta(CHAVE_CONSENTIMENTO, new Date().toISOString());
