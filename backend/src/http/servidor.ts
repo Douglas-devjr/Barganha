@@ -4,7 +4,11 @@
  *    assíncrono na fila, não 200).
  *  • Conta anônima (C4.3) — cria o `usuarioId` que o app usa como Bearer.
  *  • Consulta de preço (C4.1) e delta sync (C4.2) — ANÔNIMOS: lêem só o pool
- *    compartilhado, sem conta (docs/04). Abuso/rate-limit fica para C9/C10.
+ *    compartilhado, sem conta (docs/04).
+ *
+ * Rate-limit (C9.3.2): criação de conta e os endpoints públicos de leitura têm
+ * teto por janela (anti criação em massa / scraping do pool). Por trás de proxy
+ * (C10), lembrar de habilitar `trustProxy` para o IP refletir o cliente real.
  *
  * As dependências são injetadas para o servidor ser testável com adaptadores em
  * memória (sem Supabase nem rede).
@@ -19,6 +23,26 @@ import type { ServicoConsulta } from '../consulta/servico-consulta';
 import { ChaveAcessoInvalidaError, PayloadQrInvalidoError } from '../erros';
 import type { ServicoIngestao } from '../ingestao/servico-ingestao';
 import type { ServicoSync } from '../sync/servico-sync';
+import { chavePorConta, guardaDeTaxa, LimitadorJanelaFixa, type OpcoesLimite } from './rate-limit';
+
+/** Tetos de taxa por janela (C9.3.2). Sobrescrevíveis (testes/infra). */
+export interface LimitesTaxa {
+  /** Criação de conta anônima — por IP (anti criação em massa). */
+  conta: OpcoesLimite;
+  /** Leitura pública (consulta + sync somados) — por IP (anti scraping). */
+  leituraPublica: OpcoesLimite;
+  /** Ingestão de QR — por conta (Bearer), com fallback no IP. */
+  ingestao: OpcoesLimite;
+}
+
+const MINUTO = 60_000;
+const HORA = 60 * MINUTO;
+
+export const LIMITES_PADRAO: LimitesTaxa = {
+  conta: { janelaMs: HORA, maximo: 20 },
+  leituraPublica: { janelaMs: MINUTO, maximo: 120 },
+  ingestao: { janelaMs: MINUTO, maximo: 60 },
+};
 
 export interface DependenciasHttp {
   servicoIngestao: ServicoIngestao;
@@ -27,6 +51,8 @@ export interface DependenciasHttp {
   servicoConta: ServicoConta;
   /** Autenticação mínima (C4.3) — valida a conta nos endpoints privados. */
   autenticacao: Autenticacao;
+  /** Tetos de taxa (C9.3.2). Omitido → `LIMITES_PADRAO`. */
+  limites?: LimitesTaxa;
   logger?: boolean;
 }
 
@@ -71,11 +97,20 @@ const SCHEMA_SYNC = {
 
 export function construirServidor(deps: DependenciasHttp): FastifyInstance {
   const app = Fastify({ logger: deps.logger ?? false });
+  const limites = deps.limites ?? LIMITES_PADRAO;
+
+  // Limitadores de taxa (C9.3.2). Consulta e sync compartilham o MESMO
+  // limitador: um teto único de "leitura pública" por IP.
+  const guardaConta = guardaDeTaxa(new LimitadorJanelaFixa(limites.conta));
+  const guardaLeitura = guardaDeTaxa(new LimitadorJanelaFixa(limites.leituraPublica));
+  const guardaIngestao = guardaDeTaxa(new LimitadorJanelaFixa(limites.ingestao), {
+    chave: chavePorConta,
+  });
 
   app.get('/saude', () => ({ ok: true }));
 
   // ── Conta anônima (C4.3) ───────────────────────────────────────────
-  app.post('/conta/anonima', async (_req, reply) => {
+  app.post('/conta/anonima', { onRequest: guardaConta }, async (_req, reply) => {
     const resposta = await deps.servicoConta.criarAnonima();
     return reply.code(201).send(resposta);
   });
@@ -83,7 +118,7 @@ export function construirServidor(deps: DependenciasHttp): FastifyInstance {
   // ── Ingestão de QR (C2.1) — privada ────────────────────────────────
   app.post<{ Body: IngestaoQrRequest }>(
     '/ingestao/qr',
-    { schema: SCHEMA_INGESTAO },
+    { schema: SCHEMA_INGESTAO, onRequest: guardaIngestao },
     async (req, reply) => {
       const usuarioId = await deps.autenticacao.resolver(req.headers);
       if (!usuarioId) {
@@ -111,7 +146,7 @@ export function construirServidor(deps: DependenciasHttp): FastifyInstance {
   // ── Consulta de preço (C4.1) — anônima ─────────────────────────────
   app.post<{ Body: ConsultaPrecoRequest }>(
     '/consulta/preco',
-    { schema: SCHEMA_CONSULTA },
+    { schema: SCHEMA_CONSULTA, onRequest: guardaLeitura },
     async (req, reply) => {
       const resposta = await deps.servicoConsulta.consultar(req.body);
       if (!resposta) {
@@ -124,7 +159,7 @@ export function construirServidor(deps: DependenciasHttp): FastifyInstance {
   // ── Delta sync (C4.2) — anônima ────────────────────────────────────
   app.post<{ Body: DeltaSyncRequest }>(
     '/sync/estatisticas',
-    { schema: SCHEMA_SYNC },
+    { schema: SCHEMA_SYNC, onRequest: guardaLeitura },
     async (req, reply) => {
       const resposta = await deps.servicoSync.delta(req.body);
       return reply.send(resposta);
