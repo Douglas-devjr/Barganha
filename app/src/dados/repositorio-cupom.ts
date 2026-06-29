@@ -200,6 +200,143 @@ export async function aplicarProcessamento(
   });
 }
 
+/** Resumo agregado do histórico — base do card de economia da Início (C8.1). */
+export interface ResumoCompras {
+  /** Notas já processadas (com itens). */
+  totalCupons: number;
+  totalItens: number;
+  /** Soma dos valores dos itens (R$) das notas processadas. */
+  gastoTotal: number;
+  /** Soma dos descontos de promoção registrados nas notas (R$). */
+  economiaTotal: number;
+}
+
+/**
+ * Agrega o histórico PRIVADO processado. `economiaTotal` é a soma honesta dos
+ * descontos que a própria NFC-e registrou (promoção real no caixa), nunca uma
+ * estimativa estatística — esta fica para C8.3/C8.4 (Pós).
+ */
+export async function resumoCompras(): Promise<ResumoCompras> {
+  const linha = await getBd().getFirstAsync<{
+    total_cupons: number;
+    total_itens: number;
+    gasto_total: number;
+    economia_total: number;
+  }>(
+    `SELECT
+       COUNT(DISTINCT c.id)                                          AS total_cupons,
+       COUNT(i.id)                                                   AS total_itens,
+       COALESCE(SUM(i.valor_total), 0)                               AS gasto_total,
+       COALESCE(SUM(CASE WHEN i.desconto > 0 THEN i.desconto END), 0) AS economia_total
+     FROM cupom_local c
+     LEFT JOIN item_cupom_local i ON i.cupom_local_id = c.id
+     WHERE c.status = 'processado'`,
+  );
+  return {
+    totalCupons: linha?.total_cupons ?? 0,
+    totalItens: linha?.total_itens ?? 0,
+    gastoTotal: linha?.gasto_total ?? 0,
+    economiaTotal: linha?.economia_total ?? 0,
+  };
+}
+
+/** Total de cupons capturados (todos os status) — Perfil "cupons escaneados". */
+export async function contarCupons(): Promise<number> {
+  const linha = await getBd().getFirstAsync<{ total: number }>(
+    `SELECT COUNT(*) AS total FROM cupom_local`,
+  );
+  return linha?.total ?? 0;
+}
+
+/** Uma compra (cupom) resumida para a lista "Últimas compras" (C8.1). */
+export interface CompraResumo {
+  cupomLocalId: string;
+  lojaNome: string | null;
+  /** Emissão da nota; cai para a captura enquanto não processada. ISO 8601. */
+  observadoEm: string;
+  status: StatusCupom;
+  totalItens: number;
+  valorTotal: number;
+  /** Desconto de promoção registrado nesta nota (R$). */
+  economia: number;
+}
+
+/**
+ * Cupons recentes (todos os status, inclusive os ainda em processamento —
+ * offline-first), do mais novo ao mais antigo, com total e desconto agregados.
+ */
+export async function listarComprasRecentes(limite = 6): Promise<CompraResumo[]> {
+  const linhas = await getBd().getAllAsync<{
+    cupom_local_id: string;
+    loja_nome: string | null;
+    observado_em: string;
+    status: string;
+    total_itens: number;
+    valor_total: number;
+    economia: number;
+  }>(
+    `SELECT
+       c.id                                   AS cupom_local_id,
+       c.loja_nome                            AS loja_nome,
+       COALESCE(c.emitido_em, c.capturado_em) AS observado_em,
+       c.status                               AS status,
+       COUNT(i.id)                            AS total_itens,
+       COALESCE(SUM(i.valor_total), 0)        AS valor_total,
+       COALESCE(SUM(CASE WHEN i.desconto > 0 THEN i.desconto END), 0) AS economia
+     FROM cupom_local c
+     LEFT JOIN item_cupom_local i ON i.cupom_local_id = c.id
+     GROUP BY c.id
+     ORDER BY observado_em DESC
+     LIMIT ?`,
+    [limite],
+  );
+  return linhas.map((l) => ({
+    cupomLocalId: l.cupom_local_id,
+    lojaNome: l.loja_nome,
+    observadoEm: l.observado_em,
+    status: l.status as StatusCupom,
+    totalItens: l.total_itens,
+    valorTotal: l.valor_total,
+    economia: l.economia,
+  }));
+}
+
+/** Mercado onde o usuário compra, com frequência — Perfil "seus mercados" (C8.2). */
+export interface MercadoFrequente {
+  lojaNome: string;
+  visitas: number;
+  /** Última visita (emissão/captura). ISO 8601. */
+  ultimaVisitaEm: string;
+}
+
+/**
+ * Mercados mais frequentes do histórico, derivados da LOJA das notas (nunca do
+ * usuário — decisão travada). Só notas processadas, que têm loja identificada.
+ */
+export async function listarMercadosFrequentes(limite = 5): Promise<MercadoFrequente[]> {
+  const linhas = await getBd().getAllAsync<{
+    loja_nome: string;
+    visitas: number;
+    ultima_visita_em: string;
+  }>(
+    `SELECT
+       c.loja_nome                                 AS loja_nome,
+       COUNT(*)                                    AS visitas,
+       MAX(COALESCE(c.emitido_em, c.capturado_em)) AS ultima_visita_em
+     FROM cupom_local c
+     WHERE c.status = 'processado' AND c.loja_nome IS NOT NULL
+     GROUP BY c.loja_nome
+     ORDER BY visitas DESC, ultima_visita_em DESC
+     LIMIT ?`,
+    [limite],
+  );
+  return linhas.map((l) => ({
+    lojaNome: l.loja_nome,
+    visitas: l.visitas,
+    ultimaVisitaEm: l.ultima_visita_em,
+  }));
+}
+
 export async function listarItens(cupomLocalId: string): Promise<ItemCupomLocal[]> {
   const linhas = await getBd().getAllAsync<{
     id: string;
