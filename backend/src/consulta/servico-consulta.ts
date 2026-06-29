@@ -58,10 +58,15 @@ export class ServicoConsulta {
     );
     if (!resultado) return undefined;
 
+    // Anexa os dados de exibição (C11.5) quando disponíveis — a UI mostra nome
+    // amigável/categoria/foto; sem enriquecimento, ainda traz a unidade-base.
+    const produto = await this.produtos.obterResumoProduto(produtoCanonicoId);
+
     return {
       produtoCanonicoId,
       escopoResolvido: resultado.escopoResolvido,
       estatistica: resultado.estatistica,
+      ...(produto ? { produto } : {}),
     };
   }
 

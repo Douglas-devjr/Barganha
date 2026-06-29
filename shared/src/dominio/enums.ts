@@ -13,3 +13,11 @@ export type StatusCupom = (typeof STATUS_CUPOM)[number];
  */
 export const ESCOPO_GEO = ['loja', 'municipio', 'regiao', 'uf'] as const;
 export type EscopoGeo = (typeof ESCOPO_GEO)[number];
+
+/**
+ * Ciclo de moderação de um lançamento MANUAL de gôndola (C11.3 — espelha o enum
+ * `status_moderacao`). Lançamentos manuais não vêm de NFC-e verificada, então
+ * passam por curadoria antes de virar `observacao_preco` no pool anônimo.
+ */
+export const STATUS_MODERACAO = ['pendente', 'aprovado', 'rejeitado'] as const;
+export type StatusModeracao = (typeof STATUS_MODERACAO)[number];

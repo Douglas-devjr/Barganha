@@ -38,3 +38,17 @@ export class FalhaBuscaSefazError extends ErroDominio {}
  * transitória: marca o cupom como `falha` e exige correção do parser (versão).
  */
 export class FalhaParserSefazError extends ErroDominio {}
+
+/**
+ * Lançamento manual de gôndola (C11.3) recusado na entrada: unidade não
+ * normalizável ou CNPJ inválido. Erro do cliente — não entra na fila de
+ * moderação (só guardamos o que pode virar observação comparável).
+ */
+export class LancamentoInvalidoError extends ErroDominio {}
+
+/**
+ * OCR de cupom ECF antigo (C11.4) ainda não disponível. A captura é QR-first
+ * (decisão travada nº1); o OCR é plano B futuro. O contrato existe, mas nenhum
+ * motor está plugado — sinalizar 501 em vez de fingir que funciona.
+ */
+export class OcrNaoDisponivelError extends ErroDominio {}

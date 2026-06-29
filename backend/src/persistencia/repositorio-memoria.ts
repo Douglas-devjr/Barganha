@@ -12,13 +12,17 @@ import {
   type Loja,
   type ObservacaoAnonima,
   type PrecoEstatistica,
+  type ProdutoResumo,
   type StatusCupom,
+  type StatusModeracao,
+  type UnidadeBase,
 } from '@barganha/shared';
 
 import type { ItemCupomNovo } from '../anonimizacao/anonimizador';
 import type { CatalogoProdutos, SugestaoProduto } from '../anonimizacao/casamento';
 import type { RepositorioUsuario } from '../auth/tipos';
 import type { FonteProdutoConsulta } from '../consulta/tipos';
+import type { EnriquecimentoProduto, RepositorioCuradoria } from '../curadoria/tipos';
 import {
   type CandidatoCanonico,
   type FonteCandidatosTexto,
@@ -30,6 +34,12 @@ import type {
   ObservacaoParaAgregacao,
   RepositorioEstatistica,
 } from '../estatistica/tipos';
+import type {
+  LancamentoModeracaoNovo,
+  LancamentoModeracaoRegistro,
+  LojaModeracao,
+  RepositorioModeracao,
+} from '../moderacao/tipos';
 import type { FiltroDeltaSync, FonteDeltaSync } from '../sync/tipos';
 import type {
   CupomComItens,
@@ -56,7 +66,21 @@ interface ProdutoCanonicoInterno {
   id: string;
   ean: string;
   descricaoNormalizada: string;
-  unidadeBase: string;
+  unidadeBase: UnidadeBase;
+  // Enriquecimento de curadoria (C11.5) — só exibição, não afeta o casamento.
+  nomeExibicao?: string;
+  marca?: string;
+  categoria?: string;
+  imagemUrl?: string;
+}
+
+/** Lançamento manual armazenado (PRIVADO — tem o autor). C11.3. */
+interface LancamentoModeracaoInterno extends LancamentoModeracaoNovo {
+  id: string;
+  status: StatusModeracao;
+  motivo?: string;
+  criadoEm: string;
+  decididoEm?: string;
 }
 
 export class RepositorioMemoria
@@ -68,12 +92,16 @@ export class RepositorioMemoria
     FonteObservacoes,
     RepositorioEstatistica,
     FonteDeltaSync,
-    FonteCandidatosTexto
+    FonteCandidatosTexto,
+    RepositorioModeracao,
+    RepositorioCuradoria
 {
   // Lado PRIVADO.
   private readonly usuarios = new Set<string>();
   private readonly cupons = new Map<string, CupomInterno>();
   private readonly itensCupom: ItemCupomArmazenado[] = [];
+  // Moderação de lançamento manual (PRIVADO — tem usuario_id). C11.3.
+  private readonly lancamentos = new Map<string, LancamentoModeracaoInterno>();
   // Lado COMPARTILHADO (anônimo).
   private readonly lojas = new Map<string, Loja>();
   private readonly produtosPorEan = new Map<string, ProdutoCanonicoInterno>();
@@ -232,6 +260,19 @@ export class RepositorioMemoria
     return Promise.resolve(this.produtosPorEan.get(ean)?.id);
   }
 
+  obterResumoProduto(produtoCanonicoId: string): Promise<ProdutoResumo | undefined> {
+    const p = this.acharProdutoPorId(produtoCanonicoId);
+    if (!p) return Promise.resolve(undefined);
+    return Promise.resolve({
+      produtoCanonicoId: p.id,
+      ...(p.nomeExibicao ? { nomeExibicao: p.nomeExibicao } : {}),
+      ...(p.marca ? { marca: p.marca } : {}),
+      ...(p.categoria ? { categoria: p.categoria } : {}),
+      ...(p.imagemUrl ? { imagemUrl: p.imagemUrl } : {}),
+      unidadeBase: p.unidadeBase,
+    });
+  }
+
   // Pré-filtro pelo token mais longo do nome (espelha o ilike do Supabase); o
   // serviço ranqueia por similaridade entre os candidatos resultantes.
   candidatosPorNome(nome: string): Promise<CandidatoCanonico[]> {
@@ -327,6 +368,105 @@ export class RepositorioMemoria
         descricaoNormalizada: p.descricaoNormalizada,
       }));
     return Promise.resolve(r);
+  }
+
+  // ───────────────────────── RepositorioModeracao (C11.3) ─────────────
+
+  criar(dados: LancamentoModeracaoNovo): Promise<string> {
+    const id = randomUUID();
+    this.lancamentos.set(id, {
+      ...dados,
+      id,
+      status: 'pendente',
+      criadoEm: new Date().toISOString(),
+    });
+    return Promise.resolve(id);
+  }
+
+  listarPendentes(limite?: number): Promise<LancamentoModeracaoRegistro[]> {
+    const pendentes = [...this.lancamentos.values()]
+      .filter((l) => l.status === 'pendente')
+      .sort((a, b) => a.criadoEm.localeCompare(b.criadoEm))
+      .map((l) => this.lancamentoParaRegistro(l));
+    return Promise.resolve(limite ? pendentes.slice(0, limite) : pendentes);
+  }
+
+  obter(id: string): Promise<LancamentoModeracaoRegistro | undefined> {
+    const l = this.lancamentos.get(id);
+    return Promise.resolve(l ? this.lancamentoParaRegistro(l) : undefined);
+  }
+
+  rejeitar(id: string, motivo?: string): Promise<void> {
+    const l = this.lancamentos.get(id);
+    if (l && l.status === 'pendente') {
+      l.status = 'rejeitado';
+      l.motivo = motivo;
+      l.decididoEm = new Date().toISOString();
+    }
+    return Promise.resolve();
+  }
+
+  aprovar(id: string, loja: LojaModeracao, observacao: ObservacaoAnonima): Promise<void> {
+    const l = this.lancamentos.get(id);
+    // Trava de transição: só publica o que estava pendente (idempotência).
+    if (!l || l.status !== 'pendente') return Promise.resolve();
+    l.status = 'aprovado';
+    l.decididoEm = new Date().toISOString();
+
+    // Upsert mínimo da loja (não sobrescreve dados ricos vindos de cupom).
+    const existente = this.lojas.get(loja.cnpj);
+    this.lojas.set(loja.cnpj, {
+      cnpj: loja.cnpj,
+      ...existente,
+      municipio: existente?.municipio ?? loja.municipio,
+      uf: existente?.uf ?? loja.uf,
+    });
+
+    // Pool anônimo — guard espelha a trava da escrita real (C9.2).
+    this.poolEntradas.push({
+      obs: garantirSemDadoPessoal(observacao),
+      criadoEm: new Date().toISOString(),
+    });
+    return Promise.resolve();
+  }
+
+  // ───────────────────────── RepositorioCuradoria (C11.5) ─────────────
+
+  enriquecerProduto(dados: EnriquecimentoProduto): Promise<string | undefined> {
+    const alvo = dados.produtoCanonicoId
+      ? this.acharProdutoPorId(dados.produtoCanonicoId)
+      : dados.ean
+        ? this.produtosPorEan.get(dados.ean)
+        : undefined;
+    if (!alvo) return Promise.resolve(undefined);
+    if (dados.nomeExibicao != null) alvo.nomeExibicao = dados.nomeExibicao;
+    if (dados.marca != null) alvo.marca = dados.marca;
+    if (dados.categoria != null) alvo.categoria = dados.categoria;
+    if (dados.imagemUrl != null) alvo.imagemUrl = dados.imagemUrl;
+    return Promise.resolve(alvo.id);
+  }
+
+  private acharProdutoPorId(id: string): ProdutoCanonicoInterno | undefined {
+    for (const p of this.produtosPorEan.values()) {
+      if (p.id === id) return p;
+    }
+    return undefined;
+  }
+
+  private lancamentoParaRegistro(l: LancamentoModeracaoInterno): LancamentoModeracaoRegistro {
+    return {
+      id: l.id,
+      ean: l.ean,
+      descricao: l.descricao,
+      unidade: l.unidade,
+      valorUnitario: l.valorUnitario,
+      lojaCnpj: l.lojaCnpj,
+      ...(l.municipio ? { municipio: l.municipio } : {}),
+      ...(l.uf ? { uf: l.uf } : {}),
+      emPromocao: l.emPromocao,
+      status: l.status,
+      criadoEm: l.criadoEm,
+    };
   }
 
   // ───────────────────────── Inspeção (testes) ────────────────────────

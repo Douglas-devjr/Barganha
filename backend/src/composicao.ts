@@ -6,13 +6,16 @@
 
 import { Anonimizador } from './anonimizacao/anonimizador';
 import { Autenticador } from './auth/autenticador';
+import { GuardaCuradoria } from './auth/curadoria';
 import { ServicoConta } from './auth/servico-conta';
 import type { ConfigBackend } from './config/env';
 import { ServicoConsulta } from './consulta/servico-consulta';
+import { ServicoCuradoria } from './curadoria/servico-curadoria';
 import { MatcherTexto } from './estatistica/casamento-texto';
 import { PipelineEstatistica } from './estatistica/pipeline';
 import { FilaMemoria } from './fila/fila-memoria';
 import { ServicoIngestao } from './ingestao/servico-ingestao';
+import { ServicoModeracao } from './moderacao/servico-moderacao';
 import { TelemetriaMemoria } from './observabilidade/telemetria-memoria';
 import { ParserMg } from './parsers/mg';
 import { RegistroParsers } from './parsers/registro';
@@ -46,6 +49,12 @@ export interface Backend {
   rollout: ControleRollout;
   /** Telemetria de parsing por estado — fonte do endpoint `/metricas` (C10.2). */
   telemetria: TelemetriaMemoria;
+  /** Lançamento manual de gôndola + moderação (C11.3). */
+  servicoModeracao: ServicoModeracao;
+  /** Enriquecimento de produto pela curadoria (C11.5). */
+  servicoCuradoria: ServicoCuradoria;
+  /** Autorização dos endpoints de curadoria (C11) — token estático do ambiente. */
+  guardaCuradoria: GuardaCuradoria;
 }
 
 export function montarBackend(config: ConfigBackend): Backend {
@@ -87,6 +96,13 @@ export function montarBackend(config: ConfigBackend): Backend {
   const servicoConta = new ServicoConta(repo);
   const autenticacao = new Autenticador(repo);
 
+  // C11 — expansão (pós-lançamento): lançamento manual de gôndola + moderação
+  // (publica no pool pelo MESMO gate do cupom) e enriquecimento de produto. Os
+  // endpoints são privilegiados; o gate de autorização usa tokens do ambiente.
+  const servicoModeracao = new ServicoModeracao(repo, repo);
+  const servicoCuradoria = new ServicoCuradoria(repo);
+  const guardaCuradoria = new GuardaCuradoria(config.curadoriaTokens);
+
   return {
     servicoIngestao,
     reprocessador,
@@ -99,5 +115,8 @@ export function montarBackend(config: ConfigBackend): Backend {
     autenticacao,
     rollout,
     telemetria,
+    servicoModeracao,
+    servicoCuradoria,
+    guardaCuradoria,
   };
 }

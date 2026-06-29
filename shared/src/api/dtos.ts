@@ -4,8 +4,9 @@
  * fica a forma estável que ambos os lados consomem.
  */
 
+import type { UnidadeBase } from '../core';
 import type { PrecoEstatistica } from '../dominio/entidades';
-import type { EscopoGeo, StatusCupom } from '../dominio/enums';
+import type { EscopoGeo, StatusCupom, StatusModeracao } from '../dominio/enums';
 
 // ─────────────────────────── Ingestão (C2.1) ───────────────────────────
 
@@ -81,12 +82,103 @@ export interface ConsultaPrecoRequest {
   uf?: string;
 }
 
+/**
+ * Resumo de exibição do produto (enriquecimento de curadoria, C11.5). Campos
+ * humanos para a UI da gôndola; ausentes quando o produto ainda não foi
+ * enriquecido (cai-se na `descricaoNormalizada` técnica).
+ */
+export interface ProdutoResumo {
+  produtoCanonicoId: string;
+  nomeExibicao?: string;
+  marca?: string;
+  categoria?: string;
+  imagemUrl?: string;
+  unidadeBase: UnidadeBase;
+}
+
 /** Estatística resolvida + o nível de escopo de fato usado no fallback. */
 export interface ConsultaPrecoResponse {
   produtoCanonicoId: string;
   /** Escopo efetivamente atendido (loja→município→região→UF). */
   escopoResolvido: EscopoGeo;
   estatistica: PrecoEstatistica;
+  /** Dados de exibição do produto, quando enriquecido (C11.5). */
+  produto?: ProdutoResumo;
+}
+
+// ─────────────────── Enriquecimento de produto — curadoria (C11.5) ───────────
+
+/**
+ * Aplica enriquecimento humano a um produto canônico (nome/marca/categoria/foto).
+ * Alvo por `produtoCanonicoId` OU `ean`. Não altera `descricaoNormalizada` nem o
+ * casamento — só o que a UI mostra. Endpoint privilegiado (curadoria).
+ */
+export interface EnriquecimentoProdutoRequest {
+  produtoCanonicoId?: string;
+  ean?: string;
+  nomeExibicao?: string;
+  marca?: string;
+  categoria?: string;
+  imagemUrl?: string;
+}
+
+export interface EnriquecimentoProdutoResponse {
+  produtoCanonicoId: string;
+}
+
+// ──────────────────── Lançamento manual de gôndola (C11.3) ───────────────────
+
+/**
+ * Lançamento MANUAL de preço (sem cupom): o usuário viu o preço na prateleira e
+ * o informa. Exige conta (Bearer) — o `usuarioId` fica só no registro PRIVADO de
+ * moderação (controle de abuso), NUNCA no pool. A geo é pela LOJA (CNPJ), nunca
+ * pelo usuário (docs/04). v1 exige `ean` (o produto da prateleira escaneado).
+ */
+export interface LancamentoManualRequest {
+  ean: string;
+  descricao: string;
+  /** Unidade de venda na prateleira (UN, KG, L…). Normalizada como num cupom. */
+  unidade: string;
+  /** Preço unitário visto na prateleira (R$). */
+  valorUnitario: number;
+  /** Loja onde o preço foi visto — chave da geo. */
+  lojaCnpj: string;
+  municipio?: string;
+  uf?: string;
+  /** Marca se o preço é promocional (entra como `emPromocao`, à parte do típico). */
+  emPromocao?: boolean;
+}
+
+export interface LancamentoManualResponse {
+  lancamentoId: string;
+  status: StatusModeracao;
+}
+
+/** Item da fila de moderação, visto pela curadoria (C11.3). */
+export interface LancamentoModeracaoResponse {
+  id: string;
+  ean: string;
+  descricao: string;
+  unidade: string;
+  valorUnitario: number;
+  lojaCnpj: string;
+  municipio?: string;
+  uf?: string;
+  emPromocao: boolean;
+  status: StatusModeracao;
+  criadoEm: string;
+}
+
+/** Decisão da curadoria sobre um lançamento (aprovar publica no pool via gate). */
+export interface DecisaoModeracaoRequest {
+  decisao: 'aprovar' | 'rejeitar';
+  /** Motivo (obrigatório ao rejeitar; ajuda auditoria). */
+  motivo?: string;
+}
+
+export interface DecisaoModeracaoResponse {
+  id: string;
+  status: StatusModeracao;
 }
 
 // ───────────────────────────── Delta sync (C4.2) ───────────────────────

@@ -12,12 +12,18 @@
  * (supabase/migrations) — evita duplicar no pool numa falha parcial do retry.
  */
 
-import { garantirSemDadoPessoal, type PrecoEstatistica } from '@barganha/shared';
+import {
+  garantirSemDadoPessoal,
+  type ObservacaoAnonima,
+  type PrecoEstatistica,
+  type ProdutoResumo,
+} from '@barganha/shared';
 import type { PostgrestError, SupabaseClient } from '@supabase/supabase-js';
 
 import type { CatalogoProdutos, SugestaoProduto } from '../anonimizacao/casamento';
 import type { RepositorioUsuario } from '../auth/tipos';
 import type { FonteProdutoConsulta } from '../consulta/tipos';
+import type { EnriquecimentoProduto, RepositorioCuradoria } from '../curadoria/tipos';
 import {
   type CandidatoCanonico,
   type FonteCandidatosTexto,
@@ -30,6 +36,12 @@ import type {
   ObservacaoParaAgregacao,
   RepositorioEstatistica,
 } from '../estatistica/tipos';
+import type {
+  LancamentoModeracaoNovo,
+  LancamentoModeracaoRegistro,
+  LojaModeracao,
+  RepositorioModeracao,
+} from '../moderacao/tipos';
 import type { FiltroDeltaSync, FonteDeltaSync } from '../sync/tipos';
 import type {
   CupomComItens,
@@ -58,7 +70,9 @@ export class RepositorioSupabase
     FonteObservacoes,
     RepositorioEstatistica,
     FonteDeltaSync,
-    FonteCandidatosTexto
+    FonteCandidatosTexto,
+    RepositorioModeracao,
+    RepositorioCuradoria
 {
   constructor(private readonly db: SupabaseClient) {}
 
@@ -290,6 +304,24 @@ export class RepositorioSupabase
     return r.data?.id;
   }
 
+  async obterResumoProduto(produtoCanonicoId: string): Promise<ProdutoResumo | undefined> {
+    const r = await this.db
+      .from('produto_canonico')
+      .select('id, nome_exibicao, marca, categoria, imagem_url, unidade_base')
+      .eq('id', produtoCanonicoId)
+      .maybeSingle();
+    if (r.error) falhar('carga do resumo de produto', r.error);
+    if (!r.data) return undefined;
+    return {
+      produtoCanonicoId: r.data.id,
+      ...(r.data.nome_exibicao ? { nomeExibicao: r.data.nome_exibicao } : {}),
+      ...(r.data.marca ? { marca: r.data.marca } : {}),
+      ...(r.data.categoria ? { categoria: r.data.categoria } : {}),
+      ...(r.data.imagem_url ? { imagemUrl: r.data.imagem_url } : {}),
+      unidadeBase: r.data.unidade_base,
+    };
+  }
+
   async candidatosPorNome(nome: string): Promise<CandidatoCanonico[]> {
     // Pré-filtro barato: o token mais longo do nome (já normalizado) via ilike,
     // reduzindo o conjunto a pontuar no serviço. Busca de texto plena fica p/ C9.3.
@@ -435,5 +467,135 @@ export class RepositorioSupabase
       produtoCanonicoId: p.id,
       descricaoNormalizada: p.descricao_normalizada,
     }));
+  }
+
+  // ───────────────────────── RepositorioModeracao (C11.3) ─────────────
+
+  async criar(dados: LancamentoModeracaoNovo): Promise<string> {
+    const r = await this.db
+      .from('lancamento_manual_moderacao')
+      .insert({
+        usuario_id: dados.usuarioId,
+        ean: dados.ean,
+        descricao: dados.descricao,
+        unidade: dados.unidade,
+        valor_unitario: dados.valorUnitario,
+        loja_cnpj: dados.lojaCnpj,
+        municipio: dados.municipio ?? null,
+        uf: dados.uf ?? null,
+        em_promocao: dados.emPromocao,
+      })
+      .select('id')
+      .single();
+    if (r.error) falhar('registro de lançamento manual', r.error);
+    return r.data.id;
+  }
+
+  async listarPendentes(limite?: number): Promise<LancamentoModeracaoRegistro[]> {
+    let consulta = this.db
+      .from('lancamento_manual_moderacao')
+      .select(
+        'id, ean, descricao, unidade, valor_unitario, loja_cnpj, municipio, uf, em_promocao, status, criado_em',
+      )
+      .eq('status', 'pendente')
+      .order('criado_em', { ascending: true });
+    if (limite !== undefined) consulta = consulta.limit(limite);
+    const r = await consulta;
+    if (r.error) falhar('listagem da fila de moderação', r.error);
+    return (r.data ?? []).map((l) => this.lancamentoParaRegistro(l));
+  }
+
+  async obter(id: string): Promise<LancamentoModeracaoRegistro | undefined> {
+    const r = await this.db
+      .from('lancamento_manual_moderacao')
+      .select(
+        'id, ean, descricao, unidade, valor_unitario, loja_cnpj, municipio, uf, em_promocao, status, criado_em',
+      )
+      .eq('id', id)
+      .maybeSingle();
+    if (r.error) falhar('carga de lançamento manual', r.error);
+    return r.data ? this.lancamentoParaRegistro(r.data) : undefined;
+  }
+
+  async rejeitar(id: string, motivo?: string): Promise<void> {
+    const r = await this.db
+      .from('lancamento_manual_moderacao')
+      .update({
+        status: 'rejeitado',
+        motivo: motivo ?? null,
+        decidido_em: new Date().toISOString(),
+      })
+      .eq('id', id)
+      .eq('status', 'pendente');
+    if (r.error) falhar('rejeição de lançamento manual', r.error);
+  }
+
+  async aprovar(id: string, loja: LojaModeracao, observacao: ObservacaoAnonima): Promise<void> {
+    // C9.2 — última trava antes do pool: aborta se algum campo proibido escapou.
+    const obs = garantirSemDadoPessoal(observacao);
+    // Transição + loja + pool numa transação única (idempotente na função SQL).
+    const r = await this.db.rpc('aprovar_lancamento_manual', {
+      p_id: id,
+      p_loja: { cnpj: loja.cnpj, municipio: loja.municipio ?? null, uf: loja.uf ?? null },
+      p_observacao: {
+        produto_canonico_id: obs.produtoCanonicoId,
+        loja_cnpj: obs.lojaCnpj,
+        municipio: obs.municipio ?? null,
+        uf: obs.uf ?? null,
+        preco_normalizado: obs.precoNormalizado,
+        unidade_base: obs.unidadeBase,
+        em_promocao: obs.emPromocao,
+        observado_em: obs.observadoEm,
+      },
+    });
+    if (r.error) falhar('aprovação transacional de lançamento manual', r.error);
+  }
+
+  private lancamentoParaRegistro(l: {
+    id: string;
+    ean: string;
+    descricao: string;
+    unidade: string;
+    valor_unitario: unknown;
+    loja_cnpj: string;
+    municipio: string | null;
+    uf: string | null;
+    em_promocao: boolean;
+    status: LancamentoModeracaoRegistro['status'];
+    criado_em: string;
+  }): LancamentoModeracaoRegistro {
+    return {
+      id: l.id,
+      ean: l.ean,
+      descricao: l.descricao,
+      unidade: l.unidade,
+      valorUnitario: Number(l.valor_unitario),
+      lojaCnpj: l.loja_cnpj,
+      ...(l.municipio ? { municipio: l.municipio } : {}),
+      ...(l.uf ? { uf: l.uf } : {}),
+      emPromocao: l.em_promocao,
+      status: l.status,
+      criadoEm: l.criado_em,
+    };
+  }
+
+  // ───────────────────────── RepositorioCuradoria (C11.5) ─────────────
+
+  async enriquecerProduto(dados: EnriquecimentoProduto): Promise<string | undefined> {
+    // Só os campos de EXIBIÇÃO — nunca descricao_normalizada/ean (base do casamento).
+    const patch: Record<string, string> = {};
+    if (dados.nomeExibicao != null) patch.nome_exibicao = dados.nomeExibicao;
+    if (dados.marca != null) patch.marca = dados.marca;
+    if (dados.categoria != null) patch.categoria = dados.categoria;
+    if (dados.imagemUrl != null) patch.imagem_url = dados.imagemUrl;
+    patch.atualizado_em = new Date().toISOString();
+
+    let consulta = this.db.from('produto_canonico').update(patch);
+    consulta = dados.produtoCanonicoId
+      ? consulta.eq('id', dados.produtoCanonicoId)
+      : consulta.eq('ean', dados.ean as string);
+    const r = await consulta.select('id').maybeSingle();
+    if (r.error) falhar('enriquecimento de produto', r.error);
+    return r.data?.id;
   }
 }

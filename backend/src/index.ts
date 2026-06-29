@@ -10,8 +10,18 @@ import { construirServidor } from './http/servidor';
 
 export async function main(): Promise<void> {
   const config = lerConfig();
-  const { servicoIngestao, servicoConsulta, servicoSync, servicoConta, autenticacao, telemetria } =
-    montarBackend(config);
+  const {
+    servicoIngestao,
+    servicoConsulta,
+    servicoSync,
+    servicoConta,
+    autenticacao,
+    telemetria,
+    servicoModeracao,
+    servicoCuradoria,
+    guardaCuradoria,
+    reprocessador,
+  } = montarBackend(config);
   const app = construirServidor({
     servicoIngestao,
     servicoConsulta,
@@ -19,6 +29,11 @@ export async function main(): Promise<void> {
     servicoConta,
     autenticacao,
     metricas: telemetria,
+    // C11 — expansão: lançamento manual + moderação + enriquecimento + reprocesso.
+    servicoModeracao,
+    servicoCuradoria,
+    autorizacaoCuradoria: guardaCuradoria,
+    reprocessador,
     trustProxy: config.trustProxy,
     logger: true,
   });

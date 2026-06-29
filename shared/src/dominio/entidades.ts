@@ -62,11 +62,17 @@ export interface Loja {
   long?: number;
 }
 
-/** Produto de referência para comparação. */
+/**
+ * Produto de referência para comparação. `descricaoNormalizada` é técnica (sem
+ * acento, maiúsculas — base do casamento); `nomeExibicao`/`marca`/`categoria`/
+ * `imagemUrl` são ENRIQUECIMENTO de curadoria (C11.5) para a UI mostrar um nome
+ * amigável, a categoria e a foto, sem alterar o casamento.
+ */
 export interface ProdutoCanonico {
   id: string;
   ean?: string;
   descricaoNormalizada?: string;
+  nomeExibicao?: string;
   marca?: string;
   categoria?: string;
   unidadeBase: UnidadeBase;

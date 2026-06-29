@@ -8,6 +8,8 @@
  * Opera só sobre o lado COMPARTILHADO (produto_canonico + preco_estatistica).
  */
 
+import type { ProdutoResumo } from '@barganha/shared';
+
 import type { CandidatoCanonico } from '../estatistica/casamento-texto';
 
 export interface FonteProdutoConsulta {
@@ -18,4 +20,10 @@ export interface FonteProdutoConsulta {
    * escolhe o melhor; o repositório só pré-filtra (reduz o conjunto a pontuar).
    */
   candidatosPorNome(nome: string): Promise<CandidatoCanonico[]>;
+  /**
+   * Dados de exibição do produto (C11.5) — nome amigável/marca/categoria/foto +
+   * `unidadeBase`. Sempre traz a `unidadeBase`; os campos de curadoria vêm só se
+   * o produto foi enriquecido. `undefined` se o produto não existe.
+   */
+  obterResumoProduto(produtoCanonicoId: string): Promise<ProdutoResumo | undefined>;
 }

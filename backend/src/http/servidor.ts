@@ -14,15 +14,30 @@
  * memória (sem Supabase nem rede).
  */
 
-import type { ConsultaPrecoRequest, DeltaSyncRequest, IngestaoQrRequest } from '@barganha/shared';
+import type {
+  ConsultaPrecoRequest,
+  DecisaoModeracaoRequest,
+  DeltaSyncRequest,
+  EnriquecimentoProdutoRequest,
+  IngestaoQrRequest,
+  LancamentoManualRequest,
+} from '@barganha/shared';
 import Fastify, { type FastifyError, type FastifyInstance } from 'fastify';
 
 import type { Autenticacao } from '../auth/autenticador';
+import type { AutorizacaoCuradoria } from '../auth/curadoria';
 import type { ServicoConta } from '../auth/servico-conta';
 import type { ServicoConsulta } from '../consulta/servico-consulta';
-import { ChaveAcessoInvalidaError, PayloadQrInvalidoError } from '../erros';
+import type { ServicoCuradoria } from '../curadoria/servico-curadoria';
+import {
+  ChaveAcessoInvalidaError,
+  LancamentoInvalidoError,
+  PayloadQrInvalidoError,
+} from '../erros';
 import type { ServicoIngestao } from '../ingestao/servico-ingestao';
+import type { ServicoModeracao } from '../moderacao/servico-moderacao';
 import type { FonteMetricas } from '../observabilidade/telemetria';
+import type { ReprocessadorRetroativo } from '../processamento/reprocessamento';
 import type { ServicoSync } from '../sync/servico-sync';
 import { chavePorConta, guardaDeTaxa, LimitadorJanelaFixa, type OpcoesLimite } from './rate-limit';
 
@@ -52,6 +67,14 @@ export interface DependenciasHttp {
   servicoConta: ServicoConta;
   /** Autenticação mínima (C4.3) — valida a conta nos endpoints privados. */
   autenticacao: Autenticacao;
+  /** Lançamento manual de gôndola + moderação (C11.3). Omitido → rotas não sobem. */
+  servicoModeracao?: ServicoModeracao;
+  /** Enriquecimento de produto pela curadoria (C11.5). Omitido → rota não sobe. */
+  servicoCuradoria?: ServicoCuradoria;
+  /** Reprocessamento retroativo por UF (C11.1/C2.5) — gatilho operacional. */
+  reprocessador?: ReprocessadorRetroativo;
+  /** Autorização dos endpoints de CURADORIA (C11). Sem ela, as rotas não sobem. */
+  autorizacaoCuradoria?: AutorizacaoCuradoria;
   /** Fonte de métricas de parsing por estado (C10.2) — exposta em `GET /metricas`. */
   metricas?: FonteMetricas;
   /** Tetos de taxa (C9.3.2). Omitido → `LIMITES_PADRAO`. */
@@ -101,6 +124,68 @@ const SCHEMA_SYNC = {
       cursor: { type: 'string', minLength: 1 },
       municipios: { type: 'array', items: { type: 'string', minLength: 1 } },
       produtoCanonicoIds: { type: 'array', items: { type: 'string', minLength: 1 } },
+    },
+  },
+} as const;
+
+// Lançamento manual de gôndola (C11.3) — preço de prateleira informado à mão.
+const SCHEMA_LANCAMENTO = {
+  body: {
+    type: 'object',
+    required: ['ean', 'descricao', 'unidade', 'valorUnitario', 'lojaCnpj'],
+    additionalProperties: false,
+    properties: {
+      ean: { type: 'string', minLength: 1 },
+      descricao: { type: 'string', minLength: 1 },
+      unidade: { type: 'string', minLength: 1 },
+      valorUnitario: { type: 'number', exclusiveMinimum: 0 },
+      lojaCnpj: { type: 'string', minLength: 1 },
+      municipio: { type: 'string', minLength: 1 },
+      uf: { type: 'string', minLength: 2, maxLength: 2 },
+      emPromocao: { type: 'boolean' },
+    },
+  },
+} as const;
+
+// Decisão de curadoria sobre um lançamento (C11.3).
+const SCHEMA_DECISAO = {
+  body: {
+    type: 'object',
+    required: ['decisao'],
+    additionalProperties: false,
+    properties: {
+      decisao: { type: 'string', enum: ['aprovar', 'rejeitar'] },
+      motivo: { type: 'string', minLength: 1 },
+    },
+  },
+} as const;
+
+// Enriquecimento de produto pela curadoria (C11.5).
+const SCHEMA_ENRIQUECIMENTO = {
+  body: {
+    type: 'object',
+    additionalProperties: false,
+    // Pelo menos um alvo do produto (id direto ou EAN).
+    anyOf: [{ required: ['produtoCanonicoId'] }, { required: ['ean'] }],
+    properties: {
+      produtoCanonicoId: { type: 'string', minLength: 1 },
+      ean: { type: 'string', minLength: 1 },
+      nomeExibicao: { type: 'string', minLength: 1 },
+      marca: { type: 'string', minLength: 1 },
+      categoria: { type: 'string', minLength: 1 },
+      imagemUrl: { type: 'string', minLength: 1 },
+    },
+  },
+} as const;
+
+// Gatilho de reprocessamento retroativo por UF (C11.1/C2.5).
+const SCHEMA_REPROCESSAR = {
+  body: {
+    type: 'object',
+    additionalProperties: false,
+    properties: {
+      uf: { type: 'string', minLength: 2, maxLength: 2 },
+      limite: { type: 'integer', minimum: 1 },
     },
   },
 } as const;
@@ -182,11 +267,99 @@ export function construirServidor(deps: DependenciasHttp): FastifyInstance {
     },
   );
 
+  // ── Lançamento manual de gôndola (C11.3) — PRIVADO (exige conta) ────
+  // A geo é pela LOJA (CNPJ); o usuarioId fica só no registro de moderação
+  // (anti-abuso), nunca no pool (docs/04). Reaproveita o teto por conta da
+  // ingestão (anti-spam de fila).
+  const { servicoModeracao, servicoCuradoria, autorizacaoCuradoria, reprocessador } = deps;
+  if (servicoModeracao) {
+    app.post<{ Body: LancamentoManualRequest }>(
+      '/lancamento-manual',
+      { schema: SCHEMA_LANCAMENTO, onRequest: guardaIngestao },
+      async (req, reply) => {
+        const usuarioId = await deps.autenticacao.resolver(req.headers);
+        if (!usuarioId) {
+          return reply.code(401).send({ erro: 'Usuário não identificado.' });
+        }
+        const resposta = await servicoModeracao.lancar(usuarioId, req.body);
+        return reply.code(202).send(resposta);
+      },
+    );
+  }
+
+  // ── Curadoria (C11) — endpoints privilegiados (token estático, C4.3 espírito).
+  // Negam fechado: sem `autorizacaoCuradoria` configurada, as rotas nem sobem.
+  const exigeCuradoria = (req: { headers: Record<string, unknown> }): boolean =>
+    autorizacaoCuradoria!.autorizado(req.headers as never);
+
+  if (servicoModeracao && autorizacaoCuradoria) {
+    // Fila de moderação (C11.3) — pendentes, mais antigos primeiro.
+    app.get('/moderacao/fila', async (req, reply) => {
+      if (!exigeCuradoria(req))
+        return reply.code(403).send({ erro: 'Acesso restrito à curadoria.' });
+      return reply.send({ lancamentos: await servicoModeracao.listarFila() });
+    });
+
+    // Decisão da curadoria (C11.3) — aprovar publica no pool via gate; rejeitar não.
+    app.post<{ Params: { id: string }; Body: DecisaoModeracaoRequest }>(
+      '/moderacao/:id/decisao',
+      { schema: SCHEMA_DECISAO },
+      async (req, reply) => {
+        if (!exigeCuradoria(req)) {
+          return reply.code(403).send({ erro: 'Acesso restrito à curadoria.' });
+        }
+        const resposta = await servicoModeracao.decidir(req.params.id, req.body);
+        if (!resposta) return reply.code(404).send({ erro: 'Lançamento não encontrado.' });
+        return reply.send(resposta);
+      },
+    );
+  }
+
+  if (servicoCuradoria && autorizacaoCuradoria) {
+    // Enriquecimento de produto (C11.5) — só campos de exibição.
+    app.post<{ Body: EnriquecimentoProdutoRequest }>(
+      '/curadoria/produto',
+      { schema: SCHEMA_ENRIQUECIMENTO },
+      async (req, reply) => {
+        if (!exigeCuradoria(req)) {
+          return reply.code(403).send({ erro: 'Acesso restrito à curadoria.' });
+        }
+        const resposta = await servicoCuradoria.enriquecer(req.body);
+        if (!resposta) return reply.code(404).send({ erro: 'Produto não encontrado.' });
+        return reply.send(resposta);
+      },
+    );
+  }
+
+  if (reprocessador && autorizacaoCuradoria) {
+    // Reprocessamento retroativo (C11.1/C2.5) — re-enfileira QRs represados de
+    // uma UF (parser novo entrou) ou de todas as suportadas (sem `uf`).
+    app.post<{ Body: { uf?: string; limite?: number } }>(
+      '/curadoria/reprocessar',
+      { schema: SCHEMA_REPROCESSAR },
+      async (req, reply) => {
+        if (!exigeCuradoria(req)) {
+          return reply.code(403).send({ erro: 'Acesso restrito à curadoria.' });
+        }
+        const { uf, limite } = req.body;
+        const opcoes = limite !== undefined ? { limite } : {};
+        const reenfileirados = uf
+          ? await reprocessador.reprocessarUf(uf, opcoes)
+          : await reprocessador.reprocessarSuportadas(opcoes);
+        return reply.send({ reenfileirados });
+      },
+    );
+  }
+
   app.setErrorHandler((erro: FastifyError, req, reply) => {
     if (erro.validation) {
       return reply.code(400).send({ erro: 'Requisição inválida.', detalhes: erro.validation });
     }
-    if (erro instanceof PayloadQrInvalidoError || erro instanceof ChaveAcessoInvalidaError) {
+    if (
+      erro instanceof PayloadQrInvalidoError ||
+      erro instanceof ChaveAcessoInvalidaError ||
+      erro instanceof LancamentoInvalidoError
+    ) {
       return reply.code(400).send({ erro: erro.message });
     }
     req.log.error(erro);
