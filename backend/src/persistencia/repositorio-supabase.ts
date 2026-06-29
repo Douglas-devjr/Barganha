@@ -7,13 +7,12 @@
  * gate produz). Erros do banco são LANÇADOS — o processador os trata como
  * transitórios e a fila dá retry (C2.1).
  *
- * NOTA (atomicidade): `marcarProcessado` faz escritas sequenciais. Para
- * produção, mover para uma função SQL (RPC) que rode tudo numa transação —
- * registrado em C9.3.1. O reprocessamento (C2.5) só alveja cupons
- * não-`processado`, então não há dupla contagem no pool.
+ * Atomicidade (C9.3.1): `marcarProcessado` roda as 4 escritas (loja, itens,
+ * pool, status) numa transação única via a função SQL `processar_cupom`
+ * (supabase/migrations) — evita duplicar no pool numa falha parcial do retry.
  */
 
-import type { ObservacaoAnonima, PrecoEstatistica } from '@barganha/shared';
+import { garantirSemDadoPessoal, type PrecoEstatistica } from '@barganha/shared';
 import type { PostgrestError, SupabaseClient } from '@supabase/supabase-js';
 
 import type { CatalogoProdutos, SugestaoProduto } from '../anonimizacao/casamento';
@@ -196,57 +195,46 @@ export class RepositorioSupabase
   }
 
   async marcarProcessado(cupomId: string, dados: DadosNotaProcessada): Promise<void> {
-    // 1) Loja (compartilhado) — upsert pela PK cnpj.
-    const loja = await this.db.from('loja').upsert(
-      {
+    // C9.2 — última trava antes do pool: aborta se algum campo proibido escapou
+    // ao tipo (a escrita via RPC fala JSON, onde a marca do gate se perde).
+    const observacoes = dados.observacoes.map((o) => garantirSemDadoPessoal(o));
+
+    // C9.3.1 — TUDO numa transação única (loja + itens privados + pool + status).
+    // A ordem/atomicidade vive na função SQL `processar_cupom`.
+    const r = await this.db.rpc('processar_cupom', {
+      p_cupom_id: cupomId,
+      p_loja: {
         cnpj: dados.loja.cnpj,
-        razao_social: dados.loja.razaoSocial,
+        razao_social: dados.loja.razaoSocial ?? null,
         nome_fantasia: dados.loja.nomeFantasia ?? null,
-        endereco: dados.loja.endereco,
-        municipio: dados.loja.municipio,
-        uf: dados.loja.uf,
-        atualizado_em: new Date().toISOString(),
+        endereco: dados.loja.endereco ?? null,
+        municipio: dados.loja.municipio ?? null,
+        uf: dados.loja.uf ?? null,
       },
-      { onConflict: 'cnpj' },
-    );
-    if (loja.error) falhar('upsert de loja', loja.error);
-
-    // 2) Itens privados — substitui os anteriores (reprocessamento).
-    const del = await this.db.from('item_cupom').delete().eq('cupom_id', cupomId);
-    if (del.error) falhar('limpeza de itens do cupom', del.error);
-
-    if (dados.itensPrivados.length > 0) {
-      const itens = await this.db.from('item_cupom').insert(
-        dados.itensPrivados.map((i) => ({
-          cupom_id: cupomId,
-          produto_canonico_id: i.produtoCanonicoId ?? null,
-          descricao_original: i.descricaoOriginal,
-          ean: i.ean ?? null,
-          quantidade: i.quantidade,
-          unidade: i.unidade,
-          valor_unitario: i.valorUnitario,
-          valor_total: i.valorTotal,
-          desconto: i.desconto ?? null,
-        })),
-      );
-      if (itens.error) falhar('inserção de itens do cupom', itens.error);
-    }
-
-    // 3) Pool anônimo — só `ObservacaoAnonima` (garantia do gate).
-    await this.inserirObservacoes(dados.observacoes);
-
-    // 4) Conclui o cupom (privado).
-    const upd = await this.db
-      .from('cupom')
-      .update({
-        loja_cnpj: dados.loja.cnpj,
-        emitido_em: dados.emitidoEm,
-        uf: dados.uf,
-        status: 'processado',
-        atualizado_em: new Date().toISOString(),
-      })
-      .eq('id', cupomId);
-    if (upd.error) falhar('conclusão do cupom', upd.error);
+      p_emitido_em: dados.emitidoEm,
+      p_uf: dados.uf,
+      p_itens: dados.itensPrivados.map((i) => ({
+        produto_canonico_id: i.produtoCanonicoId ?? null,
+        descricao_original: i.descricaoOriginal,
+        ean: i.ean ?? null,
+        quantidade: i.quantidade,
+        unidade: i.unidade,
+        valor_unitario: i.valorUnitario,
+        valor_total: i.valorTotal,
+        desconto: i.desconto ?? null,
+      })),
+      p_observacoes: observacoes.map((o) => ({
+        produto_canonico_id: o.produtoCanonicoId,
+        loja_cnpj: o.lojaCnpj,
+        municipio: o.municipio ?? null,
+        uf: o.uf ?? null,
+        preco_normalizado: o.precoNormalizado,
+        unidade_base: o.unidadeBase,
+        em_promocao: o.emPromocao,
+        observado_em: o.observadoEm,
+      })),
+    });
+    if (r.error) falhar('processamento transacional do cupom', r.error);
   }
 
   async marcarFalha(cupomId: string): Promise<void> {
@@ -447,23 +435,5 @@ export class RepositorioSupabase
       produtoCanonicoId: p.id,
       descricaoNormalizada: p.descricao_normalizada,
     }));
-  }
-
-  /** Escrita do pool — aceita SOMENTE `ObservacaoAnonima` (vinda do gate). */
-  private async inserirObservacoes(observacoes: ObservacaoAnonima[]): Promise<void> {
-    if (observacoes.length === 0) return;
-    const r = await this.db.from('observacao_preco').insert(
-      observacoes.map((o) => ({
-        produto_canonico_id: o.produtoCanonicoId,
-        loja_cnpj: o.lojaCnpj,
-        municipio: o.municipio ?? null,
-        uf: o.uf ?? null,
-        preco_normalizado: o.precoNormalizado,
-        unidade_base: o.unidadeBase,
-        em_promocao: o.emPromocao,
-        observado_em: o.observadoEm,
-      })),
-    );
-    if (r.error) falhar('inserção de observações no pool', r.error);
   }
 }
