@@ -6,6 +6,12 @@
 > - **Escopos + fallback** (C3.3): `backend/src/estatistica/escopos.ts`.
 > - **Casamento por texto** (C3.5): `backend/src/estatistica/casamento-texto.ts` (só **sugere**; confirmação é curadoria).
 > - **Pipeline** (C3.1): `backend/src/estatistica/pipeline.ts` grava `preco_estatistica`. EAN (C3.4) já casa na ingestão (C2).
+> - **Normalização** (fonte única app+backend): `shared/src/estatistica/normalizacao.ts` — `normalizarPreco` (R$/kg·L·un pelo preço unitário) + `unidadePadraoDaBase`. O backend só re-exporta.
+>
+> **v1 da gôndola implementado** na Camada 7 (C7), consumindo o núcleo acima:
+> - **Faixa pessoal** (C7.2): `shared/src/estatistica/faixa.ts` — `montarFaixaDeObservacoes` (mediana/percentis não ponderados sobre o histórico privado; promoção à parte).
+> - **Veredito local** (C7.2/C7.3): `app/src/nucleo/veredito-local.ts` resolve o híbrido do cache offline e refina online; `app/src/nucleo/catalogo.ts` agrega o histórico em produtos. Tela `Verificar` (scan de barras + busca), `Produtos` e `Detalhe` (evolução 6 meses).
+> - **Cache offline** (C7.2): o delta sync (`app/src/nucleo/sincronizador.ts → sincronizarEstatisticas`) alimenta `cache_estatistica` no nível de UF (município quando houver).
 >
 > Limiares (meia-vida, mínimos de `n`, limiar de similaridade, cerco de promoção) ficam em constantes marcadas **a calibrar com dados reais** — ver a seção final.
 
