@@ -3,11 +3,20 @@
  * código — tudo vem do ambiente (.env.example documenta o conjunto).
  */
 
+import { parseCuradoriaTokens } from '../auth/curadoria';
+import { parseUfsHabilitadas } from '../rollout/controle-rollout';
+
 export interface ConfigBackend {
   nodeEnv: string;
   porta: number;
   supabaseUrl: string;
   supabaseServiceRoleKey: string;
+  /** UFs habilitadas no lançamento faseado (C10.3). Padrão: RJ + SP. */
+  ufsHabilitadas: string[];
+  /** Confia no `X-Forwarded-For` atrás de proxy/load balancer (C10) — IP real p/ rate-limit. */
+  trustProxy: boolean;
+  /** Tokens de curadoria (C11) — moderação de gôndola e enriquecimento. Vazio = curadoria desabilitada. */
+  curadoriaTokens: string[];
 }
 
 export function lerConfig(env: NodeJS.ProcessEnv = process.env): ConfigBackend {
@@ -27,5 +36,8 @@ export function lerConfig(env: NodeJS.ProcessEnv = process.env): ConfigBackend {
     porta: Number(env.PORT ?? 3000),
     supabaseUrl,
     supabaseServiceRoleKey,
+    ufsHabilitadas: parseUfsHabilitadas(env.UFS_HABILITADAS),
+    trustProxy: env.TRUST_PROXY === 'true',
+    curadoriaTokens: parseCuradoriaTokens(env.CURADORIA_TOKENS),
   };
 }

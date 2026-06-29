@@ -13,6 +13,8 @@ import { MatcherTexto } from './estatistica/casamento-texto';
 import { PipelineEstatistica } from './estatistica/pipeline';
 import { FilaMemoria } from './fila/fila-memoria';
 import { ServicoIngestao } from './ingestao/servico-ingestao';
+import { TelemetriaMemoria } from './observabilidade/telemetria-memoria';
+import { ParserMg } from './parsers/mg';
 import { RegistroParsers } from './parsers/registro';
 import { ParserRj } from './parsers/rj';
 import { ParserSp } from './parsers/sp';
@@ -20,6 +22,7 @@ import { RepositorioSupabase } from './persistencia/repositorio-supabase';
 import { criarClienteSupabase } from './persistencia/supabase';
 import { ProcessadorCupom } from './processamento/processador-cupom';
 import { ReprocessadorRetroativo } from './processamento/reprocessamento';
+import { ControleRollout } from './rollout/controle-rollout';
 import { ClienteSefazHttp } from './sefaz/cliente-sefaz-http';
 import { ServicoSync } from './sync/servico-sync';
 
@@ -39,6 +42,10 @@ export interface Backend {
   servicoConta: ServicoConta;
   /** Autenticação mínima dos endpoints privados (C4.3). */
   autenticacao: Autenticador;
+  /** Gate de lançamento faseado por UF (C10.3). */
+  rollout: ControleRollout;
+  /** Telemetria de parsing por estado — fonte do endpoint `/metricas` (C10.2). */
+  telemetria: TelemetriaMemoria;
 }
 
 export function montarBackend(config: ConfigBackend): Backend {
@@ -46,13 +53,22 @@ export function montarBackend(config: ConfigBackend): Backend {
   const repo = new RepositorioSupabase(db);
 
   const cliente = new ClienteSefazHttp();
-  const registro = new RegistroParsers([new ParserRj(cliente), new ParserSp(cliente)]);
+  const registro = new RegistroParsers([
+    new ParserRj(cliente),
+    new ParserSp(cliente),
+    new ParserMg(cliente),
+  ]);
+
+  // C10 — lançamento faseado (quais UFs atender agora) + observabilidade do parsing.
+  const rollout = new ControleRollout(config.ufsHabilitadas);
+  const telemetria = new TelemetriaMemoria();
 
   const anonimizador = new Anonimizador(repo);
-  const processador = new ProcessadorCupom(repo, registro, anonimizador);
+  const processador = new ProcessadorCupom(repo, registro, anonimizador, { rollout, telemetria });
   const fila = new FilaMemoria((t) => processador.processar(t.cupomId), {
     aoEsgotar: (tarefa, erro) => {
-      // Telemetria por estado entra em C10.2; por ora, registra no console.
+      // C10.2 — conta o esgotamento por estado e registra para investigação.
+      telemetria.registrarParsing(tarefa.uf, 'transitorio_esgotado');
       console.error(`Falha persistente ao processar cupom ${tarefa.cupomId}:`, erro);
     },
   });
@@ -81,5 +97,7 @@ export function montarBackend(config: ConfigBackend): Backend {
     servicoSync,
     servicoConta,
     autenticacao,
+    rollout,
+    telemetria,
   };
 }

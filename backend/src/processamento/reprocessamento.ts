@@ -38,7 +38,7 @@ export class ReprocessadorRetroativo {
       ...(opcoes.limite !== undefined ? { limite: opcoes.limite } : {}),
     });
     for (const cupomId of ids) {
-      await this.fila.enfileirar({ cupomId });
+      await this.fila.enfileirar({ cupomId, uf });
     }
     return ids.length;
   }

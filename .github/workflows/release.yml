@@ -1,0 +1,71 @@
+name: Release (EAS)
+
+# C10.1 — Build na nuvem (EAS) + envio à Google Play.
+# Dispara num push de tag `v*` (ex.: v0.1.0) ou manualmente (workflow_dispatch),
+# escolhendo o perfil. NÃO roda em PR/commit comum: build/publicação são caros e
+# outward-facing. A esteira de qualidade (lint/tipos/testes) fica no `ci.yml`.
+#
+# Requer o segredo de repositório EXPO_TOKEN (token de acesso da conta Expo).
+# O envio à Play usa a service account configurada no perfil `submit` do
+# `app/eas.json` (chave NUNCA versionada — ver docs/13).
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      profile:
+        description: 'Perfil de build do eas.json'
+        type: choice
+        default: production
+        options:
+          - preview
+          - production
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build Android (EAS)
+    runs-on: ubuntu-latest
+    env:
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Falha cedo se faltar EXPO_TOKEN
+        if: ${{ env.EXPO_TOKEN == '' }}
+        run: |
+          echo "::error::Segredo EXPO_TOKEN ausente — configure em Settings → Secrets para liberar o build."
+          exit 1
+
+      - name: Configura Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Instala dependências
+        run: npm ci
+
+      - name: Configura EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      # Beta fechado → aberto é decidido pela `track` do perfil `submit` (internal
+      # por padrão); `--auto-submit` envia à Play quando o build na nuvem conclui.
+      - name: Build + submit (Android)
+        working-directory: app
+        run: >
+          eas build
+          --platform android
+          --profile ${{ github.event.inputs.profile || 'production' }}
+          --non-interactive
+          --no-wait
+          --auto-submit

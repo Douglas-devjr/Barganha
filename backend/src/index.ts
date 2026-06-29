@@ -10,7 +10,7 @@ import { construirServidor } from './http/servidor';
 
 export async function main(): Promise<void> {
   const config = lerConfig();
-  const { servicoIngestao, servicoConsulta, servicoSync, servicoConta, autenticacao } =
+  const { servicoIngestao, servicoConsulta, servicoSync, servicoConta, autenticacao, telemetria } =
     montarBackend(config);
   const app = construirServidor({
     servicoIngestao,
@@ -18,6 +18,8 @@ export async function main(): Promise<void> {
     servicoSync,
     servicoConta,
     autenticacao,
+    metricas: telemetria,
+    trustProxy: config.trustProxy,
     logger: true,
   });
   await app.listen({ port: config.porta, host: '0.0.0.0' });

@@ -6,6 +6,7 @@ import { describe, expect, it } from 'vitest';
 import { Anonimizador } from '../anonimizacao/anonimizador';
 import { FalhaBuscaSefazError } from '../erros';
 import { FilaMemoria } from '../fila/fila-memoria';
+import { TelemetriaMemoria } from '../observabilidade/telemetria-memoria';
 import type { ClienteSefaz, ParserSefaz } from '../parsers/tipos';
 import type { QrNfce } from '../parsers/qr-payload';
 import { RegistroParsers } from '../parsers/registro';
@@ -13,6 +14,7 @@ import { ParserRj } from '../parsers/rj';
 import { ParserSp } from '../parsers/sp';
 import { RepositorioMemoria } from '../persistencia/repositorio-memoria';
 import { ServicoIngestao } from '../ingestao/servico-ingestao';
+import { ControleRollout } from '../rollout/controle-rollout';
 import { ProcessadorCupom } from './processador-cupom';
 import { ReprocessadorRetroativo } from './reprocessamento';
 
@@ -112,6 +114,45 @@ describe('Fluxo de captura C2 (ingestão → parse → anonimização → pool)'
     expect(n).toBe(1);
     expect(repo.statusDoCupom(res.cupomId)).toBe('processado');
     expect(repo.observacoesDoPool()).toHaveLength(2);
+  });
+
+  it('represa UF com parser mas fora do rollout e a libera ao habilitá-la (C10.3)', async () => {
+    // RJ e SP têm parser, mas o rollout só habilitou SP.
+    const repo = new RepositorioMemoria();
+    const registro = new RegistroParsers([new ParserRj(clienteRjSp), new ParserSp(clienteRjSp)]);
+    const anonimizador = new Anonimizador(repo);
+    const telemetria = new TelemetriaMemoria();
+
+    const procSoSp = new ProcessadorCupom(repo, registro, anonimizador, {
+      rollout: new ControleRollout(['SP']),
+      telemetria,
+    });
+    const filaSoSp = new FilaMemoria((t) => procSoSp.processar(t.cupomId), { dormir: semEspera });
+    const servico = new ServicoIngestao(repo, filaSoSp);
+
+    const res = await servico.ingerir('user-1', { qrPayload: QR_RJ, ...CAPTURA });
+    await filaSoSp.ociosa();
+
+    // Fica represado (qr_capturado), nada vai ao pool, e a telemetria conta o motivo.
+    expect(repo.statusDoCupom(res.cupomId)).toBe('qr_capturado');
+    expect(repo.observacoesDoPool()).toHaveLength(0);
+    expect(telemetria.snapshot().porUf.RJ?.uf_nao_habilitada).toBe(1);
+
+    // RJ entra no rollout → reprocessamento retroativo (C2.5) libera os represados.
+    const procComRj = new ProcessadorCupom(repo, registro, anonimizador, {
+      rollout: new ControleRollout(['SP', 'RJ']),
+      telemetria,
+    });
+    const filaComRj = new FilaMemoria((t) => procComRj.processar(t.cupomId), { dormir: semEspera });
+    const reproc = new ReprocessadorRetroativo(repo, registro, filaComRj);
+
+    const n = await reproc.reprocessarUf('RJ');
+    await filaComRj.ociosa();
+
+    expect(n).toBe(1);
+    expect(repo.statusDoCupom(res.cupomId)).toBe('processado');
+    expect(repo.observacoesDoPool()).toHaveLength(2);
+    expect(telemetria.snapshot().porUf.RJ?.processado).toBe(1);
   });
 
   it('marca falha em erro permanente de parsing (sem retry)', async () => {

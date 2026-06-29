@@ -24,7 +24,8 @@ describe('ServicoIngestao (C2.1)', () => {
 
     expect(res.status).toBe('qr_capturado');
     expect(repo.statusDoCupom(res.cupomId)).toBe('qr_capturado');
-    expect(fila.enfileirar).toHaveBeenCalledWith({ cupomId: res.cupomId });
+    // A tarefa leva a UF (do QR) para a telemetria por estado (C10.2).
+    expect(fila.enfileirar).toHaveBeenCalledWith({ cupomId: res.cupomId, uf: 'RJ' });
   });
 
   it('é idempotente por chave: reenvio não cria cupom nem enfileira de novo', async () => {

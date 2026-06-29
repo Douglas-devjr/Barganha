@@ -38,7 +38,7 @@ export class ServicoIngestao {
     // cliente). Cupons já `processado`/`qr_capturado` em andamento não são
     // re-enfileirados — evita reprocessar e duplicar no pool.
     if (resultado.novo || resultado.status === 'falha') {
-      await this.fila.enfileirar({ cupomId: resultado.cupomId });
+      await this.fila.enfileirar({ cupomId: resultado.cupomId, uf: qr.uf });
     }
 
     return { cupomId: resultado.cupomId, status: resultado.status };

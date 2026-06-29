@@ -22,6 +22,7 @@ import type { ServicoConta } from '../auth/servico-conta';
 import type { ServicoConsulta } from '../consulta/servico-consulta';
 import { ChaveAcessoInvalidaError, PayloadQrInvalidoError } from '../erros';
 import type { ServicoIngestao } from '../ingestao/servico-ingestao';
+import type { FonteMetricas } from '../observabilidade/telemetria';
 import type { ServicoSync } from '../sync/servico-sync';
 import { chavePorConta, guardaDeTaxa, LimitadorJanelaFixa, type OpcoesLimite } from './rate-limit';
 
@@ -51,10 +52,19 @@ export interface DependenciasHttp {
   servicoConta: ServicoConta;
   /** Autenticação mínima (C4.3) — valida a conta nos endpoints privados. */
   autenticacao: Autenticacao;
+  /** Fonte de métricas de parsing por estado (C10.2) — exposta em `GET /metricas`. */
+  metricas?: FonteMetricas;
   /** Tetos de taxa (C9.3.2). Omitido → `LIMITES_PADRAO`. */
   limites?: LimitesTaxa;
+  /** Confia no `X-Forwarded-For` atrás de proxy/LB (C10) — IP real p/ rate-limit. */
+  trustProxy?: boolean;
   logger?: boolean;
 }
+
+/** Snapshot vazio — quando o servidor sobe sem coletor de métricas (ex.: testes). */
+const SEM_METRICAS: FonteMetricas = {
+  snapshot: () => ({ geradoEm: new Date().toISOString(), totais: {}, porUf: {} }),
+};
 
 const SCHEMA_INGESTAO = {
   body: {
@@ -96,8 +106,9 @@ const SCHEMA_SYNC = {
 } as const;
 
 export function construirServidor(deps: DependenciasHttp): FastifyInstance {
-  const app = Fastify({ logger: deps.logger ?? false });
+  const app = Fastify({ logger: deps.logger ?? false, trustProxy: deps.trustProxy ?? false });
   const limites = deps.limites ?? LIMITES_PADRAO;
+  const metricas = deps.metricas ?? SEM_METRICAS;
 
   // Limitadores de taxa (C9.3.2). Consulta e sync compartilham o MESMO
   // limitador: um teto único de "leitura pública" por IP.
@@ -108,6 +119,11 @@ export function construirServidor(deps: DependenciasHttp): FastifyInstance {
   });
 
   app.get('/saude', () => ({ ok: true }));
+
+  // ── Métricas de parsing por estado (C10.2) — operação/observabilidade ──
+  // Anônima e agregada (contadores por UF, sem dado de cupom). Em produção,
+  // restringir a rede interna/scraper de métricas via proxy.
+  app.get('/metricas', () => metricas.snapshot());
 
   // ── Conta anônima (C4.3) ───────────────────────────────────────────
   app.post('/conta/anonima', { onRequest: guardaConta }, async (_req, reply) => {

@@ -4,6 +4,9 @@
     "slug": "barganha",
     "scheme": "barganha",
     "version": "0.0.0",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
@@ -12,12 +15,17 @@
       "resizeMode": "contain"
     },
     "assetBundlePatterns": ["**/*"],
+    "updates": {
+      "url": "https://u.expo.dev/00000000-0000-0000-0000-000000000000",
+      "fallbackToCacheTimeout": 0
+    },
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.barganha.app"
     },
     "android": {
       "package": "com.barganha.app",
+      "versionCode": 1,
       "adaptiveIcon": {
         "backgroundColor": "#0F766E"
       }
@@ -33,7 +41,10 @@
       ]
     ],
     "extra": {
-      "apiBaseUrl": "http://localhost:3000"
+      "apiBaseUrl": "http://localhost:3000",
+      "eas": {
+        "projectId": "00000000-0000-0000-0000-000000000000"
+      }
     }
   }
 }

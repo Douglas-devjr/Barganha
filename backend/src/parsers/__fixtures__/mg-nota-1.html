@@ -1,0 +1,60 @@
+<!doctype html>
+<!--
+  Fixture modelando o layout do portal NFC-e de MG (portalsped.fazenda.mg.gov.br):
+  bloco do emitente numa tabela `.tbCab` + itens em `tr.ItemNFCe` com células
+  próprias — estruturalmente diferente de RJ e SP, por isso um parser dedicado.
+  NÃO é uma captura real — substituir por cupons reais na suíte de QA (C9.1).
+  Inclui uma linha de CPF de propósito para garantir que o parser a ignora.
+-->
+<html lang="pt-br">
+  <body>
+    <div id="NFCe">
+      <table class="tbCab">
+        <tr>
+          <td class="razaoEmit">SUPERMERCADO MINEIRAO LTDA</td>
+        </tr>
+        <tr>
+          <td class="cnpjEmit">CNPJ: 17.155.730/0001-64</td>
+        </tr>
+        <tr>
+          <td class="endEmit">Av. Afonso Pena, 1500 - Centro - Belo Horizonte/MG</td>
+        </tr>
+        <tr>
+          <td class="consumidor">Consumidor: CPF 333.444.555-66</td>
+        </tr>
+      </table>
+
+      <table class="tbProdutos">
+        <tr class="ItemNFCe">
+          <td class="prodDesc">ACUCAR REFINADO 1KG</td>
+          <td class="prodCod">7891910000197</td>
+          <td class="prodQtd">1</td>
+          <td class="prodUn">UN</td>
+          <td class="prodVlUnit">4,29</td>
+          <td class="prodVlTotal">4,29</td>
+        </tr>
+        <tr class="ItemNFCe">
+          <td class="prodDesc">PAO DE FORMA 500G</td>
+          <td class="prodCod">7891234567895</td>
+          <td class="prodQtd">1</td>
+          <td class="prodUn">UN</td>
+          <td class="prodVlUnit">7,90</td>
+          <td class="prodVlDesc">1,00</td>
+          <td class="prodVlTotal">6,90</td>
+        </tr>
+        <tr class="ItemNFCe">
+          <td class="prodDesc">MANGA TOMMY</td>
+          <td class="prodCod">0000456</td>
+          <td class="prodQtd">0,640</td>
+          <td class="prodUn">KG</td>
+          <td class="prodVlUnit"></td>
+          <td class="prodVlTotal">3,19</td>
+        </tr>
+      </table>
+
+      <div class="tbInfo">
+        <span class="dataEmissao">Emissão: 22/06/2026 14:05:00</span>
+      </div>
+    </div>
+  </body>
+</html>

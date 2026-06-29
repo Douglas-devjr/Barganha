@@ -5,6 +5,8 @@
 
 export interface TarefaProcessamento {
   cupomId: string;
+  /** UF do cupom (quando já conhecida na ingestão) — só p/ telemetria por estado (C10.2). */
+  uf?: string;
 }
 
 export interface FilaProcessamento {

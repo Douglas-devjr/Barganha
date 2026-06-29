@@ -9,11 +9,13 @@ import { ServicoConta } from '../auth/servico-conta';
 import { ServicoConsulta } from '../consulta/servico-consulta';
 import { FilaMemoria } from '../fila/fila-memoria';
 import { ServicoIngestao } from '../ingestao/servico-ingestao';
+import { TelemetriaMemoria } from '../observabilidade/telemetria-memoria';
 import { RegistroParsers } from '../parsers/registro';
 import { ParserRj } from '../parsers/rj';
 import { ParserSp } from '../parsers/sp';
 import { RepositorioMemoria } from '../persistencia/repositorio-memoria';
 import { ProcessadorCupom } from '../processamento/processador-cupom';
+import { ControleRollout } from '../rollout/controle-rollout';
 import { ClienteSefazMemoria } from '../sefaz/cliente-sefaz-memoria';
 import { ServicoSync } from '../sync/servico-sync';
 import { construirServidor } from './servidor';
@@ -28,7 +30,12 @@ function montarApp() {
   const repo = new RepositorioMemoria();
   const cliente = new ClienteSefazMemoria({ RJ: fix('rj-nota-1.html'), SP: fix('sp-nota-1.html') });
   const registro = new RegistroParsers([new ParserRj(cliente), new ParserSp(cliente)]);
-  const processador = new ProcessadorCupom(repo, registro, new Anonimizador(repo));
+  const telemetria = new TelemetriaMemoria();
+  const rollout = new ControleRollout(['RJ', 'SP']);
+  const processador = new ProcessadorCupom(repo, registro, new Anonimizador(repo), {
+    rollout,
+    telemetria,
+  });
   const fila = new FilaMemoria((t) => processador.processar(t.cupomId), {
     dormir: () => Promise.resolve(),
   });
@@ -39,11 +46,12 @@ function montarApp() {
     servicoSync: new ServicoSync(repo),
     servicoConta: new ServicoConta(repo),
     autenticacao: new Autenticador(repo),
+    metricas: telemetria,
   });
-  return { app, repo, fila };
+  return { app, repo, fila, telemetria };
 }
 
-const { app, repo, fila } = montarApp();
+const { app, repo, fila, telemetria } = montarApp();
 let usuarioId: string;
 
 beforeAll(async () => {
@@ -229,6 +237,19 @@ describe('Servidor HTTP', () => {
       const corpo = r.json();
       expect(corpo.estatisticas.length).toBeGreaterThanOrEqual(1);
       expect(corpo.cursor).toBeTruthy();
+    });
+  });
+
+  describe('Métricas (C10.2) — observabilidade', () => {
+    it('GET /metricas reflete os contadores de parsing por estado', async () => {
+      // Os testes de ingestão acima já processaram cupons do RJ.
+      const r = await app.inject({ method: 'GET', url: '/metricas' });
+      expect(r.statusCode).toBe(200);
+      const corpo = r.json();
+      expect(corpo.geradoEm).toBeTruthy();
+      expect(corpo.porUf.RJ.processado).toBeGreaterThanOrEqual(1);
+      // O endpoint espelha a fonte de telemetria injetada.
+      expect(corpo.totais.processado).toBe(telemetria.snapshot().totais.processado);
     });
   });
 });
