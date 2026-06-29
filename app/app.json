@@ -21,7 +21,14 @@
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.barganha.app"
+      "bundleIdentifier": "com.barganha.app",
+      "buildNumber": "1",
+      "config": {
+        "usesNonExemptEncryption": false
+      },
+      "infoPlist": {
+        "CFBundleDisplayName": "Barganha"
+      }
     },
     "android": {
       "package": "com.barganha.app",
