@@ -7,7 +7,13 @@
 
 import { randomUUID } from 'node:crypto';
 
-import type { Loja, ObservacaoAnonima, PrecoEstatistica, StatusCupom } from '@barganha/shared';
+import {
+  garantirSemDadoPessoal,
+  type Loja,
+  type ObservacaoAnonima,
+  type PrecoEstatistica,
+  type StatusCupom,
+} from '@barganha/shared';
 
 import type { ItemCupomNovo } from '../anonimizacao/anonimizador';
 import type { CatalogoProdutos, SugestaoProduto } from '../anonimizacao/casamento';
@@ -176,9 +182,12 @@ export class RepositorioMemoria
     }
 
     // Pool anônimo é append-only (sem vínculo com o cupom — por isso o
-    // reprocessamento só alveja cupons ainda não processados, C2.5).
+    // reprocessamento só alveja cupons ainda não processados, C2.5). O guard
+    // (C9.2) espelha a trava da escrita real antes de cada inserção.
     const agoraPool = new Date().toISOString();
-    for (const obs of dados.observacoes) this.poolEntradas.push({ obs, criadoEm: agoraPool });
+    for (const obs of dados.observacoes) {
+      this.poolEntradas.push({ obs: garantirSemDadoPessoal(obs), criadoEm: agoraPool });
+    }
 
     cupom.status = 'processado';
     cupom.lojaCnpj = dados.loja.cnpj;

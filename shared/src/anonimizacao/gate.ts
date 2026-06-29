@@ -23,6 +23,35 @@ type ChavesProibidasNoPool = 'usuarioId' | 'cupomId' | 'chaveAcesso' | 'cpf' | '
 /** Recusa, em tempo de compilação, qualquer tipo que contenha dado pessoal. */
 export type SemDadoPessoal<T> = Extract<keyof T, ChavesProibidasNoPool> extends never ? T : never;
 
+/** A mesma lista, em runtime — espelha `ChavesProibidasNoPool` (mantê-las em sincronia). */
+export const CHAVES_PROIBIDAS_POOL: readonly ChavesProibidasNoPool[] = [
+  'usuarioId',
+  'cupomId',
+  'chaveAcesso',
+  'cpf',
+  'nome',
+];
+
+/**
+ * C9.2 — Gate LGPD em RUNTIME (defesa em profundidade).
+ *
+ * O `SemDadoPessoal<…>` já barra dado pessoal em tempo de compilação, mas a
+ * fronteira de persistência fala com o banco via objetos dinâmicos (RPC/JSON),
+ * onde o tipo se perde. Esta verificação é a última trava antes da escrita no
+ * pool: se QUALQUER campo proibido aparecer, ABORTA — nada vaza, nem por bug.
+ *
+ * Lança em vez de só filtrar: a presença do campo já é um defeito a corrigir,
+ * não algo a silenciar.
+ */
+export function garantirSemDadoPessoal<T extends object>(observacao: T): SemDadoPessoal<T> {
+  for (const chave of CHAVES_PROIBIDAS_POOL) {
+    if (chave in observacao) {
+      throw new Error(`Gate LGPD: observação carrega campo proibido no pool ("${chave}").`);
+    }
+  }
+  return observacao as SemDadoPessoal<T>;
+}
+
 /** Nova observação anônima, pronta para inserir (`id` é gerado pelo banco). */
 export type ObservacaoPrecoNova = Omit<ObservacaoPreco, 'id'>;
 

@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import { extrairObservacoesAnonimas, type NotaProcessada } from './gate';
+import {
+  CHAVES_PROIBIDAS_POOL,
+  extrairObservacoesAnonimas,
+  garantirSemDadoPessoal,
+  type NotaProcessada,
+} from './gate';
 
 const CHAVES_PROIBIDAS = ['usuarioId', 'cupomId', 'chaveAcesso', 'cpf', 'nome'];
 
@@ -67,5 +72,18 @@ describe('gate de anonimização (C1.4)', () => {
     expect(serializado).not.toContain('11122233344');
     expect(serializado).not.toContain('Fulano');
     expect(serializado).not.toContain('33260612345678000199650010000000011000000017');
+  });
+});
+
+describe('garantirSemDadoPessoal (gate LGPD em runtime, C9.2)', () => {
+  it('deixa passar uma observação anônima legítima', () => {
+    const [obs] = extrairObservacoesAnonimas(notaExemplo());
+    expect(garantirSemDadoPessoal(obs!)).toBe(obs);
+  });
+
+  it.each(CHAVES_PROIBIDAS_POOL)('aborta a escrita quando carrega "%s"', (chave) => {
+    const [obs] = extrairObservacoesAnonimas(notaExemplo());
+    const contaminada = { ...obs, [chave]: 'vazou' };
+    expect(() => garantirSemDadoPessoal(contaminada)).toThrow(/campo proibido/i);
   });
 });
