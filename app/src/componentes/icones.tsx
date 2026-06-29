@@ -100,3 +100,48 @@ export function IconeVoltar(p: IconeProps) {
     </Base>
   );
 }
+
+export function IconeBarras(p: IconeProps) {
+  return (
+    <Base {...p}>
+      <Path d="M4 6v12M7.5 6v12M11 6v12M14 6v12M17 6v12M20 6v12" />
+    </Base>
+  );
+}
+
+export function IconeLoja(p: IconeProps) {
+  return (
+    <Base {...p}>
+      <Path d="M4.5 9.5 6 5h12l1.5 4.5" />
+      <Path d="M4.5 9.5a1.9 1.9 0 0 0 3.75 0 1.9 1.9 0 0 0 3.75 0 1.9 1.9 0 0 0 3.75 0 1.9 1.9 0 0 0 3.75 0" />
+      <Path d="M5.7 11.3V20h12.6v-8.7" />
+      <Path d="M10 20v-4.3h4V20" />
+    </Base>
+  );
+}
+
+export function IconeTendenciaCima(p: IconeProps) {
+  return (
+    <Base {...p}>
+      <Path d="M5 17 13 9l4 4 5-6" />
+      <Path d="M22 7h-5" />
+    </Base>
+  );
+}
+
+export function IconeTendenciaBaixo(p: IconeProps) {
+  return (
+    <Base {...p}>
+      <Path d="M5 7 13 15l4-4 5 6" />
+      <Path d="M22 17h-5" />
+    </Base>
+  );
+}
+
+export function IconeTendenciaPlana(p: IconeProps) {
+  return (
+    <Base {...p}>
+      <Path d="M5 12h14" />
+    </Base>
+  );
+}

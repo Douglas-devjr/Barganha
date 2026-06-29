@@ -14,7 +14,7 @@
  */
 
 import { clienteApi, ErroApi } from '@/api';
-import { cupons, fila } from '@/dados';
+import { cache, cupons, fila, meta, produtos } from '@/dados';
 import type { CupomLocal, ItemFilaUpload } from '@/dados';
 
 /** Backoff: 15s, 30s, 1min… até o teto de 1h. */
@@ -121,8 +121,34 @@ export async function atualizarProcessamentos(): Promise<void> {
 }
 
 /**
- * Rodada completa de sincronização (upload + processamento). Chamada no boot, ao
- * voltar para o app (foreground) e após uma captura. Engole erros — é best-effort.
+ * C7.2 — Delta sync das estatísticas regionais para o cache offline. Baixa só o
+ * que mudou desde o cursor, no recorte dos produtos do histórico + a UF do
+ * usuário (derivada da LOJA, nunca do usuário). É o que faz o veredito da
+ * gôndola funcionar sem sinal. Best-effort e idempotente (cursor por
+ * `atualizado_em`).
+ */
+export async function sincronizarEstatisticas(): Promise<void> {
+  const [produtoCanonicoIds, uf, cursor] = await Promise.all([
+    produtos.listarProdutoCanonicoIds(),
+    produtos.obterUfRecente(),
+    meta.obterCursorDelta(),
+  ]);
+  // Sem produtos no histórico e sem região conhecida: nada a sincronizar ainda.
+  if (produtoCanonicoIds.length === 0 && !uf) return;
+
+  const resp = await clienteApi.sincronizar({
+    ...(cursor ? { cursor } : {}),
+    ...(uf ? { municipios: [uf] } : {}),
+    ...(produtoCanonicoIds.length > 0 ? { produtoCanonicoIds } : {}),
+  });
+  await cache.salvarEstatisticas(resp.estatisticas);
+  await meta.definirCursorDelta(resp.cursor);
+}
+
+/**
+ * Rodada completa de sincronização (upload + processamento + estatísticas).
+ * Chamada no boot, ao voltar para o app (foreground) e após uma captura. Engole
+ * erros — é best-effort.
  */
 export async function sincronizar(): Promise<void> {
   if (rodando) return;
@@ -130,6 +156,12 @@ export async function sincronizar(): Promise<void> {
   try {
     await processarFilaUpload();
     await atualizarProcessamentos();
+    // Estatísticas num passo isolado: uma falha aqui não desfaz o upload/parsing.
+    try {
+      await sincronizarEstatisticas();
+    } catch {
+      // Offline/servidor fora — retoma do cursor na próxima rodada.
+    }
   } catch {
     // Best-effort: a próxima rodada retoma de onde parou (estado está no SQLite).
   } finally {

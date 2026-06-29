@@ -12,4 +12,6 @@ export { CabecalhoVoltar } from './CabecalhoVoltar';
 export type { CabecalhoVoltarProps } from './CabecalhoVoltar';
 export { VeredictoBadge } from './VeredictoBadge';
 export type { VeredictoBadgeProps } from './VeredictoBadge';
+export { GraficoLinha } from './GraficoLinha';
+export type { GraficoLinhaProps } from './GraficoLinha';
 export * from './icones';

@@ -1,33 +1,191 @@
 /**
- * C5.1 — Detalhe do produto (esqueleto). O gráfico de evolução de 6 meses e o
- * histórico de compras são C7.5. Recebe o produto canônico a exibir.
+ * C7.5 — Detalhe do produto. Mostra a evolução do preço (R$/base) ao longo do
+ * histórico, os extremos (menor/típico/maior) e a lista de compras (loja, data,
+ * preço, promoção). Tudo offline, a partir do catálogo local.
  */
 
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
-import { CabecalhoVoltar, Cartao, Tela, Texto } from '@/componentes';
-import { espaco } from '@/tema';
+import { CabecalhoVoltar, Cartao, GraficoLinha, Tela, Texto } from '@/componentes';
+import * as catalogo from '@/nucleo/catalogo';
+import type { CompraHistorico, ProdutoLocal } from '@/nucleo/catalogo';
+import { cores, espaco } from '@/tema';
 import type { RootStackParamList } from '@/navegacao/tipos';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ProdutoDetalhe'>;
 
+function moeda(v: number): string {
+  return `R$ ${v.toFixed(2).replace('.', ',')}`;
+}
+
+function mesAbrev(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  return d.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '');
+}
+
+function dataCurta(iso: string): string {
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? '—' : d.toLocaleDateString('pt-BR');
+}
+
 export function ProdutoDetalheTela({ navigation, route }: Props) {
-  const { nome } = route.params;
+  const { chave, nome } = route.params;
+  const [carregando, setCarregando] = useState(true);
+  const [produto, setProduto] = useState<ProdutoLocal | null>(null);
+  const [historico, setHistorico] = useState<CompraHistorico[]>([]);
+
+  useEffect(() => {
+    let ativo = true;
+    void (async () => {
+      const dados = await catalogo.obterProduto(chave);
+      if (!ativo) return;
+      setProduto(dados?.produto ?? null);
+      setHistorico(dados?.historico ?? []);
+      setCarregando(false);
+    })();
+    return () => {
+      ativo = false;
+    };
+  }, [chave]);
+
+  const base = produto?.unidadeBase ? `/${produto.unidadeBase}` : '';
+  const serie = historico.filter((h) => h.precoNormalizado != null);
+  const valores = serie.map((h) => h.precoNormalizado as number);
+  const recentes = [...historico].reverse();
+  const pontoInicial = serie[0];
+  const pontoFinal = serie.at(-1);
+
   return (
     <Tela>
       <CabecalhoVoltar
-        titulo={nome ?? 'Produto'}
-        subtitulo="Evolução de preço (Camada 7)"
+        titulo={produto?.nome ?? nome ?? 'Produto'}
+        subtitulo={produto ? `Evolução de preço${base}` : undefined}
         aoVoltar={() => navigation.goBack()}
       />
-      <Cartao>
-        <View style={{ alignItems: 'center', paddingVertical: espaco.xl }}>
+
+      {carregando ? (
+        <Cartao>
+          <View style={{ alignItems: 'center', paddingVertical: espaco.xl }}>
+            <ActivityIndicator color={cores.marca} />
+          </View>
+        </Cartao>
+      ) : !produto ? (
+        <Cartao>
           <Texto cor="textoMudo" centralizado>
-            O gráfico de 6 meses e as compras aparecem aqui quando houver histórico em cache.
+            Não encontramos o histórico deste produto.
           </Texto>
-        </View>
-      </Cartao>
+        </Cartao>
+      ) : (
+        <>
+          <Cartao style={{ marginBottom: espaco.md }}>
+            <View style={estilos.tituloGrafico}>
+              <Texto cor="placeholder" tamanho="sm" peso="semibold">
+                Evolução do preço
+              </Texto>
+              <Texto cor="marca" tamanho="sm" peso="bold">
+                {serie.length} {serie.length === 1 ? 'compra' : 'compras'}
+              </Texto>
+            </View>
+            <GraficoLinha
+              valores={valores}
+              inicio={
+                serie.length > 1 && pontoInicial ? mesAbrev(pontoInicial.observadoEm) : undefined
+              }
+              fim={serie.length > 1 && pontoFinal ? mesAbrev(pontoFinal.observadoEm) : undefined}
+            />
+          </Cartao>
+
+          <View style={estilos.cards}>
+            <CardExtremo rotulo="Menor" valor={produto.minimo} sufixo={base} cor={cores.barato} />
+            <CardExtremo
+              rotulo="Típico"
+              valor={produto.faixaPessoal?.mediana}
+              sufixo={base}
+              cor={cores.texto}
+            />
+            <CardExtremo rotulo="Maior" valor={produto.maximo} sufixo={base} cor={cores.caro} />
+          </View>
+
+          <Texto peso="extrabold" tamanho="lg" style={{ marginBottom: espaco.sm }}>
+            Compras
+          </Texto>
+          <Cartao semPadding>
+            {recentes.map((h, idx) => (
+              <View
+                key={`${h.observadoEm}-${idx}`}
+                style={[estilos.compra, idx < recentes.length - 1 && estilos.compraBorda]}
+              >
+                <View style={{ flex: 1 }}>
+                  <Texto peso="bold" tamanho="sm">
+                    {h.lojaNome ?? 'Mercado'}
+                  </Texto>
+                  <Texto cor="placeholder" tamanho="xs">
+                    {dataCurta(h.observadoEm)}
+                    {h.emPromocao ? ' · promoção' : ''}
+                  </Texto>
+                </View>
+                <Texto
+                  peso="extrabold"
+                  style={h.emPromocao ? { color: cores.promocao } : undefined}
+                >
+                  {h.precoNormalizado != null ? `${moeda(h.precoNormalizado)}${base}` : '—'}
+                </Texto>
+              </View>
+            ))}
+          </Cartao>
+        </>
+      )}
     </Tela>
   );
 }
+
+function CardExtremo({
+  rotulo,
+  valor,
+  sufixo,
+  cor,
+}: {
+  rotulo: string;
+  valor?: number;
+  sufixo: string;
+  cor: string;
+}) {
+  return (
+    <Cartao style={estilos.cardExtremo}>
+      <Texto cor="placeholder" tamanho="xs" peso="semibold">
+        {rotulo}
+      </Texto>
+      <Texto peso="extrabold" tamanho="lg" style={{ color: cor, marginTop: espaco.xs }}>
+        {valor != null ? moeda(valor) : '—'}
+      </Texto>
+      {valor != null && sufixo ? (
+        <Texto cor="placeholder" tamanho="xs">
+          {sufixo}
+        </Texto>
+      ) : null}
+    </Cartao>
+  );
+}
+
+const estilos = StyleSheet.create({
+  tituloGrafico: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: espaco.md,
+  },
+  cards: { flexDirection: 'row', gap: espaco.sm, marginBottom: espaco.lg },
+  cardExtremo: { flex: 1, alignItems: 'center', paddingVertical: espaco.md },
+  compra: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: espaco.md,
+    paddingHorizontal: espaco.lg,
+    paddingVertical: espaco.md,
+  },
+  compraBorda: { borderBottomWidth: 1, borderBottomColor: cores.borda },
+});

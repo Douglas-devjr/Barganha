@@ -8,7 +8,8 @@ import type { NavigatorScreenParams } from '@react-navigation/native';
 
 export type TabParamList = {
   Inicio: undefined;
-  Verificar: undefined;
+  /** `ean` chega quando a aba é aberta a partir do scan de código de barras (C7.1). */
+  Verificar: { ean?: string } | undefined;
   Produtos: undefined;
   Perfil: undefined;
 };
@@ -16,8 +17,11 @@ export type TabParamList = {
 export type RootStackParamList = {
   Abas: NavigatorScreenParams<TabParamList> | undefined;
   Scanner: undefined;
+  /** Scan de código de barras na gôndola (C7.1); devolve o EAN à aba Verificar. */
+  EscanearBarras: undefined;
   NotaFiscal: { cupomLocalId: string };
-  ProdutoDetalhe: { produtoCanonicoId: string; nome?: string };
+  /** `chave` = id canônico, EAN ou descrição (chave do catálogo local, C7.5). */
+  ProdutoDetalhe: { chave: string; nome?: string };
   Onboarding: undefined;
 };
 
