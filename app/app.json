@@ -3,6 +3,7 @@
     "name": "Barganha",
     "slug": "barganha",
     "scheme": "barganha",
+    "owner": "arkasher",
     "version": "0.0.0",
     "runtimeVersion": {
       "policy": "appVersion"
@@ -16,7 +17,7 @@
     },
     "assetBundlePatterns": ["**/*"],
     "updates": {
-      "url": "https://u.expo.dev/00000000-0000-0000-0000-000000000000",
+      "url": "https://u.expo.dev/14a2217a-139e-426b-b34e-5c026f519d70",
       "fallbackToCacheTimeout": 0
     },
     "ios": {
@@ -50,7 +51,7 @@
     "extra": {
       "apiBaseUrl": "http://localhost:3000",
       "eas": {
-        "projectId": "00000000-0000-0000-0000-000000000000"
+        "projectId": "14a2217a-139e-426b-b34e-5c026f519d70"
       }
     }
   }
