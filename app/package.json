@@ -19,6 +19,7 @@
     "expo": "~52.0.0",
     "expo-camera": "~16.0.18",
     "expo-constants": "~17.0.3",
+    "expo-dev-client": "~5.0.20",
     "expo-font": "~13.0.3",
     "expo-sqlite": "~15.1.4",
     "expo-status-bar": "~2.0.0",
