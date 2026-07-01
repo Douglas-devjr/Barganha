@@ -49,6 +49,13 @@ export const MAPA_UNIDADES: Readonly<Record<string, { base: UnidadeBase; fator: 
   PÇ: { base: 'un', fator: 1 },
   DZ: { base: 'un', fator: 1 / 12 },
   DUZIA: { base: 'un', fator: 1 / 12 },
+  // Embalagens vendidas como UMA peça (vistas em cupons reais do RJ): bandeja,
+  // envelope, frasco e pote. Diferente de CX/FD (packs com N unidades dentro),
+  // aqui 1 volume = 1 item vendido — mesmo racional do UN.
+  BJ: { base: 'un', fator: 1 },
+  EV: { base: 'un', fator: 1 },
+  FR: { base: 'un', fator: 1 },
+  PT: { base: 'un', fator: 1 },
 };
 
 /** Arredonda para 4 casas (evita ruído de ponto flutuante no R$/base). */

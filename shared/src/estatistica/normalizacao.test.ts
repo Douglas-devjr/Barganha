@@ -38,6 +38,15 @@ describe('normalizarPreco (shared)', () => {
     });
   });
 
+  it('trata embalagens unitárias (BJ/EV/FR/PT) como R$/un', () => {
+    for (const unidade of ['BJ', 'EV', 'FR', 'PT']) {
+      expect(normalizarPreco({ unidade, valorUnitario: 9.98 })).toEqual({
+        unidadeBase: 'un',
+        precoNormalizado: 9.98,
+      });
+    }
+  });
+
   it('rejeita unidade desconhecida (fora do pool)', () => {
     expect(normalizarPreco({ unidade: 'CX', valorUnitario: 10 })).toBeUndefined();
   });
