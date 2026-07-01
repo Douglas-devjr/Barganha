@@ -38,6 +38,19 @@ describe('ClienteSefazHttp (C2)', () => {
     await expect(cliente.buscarConsulta(QR)).rejects.toThrow(FalhaBuscaSefazError);
   });
 
+  it('trata desafio reCAPTCHA (200) como falha de busca transitória', async () => {
+    const gate =
+      '<html><body><script>grecaptcha.execute(chave,{action:"x"})</script></body></html>';
+    const cliente = new ClienteSefazHttp({ fetch: respostaFake(gate, { status: 200 }) });
+    await expect(cliente.buscarConsulta(QR)).rejects.toThrow(FalhaBuscaSefazError);
+  });
+
+  it('trata bloqueio por IP (200) como falha de busca transitória', async () => {
+    const bloqueio = '<html><body>Verifique seu IP em www.meuip.com.br</body></html>';
+    const cliente = new ClienteSefazHttp({ fetch: respostaFake(bloqueio, { status: 200 }) });
+    await expect(cliente.buscarConsulta(QR)).rejects.toThrow(FalhaBuscaSefazError);
+  });
+
   it('recusa QR sem URL de consulta', async () => {
     const semUrl = parseQrNfce('33260612345678000199650010000000011000000016');
     const cliente = new ClienteSefazHttp({ fetch: respostaFake('x', { status: 200 }) });

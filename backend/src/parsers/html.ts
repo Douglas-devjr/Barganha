@@ -14,6 +14,21 @@ export function parseHtml(html: string): HTMLElement {
   return parse(html);
 }
 
+/**
+ * O portal respondeu com uma página de DEFESA anti-bot (não a nota):
+ *  • bloqueio por IP (ex.: RJ barra faixas residenciais e mostra links de "meu IP");
+ *  • desafio reCAPTCHA v3 + postback JSF (a nota só vem após resolver o desafio,
+ *    o que só um navegador real — o do próprio usuário — consegue).
+ * Não é HTML parseável de nota: quem busca deve tratar como falha de BUSCA
+ * (transitória), nunca de PARSE (que marcaria o cupom como `falha` permanente).
+ */
+export function pareceDefesaAntiBot(html: string): boolean {
+  return (
+    /grecaptcha\.execute/i.test(html) || // gate reCAPTCHA v3 que dispara o postback JSF
+    /whatismyipaddress\.com|meuip\.com\.br/i.test(html) // página de bloqueio por IP
+  );
+}
+
 /** Colapsa espaços/quebras e remove pontas — texto de SEFAZ vem cheio deles. */
 export function textoLimpo(texto: string | undefined | null): string {
   return (texto ?? '').replace(/\s+/g, ' ').trim();

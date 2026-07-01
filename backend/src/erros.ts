@@ -40,6 +40,13 @@ export class FalhaBuscaSefazError extends ErroDominio {}
 export class FalhaParserSefazError extends ErroDominio {}
 
 /**
+ * O HTML enviado pelo app (colhido via WebView, C2.6) ainda é a página de
+ * bloqueio/desafio (reCAPTCHA/IP), não a nota. NÃO é falha do cupom: o app deve
+ * reabrir/aguardar o portal renderizar a nota e reenviar. Mapeada para 4xx.
+ */
+export class HtmlDesafioError extends ErroDominio {}
+
+/**
  * Lançamento manual de gôndola (C11.3) recusado na entrada: unidade não
  * normalizável ou CNPJ inválido. Erro do cliente — não entra na fila de
  * moderação (só guardamos o que pode virar observação comparável).

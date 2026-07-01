@@ -15,12 +15,27 @@ import type { CupomResponse, IngestaoQrRequest, IngestaoQrResponse } from '@barg
 
 import type { FilaProcessamento } from '../fila/tipos';
 import { parseQrNfce } from '../parsers/qr-payload';
-import type { RepositorioCupom } from '../persistencia/tipos';
+import type { CupomRegistro, RepositorioCupom } from '../persistencia/tipos';
+
+/**
+ * Porta mínima para o processamento a partir de HTML colhido pelo app (C2.6).
+ * Mantém a ingestão desacoplada do `ProcessadorCupom` concreto (só o composition
+ * root os liga) e trivial de testar com um fake.
+ */
+export interface ProcessadorHtml {
+  processarComHtml(cupom: CupomRegistro, html: string): Promise<void>;
+}
 
 export class ServicoIngestao {
   constructor(
     private readonly repo: RepositorioCupom,
     private readonly fila: FilaProcessamento,
+    /**
+     * Processador para a ingestão por HTML (C2.6). Opcional: só o caminho
+     * `ingerirHtml` o exige — a ingestão de QR não depende dele, então os
+     * cenários que só usam QR seguem construindo o serviço com 2 argumentos.
+     */
+    private readonly processador?: ProcessadorHtml,
   ) {}
 
   async ingerir(usuarioId: string, req: IngestaoQrRequest): Promise<IngestaoQrResponse> {
@@ -42,6 +57,30 @@ export class ServicoIngestao {
     }
 
     return { cupomId: resultado.cupomId, status: resultado.status };
+  }
+
+  /**
+   * C2.6 — Ingestão por HTML: o app colheu o HTML da nota renderizada (via
+   * WebView, quando o portal exige navegador/reCAPTCHA) e o envia para o backend
+   * PARSEAR (decisão travada nº2: parsing nunca no app). Escopo do DONO: cupom de
+   * outro usuário ou inexistente → `undefined` (a HTTP traduz para 404, sem vazar
+   * existência). Propaga `HtmlDesafioError` quando o HTML ainda é a página de
+   * desafio — a HTTP traduz para 4xx e o app reabre/reenvia. Devolve o estado
+   * atualizado do cupom (já `processado`, com os itens) para o app espelhar.
+   */
+  async ingerirHtml(
+    usuarioId: string,
+    cupomId: string,
+    html: string,
+  ): Promise<CupomResponse | undefined> {
+    if (!this.processador) {
+      throw new Error('Ingestão por HTML indisponível: processador não configurado.');
+    }
+    const cupom = await this.repo.obterParaProcessamento(cupomId);
+    if (!cupom || cupom.usuarioId !== usuarioId) return undefined;
+
+    await this.processador.processarComHtml(cupom, html);
+    return this.obterCupom(usuarioId, cupomId);
   }
 
   /**

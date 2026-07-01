@@ -108,4 +108,8 @@ export class ParserSp implements ParserSefaz {
     const html = await this.cliente.buscarConsulta(qr);
     return parseHtmlSp(html);
   }
+
+  parseHtml(html: string): NotaEstruturada {
+    return parseHtmlSp(html);
+  }
 }

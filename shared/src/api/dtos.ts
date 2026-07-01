@@ -23,6 +23,17 @@ export interface IngestaoQrResponse {
 }
 
 /**
+ * Ingestão por HTML (C2.6). Quando o portal da SEFAZ exige navegador/reCAPTCHA
+ * (ex.: RJ), o app abre a nota num WebView no aparelho do usuário e envia o HTML
+ * já renderizado. O parsing continua no backend (decisão travada nº2): o app só
+ * entrega o HTML do cupom que ele já registrou por QR. A resposta é o próprio
+ * `CupomResponse` atualizado (idealmente já `processado`, com os itens).
+ */
+export interface IngestaoHtmlRequest {
+  html: string;
+}
+
+/**
  * Item de uma nota já processada, devolvido ao DONO do cupom (lado privado).
  * Espelha `ItemCupom` sem os ids internos — o app guarda no espelho local.
  */

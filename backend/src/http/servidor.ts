@@ -23,6 +23,7 @@ import type {
   DecisaoModeracaoRequest,
   DeltaSyncRequest,
   EnriquecimentoProdutoRequest,
+  IngestaoHtmlRequest,
   IngestaoQrRequest,
   LancamentoManualRequest,
 } from '@barganha/shared';
@@ -36,11 +37,13 @@ import type { ServicoConsulta } from '../consulta/servico-consulta';
 import type { ServicoCuradoria } from '../curadoria/servico-curadoria';
 import {
   ChaveAcessoInvalidaError,
+  HtmlDesafioError,
   LancamentoInvalidoError,
   PayloadQrInvalidoError,
 } from '../erros';
 import type { ServicoIngestao } from '../ingestao/servico-ingestao';
 import type { ServicoModeracao } from '../moderacao/servico-moderacao';
+import { registrarHtmlDebug } from '../observabilidade/debug-html';
 import type { FonteMetricas } from '../observabilidade/telemetria';
 import type { ReprocessadorRetroativo } from '../processamento/reprocessamento';
 import type { ServicoSync } from '../sync/servico-sync';
@@ -112,6 +115,23 @@ const SCHEMA_INGESTAO = {
     properties: {
       qrPayload: { type: 'string', minLength: 1 },
       capturadoEm: { type: 'string', minLength: 1 },
+    },
+  },
+} as const;
+
+// Ingestão por HTML (C2.6) — o app envia o HTML da nota renderizada no WebView.
+// Body maior que o padrão: a página da SEFAZ traz scripts/estilos embutidos.
+const MB = 1024 * 1024;
+const SCHEMA_INGESTAO_HTML = {
+  bodyLimit: 4 * MB,
+  schema: {
+    body: {
+      type: 'object',
+      required: ['html'],
+      additionalProperties: false,
+      properties: {
+        html: { type: 'string', minLength: 1 },
+      },
     },
   },
 } as const;
@@ -266,6 +286,29 @@ export function construirServidor(deps: DependenciasHttp): FastifyInstance {
     },
   );
 
+  // ── Ingestão por HTML (C2.6) — privada ─────────────────────────────
+  // Quando o portal exige navegador/reCAPTCHA (ex.: RJ), o app colhe o HTML da
+  // nota no WebView e o envia aqui; o backend PARSEIA (nunca o app) e responde o
+  // cupom já processado. Escopo do dono; 404 não vaza cupom de outro usuário.
+  app.post<{ Params: { id: string }; Body: IngestaoHtmlRequest }>(
+    '/ingestao/cupom/:id/html',
+    { ...SCHEMA_INGESTAO_HTML, onRequest: guardaIngestao },
+    async (req, reply) => {
+      const usuarioId = await deps.autenticacao.resolver(req.headers);
+      if (!usuarioId) {
+        return reply.code(401).send({ erro: 'Usuário não identificado.' });
+      }
+      // Depuração (dev): salva o ESQUELETO do HTML recebido (sem PII) para ajustar
+      // os seletores do parser ao layout real do portal. No-op fora de dev.
+      registrarHtmlDebug(req.body.html, `cupom-${req.params.id}`);
+      const cupom = await deps.servicoIngestao.ingerirHtml(usuarioId, req.params.id, req.body.html);
+      if (!cupom) {
+        return reply.code(404).send({ erro: 'Cupom não encontrado.' });
+      }
+      return reply.send(cupom);
+    },
+  );
+
   // ── Cupom do usuário (C6.3) — privado ──────────────────────────────
   app.get<{ Params: { id: string } }>('/ingestao/cupom/:id', async (req, reply) => {
     const usuarioId = await deps.autenticacao.resolver(req.headers);
@@ -397,6 +440,11 @@ export function construirServidor(deps: DependenciasHttp): FastifyInstance {
       erro instanceof LancamentoInvalidoError
     ) {
       return reply.code(400).send({ erro: erro.message });
+    }
+    // HTML ainda é a página de desafio (C2.6): não é falha do cupom — o app deve
+    // reabrir o WebView e reenviar quando a nota tiver renderizado. 422.
+    if (erro instanceof HtmlDesafioError) {
+      return reply.code(422).send({ erro: erro.message });
     }
     req.log.error(erro);
     return reply.code(500).send({ erro: 'Erro interno.' });

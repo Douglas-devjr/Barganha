@@ -116,4 +116,8 @@ export class ParserRj implements ParserSefaz {
     const html = await this.cliente.buscarConsulta(qr);
     return parseHtmlRj(html);
   }
+
+  parseHtml(html: string): NotaEstruturada {
+    return parseHtmlRj(html);
+  }
 }

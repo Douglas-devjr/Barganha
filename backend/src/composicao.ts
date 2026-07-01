@@ -84,7 +84,9 @@ export function montarBackend(config: ConfigBackend): Backend {
     },
   });
 
-  const servicoIngestao = new ServicoIngestao(repo, fila);
+  // O processador também serve à ingestão por HTML (C2.6): o app colhe o HTML da
+  // nota (WebView) quando o portal exige navegador/reCAPTCHA e o backend parseia.
+  const servicoIngestao = new ServicoIngestao(repo, fila, processador);
   const reprocessador = new ReprocessadorRetroativo(repo, registro, fila);
 
   // C3 — motor estatístico sobre o pool anônimo. O disparo (após ingestão ou

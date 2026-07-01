@@ -117,4 +117,8 @@ export class ParserMg implements ParserSefaz {
     const html = await this.cliente.buscarConsulta(qr);
     return parseHtmlMg(html);
   }
+
+  parseHtml(html: string): NotaEstruturada {
+    return parseHtmlMg(html);
+  }
 }

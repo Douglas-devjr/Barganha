@@ -40,6 +40,9 @@ yarn-error.*
 # Cobertura de testes
 coverage/
 
+# Depuração da captura por HTML (C2.6) — esqueletos locais, nunca versionar
+.debug-html/
+
 # TypeScript / build
 *.tsbuildinfo
 

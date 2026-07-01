@@ -14,6 +14,8 @@
  * renova o token e a próxima rodada envia.
  */
 
+import type { CupomResponse } from '@barganha/shared';
+
 import { clienteApi, ErroApi } from '@/api';
 import { cache, cupons, fila, meta, produtos } from '@/dados';
 import type { CupomLocal, ItemFilaUpload } from '@/dados';
@@ -81,15 +83,10 @@ export async function processarFilaUpload(): Promise<void> {
   }
 }
 
-/** Aplica o resultado do parsing de UM cupom já no servidor, se já terminou. */
-async function buscarProcessamento(cupom: CupomLocal): Promise<void> {
-  if (!cupom.cupomIdServidor) return;
-  const remoto = await clienteApi.obterCupom(cupom.cupomIdServidor);
-  if (!remoto) return; // ainda na fila do backend, ou 404 transitório.
-  if (remoto.status === 'qr_capturado') return; // parsing ainda não concluiu.
-
+/** Grava no espelho local o cupom já processado que o backend devolveu (C6.3). */
+async function aplicarCupomRemoto(cupomLocalId: string, remoto: CupomResponse): Promise<void> {
   const lojaNome = remoto.loja?.nomeFantasia ?? remoto.loja?.razaoSocial;
-  await cupons.aplicarProcessamento(cupom.id, {
+  await cupons.aplicarProcessamento(cupomLocalId, {
     cupomIdServidor: remoto.cupomId,
     status: remoto.status,
     ...(remoto.loja?.cnpj ? { lojaCnpj: remoto.loja.cnpj } : {}),
@@ -107,6 +104,15 @@ async function buscarProcessamento(cupom: CupomLocal): Promise<void> {
       desconto: i.desconto ?? null,
     })),
   });
+}
+
+/** Aplica o resultado do parsing de UM cupom já no servidor, se já terminou. */
+async function buscarProcessamento(cupom: CupomLocal): Promise<void> {
+  if (!cupom.cupomIdServidor) return;
+  const remoto = await clienteApi.obterCupom(cupom.cupomIdServidor);
+  if (!remoto) return; // ainda na fila do backend, ou 404 transitório.
+  if (remoto.status === 'qr_capturado') return; // parsing ainda não concluiu.
+  await aplicarCupomRemoto(cupom.id, remoto);
 }
 
 /** Consulta o backend pelos cupons enviados mas ainda sem parsing concluído. */
@@ -195,4 +201,36 @@ export async function sincronizarCupom(cupomLocalId: string): Promise<CupomLocal
   }
 
   return cupom;
+}
+
+/**
+ * C2.6 — Captura por HTML. Quando o portal exige navegador/reCAPTCHA (ex.: RJ) e
+ * o backend não alcança a nota, o app abre a URL do QR num WebView, colhe o HTML
+ * renderizado e o envia aqui. Sobe o cupom antes, se ainda não subiu, e aplica o
+ * resultado ao espelho local. Propaga `ErroApi` (a tela distingue 422 = "HTML
+ * ainda é a página de desafio, tentar de novo" de erro real).
+ */
+export async function enviarHtmlCupom(
+  cupomLocalId: string,
+  html: string,
+): Promise<CupomLocal | null> {
+  let cupom = await cupons.obterCupom(cupomLocalId);
+  if (!cupom) return null;
+
+  if (!cupom.cupomIdServidor) {
+    const resp = await clienteApi.ingerirQr({
+      qrPayload: cupom.qrPayload,
+      capturadoEm: cupom.capturadoEm,
+    });
+    await cupons.vincularServidor(cupom.id, resp.cupomId, resp.status);
+    await fila.removerDaFila(cupom.id);
+    cupom = (await cupons.obterCupom(cupomLocalId)) ?? cupom;
+  }
+  if (!cupom.cupomIdServidor) return cupom;
+
+  const remoto = await clienteApi.ingerirHtmlCupom(cupom.cupomIdServidor, html);
+  if (remoto.status !== 'qr_capturado') {
+    await aplicarCupomRemoto(cupom.id, remoto);
+  }
+  return (await cupons.obterCupom(cupomLocalId)) ?? cupom;
 }

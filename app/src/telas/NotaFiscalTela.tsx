@@ -13,10 +13,12 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
-import { Botao, CabecalhoVoltar, Cartao, Tela, Texto } from '@/componentes';
+import { ErroApi } from '@/api';
+import { Botao, CabecalhoVoltar, Cartao, ColetorNotaWeb, Tela, Texto } from '@/componentes';
+import type { ResultadoColeta } from '@/componentes';
 import { cupons } from '@/dados';
 import type { CupomLocal, ItemCupomLocal } from '@/dados';
-import { sincronizarCupom } from '@/nucleo/sincronizador';
+import { enviarHtmlCupom, sincronizarCupom } from '@/nucleo/sincronizador';
 import { cores, espaco } from '@/tema';
 import type { RootStackParamList } from '@/navegacao/tipos';
 
@@ -45,6 +47,7 @@ export function NotaFiscalTela({ navigation, route }: Props) {
   const [cupom, setCupom] = useState<CupomLocal | null>(null);
   const [itens, setItens] = useState<ItemCupomLocal[]>([]);
   const [offline, setOffline] = useState(false);
+  const [coletaMsg, setColetaMsg] = useState<string | null>(null);
   const ativo = useRef(true);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -57,6 +60,24 @@ export function NotaFiscalTela({ navigation, route }: Props) {
     setCupom(c);
     setItens(is);
   }, [cupomLocalId]);
+
+  // C2.6 — Envia ao backend o HTML colhido pelo WebView e traduz o desfecho para
+  // o coletor: 422 = ainda na página de desafio (segue tentando); demais erros =
+  // transitórios; `processado` encerra.
+  const enviarHtmlColeta = useCallback(
+    async (html: string): Promise<ResultadoColeta> => {
+      try {
+        const atualizado = await enviarHtmlCupom(cupomLocalId, html);
+        if (atualizado?.status === 'processado') return 'processado';
+        if (atualizado?.status === 'falha') return 'erro';
+        return 'desafio';
+      } catch (e) {
+        if (e instanceof ErroApi && e.status === 422) return 'desafio';
+        return 'erro';
+      }
+    },
+    [cupomLocalId],
+  );
 
   useEffect(() => {
     ativo.current = true;
@@ -97,6 +118,13 @@ export function NotaFiscalTela({ navigation, route }: Props) {
 
   const processado = cupom?.status === 'processado';
   const falhou = cupom?.status === 'falha';
+  // Portal exige navegador (ex.: RJ): o cupom já subiu, mas segue `qr_capturado`
+  // porque o backend não alcança a nota — o app a colhe via WebView (C2.6).
+  const precisaColetar =
+    cupom != null &&
+    cupom.status === 'qr_capturado' &&
+    cupom.cupomIdServidor != null &&
+    /^https?:/i.test(cupom.qrPayload);
   const podeDescartar = cupom != null && (!cupom.cupomIdServidor || falhou);
   const total = itens.reduce((s, i) => s + i.valorTotal, 0);
   const subtitulo = processado
@@ -161,6 +189,32 @@ export function NotaFiscalTela({ navigation, route }: Props) {
             O QR pode ser de um estado ainda não suportado ou estar ilegível. Ele fica guardado para
             reprocessamento futuro.
           </Texto>
+        </Cartao>
+      ) : coletaMsg ? (
+        <Cartao>
+          <Texto peso="bold">Não deu para confirmar agora</Texto>
+          <Texto cor="textoMudo" tamanho="sm" style={{ marginTop: espaco.xs }}>
+            {coletaMsg}
+          </Texto>
+          <View style={{ marginTop: espaco.md }}>
+            <Botao titulo="Tentar de novo" onPress={() => setColetaMsg(null)} />
+          </View>
+        </Cartao>
+      ) : precisaColetar ? (
+        <Cartao>
+          <Texto peso="bold" style={{ marginBottom: espaco.xs }}>
+            Confirmando sua nota
+          </Texto>
+          <Texto cor="textoMudo" tamanho="sm" style={{ marginBottom: espaco.md }}>
+            A SEFAZ pede uma confirmação de navegador para liberar esta nota. Estamos fazendo isso
+            por você — costuma ser rápido.
+          </Texto>
+          <ColetorNotaWeb
+            url={cupom!.qrPayload}
+            enviarHtml={enviarHtmlColeta}
+            aoProcessar={() => void recarregarLocal()}
+            aoDesistir={(m) => setColetaMsg(m)}
+          />
         </Cartao>
       ) : (
         <Cartao>

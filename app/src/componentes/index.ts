@@ -16,4 +16,6 @@ export { VeredictoBadge } from './VeredictoBadge';
 export type { VeredictoBadgeProps } from './VeredictoBadge';
 export { GraficoLinha } from './GraficoLinha';
 export type { GraficoLinhaProps } from './GraficoLinha';
+export { ColetorNotaWeb } from './ColetorNotaWeb';
+export type { ColetorNotaWebProps, ResultadoColeta } from './ColetorNotaWeb';
 export * from './icones';

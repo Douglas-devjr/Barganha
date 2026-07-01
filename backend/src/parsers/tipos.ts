@@ -29,4 +29,10 @@ export interface ParserSefaz {
   readonly versao: string;
   suportaUF(uf: string): boolean;
   parse(qr: QrNfce): Promise<NotaEstruturada>;
+  /**
+   * Estrutura um HTML de nota JÁ OBTIDO, sem tocar a rede. Usado quando o portal
+   * exige navegador/reCAPTCHA e o próprio app colhe o HTML renderizado (C2.6). O
+   * parsing continua no backend (decisão travada nº2) — o app só entrega o HTML.
+   */
+  parseHtml(html: string): NotaEstruturada;
 }

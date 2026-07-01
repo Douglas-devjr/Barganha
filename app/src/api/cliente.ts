@@ -16,6 +16,7 @@ import type {
   CupomResponse,
   DeltaSyncRequest,
   DeltaSyncResponse,
+  IngestaoHtmlRequest,
   IngestaoQrRequest,
   IngestaoQrResponse,
 } from '@barganha/shared';
@@ -66,6 +67,24 @@ export class ClienteApi {
     const token = await this.resolverToken();
     if (!token) throw new ErroApi(401, 'Sessão expirada. Entre de novo para registrar cupons.');
     return this.requisitar<IngestaoQrResponse>('POST', '/ingestao/qr', req, token);
+  }
+
+  /**
+   * `POST /ingestao/cupom/:id/html` (C2.6) — PRIVADO. Envia o HTML da nota já
+   * renderizada (colhido pelo WebView no aparelho, quando o portal exige
+   * navegador/reCAPTCHA). O backend PARSEIA e devolve o cupom atualizado. Um 422
+   * significa que o HTML ainda é a página de desafio — reabrir/aguardar e reenviar.
+   */
+  async ingerirHtmlCupom(cupomIdServidor: string, html: string): Promise<CupomResponse> {
+    const token = await this.resolverToken();
+    if (!token) throw new ErroApi(401, 'Sessão expirada. Entre de novo para registrar cupons.');
+    const req: IngestaoHtmlRequest = { html };
+    return this.requisitar<CupomResponse>(
+      'POST',
+      `/ingestao/cupom/${encodeURIComponent(cupomIdServidor)}/html`,
+      req,
+      token,
+    );
   }
 
   /**
