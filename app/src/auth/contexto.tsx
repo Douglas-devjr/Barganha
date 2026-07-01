@@ -1,9 +1,10 @@
 /**
  * C4.3.1 — Estado de autenticação do app (login obrigatório, Supabase Auth).
  *
- * Expõe a sessão atual e as ações de auth (email/senha, Google, reset, sair). É
- * a fonte da verdade que o gate de navegação usa para decidir entre as telas de
- * login e o app (ver App.tsx).
+ * Expõe a sessão atual e as ações de auth (email/senha, Google, reset e troca
+ * de senha, sair). É a fonte da verdade que o gate de navegação usa para
+ * decidir entre as telas de login, a troca de senha pós-link e o app (App.tsx).
+ * Também escuta o deep link `barganha://auth-callback` dos links de email.
  *
  * Pegada nativa mínima: email/senha usa só JS (supabase-js) + o SQLite que já é
  * nativo. O Google precisa do `expo-web-browser` (nativo), então ele é importado
@@ -16,6 +17,7 @@
  */
 
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { Alert, Linking } from 'react-native';
 
 import type { Session, User } from '@supabase/supabase-js';
 
@@ -39,10 +41,15 @@ interface ValorAuth {
   usuario: User | null;
   /** `true` enquanto a sessão persistida ainda não foi carregada no boot. */
   carregando: boolean;
+  /** `true` após abrir o link de "esqueci a senha" — o gate força a tela de nova senha. */
+  recuperandoSenha: boolean;
   entrarComSenha(email: string, senha: string): Promise<ResultadoAuth>;
   cadastrar(email: string, senha: string): Promise<ResultadoAuth>;
   entrarComGoogle(): Promise<ResultadoAuth>;
   enviarResetSenha(email: string): Promise<ResultadoAuth>;
+  atualizarSenha(novaSenha: string): Promise<ResultadoAuth>;
+  /** Sai da tela de nova senha sem trocar (a sessão do link continua válida). */
+  cancelarRecuperacao(): void;
   sair(): Promise<void>;
 }
 
@@ -60,15 +67,29 @@ function traduzErro(mensagem: string): string {
     return 'Email inválido.';
   if (m.includes('rate limit') || m.includes('too many'))
     return 'Muitas tentativas. Tente de novo em instantes.';
+  if (m.includes('different from the old')) return 'A nova senha precisa ser diferente da atual.';
+  if (m.includes('session missing') || m.includes('session_not_found'))
+    return 'Sessão expirada. Peça um novo link de recuperação.';
   // Módulo nativo do navegador ausente (dev build sem expo-web-browser).
-  if (m.includes('native module') || m.includes('expowebbrowser') || m.includes('cannot find native'))
+  if (
+    m.includes('native module') ||
+    m.includes('expowebbrowser') ||
+    m.includes('cannot find native')
+  )
     return 'Login com Google requer um novo build do app. Use email e senha por enquanto.';
   if (m.includes('network')) return 'Sem conexão. Verifique a internet e tente de novo.';
   return mensagem;
 }
 
-/** Resolve a sessão a partir da URL de retorno do OAuth (PKCE → código). */
+// URLs de retorno já processadas. No Android o mesmo retorno pode chegar duas
+// vezes (resultado do navegador do Google E o listener de deep link); trocar o
+// mesmo código duas vezes falharia na segunda.
+const urlsProcessadas = new Set<string>();
+
+/** Resolve a sessão a partir da URL de retorno (OAuth ou link de email; PKCE → código). */
 async function trocarCodigoDaUrl(url: string): Promise<void> {
+  if (urlsProcessadas.has(url)) return;
+  urlsProcessadas.add(url);
   const u = new URL(url);
   const erro = u.searchParams.get('error_description') ?? u.searchParams.get('error');
   if (erro) throw new Error(erro);
@@ -82,6 +103,7 @@ async function trocarCodigoDaUrl(url: string): Promise<void> {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [sessao, setSessao] = useState<Session | null>(null);
   const [carregando, setCarregando] = useState(true);
+  const [recuperandoSenha, setRecuperandoSenha] = useState(false);
 
   useEffect(() => {
     let ativo = true;
@@ -91,8 +113,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setCarregando(false);
     });
 
-    // Mantém o estado em sincronia com login/logout/refresh do token.
-    const { data: sub } = supabase.auth.onAuthStateChange((_evento, novaSessao) => {
+    // Mantém o estado em sincronia com login/logout/refresh do token. O evento
+    // PASSWORD_RECOVERY vem da troca de código iniciada por resetPasswordForEmail.
+    const { data: sub } = supabase.auth.onAuthStateChange((evento, novaSessao) => {
+      if (evento === 'PASSWORD_RECOVERY') setRecuperandoSenha(true);
       setSessao(novaSessao);
       setCarregando(false);
     });
@@ -102,11 +126,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
+  // Links de email (reset de senha, confirmação de cadastro) voltam para o app
+  // pelo deep link `barganha://auth-callback?code=...` — tanto com o app aberto
+  // (evento `url`) quanto no boot a partir do link (getInitialURL). A troca do
+  // código cria a sessão; no reset ela também dispara PASSWORD_RECOVERY (acima).
+  useEffect(() => {
+    function tratar(url: string | null) {
+      if (!url?.startsWith(REDIRECT)) return;
+      void trocarCodigoDaUrl(url).catch(() => {
+        Alert.alert('Link inválido ou expirado', 'Peça um novo link e tente de novo.');
+      });
+    }
+    void Linking.getInitialURL().then(tratar);
+    const sub = Linking.addEventListener('url', (e) => tratar(e.url));
+    return () => sub.remove();
+  }, []);
+
   const valor = useMemo<ValorAuth>(
     () => ({
       sessao,
       usuario: sessao?.user ?? null,
       carregando,
+      recuperandoSenha,
 
       async entrarComSenha(email, senha) {
         const { error } = await supabase.auth.signInWithPassword({
@@ -159,6 +200,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return error ? { erro: traduzErro(error.message) } : {};
       },
 
+      async atualizarSenha(novaSenha) {
+        const { error } = await supabase.auth.updateUser({ password: novaSenha });
+        if (error) return { erro: traduzErro(error.message) };
+        setRecuperandoSenha(false);
+        return {};
+      },
+
+      cancelarRecuperacao() {
+        setRecuperandoSenha(false);
+      },
+
       async sair() {
         await supabase.auth.signOut();
         // LGPD (docs/04): apaga o lado PRIVADO local deste aparelho. O pool
@@ -166,7 +218,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         await redefinirAppLocal();
       },
     }),
-    [sessao, carregando],
+    [sessao, carregando, recuperandoSenha],
   );
 
   return <ContextoAuth.Provider value={valor}>{children}</ContextoAuth.Provider>;

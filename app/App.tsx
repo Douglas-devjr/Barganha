@@ -29,6 +29,7 @@ import { inicializarBd, meta } from '@/dados';
 import { AuthNavegador, RaizNavegador } from '@/navegacao';
 import { sincronizar } from '@/nucleo/sincronizador';
 import { OnboardingTela } from '@/telas/OnboardingTela';
+import { RedefinirSenhaTela } from '@/telas/auth/RedefinirSenhaTela';
 import { cores } from '@/tema';
 
 export default function App() {
@@ -72,7 +73,7 @@ export default function App() {
 
 /** Gate de navegação: consentimento → login → app. Consome a sessão de auth. */
 function Conteudo({ consentidoInicial }: { consentidoInicial: boolean }) {
-  const { sessao, carregando } = useAuth();
+  const { sessao, carregando, recuperandoSenha } = useAuth();
   const [consentido, setConsentido] = useState(consentidoInicial);
 
   // Sincroniza (upload da fila + delta) quando há sessão e ao voltar ao app.
@@ -89,6 +90,10 @@ function Conteudo({ consentidoInicial }: { consentidoInicial: boolean }) {
   }
   if (carregando) {
     return <Splash />;
+  }
+  // Chegou pelo link de "esqueci a senha": troca a senha antes de liberar o app.
+  if (recuperandoSenha) {
+    return <RedefinirSenhaTela />;
   }
 
   return (
