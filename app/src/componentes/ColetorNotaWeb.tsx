@@ -83,7 +83,9 @@ export function ColetorNotaWeb({ url, enviarHtml, aoProcessar, aoDesistir }: Col
   // Dev build antigo, sem o módulo nativo: avisa o pai uma vez em vez de quebrar.
   useEffect(() => {
     if (!WebViewNativo) {
-      aoDesistir('Este recurso é novo. Gere um novo build de desenvolvimento do app para ler esta nota.');
+      aoDesistir(
+        'Este recurso é novo. Gere um novo build de desenvolvimento do app para ler esta nota.',
+      );
     }
   }, [aoDesistir]);
 

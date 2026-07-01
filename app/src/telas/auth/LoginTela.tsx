@@ -49,7 +49,10 @@ export function LoginTela({ navigation }: Props) {
 
   return (
     <Tela>
-      <CabecalhoAuth titulo="Entrar" apoio="Acesse sua conta para registrar cupons e acompanhar seus preços." />
+      <CabecalhoAuth
+        titulo="Entrar"
+        apoio="Acesse sua conta para registrar cupons e acompanhar seus preços."
+      />
 
       <View style={estilos.form}>
         <CampoTexto
@@ -87,7 +90,13 @@ export function LoginTela({ navigation }: Props) {
           </Texto>
         </Pressable>
 
-        <Botao titulo="Entrar" bloco carregando={carregando} desabilitado={ocupado} onPress={entrar} />
+        <Botao
+          titulo="Entrar"
+          bloco
+          carregando={carregando}
+          desabilitado={ocupado}
+          onPress={entrar}
+        />
 
         <View style={estilos.divisor}>
           <View style={estilos.linha} />
@@ -126,7 +135,12 @@ export function LoginTela({ navigation }: Props) {
 const estilos = StyleSheet.create({
   form: { gap: espaco.lg },
   esqueci: { alignSelf: 'flex-end', marginTop: -espaco.xs },
-  divisor: { flexDirection: 'row', alignItems: 'center', gap: espaco.md, marginVertical: espaco.xs },
+  divisor: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: espaco.md,
+    marginVertical: espaco.xs,
+  },
   linha: { flex: 1, height: 1, backgroundColor: '#EEF2F6' },
   rodape: {
     flexDirection: 'row',

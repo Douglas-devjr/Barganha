@@ -34,7 +34,8 @@ export function CadastroTela({ navigation }: Props) {
 
   async function criar() {
     if (!email.trim()) return setErro('Informe seu email.');
-    if (senha.length < MIN_SENHA) return setErro(`A senha precisa ter ao menos ${MIN_SENHA} caracteres.`);
+    if (senha.length < MIN_SENHA)
+      return setErro(`A senha precisa ter ao menos ${MIN_SENHA} caracteres.`);
     if (senha !== confirmar) return setErro('As senhas não conferem.');
 
     setErro(undefined);
@@ -60,7 +61,10 @@ export function CadastroTela({ navigation }: Props) {
 
   return (
     <Tela>
-      <CabecalhoAuth titulo="Criar conta" apoio="É rápido. Só precisamos de um email e uma senha." />
+      <CabecalhoAuth
+        titulo="Criar conta"
+        apoio="É rápido. Só precisamos de um email e uma senha."
+      />
 
       <View style={estilos.form}>
         <CampoTexto

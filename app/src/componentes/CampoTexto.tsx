@@ -35,12 +35,7 @@ export function CampoTexto({ rotulo, erro, style, onFocus, onBlur, ...rest }: Ca
           setFocado(false);
           onBlur?.(e);
         }}
-        style={[
-          estilos.input,
-          focado && estilos.focado,
-          erro != null && estilos.comErro,
-          style,
-        ]}
+        style={[estilos.input, focado && estilos.focado, erro != null && estilos.comErro, style]}
       />
       {erro != null ? (
         <Texto tamanho="sm" cor="caro" style={estilos.erro}>

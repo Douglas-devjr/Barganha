@@ -11,15 +11,8 @@
     "noUnusedParameters": true,
     "jsx": "react-jsx",
     "paths": {
-      "@/*": [
-        "./src/*"
-      ]
+      "@/*": ["./src/*"]
     }
   },
-  "include": [
-    "index.ts",
-    "App.tsx",
-    "src/**/*.ts",
-    "src/**/*.tsx"
-  ]
+  "include": ["index.ts", "App.tsx", "src/**/*.ts", "src/**/*.tsx"]
 }
