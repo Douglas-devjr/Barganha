@@ -1,7 +1,8 @@
 /**
  * Ponto de entrada do backend. Lê a config, monta os adaptadores reais
  * (Supabase + SEFAZ HTTP) e sobe o servidor HTTP: ingestão (C2), consulta de
- * preço e delta sync (C4) + conta/auth mínima (C4.3) compartilham o processo.
+ * preço e delta sync (C4) + autenticação por JWT do Supabase (C4.3.1)
+ * compartilham o processo. Login obrigatório nos endpoints privados.
  */
 
 import { montarBackend } from './composicao';
@@ -14,8 +15,8 @@ export async function main(): Promise<void> {
     servicoIngestao,
     servicoConsulta,
     servicoSync,
-    servicoConta,
     autenticacao,
+    gerenciadorConta,
     telemetria,
     servicoModeracao,
     servicoCuradoria,
@@ -26,8 +27,8 @@ export async function main(): Promise<void> {
     servicoIngestao,
     servicoConsulta,
     servicoSync,
-    servicoConta,
     autenticacao,
+    gerenciadorConta,
     metricas: telemetria,
     // C11 — expansão: lançamento manual + moderação + enriquecimento + reprocesso.
     servicoModeracao,

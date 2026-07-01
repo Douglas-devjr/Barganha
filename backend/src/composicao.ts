@@ -5,9 +5,11 @@
  */
 
 import { Anonimizador } from './anonimizacao/anonimizador';
-import { Autenticador } from './auth/autenticador';
+import type { Autenticacao } from './auth/autenticador';
+import { AutenticadorSupabase } from './auth/autenticador-supabase';
 import { GuardaCuradoria } from './auth/curadoria';
-import { ServicoConta } from './auth/servico-conta';
+import { GerenciadorContaSupabase } from './auth/gerenciador-conta';
+import { VerificadorTokenSupabase } from './auth/verificador-token';
 import type { ConfigBackend } from './config/env';
 import { ServicoConsulta } from './consulta/servico-consulta';
 import { ServicoCuradoria } from './curadoria/servico-curadoria';
@@ -41,10 +43,10 @@ export interface Backend {
   servicoConsulta: ServicoConsulta;
   /** Delta sync incremental do cache de estatística (C4.2). */
   servicoSync: ServicoSync;
-  /** Conta anônima (C4.3). */
-  servicoConta: ServicoConta;
-  /** Autenticação mínima dos endpoints privados (C4.3). */
-  autenticacao: Autenticador;
+  /** Autenticação dos endpoints privados (C4.3.1) — valida o JWT do Supabase. */
+  autenticacao: Autenticacao;
+  /** Apagamento de conta (C4.3.1) — direito ao apagamento (docs/04). */
+  gerenciadorConta: GerenciadorContaSupabase;
   /** Gate de lançamento faseado por UF (C10.3). */
   rollout: ControleRollout;
   /** Telemetria de parsing por estado — fonte do endpoint `/metricas` (C10.2). */
@@ -90,11 +92,14 @@ export function montarBackend(config: ConfigBackend): Backend {
   const pipelineEstatistica = new PipelineEstatistica(repo, repo);
   const matcherTexto = new MatcherTexto(repo);
 
-  // C4 — API de consulta/sync (lê só o pool compartilhado) + auth mínima.
+  // C4 — API de consulta/sync (lê só o pool compartilhado) + auth real.
+  // C4.3.1: login obrigatório (Supabase Auth). O Bearer é um JWT validado
+  // contra o GoTrue; o `usuarioId` (= auth.users.id) só identifica o lado
+  // PRIVADO — o pool segue anônimo (docs/04). Sem conta anônima em produção.
   const servicoConsulta = new ServicoConsulta(repo, repo);
   const servicoSync = new ServicoSync(repo);
-  const servicoConta = new ServicoConta(repo);
-  const autenticacao = new Autenticador(repo);
+  const autenticacao = new AutenticadorSupabase(new VerificadorTokenSupabase(db));
+  const gerenciadorConta = new GerenciadorContaSupabase(db);
 
   // C11 — expansão (pós-lançamento): lançamento manual de gôndola + moderação
   // (publica no pool pelo MESMO gate do cupom) e enriquecimento de produto. Os
@@ -111,8 +116,8 @@ export function montarBackend(config: ConfigBackend): Backend {
     matcherTexto,
     servicoConsulta,
     servicoSync,
-    servicoConta,
     autenticacao,
+    gerenciadorConta,
     rollout,
     telemetria,
     servicoModeracao,

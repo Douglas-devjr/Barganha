@@ -1,10 +1,14 @@
 /**
  * Servidor HTTP (Fastify) do backend. Expõe:
- *  • Ingestão de QR (C2.1) — privada, exige conta; responde 202 (parsing é
+ *  • Ingestão de QR (C2.1) — privada, exige login; responde 202 (parsing é
  *    assíncrono na fila, não 200).
- *  • Conta anônima (C4.3) — cria o `usuarioId` que o app usa como Bearer.
+ *  • Apagar conta (C4.3.1) — privada; direito ao apagamento (docs/04).
  *  • Consulta de preço (C4.1) e delta sync (C4.2) — ANÔNIMOS: lêem só o pool
  *    compartilhado, sem conta (docs/04).
+ *
+ * Auth (C4.3.1): em produção os endpoints privados exigem um JWT do Supabase
+ * (login obrigatório — email/senha ou Google). A conta anônima de C4.3 sobrevive
+ * só como afordância de teste/legado (`servicoConta` injetado nos e2e em memória).
  *
  * Rate-limit (C9.3.2): criação de conta e os endpoints públicos de leitura têm
  * teto por janela (anti criação em massa / scraping do pool). Por trás de proxy
@@ -26,6 +30,7 @@ import Fastify, { type FastifyError, type FastifyInstance } from 'fastify';
 
 import type { Autenticacao } from '../auth/autenticador';
 import type { AutorizacaoCuradoria } from '../auth/curadoria';
+import type { GerenciadorConta } from '../auth/gerenciador-conta';
 import type { ServicoConta } from '../auth/servico-conta';
 import type { ServicoConsulta } from '../consulta/servico-consulta';
 import type { ServicoCuradoria } from '../curadoria/servico-curadoria';
@@ -64,9 +69,19 @@ export interface DependenciasHttp {
   servicoIngestao: ServicoIngestao;
   servicoConsulta: ServicoConsulta;
   servicoSync: ServicoSync;
-  servicoConta: ServicoConta;
-  /** Autenticação mínima (C4.3) — valida a conta nos endpoints privados. */
+  /**
+   * Conta anônima (C4.3) — afordância de testes/legado. Em produção o login é
+   * obrigatório (Supabase Auth), então este serviço NÃO é injetado e a rota
+   * `POST /conta/anonima` nem sobe. Presente → rota disponível (e2e em memória).
+   */
+  servicoConta?: ServicoConta;
+  /**
+   * Autenticação dos endpoints PRIVADOS (C4.3.1). Em produção valida o JWT do
+   * Supabase (login real); em testes, o UUID opaco da conta anônima.
+   */
   autenticacao: Autenticacao;
+  /** Apagamento de conta (direito ao apagamento, docs/04). Omitido → rota não sobe. */
+  gerenciadorConta?: GerenciadorConta;
   /** Lançamento manual de gôndola + moderação (C11.3). Omitido → rotas não sobem. */
   servicoModeracao?: ServicoModeracao;
   /** Enriquecimento de produto pela curadoria (C11.5). Omitido → rota não sobe. */
@@ -210,11 +225,32 @@ export function construirServidor(deps: DependenciasHttp): FastifyInstance {
   // restringir a rede interna/scraper de métricas via proxy.
   app.get('/metricas', () => metricas.snapshot());
 
-  // ── Conta anônima (C4.3) ───────────────────────────────────────────
-  app.post('/conta/anonima', { onRequest: guardaConta }, async (_req, reply) => {
-    const resposta = await deps.servicoConta.criarAnonima();
-    return reply.code(201).send(resposta);
-  });
+  // ── Conta anônima (C4.3) — afordância de teste/legado ──────────────
+  // Em produção (login obrigatório, Supabase Auth) `servicoConta` não é
+  // injetado: a rota nem sobe, então não há como obter conta sem autenticar.
+  const { servicoConta, gerenciadorConta } = deps;
+  if (servicoConta) {
+    app.post('/conta/anonima', { onRequest: guardaConta }, async (_req, reply) => {
+      const resposta = await servicoConta.criarAnonima();
+      return reply.code(201).send(resposta);
+    });
+  }
+
+  // ── Apagar conta (C4.3.1) — PRIVADO. Direito ao apagamento (docs/04) ──
+  // Remove a conta de auth e, em cascata, todo o histórico privado. O pool
+  // anônimo não é tocado (observações são soltas e sem vínculo com o usuário).
+  // Rate-limit por conta (mesmo teto da ingestão): evita que um token vazado
+  // martele o `auth.admin.deleteUser` do Supabase (C9.3.2).
+  if (gerenciadorConta) {
+    app.delete('/conta', { onRequest: guardaIngestao }, async (req, reply) => {
+      const usuarioId = await deps.autenticacao.resolver(req.headers);
+      if (!usuarioId) {
+        return reply.code(401).send({ erro: 'Usuário não identificado.' });
+      }
+      await gerenciadorConta.apagar(usuarioId);
+      return reply.code(204).send();
+    });
+  }
 
   // ── Ingestão de QR (C2.1) — privada ────────────────────────────────
   app.post<{ Body: IngestaoQrRequest }>(

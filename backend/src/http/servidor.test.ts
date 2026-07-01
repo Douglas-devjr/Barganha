@@ -253,3 +253,50 @@ describe('Servidor HTTP', () => {
     });
   });
 });
+
+describe('Apagar conta (C4.3.1) — direito ao apagamento', () => {
+  function montarComExclusao() {
+    const repo = new RepositorioMemoria();
+    const fila = new FilaMemoria(() => Promise.resolve(), { dormir: () => Promise.resolve() });
+    const apagados: string[] = [];
+    const app = construirServidor({
+      servicoIngestao: new ServicoIngestao(repo, fila),
+      servicoConsulta: new ServicoConsulta(repo, repo),
+      servicoSync: new ServicoSync(repo),
+      servicoConta: new ServicoConta(repo),
+      autenticacao: new Autenticador(repo),
+      gerenciadorConta: {
+        apagar: (id) => {
+          apagados.push(id);
+          return Promise.resolve();
+        },
+      },
+    });
+    return { app, apagados };
+  }
+
+  it('apaga a conta autenticada (204) e delega ao gerenciador', async () => {
+    const { app, apagados } = montarComExclusao();
+    await app.ready();
+    const conta = await app.inject({ method: 'POST', url: '/conta/anonima' });
+    const usuarioId = conta.json().usuarioId as string;
+
+    const r = await app.inject({
+      method: 'DELETE',
+      url: '/conta',
+      headers: { authorization: `Bearer ${usuarioId}` },
+    });
+    expect(r.statusCode).toBe(204);
+    expect(apagados).toEqual([usuarioId]);
+    await app.close();
+  });
+
+  it('rejeita exclusão sem credencial (401)', async () => {
+    const { app, apagados } = montarComExclusao();
+    await app.ready();
+    const r = await app.inject({ method: 'DELETE', url: '/conta' });
+    expect(r.statusCode).toBe(401);
+    expect(apagados).toHaveLength(0);
+    await app.close();
+  });
+});

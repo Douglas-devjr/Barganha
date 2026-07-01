@@ -50,10 +50,14 @@ sync lêem **só o pool compartilhado anônimo** — não exigem conta (`docs/04
   **cursor** (`atualizado_em`), no escopo do usuário (municípios + produtos do
   histórico). Devolve as linhas + o novo cursor. Janela pequena por design
   (`docs/05`); paginação por cursor composto fica para C9.3.
-- **C4.3 — Auth mínima:** `POST /conta/anonima` cria uma conta **sem dados
-  pessoais** (`docs/04`) e devolve o `usuarioId`. Endpoints **privados**
-  (ingestão) exigem `Authorization: Bearer <usuarioId>` (header legado
-  `x-usuario-id` aceito) e o `Autenticador` valida que a conta existe.
+- **C4.3.1 — Auth real (login obrigatório):** os endpoints **privados**
+  (ingestão, `DELETE /conta`) exigem `Authorization: Bearer <JWT do Supabase>`.
+  O `AutenticadorSupabase` valida o token (`auth.getUser`) e usa o `sub`
+  (= `auth.users.id`) como `usuarioId` — que identifica **só** o lado privado
+  (`docs/04`). `DELETE /conta` aplica o **direito ao apagamento**
+  (`auth.admin.deleteUser` → cascata em `usuario`/`cupom`/`item_cupom`).
+  A conta anônima de C4.3 (`POST /conta/anonima` + `Autenticador` por UUID)
+  permanece **só** como afordância de teste/legado e não sobe em produção.
 
 ## Estrutura
 
@@ -66,7 +70,7 @@ sync lêem **só o pool compartilhado anônimo** — não exigem conta (`docs/04
 | `estatistica/` | Motor de veredito: agregação, escopos/fallback, pipeline, casamento por texto (C3) |
 | `consulta/` | Serviço de consulta de preço com fallback geo (C4.1) |
 | `sync/` | Serviço de delta sync incremental (C4.2) |
-| `auth/` | Conta anônima + autenticação mínima (C4.3) |
+| `auth/` | Auth por JWT do Supabase + apagar conta (C4.3.1); conta anônima legado (C4.3) |
 | `fila/` | Fila com retry/backoff (porta + adaptador em memória) |
 | `persistencia/` | Portas + adaptador Supabase + adaptador em memória (testes) |
 | `sefaz/` | `ClienteSefaz` HTTP (real) e em memória (testes) |

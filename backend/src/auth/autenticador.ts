@@ -16,7 +16,7 @@
 
 import type { RepositorioUsuario } from './tipos';
 
-interface HeadersRequest {
+export interface HeadersRequest {
   authorization?: string;
   'x-usuario-id'?: string | string[];
 }
