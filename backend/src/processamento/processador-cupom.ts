@@ -47,11 +47,21 @@ export interface OpcoesProcessador {
   rollout?: Rollout;
   /** Observabilidade por estado (C10.2). Omitido → no-op. */
   telemetria?: Telemetria;
+  /**
+   * C3 — gatilho de recálculo da estatística após o cupom entrar no pool. Recebe
+   * os `produto_canonico_id` que ganharam observação; o composition root o liga
+   * ao `PipelineEstatistica`. Omitido → a estatística não é recalculada aqui (o
+   * `preco_estatistica` só se atualizaria por um job em lote). É o que faltava
+   * para o veredito na gôndola ter dados: sem este disparo, o pool enche mas a
+   * mediana/faixa nunca é construída.
+   */
+  aoPublicarPool?: (produtoCanonicoIds: string[]) => Promise<void>;
 }
 
 export class ProcessadorCupom {
   private readonly rollout: Rollout;
   private readonly telemetria: Telemetria;
+  private readonly aoPublicarPool?: (produtoCanonicoIds: string[]) => Promise<void>;
 
   constructor(
     private readonly repo: RepositorioCupom,
@@ -61,6 +71,7 @@ export class ProcessadorCupom {
   ) {
     this.rollout = opcoes.rollout ?? ROLLOUT_TUDO;
     this.telemetria = opcoes.telemetria ?? telemetriaNula;
+    this.aoPublicarPool = opcoes.aoPublicarPool;
   }
 
   async processar(cupomId: string): Promise<void> {
@@ -156,6 +167,21 @@ export class ProcessadorCupom {
       observacoes: resultado.observacoes,
     });
     this.telemetria.registrarParsing(uf, 'processado');
+
+    // C3 — o pool já foi gravado (transação da RPC commitada). Dispara o
+    // recálculo da mediana/faixa dos produtos afetados para o veredito na gôndola
+    // ter dados. Best-effort: a observação já está persistida; um erro aqui NÃO
+    // pode desfazer a ingestão nem relançar (o retry cairia no guard de
+    // `processado` e o recálculo nunca aconteceria) — apenas registra para um
+    // job em lote recuperar depois.
+    const produtoIds = [...new Set(resultado.observacoes.map((o) => o.produtoCanonicoId))];
+    if (produtoIds.length > 0 && this.aoPublicarPool) {
+      try {
+        await this.aoPublicarPool(produtoIds);
+      } catch (erro) {
+        console.error(`Falha ao recalcular estatística após cupom ${cupom.id}:`, erro);
+      }
+    }
   }
 
   /** Erro permanente → marca `falha` (com log). Transitório → relança (retry). */

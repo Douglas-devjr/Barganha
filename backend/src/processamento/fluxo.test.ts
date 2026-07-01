@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 
 import { Anonimizador } from '../anonimizacao/anonimizador';
 import { FalhaBuscaSefazError } from '../erros';
+import { PipelineEstatistica } from '../estatistica/pipeline';
 import { FilaMemoria } from '../fila/fila-memoria';
 import { TelemetriaMemoria } from '../observabilidade/telemetria-memoria';
 import type { ClienteSefaz, ParserSefaz } from '../parsers/tipos';
@@ -63,6 +64,34 @@ describe('Fluxo de captura C2 (ingestão → parse → anonimização → pool)'
     const pool = repo.observacoesDoPool();
     expect(pool).toHaveLength(2);
     expect(pool[0]).toMatchObject({ lojaCnpj: '12345678000199', uf: 'RJ' });
+  });
+
+  it('recalcula a estatística no processamento (o veredito na gôndola ganha dados)', async () => {
+    // Espelha o composition root: liga o gatilho de recálculo ao pipeline. Sem
+    // ele, o pool enche mas `preco_estatistica` fica vazio e a consulta dá 404.
+    const repo = new RepositorioMemoria();
+    const registro = new RegistroParsers([new ParserRj(clienteRjSp), new ParserSp(clienteRjSp)]);
+    const anonimizador = new Anonimizador(repo);
+    const pipeline = new PipelineEstatistica(repo, repo);
+    const processador = new ProcessadorCupom(repo, registro, anonimizador, {
+      aoPublicarPool: async (ids) => {
+        for (const id of ids) await pipeline.recalcularProduto(id);
+      },
+    });
+    const fila = new FilaMemoria((t) => processador.processar(t.cupomId), { dormir: semEspera });
+    const servico = new ServicoIngestao(repo, fila);
+
+    const res = await servico.ingerir('user-1', { qrPayload: QR_RJ, ...CAPTURA });
+    await fila.ociosa();
+
+    expect(repo.statusDoCupom(res.cupomId)).toBe('processado');
+    // Sem chamada manual do pipeline: a média já foi construída no processamento.
+    const produtoId = repo.observacoesDoPool()[0]!.produtoCanonicoId;
+    const estat = repo.estatisticasDoProduto(produtoId);
+    expect(estat.length).toBeGreaterThan(0);
+    const naLoja = estat.find((e) => e.escopo === 'loja');
+    expect(naLoja?.nObservacoes).toBe(1);
+    expect(naLoja?.mediana).toBeGreaterThan(0);
   });
 
   it('processa SP com o mesmo serviço (parser resolvido por UF)', async () => {

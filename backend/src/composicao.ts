@@ -74,8 +74,21 @@ export function montarBackend(config: ConfigBackend): Backend {
   const rollout = new ControleRollout(config.ufsHabilitadas);
   const telemetria = new TelemetriaMemoria();
 
+  // C3 — motor estatístico sobre o pool anônimo. Montado ANTES do processador
+  // para ser o gatilho de recálculo pós-ingestão (sem ele o pool enche mas a
+  // mediana/faixa do veredito nunca é construída).
+  const pipelineEstatistica = new PipelineEstatistica(repo, repo);
+
   const anonimizador = new Anonimizador(repo);
-  const processador = new ProcessadorCupom(repo, registro, anonimizador, { rollout, telemetria });
+  const processador = new ProcessadorCupom(repo, registro, anonimizador, {
+    rollout,
+    telemetria,
+    // Recalcula a estatística dos produtos que entraram no pool assim que o cupom
+    // é processado — é o que faz o veredito na gôndola (C4.1) ter dados.
+    aoPublicarPool: async (ids) => {
+      for (const id of ids) await pipelineEstatistica.recalcularProduto(id);
+    },
+  });
   const fila = new FilaMemoria((t) => processador.processar(t.cupomId), {
     aoEsgotar: (tarefa, erro) => {
       // C10.2 — conta o esgotamento por estado e registra para investigação.
@@ -89,9 +102,6 @@ export function montarBackend(config: ConfigBackend): Backend {
   const servicoIngestao = new ServicoIngestao(repo, fila, processador);
   const reprocessador = new ReprocessadorRetroativo(repo, registro, fila);
 
-  // C3 — motor estatístico sobre o pool anônimo. O disparo (após ingestão ou
-  // num job agendado) é decidido na API/infra (C4/C10); aqui ele só é montado.
-  const pipelineEstatistica = new PipelineEstatistica(repo, repo);
   const matcherTexto = new MatcherTexto(repo);
 
   // C4 — API de consulta/sync (lê só o pool compartilhado) + auth real.
