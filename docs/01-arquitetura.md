@@ -59,5 +59,9 @@ Toda a lógica que pode mudar (parsers por estado, regras de anonimização, est
 - **Mecanismo de sync:** delta por **cursor `atualizado_em`** (timestamp), escopo por
   município + produtos do histórico. Janela pequena por design; cursor composto
   p/ paginação fica para C9.3 (`docs/05`).
-- **Auth:** **conta anônima** (sem dados pessoais), `usuarioId` como Bearer; só
-  endpoints privados (ingestão) exigem conta — consulta e sync são anônimos.
+- **Auth (revisto em C4.3.1):** **login obrigatório** via **Supabase Auth**
+  (email/senha ou Google). O Bearer dos endpoints privados é o **JWT** da sessão,
+  validado no backend (`auth.getUser`); o `usuarioId` (= `auth.users.id`) só
+  identifica o lado PRIVADO. Consulta e sync seguem anônimos (sem conta). A conta
+  anônima de C4.3 permanece apenas como afordância de teste/legado. O dado de
+  login mora só em `auth.users` e NUNCA cruza para o pool (docs/04).
