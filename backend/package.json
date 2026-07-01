@@ -6,7 +6,8 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "dev": "node --env-file-if-exists=../.env --watch --import tsx src/index.ts",
-    "start": "node --env-file-if-exists=../.env --import tsx src/index.ts"
+    "start": "node --env-file-if-exists=../.env --import tsx src/index.ts",
+    "job:recalculo": "node --env-file-if-exists=../.env --import tsx src/jobs/recalculo-estatistica.ts"
   },
   "dependencies": {
     "@barganha/shared": "*",

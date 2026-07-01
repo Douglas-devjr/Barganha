@@ -1,0 +1,56 @@
+name: Recálculo de estatística (job em lote)
+
+# C3.1/C10 — Rede de segurança do recálculo de `preco_estatistica`. O recálculo
+# principal roda inline na ingestão (best-effort); este cron varre periodicamente
+# os produtos com observação recente e reconstrói a mediana/faixa, recuperando o
+# que porventura tenha falhado inline. Idempotente (upsert), então é seguro repetir.
+#
+# Requer os segredos de repositório SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY
+# (Settings → Secrets). A chave de serviço NUNCA é versionada.
+
+on:
+  schedule:
+    # A cada 30 min. Cron do GitHub é UTC e pode atrasar sob carga — o job é
+    # idempotente, então atrasos/execuções sobrepostas não causam problema.
+    - cron: '*/30 * * * *'
+  workflow_dispatch:
+    inputs:
+      lookback:
+        description: 'Janela de retrovisão em minutos (0 = recálculo completo)'
+        type: string
+        default: '180'
+
+concurrency:
+  group: recalculo-estatistica
+  cancel-in-progress: false
+
+jobs:
+  recalculo:
+    name: Recalcular preco_estatistica
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      # Disparo manual pode sobrescrever a janela; no cron usa o padrão da config.
+      RECALCULO_LOOKBACK_MINUTES: ${{ github.event.inputs.lookback }}
+    steps:
+      - name: Falha cedo se faltar credencial do Supabase
+        if: ${{ env.SUPABASE_URL == '' || env.SUPABASE_SERVICE_ROLE_KEY == '' }}
+        run: |
+          echo "::error::Segredos SUPABASE_URL/SUPABASE_SERVICE_ROLE_KEY ausentes — configure em Settings → Secrets."
+          exit 1
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configura Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Instala dependências
+        run: npm ci
+
+      - name: Roda o recálculo em lote
+        run: npm run job:recalculo --workspace @barganha/backend

@@ -17,6 +17,13 @@ export interface ConfigBackend {
   trustProxy: boolean;
   /** Tokens de curadoria (C11) — moderação de gôndola e enriquecimento. Vazio = curadoria desabilitada. */
   curadoriaTokens: string[];
+  /**
+   * Job em lote de recálculo de `preco_estatistica` (C3.1/C10): janela de
+   * retrovisão em minutos. Recalcula os produtos com observação inserida nesse
+   * intervalo — rede de segurança para o recálculo *best-effort* da ingestão.
+   * `0` (ou negativo) → recálculo COMPLETO. Padrão: 180 (3h).
+   */
+  recalculoLookbackMinutos: number;
 }
 
 export function lerConfig(env: NodeJS.ProcessEnv = process.env): ConfigBackend {
@@ -39,5 +46,13 @@ export function lerConfig(env: NodeJS.ProcessEnv = process.env): ConfigBackend {
     ufsHabilitadas: parseUfsHabilitadas(env.UFS_HABILITADAS),
     trustProxy: env.TRUST_PROXY === 'true',
     curadoriaTokens: parseCuradoriaTokens(env.CURADORIA_TOKENS),
+    recalculoLookbackMinutos: parseLookbackMinutos(env.RECALCULO_LOOKBACK_MINUTES),
   };
+}
+
+/** Lookback do job de recálculo (min). Inválido/ausente → 180; `0` = completo. */
+function parseLookbackMinutos(bruto: string | undefined): number {
+  if (bruto == null || bruto.trim() === '') return 180;
+  const n = Number(bruto);
+  return Number.isFinite(n) ? n : 180;
 }
