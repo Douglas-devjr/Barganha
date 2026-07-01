@@ -69,6 +69,10 @@ export interface CupomResponse {
     uf?: string;
   };
   itens: ItemNotaResponse[];
+  /** Desconto total do cupom (R$), quando o portal informa (docs/06). */
+  descontoTotal?: number;
+  /** Valor efetivamente pago (R$) = soma dos itens − desconto total. */
+  valorPago?: number;
 }
 
 // ───────────────────────────── Conta (C4.3) ─────────────────────────────

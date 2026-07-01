@@ -24,6 +24,8 @@ interface LinhaCupom {
   loja_nome: string | null;
   emitido_em: string | null;
   uf: string | null;
+  desconto_total: number | null;
+  valor_pago: number | null;
   criado_em: string;
   atualizado_em: string;
 }
@@ -40,6 +42,8 @@ function mapearCupom(l: LinhaCupom): CupomLocal {
     lojaNome: l.loja_nome,
     emitidoEm: l.emitido_em,
     uf: l.uf,
+    descontoTotal: l.desconto_total,
+    valorPago: l.valor_pago,
     criadoEm: l.criado_em,
     atualizadoEm: l.atualizado_em,
   };
@@ -147,6 +151,10 @@ export interface ResultadoProcessamento {
   lojaNome?: string;
   emitidoEm?: string;
   uf?: string;
+  /** Desconto total do cupom (R$), quando o portal informa (C2.6). */
+  descontoTotal?: number;
+  /** Valor efetivamente pago (R$). */
+  valorPago?: number;
   itens: Omit<ItemCupomLocal, 'id' | 'cupomLocalId'>[];
 }
 
@@ -159,10 +167,14 @@ export async function aplicarProcessamento(
   const agora = agoraIso();
 
   await db.withTransactionAsync(async () => {
+    // `COALESCE(?, coluna)` nos totais: uma re-sincronização sem os totais (ex.:
+    // via GET, que não os carrega) não apaga os já gravados na captura (C2.6).
     await db.runAsync(
       `UPDATE cupom_local
           SET cupom_id_servidor = ?, status = ?, chave_acesso = COALESCE(?, chave_acesso),
-              loja_cnpj = ?, loja_nome = ?, emitido_em = ?, uf = ?, atualizado_em = ?
+              loja_cnpj = ?, loja_nome = ?, emitido_em = ?, uf = ?,
+              desconto_total = COALESCE(?, desconto_total),
+              valor_pago = COALESCE(?, valor_pago), atualizado_em = ?
         WHERE id = ?`,
       [
         r.cupomIdServidor,
@@ -172,6 +184,8 @@ export async function aplicarProcessamento(
         r.lojaNome ?? null,
         r.emitidoEm ?? null,
         r.uf ?? null,
+        r.descontoTotal ?? null,
+        r.valorPago ?? null,
         agora,
         cupomLocalId,
       ],
@@ -212,9 +226,11 @@ export interface ResumoCompras {
 }
 
 /**
- * Agrega o histórico PRIVADO processado. `economiaTotal` é a soma honesta dos
- * descontos que a própria NFC-e registrou (promoção real no caixa), nunca uma
- * estimativa estatística — esta fica para C8.3/C8.4 (Pós).
+ * Agrega o histórico PRIVADO processado. `gastoTotal` é o valor REALMENTE pago
+ * (bruto − desconto do cupom, C2.6), não a soma crua dos itens. `economiaTotal`
+ * usa o desconto total da nota quando existe (autoritativo); senão, a soma dos
+ * descontos marcados por item. Sempre o desconto honesto da NFC-e, nunca
+ * estimativa (isso é C8.3/C8.4, Pós). Agrega por cupom antes de somar.
  */
 export async function resumoCompras(): Promise<ResumoCompras> {
   const linha = await getBd().getFirstAsync<{
@@ -224,13 +240,22 @@ export async function resumoCompras(): Promise<ResumoCompras> {
     economia_total: number;
   }>(
     `SELECT
-       COUNT(DISTINCT c.id)                                          AS total_cupons,
-       COUNT(i.id)                                                   AS total_itens,
-       COALESCE(SUM(i.valor_total), 0)                               AS gasto_total,
-       COALESCE(SUM(CASE WHEN i.desconto > 0 THEN i.desconto END), 0) AS economia_total
-     FROM cupom_local c
-     LEFT JOIN item_cupom_local i ON i.cupom_local_id = c.id
-     WHERE c.status = 'processado'`,
+       COUNT(*)                                                        AS total_cupons,
+       COALESCE(SUM(x.total_itens), 0)                                 AS total_itens,
+       COALESCE(SUM(COALESCE(x.valor_pago, x.bruto - x.desc_itens)), 0) AS gasto_total,
+       COALESCE(SUM(COALESCE(x.desconto_total, x.desc_itens)), 0)       AS economia_total
+     FROM (
+       SELECT
+         c.valor_pago                                                  AS valor_pago,
+         c.desconto_total                                              AS desconto_total,
+         COUNT(i.id)                                                   AS total_itens,
+         COALESCE(SUM(i.valor_total), 0)                               AS bruto,
+         COALESCE(SUM(CASE WHEN i.desconto > 0 THEN i.desconto END), 0) AS desc_itens
+       FROM cupom_local c
+       LEFT JOIN item_cupom_local i ON i.cupom_local_id = c.id
+       WHERE c.status = 'processado'
+       GROUP BY c.id
+     ) x`,
   );
   return {
     totalCupons: linha?.total_cupons ?? 0,
@@ -275,14 +300,23 @@ export async function listarComprasRecentes(limite = 6): Promise<CompraResumo[]>
     valor_total: number;
     economia: number;
   }>(
+    // `valor_total` é o valor REALMENTE pago (líquido); `economia`, o desconto do
+    // cupom quando a nota o traz (C2.6), com fallback nos descontos por item.
     `SELECT
        c.id                                   AS cupom_local_id,
        c.loja_nome                            AS loja_nome,
        COALESCE(c.emitido_em, c.capturado_em) AS observado_em,
        c.status                               AS status,
        COUNT(i.id)                            AS total_itens,
-       COALESCE(SUM(i.valor_total), 0)        AS valor_total,
-       COALESCE(SUM(CASE WHEN i.desconto > 0 THEN i.desconto END), 0) AS economia
+       COALESCE(
+         c.valor_pago,
+         COALESCE(SUM(i.valor_total), 0)
+           - COALESCE(SUM(CASE WHEN i.desconto > 0 THEN i.desconto END), 0)
+       )                                      AS valor_total,
+       COALESCE(
+         c.desconto_total,
+         COALESCE(SUM(CASE WHEN i.desconto > 0 THEN i.desconto END), 0)
+       )                                      AS economia
      FROM cupom_local c
      LEFT JOIN item_cupom_local i ON i.cupom_local_id = c.id
      GROUP BY c.id
@@ -363,4 +397,14 @@ export async function listarItens(cupomLocalId: string): Promise<ItemCupomLocal[
     valorTotal: l.valor_total,
     desconto: l.desconto,
   }));
+}
+
+/**
+ * C2.6 — Marca (ou limpa) o desconto de UM item, informado pelo usuário quando o
+ * cupom traz desconto mas o portal não diz em qual item. Fica só no histórico
+ * PRIVADO local (a base compartilhada não é tocada, docs/04). `null`/0 limpa.
+ */
+export async function definirDescontoItem(itemId: string, desconto: number | null): Promise<void> {
+  const valor = desconto && desconto > 0 ? desconto : null;
+  await getBd().runAsync(`UPDATE item_cupom_local SET desconto = ? WHERE id = ?`, [valor, itemId]);
 }

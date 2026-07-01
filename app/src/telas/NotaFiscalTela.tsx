@@ -11,7 +11,7 @@
 
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Modal, Pressable, StyleSheet, TextInput, View } from 'react-native';
 
 import { ErroApi } from '@/api';
 import { Botao, CabecalhoVoltar, Cartao, ColetorNotaWeb, Tela, Texto } from '@/componentes';
@@ -19,7 +19,7 @@ import type { ResultadoColeta } from '@/componentes';
 import { cupons } from '@/dados';
 import type { CupomLocal, ItemCupomLocal } from '@/dados';
 import { enviarHtmlCupom, sincronizarCupom } from '@/nucleo/sincronizador';
-import { cores, espaco } from '@/tema';
+import { cores, espaco, raio } from '@/tema';
 import type { RootStackParamList } from '@/navegacao/tipos';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'NotaFiscal'>;
@@ -29,6 +29,17 @@ const INTERVALO_OFFLINE_MS = 6000;
 
 function moeda(valor: number): string {
   return `R$ ${valor.toFixed(2).replace('.', ',')}`;
+}
+
+/** Lê um valor em reais digitado ("12,50" / "12.50") como número. */
+function parseReais(txt: string): number {
+  const n = Number(
+    txt
+      .replace(/\./g, '')
+      .replace(',', '.')
+      .replace(/[^\d.]/g, ''),
+  );
+  return Number.isFinite(n) && n > 0 ? n : 0;
 }
 
 function quantidade(valor: number): string {
@@ -48,6 +59,9 @@ export function NotaFiscalTela({ navigation, route }: Props) {
   const [itens, setItens] = useState<ItemCupomLocal[]>([]);
   const [offline, setOffline] = useState(false);
   const [coletaMsg, setColetaMsg] = useState<string | null>(null);
+  // Marcação de desconto (C2.6): item em edição + valor digitado.
+  const [editando, setEditando] = useState<ItemCupomLocal | null>(null);
+  const [valorInput, setValorInput] = useState('');
   const ativo = useRef(true);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -127,9 +141,31 @@ export function NotaFiscalTela({ navigation, route }: Props) {
     /^https?:/i.test(cupom.qrPayload);
   const podeDescartar = cupom != null && (!cupom.cupomIdServidor || falhou);
   const total = itens.reduce((s, i) => s + i.valorTotal, 0);
+  // Totais do cupom (C2.6). O portal só traz o desconto AGREGADO; o usuário marca
+  // em qual item ele foi. `valorPago` é o autoritativo da nota; o "falta marcar" é
+  // só a atribuição por item (histórico privado).
+  const descontoCupom = cupom?.descontoTotal ?? 0;
+  const temDesconto = descontoCupom > 0;
+  const valorPago = cupom?.valorPago ?? total - descontoCupom;
+  const descontoMarcado = itens.reduce((s, i) => s + (i.desconto ?? 0), 0);
+  const restanteMarcar = Math.max(0, descontoCupom - descontoMarcado);
   const subtitulo = processado
     ? (dataCurta(cupom?.emitidoEm) ?? 'Nota processada')
     : 'Aguardando processamento';
+
+  function abrirEdicao(item: ItemCupomLocal) {
+    if (!temDesconto) return;
+    setEditando(item);
+    const sugerido = item.desconto ?? Math.min(restanteMarcar, item.valorTotal);
+    setValorInput(sugerido > 0 ? sugerido.toFixed(2).replace('.', ',') : '');
+  }
+
+  async function salvarDesconto(valor: number | null) {
+    if (!editando) return;
+    await cupons.definirDescontoItem(editando.id, valor);
+    setEditando(null);
+    await recarregarLocal();
+  }
 
   return (
     <Tela>
@@ -158,28 +194,63 @@ export function NotaFiscalTela({ navigation, route }: Props) {
             {itens.length} {itens.length === 1 ? 'item' : 'itens'}
           </Texto>
 
+          {temDesconto && restanteMarcar > 0 ? (
+            <Cartao style={estilos.dicaDesconto}>
+              <Texto tamanho="sm">
+                Este cupom teve {moeda(descontoCupom)} de desconto. Toque no item que teve o
+                desconto
+                {restanteMarcar < descontoCupom ? ` (falta marcar ${moeda(restanteMarcar)})` : ''}.
+              </Texto>
+            </Cartao>
+          ) : null}
+
           <Cartao semPadding>
-            {itens.map((item, idx) => (
-              <View
-                key={item.id}
-                style={[estilos.item, idx < itens.length - 1 && estilos.itemBorda]}
-              >
-                <View style={estilos.itemTexto}>
-                  <Texto peso="semibold" numberOfLines={2}>
-                    {item.descricaoOriginal}
-                  </Texto>
-                  <Texto cor="textoMudo" tamanho="sm" style={{ marginTop: 2 }}>
-                    {quantidade(item.quantidade)} {item.unidade} × {moeda(item.valorUnitario)}
-                    {item.desconto != null && item.desconto > 0 ? '  · promoção' : ''}
-                  </Texto>
+            {itens.map((item, idx) => {
+              const temItemDesc = item.desconto != null && item.desconto > 0;
+              const conteudo = (
+                <View style={[estilos.item, idx < itens.length - 1 && estilos.itemBorda]}>
+                  <View style={estilos.itemTexto}>
+                    <Texto peso="semibold" numberOfLines={2}>
+                      {item.descricaoOriginal}
+                    </Texto>
+                    <Texto cor="textoMudo" tamanho="sm" style={{ marginTop: 2 }}>
+                      {quantidade(item.quantidade)} {item.unidade} × {moeda(item.valorUnitario)}
+                      {temItemDesc ? `  · desconto ${moeda(item.desconto ?? 0)}` : ''}
+                    </Texto>
+                  </View>
+                  <Texto peso="bold">{moeda(item.valorTotal)}</Texto>
                 </View>
-                <Texto peso="bold">{moeda(item.valorTotal)}</Texto>
+              );
+              return temDesconto ? (
+                <Pressable key={item.id} onPress={() => abrirEdicao(item)}>
+                  {conteudo}
+                </Pressable>
+              ) : (
+                <View key={item.id}>{conteudo}</View>
+              );
+            })}
+
+            {temDesconto ? (
+              <>
+                <View style={[estilos.item, estilos.totalLinha]}>
+                  <Texto cor="textoMudo">Subtotal</Texto>
+                  <Texto>{moeda(total)}</Texto>
+                </View>
+                <View style={estilos.item}>
+                  <Texto cor="textoMudo">Desconto</Texto>
+                  <Texto>− {moeda(descontoCupom)}</Texto>
+                </View>
+                <View style={[estilos.item, estilos.totalLinha]}>
+                  <Texto peso="extrabold">Valor pago</Texto>
+                  <Texto peso="extrabold">{moeda(valorPago)}</Texto>
+                </View>
+              </>
+            ) : (
+              <View style={[estilos.item, estilos.totalLinha]}>
+                <Texto peso="extrabold">Total</Texto>
+                <Texto peso="extrabold">{moeda(total)}</Texto>
               </View>
-            ))}
-            <View style={[estilos.item, estilos.totalLinha]}>
-              <Texto peso="extrabold">Total</Texto>
-              <Texto peso="extrabold">{moeda(total)}</Texto>
-            </View>
+            )}
           </Cartao>
         </>
       ) : falhou ? (
@@ -238,6 +309,52 @@ export function NotaFiscalTela({ navigation, route }: Props) {
           <Botao titulo="Descartar" variante="fantasma" bloco onPress={() => void descartar()} />
         ) : null}
       </View>
+
+      <Modal
+        visible={editando != null}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setEditando(null)}
+      >
+        <Pressable style={estilos.modalFundo} onPress={() => setEditando(null)}>
+          {/* onPress vazio: impede que tocar no cartão feche o modal. */}
+          <Pressable style={estilos.modalCartao} onPress={() => {}}>
+            <Texto peso="extrabold" tamanho="lg">
+              Desconto do item
+            </Texto>
+            <Texto cor="textoMudo" tamanho="sm" numberOfLines={2} style={{ marginTop: espaco.xs }}>
+              {editando?.descricaoOriginal}
+            </Texto>
+            <TextInput
+              value={valorInput}
+              onChangeText={setValorInput}
+              keyboardType="decimal-pad"
+              placeholder="0,00"
+              placeholderTextColor={cores.placeholder}
+              style={estilos.input}
+              autoFocus
+            />
+            <Texto cor="textoMudo" tamanho="sm">
+              Desconto do cupom: {moeda(descontoCupom)} · falta marcar {moeda(restanteMarcar)}
+            </Texto>
+            <View style={{ marginTop: espaco.md, gap: espaco.sm }}>
+              <Botao
+                titulo="Salvar"
+                bloco
+                onPress={() => void salvarDesconto(parseReais(valorInput) || null)}
+              />
+              {editando?.desconto ? (
+                <Botao
+                  titulo="Remover desconto"
+                  variante="fantasma"
+                  bloco
+                  onPress={() => void salvarDesconto(null)}
+                />
+              ) : null}
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </Tela>
   );
 }
@@ -255,4 +372,22 @@ const estilos = StyleSheet.create({
   itemTexto: { flex: 1 },
   totalLinha: { borderTopWidth: 1, borderTopColor: cores.superficieMuda },
   processando: { alignItems: 'center', paddingVertical: espaco.lg },
+  dicaDesconto: { marginBottom: espaco.md, backgroundColor: cores.superficieMuda },
+  modalFundo: {
+    flex: 1,
+    backgroundColor: 'rgba(11,18,32,0.5)',
+    justifyContent: 'center',
+    padding: espaco.xl,
+  },
+  modalCartao: { backgroundColor: cores.branco, borderRadius: raio.lg, padding: espaco.lg },
+  input: {
+    borderWidth: 1,
+    borderColor: cores.borda,
+    borderRadius: raio.md,
+    paddingHorizontal: espaco.md,
+    paddingVertical: espaco.sm,
+    fontSize: 18,
+    marginVertical: espaco.md,
+    color: cores.textoForte,
+  },
 });

@@ -14,7 +14,7 @@
  * Cada desfecho é registrado na telemetria por estado (C10.2).
  */
 
-import type { NotaEstruturada } from '@barganha/shared';
+import type { NotaEstruturada, TotaisNota } from '@barganha/shared';
 
 import {
   ChaveAcessoInvalidaError,
@@ -92,8 +92,8 @@ export class ProcessadorCupom {
    * o dono). Lança `HtmlDesafioError` se o HTML ainda for a página de
    * bloqueio/desafio — nesse caso o app reabre e reenvia (não marca `falha`).
    */
-  async processarComHtml(cupom: CupomRegistro, html: string): Promise<void> {
-    if (cupom.status === 'processado') return;
+  async processarComHtml(cupom: CupomRegistro, html: string): Promise<TotaisNota | undefined> {
+    if (cupom.status === 'processado') return undefined;
     if (pareceDefesaAntiBot(html)) {
       throw new HtmlDesafioError(
         'O HTML enviado ainda é a página de bloqueio/desafio da SEFAZ, não a nota.',
@@ -106,12 +106,16 @@ export class ProcessadorCupom {
       uf = qr.uf ?? cupom.uf;
 
       const alvo = this.resolverParser(uf);
-      if (!alvo) return; // sem parser ou UF fora do rollout — represado (C2.5).
+      if (!alvo) return undefined; // sem parser ou UF fora do rollout — represado (C2.5).
 
       const nota = alvo.parseHtml(html);
       await this.finalizar(cupom, uf!, nota);
+      // Totais do cupom (bruto/desconto/pago) voltam para o app exibir — não são
+      // persistidos no servidor (histórico privado é local-first, docs/05).
+      return nota.total;
     } catch (erro) {
       await this.tratarErro(cupom.id, uf, erro);
+      return undefined;
     }
   }
 

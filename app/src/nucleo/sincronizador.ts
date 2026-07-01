@@ -93,6 +93,8 @@ async function aplicarCupomRemoto(cupomLocalId: string, remoto: CupomResponse): 
     ...(lojaNome ? { lojaNome } : {}),
     ...(remoto.emitidoEm ? { emitidoEm: remoto.emitidoEm } : {}),
     ...(remoto.uf ? { uf: remoto.uf } : {}),
+    ...(remoto.descontoTotal != null ? { descontoTotal: remoto.descontoTotal } : {}),
+    ...(remoto.valorPago != null ? { valorPago: remoto.valorPago } : {}),
     itens: remoto.itens.map((i) => ({
       produtoCanonicoId: i.produtoCanonicoId ?? null,
       descricaoOriginal: i.descricaoOriginal,

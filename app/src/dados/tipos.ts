@@ -20,6 +20,10 @@ export interface CupomLocal {
   lojaNome: string | null;
   emitidoEm: string | null;
   uf: string | null;
+  /** Desconto total do cupom (R$), quando o portal informa (C2.6). */
+  descontoTotal: number | null;
+  /** Valor efetivamente pago (R$) = soma dos itens − desconto total. */
+  valorPago: number | null;
   criadoEm: string;
   atualizadoEm: string;
 }

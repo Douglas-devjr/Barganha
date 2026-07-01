@@ -80,4 +80,10 @@ export const MIGRACOES: string[] = [
     valor TEXT
   );
   `,
+  // v2 — totais do cupom (C2.6). O layout ENCAT só traz o desconto AGREGADO; o
+  // bruto é a soma dos itens. `valor_pago` = bruto − desconto (valor real pago).
+  `
+  ALTER TABLE cupom_local ADD COLUMN desconto_total REAL;
+  ALTER TABLE cupom_local ADD COLUMN valor_pago REAL;
+  `,
 ];
