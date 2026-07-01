@@ -1,14 +1,14 @@
 /**
  * C6.4 — Onboarding (3 passos) + consentimento LGPD. As duas primeiras telas
  * explicam o produto; a terceira pede o consentimento explícito e só então
- * libera o app (decisão travada: transparência sobre o que se coleta — preços
- * anônimos — e o que nunca se coleta — dados pessoais, docs/04).
+ * libera o próximo gate — o LOGIN (C4.3.1) — e, depois dele, o app (decisão
+ * travada: transparência sobre o que se coleta — preços anônimos — e o que nunca
+ * se coleta — dados pessoais, docs/04).
  *
- * O consentimento é gravado localmente (meta_sync); o boot decide a rota inicial
- * a partir dele. Sem "Concordar", não há captura.
+ * O consentimento é gravado localmente (meta_sync); o gate de App.tsx decide o
+ * que renderizar a partir dele. Sem "Concordar", não há login nem captura.
  */
 
-import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { ReactElement } from 'react';
 import { useRef, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
@@ -24,9 +24,11 @@ import {
 } from '@/componentes';
 import { meta } from '@/dados';
 import { cores, espaco, raio } from '@/tema';
-import type { RootStackParamList } from '@/navegacao/tipos';
 
-type Props = NativeStackScreenProps<RootStackParamList, 'Onboarding'>;
+export interface OnboardingTelaProps {
+  /** Chamado após registrar o consentimento — o gate avança para o login. */
+  aoConcordar: () => void;
+}
 
 interface Passo {
   Icone: (p: IconeProps) => ReactElement;
@@ -55,7 +57,7 @@ const PASSOS: Passo[] = [
   },
 ];
 
-export function OnboardingTela({ navigation }: Props) {
+export function OnboardingTela({ aoConcordar }: OnboardingTelaProps) {
   const { width } = useWindowDimensions();
   const [indice, setIndice] = useState(0);
   const lista = useRef<FlatList<Passo>>(null);
@@ -68,7 +70,7 @@ export function OnboardingTela({ navigation }: Props) {
 
   async function concordar() {
     await meta.registrarConsentimento();
-    navigation.reset({ index: 0, routes: [{ name: 'Abas' }] });
+    aoConcordar();
   }
 
   function avancar() {

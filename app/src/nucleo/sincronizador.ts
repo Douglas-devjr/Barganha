@@ -9,8 +9,9 @@
  *      o cabeçalho + itens no espelho privado local (C6.3).
  *
  * Falhas de rede/servidor são TRANSITÓRIAS (retry com backoff exponencial);
- * QR inválido (400) é PERMANENTE (marca `falha` e sai da fila). Sem conta ainda
- * (401) é transitório — o boot cria a conta anônima e a próxima rodada envia.
+ * QR inválido (400) é PERMANENTE (marca `falha` e sai da fila). Sessão ausente
+ * ou expirada (401) é transitório — quando o usuário entra (C4.3.1), o app
+ * renova o token e a próxima rodada envia.
  */
 
 import { clienteApi, ErroApi } from '@/api';
@@ -32,8 +33,8 @@ function atrasoBackoff(tentativas: number): string {
 
 /** Erros que não adianta repetir (corrigir a origem, não tentar de novo). */
 function ehPermanente(erro: unknown): boolean {
-  // 400 = QR inválido pelo backend. 401 NÃO é permanente: falta a conta anônima,
-  // que o boot recria; demais 4xx/5xx/rede são transitórios.
+  // 400 = QR inválido pelo backend. 401 NÃO é permanente: a sessão expirou e o
+  // app renova ao logar; demais 4xx/5xx/rede são transitórios.
   return erro instanceof ErroApi && erro.status === 400;
 }
 

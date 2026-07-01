@@ -1,12 +1,12 @@
 /**
- * C5 — Componente raiz do app. Orquestra o boot:
- *   1. carrega a fonte Plus Jakarta Sans (C5.2),
- *   2. inicializa o SQLite local (C5.3),
- *   3. lê o consentimento p/ decidir a rota inicial (onboarding vs. abas, C6.4),
- *   4. garante a conta anônima + drena a fila de upload em background (C4.3/C6.2),
- *   5. monta a navegação (C5.1).
+ * C5 — Componente raiz do app. Orquestra o boot e os três gates de acesso:
+ *   1. carrega a fonte Plus Jakarta Sans (C5.2) + inicializa o SQLite (C5.3);
+ *   2. CONSENTIMENTO (C6.4) — onboarding LGPD; sem ele, nada mais aparece;
+ *   3. LOGIN (C4.3.1) — sessão do Supabase Auth; obrigatório para usar o app;
+ *   4. APP — abas + fluxos; drena a fila de upload e sincroniza em background.
  *
- * Enquanto fonte/banco não estão prontos, exibe uma splash simples com a marca.
+ * Enquanto fonte/banco não estão prontos (ou a sessão é carregada), exibe uma
+ * splash simples com a marca.
  */
 
 import {
@@ -23,11 +23,12 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, AppState, StyleSheet, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
+import { AuthProvider, useAuth } from '@/auth';
 import { Texto } from '@/componentes';
 import { inicializarBd, meta } from '@/dados';
-import { RaizNavegador } from '@/navegacao';
-import { garantirContaAnonima } from '@/nucleo/bootstrap';
+import { AuthNavegador, RaizNavegador } from '@/navegacao';
 import { sincronizar } from '@/nucleo/sincronizador';
+import { OnboardingTela } from '@/telas/OnboardingTela';
 import { cores } from '@/tema';
 
 export default function App() {
@@ -39,45 +40,59 @@ export default function App() {
     PlusJakartaSans_800ExtraBold,
   });
   const [bdPronto, setBdPronto] = useState(false);
-  const [consentido, setConsentido] = useState<boolean | null>(null);
+  const [consentidoInicial, setConsentidoInicial] = useState<boolean | null>(null);
 
   useEffect(() => {
     let ativo = true;
-    (async () => {
+    void (async () => {
       await inicializarBd();
       const consent = await meta.obterConsentimentoEm();
       if (!ativo) return;
-      setConsentido(consent != null);
+      setConsentidoInicial(consent != null);
       setBdPronto(true);
-      // Conta anônima + sincronização em background — não bloqueiam a navegação.
-      void garantirContaAnonima().then(() => sincronizar());
     })();
     return () => {
       ativo = false;
     };
   }, []);
 
-  // Ao voltar para o app, tenta drenar a fila de upload e concluir parsings (C6.2).
-  useEffect(() => {
-    const sub = AppState.addEventListener('change', (estado) => {
-      if (estado === 'active') void sincronizar();
-    });
-    return () => sub.remove();
-  }, []);
-
-  const pronto = fontesProntas && bdPronto && consentido !== null;
-
-  if (!pronto) {
+  if (!fontesProntas || !bdPronto || consentidoInicial === null) {
     return <Splash />;
   }
 
   return (
-    <SafeAreaProvider>
-      <StatusBar style="dark" />
-      <NavigationContainer>
-        <RaizNavegador consentido={consentido === true} />
-      </NavigationContainer>
-    </SafeAreaProvider>
+    <AuthProvider>
+      <SafeAreaProvider>
+        <StatusBar style="dark" />
+        <Conteudo consentidoInicial={consentidoInicial} />
+      </SafeAreaProvider>
+    </AuthProvider>
+  );
+}
+
+/** Gate de navegação: consentimento → login → app. Consome a sessão de auth. */
+function Conteudo({ consentidoInicial }: { consentidoInicial: boolean }) {
+  const { sessao, carregando } = useAuth();
+  const [consentido, setConsentido] = useState(consentidoInicial);
+
+  // Sincroniza (upload da fila + delta) quando há sessão e ao voltar ao app.
+  useEffect(() => {
+    if (sessao) void sincronizar();
+    const sub = AppState.addEventListener('change', (estado) => {
+      if (estado === 'active' && sessao) void sincronizar();
+    });
+    return () => sub.remove();
+  }, [sessao]);
+
+  if (!consentido) {
+    return <OnboardingTela aoConcordar={() => setConsentido(true)} />;
+  }
+  if (carregando) {
+    return <Splash />;
+  }
+
+  return (
+    <NavigationContainer>{sessao ? <RaizNavegador /> : <AuthNavegador />}</NavigationContainer>
   );
 }
 

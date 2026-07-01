@@ -6,6 +6,8 @@ export { Tela } from './Tela';
 export type { TelaProps } from './Tela';
 export { Botao } from './Botao';
 export type { BotaoProps, VarianteBotao } from './Botao';
+export { CampoTexto } from './CampoTexto';
+export type { CampoTextoProps } from './CampoTexto';
 export { Cartao } from './Cartao';
 export type { CartaoProps } from './Cartao';
 export { CabecalhoVoltar } from './CabecalhoVoltar';

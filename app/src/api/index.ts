@@ -1,6 +1,6 @@
 /** C5.4 — Barril da API + instância padrão pronta para o app. */
 
-import { meta } from '@/dados';
+import { supabase } from '@/auth/supabase';
 
 import { ClienteApi } from './cliente';
 
@@ -9,10 +9,13 @@ export type { OpcoesClienteApi } from './cliente';
 export { obterBaseUrl } from './config';
 
 /**
- * Cliente padrão do app. O Bearer (usuarioId da conta anônima) é resolvido
- * preguiçosamente do SQLite a cada chamada privada — só após o boot ter
- * inicializado o banco e criado/recuperado a conta.
+ * Cliente padrão do app. O Bearer é o access token (JWT) da sessão do Supabase
+ * Auth (C4.3.1), resolvido preguiçosamente a cada chamada privada. O supabase-js
+ * renova o token sozinho (autoRefreshToken); sem sessão → `null` → 401.
  */
 export const clienteApi = new ClienteApi({
-  obterToken: () => meta.obterUsuarioId(),
+  obterToken: async () => {
+    const { data } = await supabase.auth.getSession();
+    return data.session?.access_token ?? null;
+  },
 });

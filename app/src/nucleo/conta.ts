@@ -1,16 +1,21 @@
 /**
- * C8.2 — "Sair" do Perfil: apaga TODO o estado local deste aparelho — histórico
- * privado (cupons + itens), fila de upload, cache de estatísticas e os metadados
- * (inclui a conta anônima e o consentimento LGPD).
+ * C8.2 / C4.3.1 — Limpeza local do aparelho, chamada ao SAIR (encerra a sessão)
+ * e ao APAGAR a conta. Apaga TODO o estado local: histórico privado (cupons +
+ * itens), fila de upload, cache de estatísticas e o cursor de sync.
  *
- * LGPD (docs/04): isto remove apenas o lado PRIVADO local. As observações de
- * preço já enviadas ao pool são ANÔNIMAS e soltas (sem usuário, sem chave de
- * acesso), então não são "suas" nem reidentificáveis — não há o que apagar lá.
+ * PRESERVA o consentimento LGPD (`consentimento_em`): ele registra que ESTE
+ * aparelho já aceitou a política de privacidade (gate de onboarding), não é dado
+ * pessoal e não pertence à conta. Apagá-lo forçava o usuário a reconsentir a
+ * cada logout — atrito sem ganho. A sessão de auth (chaves `auth:` em meta_sync)
+ * NÃO é preservada: cai junto na limpeza (além do signOut do supabase-js).
  *
- * Após o reset, o app volta ao Onboarding; o próximo boot recria a conta anônima.
+ * LGPD (docs/04): isto remove apenas o lado PRIVADO local. O dado de login mora
+ * no Supabase Auth (encerrado pelo signOut, ou apagado pelo DELETE /conta). As
+ * observações de preço já enviadas ao pool são ANÔNIMAS e soltas (sem usuário,
+ * sem chave de acesso) — não são "suas" nem reidentificáveis; nada a apagar lá.
  */
 
-import { getBd } from '@/dados';
+import { getBd, meta } from '@/dados';
 
 export async function redefinirAppLocal(): Promise<void> {
   const db = getBd();
@@ -23,7 +28,8 @@ export async function redefinirAppLocal(): Promise<void> {
       DELETE FROM fila_upload;
       DELETE FROM cupom_local;
       DELETE FROM cache_estatistica;
-      DELETE FROM meta_sync;
     `);
+    // meta_sync: limpa tudo (cursor de sync, sessão de auth) MENOS o consentimento.
+    await db.runAsync(`DELETE FROM meta_sync WHERE chave <> ?`, [meta.CHAVE_CONSENTIMENTO]);
   });
 }

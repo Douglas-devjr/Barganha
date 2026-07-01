@@ -1,24 +1,21 @@
 /**
- * C8.2 — Perfil. Dados mínimos da conta anônima, os mercados onde você mais
- * compra e a ação de sair (apaga os dados locais). Tudo derivado do histórico
- * PRIVADO local; nada aqui expõe identidade — a conta é anônima de nascença e a
- * região vem da LOJA, nunca do usuário (decisões travadas, docs/04).
+ * C8.2 — Perfil. Dados mínimos da conta (só o email do login), os mercados onde
+ * você mais compra e as ações de conta: SAIR (encerra a sessão e limpa este
+ * aparelho) e APAGAR CONTA (direito ao apagamento, docs/04). A região vem da
+ * LOJA, nunca do usuário; os preços compartilhados seguem anônimos e soltos.
  */
 
-import { useFocusEffect, useNavigation } from '@react-navigation/native';
-import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useFocusEffect } from '@react-navigation/native';
 import { useCallback, useState } from 'react';
 import { Alert, StyleSheet, View } from 'react-native';
 
+import { clienteApi } from '@/api';
+import { useAuth } from '@/auth';
 import { Botao, Cartao, IconeLoja, Tela, Texto } from '@/componentes';
 import { cupons, produtos } from '@/dados';
 import type { MercadoFrequente } from '@/dados/repositorio-cupom';
-import { redefinirAppLocal } from '@/nucleo/conta';
 import { dataCurta } from '@/nucleo/formato';
 import { cores, espaco, raio } from '@/tema';
-import type { RootStackParamList } from '@/navegacao/tipos';
-
-type Navegacao = NativeStackNavigationProp<RootStackParamList>;
 
 interface DadosPerfil {
   uf: string | null;
@@ -38,8 +35,9 @@ function Linha({ rotulo, valor }: { rotulo: string; valor: string }) {
 }
 
 export function PerfilTela() {
-  const navigation = useNavigation<Navegacao>();
+  const { usuario, sair } = useAuth();
   const [dados, setDados] = useState<DadosPerfil>(VAZIO);
+  const [ocupado, setOcupado] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -59,19 +57,35 @@ export function PerfilTela() {
     }, []),
   );
 
-  async function sair() {
-    await redefinirAppLocal();
-    navigation.reset({ index: 0, routes: [{ name: 'Onboarding' }] });
+  // Sair: encerra a sessão e limpa este aparelho (o gate volta para o login).
+  function confirmarSaida() {
+    Alert.alert('Sair da conta?', 'Você precisará entrar de novo para registrar cupons.', [
+      { text: 'Cancelar', style: 'cancel' },
+      { text: 'Sair', style: 'destructive', onPress: () => void sair() },
+    ]);
   }
 
-  function confirmarSaida() {
+  // Apagar conta: remove o histórico no servidor (cascata) + encerra a sessão.
+  async function apagarConta() {
+    setOcupado(true);
+    try {
+      await clienteApi.apagarConta();
+      await sair();
+    } catch {
+      setOcupado(false);
+      Alert.alert('Não foi possível apagar agora', 'Verifique a conexão e tente de novo.');
+    }
+  }
+
+  function confirmarExclusao() {
     Alert.alert(
-      'Sair e apagar dados?',
-      'Isto remove deste aparelho seu histórico, o cache e a conta anônima. Os preços que você já ' +
-        'compartilhou são anônimos e soltos — seguem ajudando a comunidade, sem ligação com você.',
+      'Apagar conta?',
+      'Isto remove sua conta e todo o seu histórico, no aparelho e no servidor. Não dá para ' +
+        'desfazer. Os preços que você já compartilhou são anônimos e soltos — seguem ajudando a ' +
+        'comunidade, sem ligação com você (LGPD).',
       [
         { text: 'Cancelar', style: 'cancel' },
-        { text: 'Sair', style: 'destructive', onPress: () => void sair() },
+        { text: 'Apagar conta', style: 'destructive', onPress: () => void apagarConta() },
       ],
     );
   }
@@ -79,7 +93,7 @@ export function PerfilTela() {
   return (
     <Tela titulo="Perfil">
       <Cartao semPadding style={{ paddingHorizontal: espaco.lg }}>
-        <Linha rotulo="Conta" valor="Anônima" />
+        <Linha rotulo="Conta" valor={usuario?.email ?? '—'} />
         <Linha rotulo="Região (UF)" valor={dados.uf ?? '—'} />
         <Linha rotulo="Cupons escaneados" valor={String(dados.cuponsEscaneados)} />
       </Cartao>
@@ -120,16 +134,25 @@ export function PerfilTela() {
       )}
 
       <Texto cor="textoMudo" tamanho="sm" centralizado style={estilos.nota}>
-        Sua conta é anônima: não guardamos nome nem CPF. Os preços que você compartilha entram
+        Guardamos só seu email para o login. Os preços que você compartilha entram anônimos e
         soltos, sem ligação com você (LGPD).
       </Texto>
 
       <Botao
-        titulo="Sair e apagar dados"
-        variante="fantasma"
+        titulo="Sair"
+        variante="secundario"
         bloco
+        desabilitado={ocupado}
         onPress={confirmarSaida}
         style={{ marginTop: espaco.sm }}
+      />
+      <Botao
+        titulo="Apagar conta"
+        variante="fantasma"
+        bloco
+        carregando={ocupado}
+        onPress={confirmarExclusao}
+        style={{ marginTop: espaco.xs }}
       />
     </Tela>
   );

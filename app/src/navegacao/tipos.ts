@@ -22,7 +22,16 @@ export type RootStackParamList = {
   NotaFiscal: { cupomLocalId: string };
   /** `chave` = id canônico, EAN ou descrição (chave do catálogo local, C7.5). */
   ProdutoDetalhe: { chave: string; nome?: string };
-  Onboarding: undefined;
+};
+
+/**
+ * C4.3.1 — Stack de autenticação (login obrigatório). Só aparece quando o
+ * usuário já consentiu (onboarding) mas ainda não tem sessão.
+ */
+export type AuthStackParamList = {
+  Login: undefined;
+  Cadastro: undefined;
+  EsqueciSenha: undefined;
 };
 
 declare global {

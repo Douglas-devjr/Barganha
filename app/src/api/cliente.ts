@@ -3,7 +3,7 @@
  * consome EXCLUSIVAMENTE os DTOs de @barganha/shared — sem redefinir contratos.
  *
  * Separação de mundos (docs/04):
- *   • Privado  : `ingerirQr` exige Bearer (a conta anônima de C4.3).
+ *   • Privado  : `ingerirQr`/`apagarConta` exigem Bearer (JWT do login, C4.3.1).
  *   • Anônimo  : `consultarPreco` e `sincronizar` leem só o pool — sem conta.
  *
  * Offline-first: a UI resolve do cache local primeiro; este cliente só é
@@ -13,7 +13,6 @@
 import type {
   ConsultaPrecoRequest,
   ConsultaPrecoResponse,
-  ContaAnonimaResponse,
   CupomResponse,
   DeltaSyncRequest,
   DeltaSyncResponse,
@@ -62,16 +61,21 @@ export class ClienteApi {
     }
   }
 
-  /** `POST /conta/anonima` (C4.3) — cria a conta sem dados pessoais. */
-  criarContaAnonima(): Promise<ContaAnonimaResponse> {
-    return this.requisitar<ContaAnonimaResponse>('POST', '/conta/anonima');
-  }
-
   /** `POST /ingestao/qr` (C2.1) — PRIVADO: envia o QR cru; exige Bearer. 202. */
   async ingerirQr(req: IngestaoQrRequest): Promise<IngestaoQrResponse> {
     const token = await this.resolverToken();
-    if (!token) throw new ErroApi(401, 'Sem conta para ingestão. Crie a conta anônima primeiro.');
+    if (!token) throw new ErroApi(401, 'Sessão expirada. Entre de novo para registrar cupons.');
     return this.requisitar<IngestaoQrResponse>('POST', '/ingestao/qr', req, token);
+  }
+
+  /**
+   * `DELETE /conta` (C4.3.1) — PRIVADO: apaga a conta e, em cascata, todo o
+   * histórico no servidor (direito ao apagamento, docs/04). Exige Bearer.
+   */
+  async apagarConta(): Promise<void> {
+    const token = await this.resolverToken();
+    if (!token) throw new ErroApi(401, 'Sem sessão para apagar a conta.');
+    await this.requisitar<void>('DELETE', '/conta', undefined, token);
   }
 
   /**

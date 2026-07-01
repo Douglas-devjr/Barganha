@@ -1,17 +1,16 @@
 /**
  * C5.3 — Metadados locais (tabela chave/valor). Guarda o cursor do delta sync
- * (docs/05) e o id da conta anônima usado como Bearer (C4.3).
+ * (docs/05) e o consentimento LGPD do onboarding (C6.4).
  *
- * NOTA (C4.3.1): o `usuarioId` é hoje a própria credencial. Guardá-lo aqui é
- * aceitável para o esqueleto, mas o endurecimento (mover para SecureStore /
- * token com segredo) está mapeado no catálogo de etapas.
+ * NOTA (C4.3.1): a credencial deixou de morar aqui — o Bearer agora é o JWT da
+ * sessão do Supabase Auth, gerido pelo supabase-js (ver src/auth/).
  */
 
 import { getBd } from './bd';
 
 const CHAVE_CURSOR = 'cursor_delta';
-const CHAVE_USUARIO = 'usuario_id';
-const CHAVE_CONSENTIMENTO = 'consentimento_em';
+/** Chave do consentimento LGPD. Exportada p/ a limpeza local preservá-la (nucleo/conta). */
+export const CHAVE_CONSENTIMENTO = 'consentimento_em';
 
 export async function obterMeta(chave: string): Promise<string | null> {
   const linha = await getBd().getFirstAsync<{ valor: string | null }>(
@@ -31,9 +30,6 @@ export async function definirMeta(chave: string, valor: string): Promise<void> {
 export const obterCursorDelta = (): Promise<string | null> => obterMeta(CHAVE_CURSOR);
 export const definirCursorDelta = (cursor: string): Promise<void> =>
   definirMeta(CHAVE_CURSOR, cursor);
-
-export const obterUsuarioId = (): Promise<string | null> => obterMeta(CHAVE_USUARIO);
-export const definirUsuarioId = (id: string): Promise<void> => definirMeta(CHAVE_USUARIO, id);
 
 /**
  * C6.4 — Consentimento LGPD do onboarding. Guarda o instante (ISO) em que o
