@@ -92,9 +92,10 @@ afterAll(async () => {
 });
 
 describe('Jornada e2e (C2→C3→C4)', () => {
-  it('processa os cupons e popula o pool (2 produtos com EAN × 3 usuários)', () => {
+  it('processa os cupons e popula o pool (3 produtos × 3 usuários)', () => {
+    // 2 produtos casados por EAN + a banana (sem EAN) casada pela descrição.
     for (const id of cupons) expect(repo.statusDoCupom(id)).toBe('processado');
-    expect(repo.observacoesDoPool()).toHaveLength(2 * N_USUARIOS);
+    expect(repo.observacoesDoPool()).toHaveLength(3 * N_USUARIOS);
   });
 
   it('a consulta na gôndola devolve a faixa típica com base suficiente', async () => {

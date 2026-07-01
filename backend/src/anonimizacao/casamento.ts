@@ -1,10 +1,16 @@
 /**
  * Casamento de produto ao `produto_canonico`.
  *
- * Em C2 só fazemos o casamento DIRETO por EAN (acha-ou-cria o canônico). Itens
- * sem EAN (hortifruti/padaria/açougue) ficam sem canônico por ora e seguem
- * para o casamento por TEXTO com confirmação, que é C3.5 (docs/06). Por isso
- * é uma porta: C3 troca/expande a implementação sem mexer na anonimização.
+ * Dois casamentos DIRETOS (acha-ou-cria), ambos por identidade exata:
+ *  • por EAN, quando o portal expõe o código de barras;
+ *  • por DESCRIÇÃO normalizada + unidade-base, quando não expõe — vários
+ *    portais (ex.: RJ/ENCAT) mostram só o código INTERNO da loja, e sem este
+ *    caminho nada do cupom entraria no pool.
+ *
+ * Identidade exata nunca funde produtos diferentes; o risco é fragmentação
+ * ("CR LEITE X 200G" ≠ "CREME DE LEITE X 200G"), que a curadoria resolve
+ * fundindo via `produto_alias`. Casamento por SIMILARIDADE segue sendo só
+ * sugestão com confirmação (C3.5, docs/06) — nunca automático.
  */
 
 import { type UnidadeBase } from '@barganha/shared';
@@ -21,4 +27,9 @@ export interface CatalogoProdutos {
    * Retorna o `produto_canonico_id`.
    */
   casarPorEan(ean: string, sugestao: SugestaoProduto): Promise<string>;
+  /**
+   * Acha o `produto_canonico` SEM EAN pela descrição normalizada exata (+ mesma
+   * unidade-base) ou cria um novo. Retorna o `produto_canonico_id`.
+   */
+  casarPorDescricao(sugestao: SugestaoProduto): Promise<string>;
 }

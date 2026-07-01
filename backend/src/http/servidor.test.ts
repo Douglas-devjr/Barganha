@@ -93,7 +93,8 @@ describe('Servidor HTTP', () => {
 
       await fila.ociosa();
       expect(repo.statusDoCupom(corpo.cupomId)).toBe('processado');
-      expect(repo.observacoesDoPool()).toHaveLength(2);
+      // 3 itens da nota do RJ: 2 casados por EAN + 1 pela descrição (sem EAN).
+      expect(repo.observacoesDoPool()).toHaveLength(3);
     });
 
     it('rejeita sem credencial (401)', async () => {

@@ -48,7 +48,12 @@ const CONTEXTO: ContextoPrivado = {
 };
 
 function catalogoFake(): CatalogoProdutos {
-  return { casarPorEan: vi.fn((ean: string) => Promise.resolve(`canon-${ean}`)) };
+  return {
+    casarPorEan: vi.fn((ean: string) => Promise.resolve(`canon-${ean}`)),
+    casarPorDescricao: vi.fn((s: { descricaoNormalizada: string }) =>
+      Promise.resolve(`canon-desc-${s.descricaoNormalizada}`),
+    ),
+  };
 }
 
 describe('Anonimizador (C2.4)', () => {
@@ -60,13 +65,13 @@ describe('Anonimizador (C2.4)', () => {
       produtoCanonicoId: 'canon-7890000000017',
       valorTotal: 33.8,
     });
-    // Item sem EAN fica sem canônico (casamento por texto é C3.5).
-    expect(r.itensPrivados[2]?.produtoCanonicoId).toBeUndefined();
+    // Item sem EAN casa pela descrição normalizada exata (portal sem código de barras).
+    expect(r.itensPrivados[2]?.produtoCanonicoId).toBe('canon-desc-BANANA PRATA');
   });
 
-  it('só envia ao pool itens com EAN casado e preço normalizável', async () => {
+  it('envia ao pool itens casados (EAN ou descrição) com preço normalizável', async () => {
     const r = await new Anonimizador(catalogoFake()).anonimizar(NOTA, CONTEXTO);
-    expect(r.observacoes).toHaveLength(2);
+    expect(r.observacoes).toHaveLength(3);
     expect(r.observacoes[0]).toMatchObject({
       produtoCanonicoId: 'canon-7890000000017',
       lojaCnpj: '12345678000199',
@@ -76,6 +81,12 @@ describe('Anonimizador (C2.4)', () => {
       unidadeBase: 'un',
       emPromocao: false,
       observadoEm: '2026-06-20T00:00:00.000Z',
+    });
+    // O item de balança (sem EAN) entra normalizado em R$/kg.
+    expect(r.observacoes[2]).toMatchObject({
+      produtoCanonicoId: 'canon-desc-BANANA PRATA',
+      precoNormalizado: 6.99,
+      unidadeBase: 'kg',
     });
   });
 
@@ -107,9 +118,34 @@ describe('Anonimizador (C2.4)', () => {
     }
   });
 
-  it('não casa itens sem EAN (não chama o catálogo à toa)', async () => {
+  it('escolhe o casamento certo: EAN quando há, descrição quando não', async () => {
     const catalogo = catalogoFake();
     await new Anonimizador(catalogo).anonimizar(NOTA, CONTEXTO);
     expect(catalogo.casarPorEan).toHaveBeenCalledTimes(2);
+    expect(catalogo.casarPorDescricao).toHaveBeenCalledTimes(1);
+    expect(catalogo.casarPorDescricao).toHaveBeenCalledWith({
+      descricaoNormalizada: 'BANANA PRATA',
+      unidadeBase: 'kg',
+    });
+  });
+
+  it('não casa item sem preço normalizável (unidade fora do mapa)', async () => {
+    const catalogo = catalogoFake();
+    const nota: NotaEstruturada = {
+      ...NOTA,
+      itens: [
+        {
+          descricao: 'CERVEJA PACK 12',
+          quantidade: 1,
+          unidade: 'CX',
+          valorUnitario: 36,
+          valorTotal: 36,
+        },
+      ],
+    };
+    const r = await new Anonimizador(catalogo).anonimizar(nota, CONTEXTO);
+    expect(catalogo.casarPorDescricao).not.toHaveBeenCalled();
+    expect(r.observacoes).toHaveLength(0);
+    expect(r.itensPrivados).toHaveLength(1); // privado guarda mesmo assim
   });
 });

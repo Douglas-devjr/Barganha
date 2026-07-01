@@ -64,7 +64,8 @@ interface ItemCupomArmazenado extends ItemCupomNovo {
 
 interface ProdutoCanonicoInterno {
   id: string;
-  ean: string;
+  /** Ausente nos canônicos casados por descrição (portal sem EAN). */
+  ean?: string;
   descricaoNormalizada: string;
   unidadeBase: UnidadeBase;
   // Enriquecimento de curadoria (C11.5) — só exibição, não afeta o casamento.
@@ -105,6 +106,8 @@ export class RepositorioMemoria
   // Lado COMPARTILHADO (anônimo).
   private readonly lojas = new Map<string, Loja>();
   private readonly produtosPorEan = new Map<string, ProdutoCanonicoInterno>();
+  // Canônicos sem EAN, chaveados por `descricao|unidade` (espelha o índice único parcial).
+  private readonly produtosPorDescricao = new Map<string, ProdutoCanonicoInterno>();
   // Pool com o instante de INSERÇÃO (criadoEm), separado da emissão (observadoEm),
   // para o sinal incremental do pipeline ser por inserção (F1).
   private readonly poolEntradas: { obs: ObservacaoAnonima; criadoEm: string }[] = [];
@@ -254,6 +257,20 @@ export class RepositorioMemoria
     return Promise.resolve(novo.id);
   }
 
+  casarPorDescricao(sugestao: SugestaoProduto): Promise<string> {
+    const chave = `${sugestao.descricaoNormalizada}|${sugestao.unidadeBase}`;
+    const existente = this.produtosPorDescricao.get(chave);
+    if (existente) return Promise.resolve(existente.id);
+
+    const novo: ProdutoCanonicoInterno = {
+      id: randomUUID(),
+      descricaoNormalizada: sugestao.descricaoNormalizada,
+      unidadeBase: sugestao.unidadeBase,
+    };
+    this.produtosPorDescricao.set(chave, novo);
+    return Promise.resolve(novo.id);
+  }
+
   // ───────────────────────── FonteProdutoConsulta (C4.1) ──────────────
 
   obterProdutoPorEan(ean: string): Promise<string | undefined> {
@@ -278,7 +295,7 @@ export class RepositorioMemoria
   candidatosPorNome(nome: string): Promise<CandidatoCanonico[]> {
     const token = tokenizar(nome).sort((a, b) => b.length - a.length)[0];
     if (!token) return Promise.resolve([]);
-    const r = [...this.produtosPorEan.values()]
+    const r = [...this.todosProdutos()]
       .filter((p) => p.descricaoNormalizada.includes(token))
       .map((p) => ({ produtoCanonicoId: p.id, descricaoNormalizada: p.descricaoNormalizada }));
     return Promise.resolve(r);
@@ -361,7 +378,7 @@ export class RepositorioMemoria
   // ───────────────────────── FonteCandidatosTexto (C3.5) ──────────────
 
   listarCandidatos(unidadeBase: string): Promise<CandidatoCanonico[]> {
-    const r = [...this.produtosPorEan.values()]
+    const r = [...this.todosProdutos()]
       .filter((p) => p.unidadeBase === unidadeBase)
       .map((p) => ({
         produtoCanonicoId: p.id,
@@ -447,10 +464,15 @@ export class RepositorioMemoria
   }
 
   private acharProdutoPorId(id: string): ProdutoCanonicoInterno | undefined {
-    for (const p of this.produtosPorEan.values()) {
+    for (const p of this.todosProdutos()) {
       if (p.id === id) return p;
     }
     return undefined;
+  }
+
+  private *todosProdutos(): IterableIterator<ProdutoCanonicoInterno> {
+    yield* this.produtosPorEan.values();
+    yield* this.produtosPorDescricao.values();
   }
 
   private lancamentoParaRegistro(l: LancamentoModeracaoInterno): LancamentoModeracaoRegistro {
@@ -488,7 +510,7 @@ export class RepositorioMemoria
   }
 
   totalProdutos(): number {
-    return this.produtosPorEan.size;
+    return this.produtosPorEan.size + this.produtosPorDescricao.size;
   }
 
   totalLojas(): number {

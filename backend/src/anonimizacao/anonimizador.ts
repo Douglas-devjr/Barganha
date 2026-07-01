@@ -8,8 +8,10 @@
  *                     gate único de `@barganha/shared` (C1.4). CPF/chave/usuário
  *                     nunca cruzam: o gate copia só os campos permitidos.
  *
- * Só entra no pool o item que tem produto canônico (casado por EAN) E preço
- * normalizável — o resto fica apenas no histórico privado, aguardando C3.
+ * Só entra no pool o item que tem produto canônico E preço normalizável — o
+ * casamento é por EAN quando o portal o expõe, ou pela descrição normalizada
+ * exata quando não (portais como o RJ/ENCAT só mostram código interno da loja).
+ * O resto fica apenas no histórico privado.
  */
 
 import {
@@ -68,11 +70,18 @@ export class Anonimizador {
       const emPromocao = item.desconto != null && item.desconto > 0;
 
       let produtoCanonicoId: string | undefined;
-      if (item.ean && norm) {
-        produtoCanonicoId = await this.catalogo.casarPorEan(item.ean, {
+      if (norm) {
+        const sugestao = {
           descricaoNormalizada: normalizarDescricao(item.descricao),
           unidadeBase: norm.unidadeBase,
-        });
+        };
+        if (item.ean) {
+          produtoCanonicoId = await this.catalogo.casarPorEan(item.ean, sugestao);
+        } else if (sugestao.descricaoNormalizada) {
+          // Sem EAN (portal só expõe código interno, ou item de balança):
+          // identidade exata pela descrição — nunca por similaridade (C3.5).
+          produtoCanonicoId = await this.catalogo.casarPorDescricao(sugestao);
+        }
       }
 
       itensPrivados.push({

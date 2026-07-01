@@ -60,9 +60,9 @@ describe('Fluxo de captura C2 (ingestão → parse → anonimização → pool)'
     expect(repo.statusDoCupom(res.cupomId)).toBe('processado');
     // Lado privado: os 3 itens da nota do RJ.
     expect(repo.itensDoCupom(res.cupomId)).toHaveLength(3);
-    // Lado compartilhado: só os 2 com EAN (banana sem EAN fica fora do pool).
+    // Lado compartilhado: os 3 itens — 2 por EAN e a banana pela descrição.
     const pool = repo.observacoesDoPool();
-    expect(pool).toHaveLength(2);
+    expect(pool).toHaveLength(3);
     expect(pool[0]).toMatchObject({ lojaCnpj: '12345678000199', uf: 'RJ' });
   });
 
@@ -112,7 +112,7 @@ describe('Fluxo de captura C2 (ingestão → parse → anonimização → pool)'
 
     expect(r2.cupomId).toBe(r1.cupomId);
     expect(r2.status).toBe('processado');
-    expect(repo.observacoesDoPool()).toHaveLength(2);
+    expect(repo.observacoesDoPool()).toHaveLength(3);
   });
 
   it('guarda QR de UF sem parser e reprocessa quando o parser entra (C2.5)', async () => {
@@ -142,7 +142,7 @@ describe('Fluxo de captura C2 (ingestão → parse → anonimização → pool)'
 
     expect(n).toBe(1);
     expect(repo.statusDoCupom(res.cupomId)).toBe('processado');
-    expect(repo.observacoesDoPool()).toHaveLength(2);
+    expect(repo.observacoesDoPool()).toHaveLength(3);
   });
 
   it('represa UF com parser mas fora do rollout e a libera ao habilitá-la (C10.3)', async () => {
@@ -180,7 +180,7 @@ describe('Fluxo de captura C2 (ingestão → parse → anonimização → pool)'
 
     expect(n).toBe(1);
     expect(repo.statusDoCupom(res.cupomId)).toBe('processado');
-    expect(repo.observacoesDoPool()).toHaveLength(2);
+    expect(repo.observacoesDoPool()).toHaveLength(3);
     expect(telemetria.snapshot().porUf.RJ?.processado).toBe(1);
   });
 

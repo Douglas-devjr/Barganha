@@ -296,6 +296,39 @@ export class RepositorioSupabase
     return inserido.data.id;
   }
 
+  async casarPorDescricao(sugestao: SugestaoProduto): Promise<string> {
+    const porDescricao = () =>
+      this.db
+        .from('produto_canonico')
+        .select('id')
+        .is('ean', null)
+        .eq('descricao_normalizada', sugestao.descricaoNormalizada)
+        .eq('unidade_base', sugestao.unidadeBase);
+
+    const existente = await porDescricao().maybeSingle();
+    if (existente.error) falhar('consulta de produto por descrição', existente.error);
+    if (existente.data) return existente.data.id;
+
+    const inserido = await this.db
+      .from('produto_canonico')
+      .insert({
+        ean: null,
+        descricao_normalizada: sugestao.descricaoNormalizada,
+        unidade_base: sugestao.unidadeBase,
+      })
+      .select('id')
+      .single();
+
+    // Corrida coberta pelo índice único parcial (descricao, unidade) WHERE ean IS NULL.
+    if (inserido.error?.code === COD_UNIQUE_VIOLATION) {
+      const r = await porDescricao().single();
+      if (r.error) falhar('reconsulta de produto após conflito de descrição', r.error);
+      return r.data.id;
+    }
+    if (inserido.error) falhar('inserção de produto canônico sem EAN', inserido.error);
+    return inserido.data.id;
+  }
+
   // ───────────────────────── FonteProdutoConsulta (C4.1) ──────────────
 
   async obterProdutoPorEan(ean: string): Promise<string | undefined> {
