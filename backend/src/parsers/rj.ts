@@ -12,6 +12,7 @@
 import type { ItemEstruturado, NotaEstruturada } from '@barganha/shared';
 
 import { FalhaParserSefazError } from '../erros';
+import { parseHtmlEncat } from './encat';
 import {
   dataHoraBrParaIso,
   eanDeCodigo,
@@ -64,8 +65,23 @@ function parseItemRj(linha: HTMLElement): ItemEstruturado {
   };
 }
 
-/** HTML do portal do RJ → `NotaEstruturada`. Puro e testável (sem rede). */
+/**
+ * HTML do portal do RJ → `NotaEstruturada`. Puro e testável (sem rede).
+ *
+ * O RJ tem DOIS layouts: o portal atual (`consultadfe.fazenda.rj.gov.br`) usa o
+ * padrão ENCAT "consulta via consumidor" (igual SP); o antigo usava uma tabela
+ * própria (`.NFCCabecalho`/`.linhaItem`). Detectamos pela marca do layout antigo
+ * e caímos no parser certo — o reprocessamento retroativo (C2.5) cobre os dois.
+ */
 export function parseHtmlRj(html: string): NotaEstruturada {
+  if (!html.includes('NFCCabecalho')) {
+    return parseHtmlEncat(html, UF_RJ);
+  }
+  return parseHtmlRjLegado(html);
+}
+
+/** Parser do layout ANTIGO do RJ (tabela própria `.NFCCabecalho`/`.linhaItem`). */
+export function parseHtmlRjLegado(html: string): NotaEstruturada {
   const raiz = parseHtml(html);
 
   const razaoSocial = exigir(textoDe(raiz, '.NFCCabecalho h4'), 'razão social');

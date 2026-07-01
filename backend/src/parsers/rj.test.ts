@@ -9,6 +9,12 @@ const html = readFileSync(
   fileURLToPath(new URL('./__fixtures__/rj-nota-1.html', import.meta.url)),
   'utf8',
 );
+// O portal ATUAL do RJ usa o layout ENCAT (igual SP); reusamos o fixture de SP
+// para provar o roteamento pela entrada do RJ.
+const htmlEncat = readFileSync(
+  fileURLToPath(new URL('./__fixtures__/sp-nota-1.html', import.meta.url)),
+  'utf8',
+);
 
 describe('parseHtmlRj (C2.2)', () => {
   const nota = parseHtmlRj(html);
@@ -61,5 +67,19 @@ describe('parseHtmlRj (C2.2)', () => {
 
   it('NUNCA extrai o CPF do consumidor', () => {
     expect(JSON.stringify(nota)).not.toContain('111');
+  });
+});
+
+describe('parseHtmlRj — portal atual (layout ENCAT)', () => {
+  const nota = parseHtmlRj(htmlEncat);
+
+  it('roteia o layout ENCAT e extrai a loja', () => {
+    expect(nota.loja.cnpj).toBe('61585865000151');
+    expect(nota.loja.razaoSocial).toBe('MERCADO PAULISTA COMERCIO DE ALIMENTOS LTDA');
+  });
+
+  it('parseia os itens (mesmo parser de SP)', () => {
+    expect(nota.itens).toHaveLength(3);
+    expect(nota.itens[0]).toMatchObject({ descricao: 'ARROZ TIPO 1 5KG', quantidade: 1 });
   });
 });

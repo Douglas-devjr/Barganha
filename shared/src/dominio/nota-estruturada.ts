@@ -32,9 +32,26 @@ export interface ItemEstruturado {
   desconto?: number;
 }
 
+/**
+ * Totais do cupom (docs/06). O layout ENCAT "consulta via consumidor" só traz o
+ * desconto AGREGADO (não por item), então guardamos aqui o valor bruto, o
+ * desconto total e o valor efetivamente pago — a atribuição do desconto a cada
+ * item, quando o portal não a fornece, é feita pelo usuário no app.
+ */
+export interface TotaisNota {
+  /** Soma dos itens antes do desconto (R$). */
+  bruto: number;
+  /** Desconto total do cupom (R$). */
+  desconto: number;
+  /** Valor efetivamente pago = bruto − desconto (R$). */
+  pago: number;
+}
+
 export interface NotaEstruturada {
   loja: LojaEstruturada;
   /** Data/hora de emissão (ISO 8601). */
   emitidoEm: string;
   itens: ItemEstruturado[];
+  /** Totais do cupom (bruto/desconto/pago), quando o portal os fornece. */
+  total?: TotaisNota;
 }
