@@ -22,6 +22,7 @@ export async function main(): Promise<void> {
     servicoCuradoria,
     guardaCuradoria,
     reprocessador,
+    matcherTexto,
   } = montarBackend(config);
   const app = construirServidor({
     servicoIngestao,
@@ -30,11 +31,13 @@ export async function main(): Promise<void> {
     autenticacao,
     gerenciadorConta,
     metricas: telemetria,
-    // C11 — expansão: lançamento manual + moderação + enriquecimento + reprocesso.
+    // C11 — expansão: lançamento manual + moderação + enriquecimento + reprocesso
+    // + sugestões de casamento por texto (C3.5) para a curadoria.
     servicoModeracao,
     servicoCuradoria,
     autorizacaoCuradoria: guardaCuradoria,
     reprocessador,
+    matcherTexto,
     trustProxy: config.trustProxy,
     logger: true,
   });

@@ -9,6 +9,7 @@ import { GuardaCuradoria } from '../auth/curadoria';
 import { ServicoConta } from '../auth/servico-conta';
 import { ServicoConsulta } from '../consulta/servico-consulta';
 import { ServicoCuradoria } from '../curadoria/servico-curadoria';
+import { MatcherTexto } from '../estatistica/casamento-texto';
 import { FilaMemoria } from '../fila/fila-memoria';
 import { ServicoIngestao } from '../ingestao/servico-ingestao';
 import { ServicoModeracao } from '../moderacao/servico-moderacao';
@@ -42,6 +43,7 @@ function montarApp() {
     autenticacao: new Autenticador(repo),
     servicoModeracao: new ServicoModeracao(repo, repo),
     servicoCuradoria: new ServicoCuradoria(repo),
+    matcherTexto: new MatcherTexto(repo),
     autorizacaoCuradoria: new GuardaCuradoria([TOKEN]),
     reprocessador: new ReprocessadorRetroativo(repo, registro, fila),
   });
@@ -181,6 +183,56 @@ describe('Curadoria & moderação (C11) — HTTP', () => {
         payload: { ean: '7891234567890', nomeExibicao: 'X' },
       });
       expect(r.statusCode).toBe(403);
+    });
+  });
+
+  describe('Sugestões de casamento por texto (C3.5)', () => {
+    it('sem token → 403', async () => {
+      const r = await app.inject({
+        method: 'POST',
+        url: '/curadoria/casamento/sugestoes',
+        payload: { descricao: 'Leite Integral 1L', unidadeBase: 'L' },
+      });
+      expect(r.statusCode).toBe(403);
+    });
+
+    it('unidade-base inválida → 400', async () => {
+      const r = await app.inject({
+        method: 'POST',
+        url: '/curadoria/casamento/sugestoes',
+        headers: curador(),
+        payload: { descricao: 'Leite Integral 1L', unidadeBase: 'CX' },
+      });
+      expect(r.statusCode).toBe(400);
+    });
+
+    it('curadoria recebe sugestões ordenadas por confiança', async () => {
+      // O produto "LEITE INTEGRAL 1L" (unidade L) existe — criado na aprovação
+      // do lançamento manual acima. Uma variação com typo deve encontrá-lo.
+      const r = await app.inject({
+        method: 'POST',
+        url: '/curadoria/casamento/sugestoes',
+        headers: curador(),
+        payload: { descricao: 'LEITE INTEGRL 1L', unidadeBase: 'L' },
+      });
+      expect(r.statusCode).toBe(200);
+      const { sugestoes } = r.json() as {
+        sugestoes: { produtoCanonicoId: string; confianca: number }[];
+      };
+      expect(sugestoes.length).toBeGreaterThanOrEqual(1);
+      expect(sugestoes[0]!.confianca).toBeGreaterThan(0.45);
+      // Nunca casa sozinho: a resposta é sugestão; confirmar é passo humano.
+    });
+
+    it('nada plausível → lista vazia (provável produto novo)', async () => {
+      const r = await app.inject({
+        method: 'POST',
+        url: '/curadoria/casamento/sugestoes',
+        headers: curador(),
+        payload: { descricao: 'PARAFUSO SEXTAVADO 8MM', unidadeBase: 'L' },
+      });
+      expect(r.statusCode).toBe(200);
+      expect(r.json().sugestoes).toEqual([]);
     });
   });
 

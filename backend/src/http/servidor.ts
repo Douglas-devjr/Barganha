@@ -19,6 +19,7 @@
  */
 
 import type {
+  CasamentoSugestoesRequest,
   ConsultaPrecoRequest,
   DecisaoModeracaoRequest,
   DeltaSyncRequest,
@@ -27,6 +28,7 @@ import type {
   IngestaoQrRequest,
   LancamentoManualRequest,
 } from '@barganha/shared';
+import { UNIDADES_BASE } from '@barganha/shared';
 import Fastify, { type FastifyError, type FastifyInstance } from 'fastify';
 
 import type { Autenticacao } from '../auth/autenticador';
@@ -41,6 +43,7 @@ import {
   LancamentoInvalidoError,
   PayloadQrInvalidoError,
 } from '../erros';
+import type { MatcherTexto } from '../estatistica/casamento-texto';
 import type { ServicoIngestao } from '../ingestao/servico-ingestao';
 import type { ServicoModeracao } from '../moderacao/servico-moderacao';
 import { registrarHtmlDebug } from '../observabilidade/debug-html';
@@ -89,6 +92,8 @@ export interface DependenciasHttp {
   servicoModeracao?: ServicoModeracao;
   /** Enriquecimento de produto pela curadoria (C11.5). Omitido → rota não sobe. */
   servicoCuradoria?: ServicoCuradoria;
+  /** Sugestões de casamento por texto p/ a curadoria (C3.5). Omitido → rota não sobe. */
+  matcherTexto?: Pick<MatcherTexto, 'sugerir'>;
   /** Reprocessamento retroativo por UF (C11.1/C2.5) — gatilho operacional. */
   reprocessador?: ReprocessadorRetroativo;
   /** Autorização dos endpoints de CURADORIA (C11). Sem ela, as rotas não sobem. */
@@ -209,6 +214,19 @@ const SCHEMA_ENRIQUECIMENTO = {
       marca: { type: 'string', minLength: 1 },
       categoria: { type: 'string', minLength: 1 },
       imagemUrl: { type: 'string', minLength: 1 },
+    },
+  },
+} as const;
+
+// Sugestões de casamento por texto (C3.5) — curadoria.
+const SCHEMA_CASAMENTO = {
+  body: {
+    type: 'object',
+    required: ['descricao', 'unidadeBase'],
+    additionalProperties: false,
+    properties: {
+      descricao: { type: 'string', minLength: 1 },
+      unidadeBase: { type: 'string', enum: [...UNIDADES_BASE] },
     },
   },
 } as const;
@@ -350,7 +368,8 @@ export function construirServidor(deps: DependenciasHttp): FastifyInstance {
   // A geo é pela LOJA (CNPJ); o usuarioId fica só no registro de moderação
   // (anti-abuso), nunca no pool (docs/04). Reaproveita o teto por conta da
   // ingestão (anti-spam de fila).
-  const { servicoModeracao, servicoCuradoria, autorizacaoCuradoria, reprocessador } = deps;
+  const { servicoModeracao, servicoCuradoria, autorizacaoCuradoria, reprocessador, matcherTexto } =
+    deps;
   if (servicoModeracao) {
     app.post<{ Body: LancamentoManualRequest }>(
       '/lancamento-manual',
@@ -406,6 +425,22 @@ export function construirServidor(deps: DependenciasHttp): FastifyInstance {
         const resposta = await servicoCuradoria.enriquecer(req.body);
         if (!resposta) return reply.code(404).send({ erro: 'Produto não encontrado.' });
         return reply.send(resposta);
+      },
+    );
+  }
+
+  if (matcherTexto && autorizacaoCuradoria) {
+    // Sugestões de casamento por texto (C3.5) — itens sem EAN. Só SUGERE, nunca
+    // casa sozinho (docs/06): confirmar (gravar `produto_alias`) é decisão humana.
+    app.post<{ Body: CasamentoSugestoesRequest }>(
+      '/curadoria/casamento/sugestoes',
+      { schema: SCHEMA_CASAMENTO },
+      async (req, reply) => {
+        if (!exigeCuradoria(req)) {
+          return reply.code(403).send({ erro: 'Acesso restrito à curadoria.' });
+        }
+        const sugestoes = await matcherTexto.sugerir(req.body.descricao, req.body.unidadeBase);
+        return reply.send({ sugestoes });
       },
     );
   }

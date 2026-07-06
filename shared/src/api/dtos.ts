@@ -147,6 +147,31 @@ export interface EnriquecimentoProdutoResponse {
   produtoCanonicoId: string;
 }
 
+// ──────────────── Casamento por texto — sugestões (C3.5, curadoria) ──────────
+
+/**
+ * Pede sugestões de casamento por SIMILARIDADE para uma descrição sem EAN.
+ * Regra travada (docs/06): similaridade nunca casa sozinha — a resposta é só
+ * sugestão ordenada por confiança; confirmar (gravar `produto_alias`) é um passo
+ * humano de curadoria. Endpoint privilegiado (token de curadoria).
+ */
+export interface CasamentoSugestoesRequest {
+  descricao: string;
+  /** Unidade-base dos candidatos (kg | L | un) — reduz falso positivo. */
+  unidadeBase: UnidadeBase;
+}
+
+export interface CasamentoSugestaoDto {
+  produtoCanonicoId: string;
+  /** Score de similaridade 0..1 (vira `produto_alias.confianca` ao confirmar). */
+  confianca: number;
+}
+
+export interface CasamentoSugestoesResponse {
+  /** Vazia = nada plausível (provável produto novo). */
+  sugestoes: CasamentoSugestaoDto[];
+}
+
 // ──────────────────── Lançamento manual de gôndola (C11.3) ───────────────────
 
 /**
