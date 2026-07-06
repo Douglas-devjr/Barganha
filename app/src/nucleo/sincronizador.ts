@@ -14,7 +14,7 @@
  * renova o token e a próxima rodada envia.
  */
 
-import type { CupomResponse } from '@barganha/shared';
+import type { CupomResponse, IngestaoQrResponse } from '@barganha/shared';
 
 import { clienteApi, ErroApi } from '@/api';
 import { cache, cupons, fila, meta, produtos } from '@/dados';
@@ -43,6 +43,20 @@ function ehPermanente(erro: unknown): boolean {
 // Single-flight: evita duas rodadas concorrentes drenando a mesma fila.
 let rodando = false;
 
+/**
+ * Grava o vínculo com o servidor após o upload. Dois cuidados:
+ *  • `chaveAcesso` devolvida pelo backend entra no espelho local — ativa a
+ *    idempotência local por chave (índice único, docs/05).
+ *  • Quando o servidor DEDUPLICA (o cupom já estava `processado` lá — re-scan
+ *    após descarte/reinstalação), o status local fica `qr_capturado`: os itens
+ *    ainda não existem aqui, e é esse status que faz o polling buscá-los.
+ *    Marcar `processado` sem itens congelava um espelho vazio para sempre.
+ */
+async function vincularUpload(cupomLocalId: string, resp: IngestaoQrResponse): Promise<void> {
+  const status = resp.status === 'processado' ? 'qr_capturado' : resp.status;
+  await cupons.vincularServidor(cupomLocalId, resp.cupomId, status, resp.chaveAcesso);
+}
+
 /** Envia UM cupom enfileirado. Lança em erro transitório (para o backoff). */
 async function enviarCupom(item: ItemFilaUpload): Promise<void> {
   const cupom = await cupons.obterCupom(item.cupomLocalId);
@@ -62,7 +76,7 @@ async function enviarCupom(item: ItemFilaUpload): Promise<void> {
       qrPayload: cupom.qrPayload,
       capturadoEm: cupom.capturadoEm,
     });
-    await cupons.vincularServidor(cupom.id, resp.cupomId, resp.status);
+    await vincularUpload(cupom.id, resp);
     await fila.removerDaFila(item.cupomLocalId);
   } catch (erro) {
     if (ehPermanente(erro)) {
@@ -192,7 +206,7 @@ export async function sincronizarCupom(cupomLocalId: string): Promise<CupomLocal
       qrPayload: cupom.qrPayload,
       capturadoEm: cupom.capturadoEm,
     });
-    await cupons.vincularServidor(cupom.id, resp.cupomId, resp.status);
+    await vincularUpload(cupom.id, resp);
     await fila.removerDaFila(cupom.id);
     cupom = (await cupons.obterCupom(cupomLocalId)) ?? cupom;
   }
@@ -224,7 +238,7 @@ export async function enviarHtmlCupom(
       qrPayload: cupom.qrPayload,
       capturadoEm: cupom.capturadoEm,
     });
-    await cupons.vincularServidor(cupom.id, resp.cupomId, resp.status);
+    await vincularUpload(cupom.id, resp);
     await fila.removerDaFila(cupom.id);
     cupom = (await cupons.obterCupom(cupomLocalId)) ?? cupom;
   }

@@ -62,7 +62,9 @@ export class ServicoIngestao {
       await this.fila.enfileirar({ cupomId: resultado.cupomId, uf: qr.uf });
     }
 
-    return { cupomId: resultado.cupomId, status: resultado.status };
+    // A chave volta na resposta: o app a grava no espelho local e a idempotência
+    // local por chave (índice único, docs/05) passa a valer no aparelho.
+    return { cupomId: resultado.cupomId, status: resultado.status, chaveAcesso: qr.chave.valor };
   }
 
   /**

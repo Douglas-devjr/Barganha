@@ -108,6 +108,10 @@ export async function atualizarStatus(id: string, status: StatusCupom): Promise<
  * C6.2 — Vincula o `cupomIdServidor` após o upload bem-sucedido, sem mexer nos
  * itens (que só chegam quando o backend termina o parsing). `chaveAcesso` é
  * preenchida se o servidor a devolveu (idempotência local passa a valer).
+ *
+ * Se OUTRA captura local já espelha esta nota (índice único de `chave_acesso` —
+ * o mesmo cupom foi escaneado duas vezes), mantém o vínculo SEM a chave: o
+ * espelho duplicado segue funcional em vez de travar a fila em retry eterno.
  */
 export async function vincularServidor(
   id: string,
@@ -115,24 +119,39 @@ export async function vincularServidor(
   status: StatusCupom,
   chaveAcesso?: string,
 ): Promise<void> {
-  await getBd().runAsync(
-    `UPDATE cupom_local
-        SET cupom_id_servidor = ?, status = ?, chave_acesso = COALESCE(?, chave_acesso),
-            atualizado_em = ?
-      WHERE id = ?`,
-    [cupomIdServidor, status, chaveAcesso ?? null, agoraIso(), id],
-  );
+  const executar = (chave: string | null) =>
+    getBd().runAsync(
+      `UPDATE cupom_local
+          SET cupom_id_servidor = ?, status = ?, chave_acesso = COALESCE(?, chave_acesso),
+              atualizado_em = ?
+        WHERE id = ?`,
+      [cupomIdServidor, status, chave, agoraIso(), id],
+    );
+  try {
+    await executar(chaveAcesso ?? null);
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    if (chaveAcesso == null || !/UNIQUE constraint/i.test(msg)) throw e;
+    await executar(null);
+  }
 }
 
 /**
  * Cupons já enviados (têm id de servidor) mas ainda não finalizados — aguardam o
  * parsing assíncrono. Base do polling de processamento (C6.2/C6.3).
+ *
+ * Inclui também o cupom `processado` SEM itens locais: é um espelho incompleto
+ * (ex.: dedup do servidor num re-scan antes da correção, ou uma busca de itens
+ * que falhou no meio) — o polling o completa em vez de deixá-lo vazio p/ sempre.
  */
 export async function listarAguardandoProcessamento(): Promise<CupomLocal[]> {
   const linhas = await getBd().getAllAsync<LinhaCupom>(
-    `SELECT * FROM cupom_local
-      WHERE cupom_id_servidor IS NOT NULL AND status = 'qr_capturado'
-      ORDER BY capturado_em ASC`,
+    `SELECT * FROM cupom_local c
+      WHERE c.cupom_id_servidor IS NOT NULL
+        AND (c.status = 'qr_capturado'
+             OR (c.status = 'processado'
+                 AND NOT EXISTS (SELECT 1 FROM item_cupom_local i WHERE i.cupom_local_id = c.id)))
+      ORDER BY c.capturado_em ASC`,
   );
   return linhas.map(mapearCupom);
 }

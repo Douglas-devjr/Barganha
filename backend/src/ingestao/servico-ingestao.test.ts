@@ -48,6 +48,8 @@ describe('ServicoIngestao (C2.1)', () => {
 
     expect(res.status).toBe('qr_capturado');
     expect(repo.statusDoCupom(res.cupomId)).toBe('qr_capturado');
+    // A chave volta na resposta — o app a grava p/ idempotência local (docs/05).
+    expect(res.chaveAcesso).toBe('33260612345678000199650010000000011000000016');
     // A tarefa leva a UF (do QR) para a telemetria por estado (C10.2).
     expect(fila.enfileirar).toHaveBeenCalledWith({ cupomId: res.cupomId, uf: 'RJ' });
   });

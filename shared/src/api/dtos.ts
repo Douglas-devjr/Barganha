@@ -20,6 +20,12 @@ export interface IngestaoQrRequest {
 export interface IngestaoQrResponse {
   cupomId: string;
   status: StatusCupom;
+  /**
+   * Chave de acesso extraída do QR pelo backend (o app não parseia QR). O app a
+   * grava no espelho local — é o que ativa a idempotência local por chave
+   * (índice único em `cupom_local`, docs/05).
+   */
+  chaveAcesso?: string;
 }
 
 /**
