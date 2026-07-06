@@ -76,7 +76,11 @@ export function VerificarTela({ navigation, route }: Props) {
         setLista(todos);
 
         const ean = route.params?.ean;
-        if (ean && eanTratado.current !== ean) {
+        if (!ean) {
+          // Param já consumido/limpo: libera o guard para um novo scan —
+          // inclusive do MESMO código de barras (re-verificação na gôndola).
+          eanTratado.current = null;
+        } else if (eanTratado.current !== ean) {
           eanTratado.current = ean;
           const achado = todos.find((p) => p.ean === ean);
           setSelecionado(
