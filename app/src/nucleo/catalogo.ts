@@ -185,23 +185,6 @@ export async function carregarCatalogo(): Promise<ProdutoLocal[]> {
   return ordenarProdutos(agrupar(observacoes));
 }
 
-/** Busca por nome (sem acento/caixa) sobre o catálogo. */
-export async function buscarProdutos(texto: string): Promise<ProdutoLocal[]> {
-  const alvo = normalizarDescricao(texto);
-  if (!alvo) return carregarCatalogo();
-  const todos = await carregarCatalogo();
-  return todos.filter((p) => normalizarDescricao(p.nome).includes(alvo));
-}
-
-/** Resolve o produto local a partir de um EAN escaneado (gôndola offline). */
-export async function resolverPorEan(ean: string): Promise<ProdutoLocal | null> {
-  const grupos = agrupar(await produtos.listarObservacoes());
-  for (const { produto } of grupos.values()) {
-    if (produto.ean === ean) return produto;
-  }
-  return null;
-}
-
 /** Produto + histórico por chave (tela Detalhe). */
 export async function obterProduto(
   chave: string,

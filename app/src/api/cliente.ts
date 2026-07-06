@@ -52,16 +52,6 @@ export class ClienteApi {
     this.obterToken = opcoes.obterToken;
   }
 
-  /** `GET /saude` — diagnóstico de conectividade. */
-  async saude(): Promise<boolean> {
-    try {
-      const r = await fetch(`${this.baseUrl}/saude`);
-      return r.ok;
-    } catch {
-      return false;
-    }
-  }
-
   /** `POST /ingestao/qr` (C2.1) — PRIVADO: envia o QR cru; exige Bearer. 202. */
   async ingerirQr(req: IngestaoQrRequest): Promise<IngestaoQrResponse> {
     const token = await this.resolverToken();

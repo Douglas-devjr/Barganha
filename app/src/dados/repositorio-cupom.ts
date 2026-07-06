@@ -82,13 +82,6 @@ export async function registrarCaptura(captura: NovaCaptura): Promise<CupomLocal
   return cupom;
 }
 
-export async function listarCupons(): Promise<CupomLocal[]> {
-  const linhas = await getBd().getAllAsync<LinhaCupom>(
-    `SELECT * FROM cupom_local ORDER BY capturado_em DESC`,
-  );
-  return linhas.map(mapearCupom);
-}
-
 export async function obterCupom(id: string): Promise<CupomLocal | null> {
   const linha = await getBd().getFirstAsync<LinhaCupom>(`SELECT * FROM cupom_local WHERE id = ?`, [
     id,

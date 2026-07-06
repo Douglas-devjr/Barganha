@@ -81,34 +81,6 @@ export async function listarObservacoes(): Promise<ObservacaoLocal[]> {
 }
 
 /**
- * Compras de UM produto, casado por id canônico OU pelo EAN (caminho da
- * gôndola). Ordenadas da mais antiga p/ a mais recente — pronto p/ o gráfico de
- * evolução (C7.5).
- */
-export async function listarObservacoesDoProduto(ref: {
-  produtoCanonicoId?: string | null;
-  ean?: string | null;
-}): Promise<ObservacaoLocal[]> {
-  const condicoes: string[] = [];
-  const params: string[] = [];
-  if (ref.produtoCanonicoId) {
-    condicoes.push('i.produto_canonico_id = ?');
-    params.push(ref.produtoCanonicoId);
-  }
-  if (ref.ean) {
-    condicoes.push('i.ean = ?');
-    params.push(ref.ean);
-  }
-  if (condicoes.length === 0) return [];
-
-  const linhas = await getBd().getAllAsync<LinhaObservacao>(
-    `${SELECT_OBSERVACOES} WHERE ${condicoes.join(' OR ')} ORDER BY observado_em ASC`,
-    params,
-  );
-  return linhas.map(mapear);
-}
-
-/**
  * UF predominante do histórico (a mais recente com UF preenchida). É o recorte
  * geográfico para a consulta/sync regional — derivado da LOJA, nunca do usuário
  * (decisão travada). `null` quando ainda não há cupom processado com UF.

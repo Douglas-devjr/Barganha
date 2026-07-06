@@ -81,26 +81,3 @@ export async function listarEstatisticasDoProduto(
   );
   return linhas.map(mapear);
 }
-
-/** Faixa exata de um produto num escopo. */
-export async function obterEstatistica(
-  produtoCanonicoId: string,
-  escopo: EscopoGeo,
-  escopoId: string,
-  unidadeBase: UnidadeBase,
-): Promise<CacheEstatistica | null> {
-  const linha = await getBd().getFirstAsync<LinhaCache>(
-    `SELECT * FROM cache_estatistica
-      WHERE produto_canonico_id = ? AND escopo = ? AND escopo_id = ? AND unidade_base = ?`,
-    [produtoCanonicoId, escopo, escopoId, unidadeBase],
-  );
-  return linha ? mapear(linha) : null;
-}
-
-/** Quantidade de linhas em cache (diagnóstico / "X produtos no seu cache"). */
-export async function contarEstatisticas(): Promise<number> {
-  const linha = await getBd().getFirstAsync<{ total: number }>(
-    `SELECT COUNT(*) AS total FROM cache_estatistica`,
-  );
-  return linha?.total ?? 0;
-}
