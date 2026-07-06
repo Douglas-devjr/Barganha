@@ -14,7 +14,7 @@ import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { CompositeScreenProps } from '@react-navigation/native';
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import type { AnguloVeredito, UnidadeBase } from '@barganha/shared';
+import { type AnguloVeredito, normalizarDescricao, type UnidadeBase } from '@barganha/shared';
 import { useCallback, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -103,8 +103,10 @@ export function VerificarTela({ navigation, route }: Props) {
     }, [route.params?.ean, navigation]),
   );
 
-  const filtrados = busca
-    ? lista.filter((p) => p.nome.toLowerCase().includes(busca.toLowerCase()))
+  // Busca sem acento/caixa (mesma normalização do casamento de produto).
+  const alvoBusca = normalizarDescricao(busca);
+  const filtrados = alvoBusca
+    ? lista.filter((p) => normalizarDescricao(p.nome).includes(alvoBusca))
     : lista;
 
   const valor = parseMoeda(preco);
