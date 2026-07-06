@@ -75,8 +75,8 @@ npx supabase db reset       # aplica todas as migrações de supabase/migrations
 ```
 
 Pegue a URL e as chaves impressas no terminal (`API URL`, `anon key`,
-`service_role key`). No celular físico, a URL local **não** será `localhost` —
-use o IP da sua máquina (ver passo 4).
+`service_role key`). No celular físico o app resolve o IP da máquina
+automaticamente — não é preciso configurar `localhost`/IP (ver passo 4).
 
 ---
 
@@ -116,16 +116,17 @@ use o IP da sua máquina (ver passo 4).
    ```
 2. Preencha:
    ```env
-   # Em emulador/web pode ser localhost. Em CELULAR FÍSICO, use o IP da máquina
-   # na sua rede (ex.: http://192.168.0.10:3000) — localhost no celular é o próprio celular.
-   EXPO_PUBLIC_API_URL=http://192.168.0.10:3000
+   # DEIXE VAZIO em dev com celular físico: o app descobre o IP da máquina
+   # sozinho (pelo host do Metro) e acompanha o DHCP a cada reinício do PC.
+   # Só preencha para apontar a um backend remoto/produção.
+   EXPO_PUBLIC_API_URL=
 
    EXPO_PUBLIC_SUPABASE_URL=https://SEU-PROJETO.supabase.co
    EXPO_PUBLIC_SUPABASE_ANON_KEY=sua-anon-key
    ```
 
-> Descubra seu IP local: `ipconfig` (Windows) → "Endereço IPv4". O celular e o PC
-> precisam estar na **mesma rede Wi-Fi**.
+> O celular e o PC precisam estar na **mesma rede Wi-Fi**. Backend em porta
+> diferente de 3000? Defina `EXPO_PUBLIC_API_PORT`.
 
 ---
 
@@ -185,7 +186,7 @@ dev build.
 | Sintoma | Causa provável | Solução |
 |---|---|---|
 | App: "Supabase não configurado" | falta `app/.env` | preencha `EXPO_PUBLIC_SUPABASE_URL` e `..._ANON_KEY` e reinicie o Metro |
-| App não fala com a API no celular | `EXPO_PUBLIC_API_URL=localhost` | troque pelo **IP da máquina**; mesma Wi-Fi; backend ouvindo em `0.0.0.0` (já é o padrão) |
+| App não fala com a API no celular | firewall ou rede diferente | deixe `EXPO_PUBLIC_API_URL` **vazio** (IP automático); celular e PC na mesma Wi-Fi; libere a porta 3000 no Firewall do Windows; backend ouvindo em `0.0.0.0` (já é o padrão) |
 | Backend: "Variáveis de ambiente ausentes" | falta `.env` na raiz | defina `SUPABASE_URL` e `SUPABASE_SERVICE_ROLE_KEY` |
 | Login Google não abre | rodando no Expo Go ou redirect não cadastrado | use o **dev build** e cadastre `barganha://auth-callback` no Supabase |
 | 401 ao escanear cupom | sessão expirada / sem login | entre de novo; o Bearer é o JWT do Supabase |
