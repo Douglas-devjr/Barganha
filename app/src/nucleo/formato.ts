@@ -16,3 +16,21 @@ export function dataCurta(iso?: string | null): string | null {
   if (Number.isNaN(d.getTime())) return null;
   return d.toLocaleDateString('pt-BR');
 }
+
+/**
+ * Lê um valor em reais digitado ("7,90", "7.90", "1.234,56") como número.
+ * O ÚLTIMO separador (vírgula ou ponto) é o decimal — cobre o teclado
+ * `decimal-pad` em qualquer locale; os separadores anteriores são de milhar.
+ * `null` quando não é um número positivo.
+ */
+export function parseMoeda(texto: string): number | null {
+  const s = texto.replace(/[^\d.,]/g, '');
+  if (!s) return null;
+  const sep = Math.max(s.lastIndexOf(','), s.lastIndexOf('.'));
+  const normalizado =
+    sep === -1
+      ? s
+      : `${s.slice(0, sep).replace(/[.,]/g, '')}.${s.slice(sep + 1).replace(/[.,]/g, '')}`;
+  const n = Number(normalizado);
+  return Number.isFinite(n) && n > 0 ? n : null;
+}

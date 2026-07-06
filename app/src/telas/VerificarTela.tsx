@@ -28,6 +28,7 @@ import {
 import { Botao, Cartao, IconeBarras, IconeBusca, Tela, Texto, VeredictoBadge } from '@/componentes';
 import * as catalogo from '@/nucleo/catalogo';
 import type { ProdutoLocal } from '@/nucleo/catalogo';
+import { parseMoeda } from '@/nucleo/formato';
 import {
   refinarRegionalOnline,
   resolverVeredito,
@@ -47,12 +48,6 @@ function moeda(v: number): string {
 
 function sufixo(base?: UnidadeBase | null): string {
   return base ? `/${base}` : '';
-}
-
-/** Aceita "7,90" ou "7.90"; devolve `null` se não for um número positivo. */
-function parsePreco(texto: string): number | null {
-  const n = Number(texto.replace(/\./g, '').replace(',', '.'));
-  return Number.isFinite(n) && n > 0 ? n : null;
 }
 
 function dataCurta(iso: string): string {
@@ -108,7 +103,7 @@ export function VerificarTela({ navigation, route }: Props) {
     ? lista.filter((p) => p.nome.toLowerCase().includes(busca.toLowerCase()))
     : lista;
 
-  const valor = parsePreco(preco);
+  const valor = parseMoeda(preco);
   const podeVerificar = selecionado != null && valor != null && !calculando;
 
   async function verificar() {

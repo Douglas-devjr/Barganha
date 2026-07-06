@@ -18,6 +18,7 @@ import { Botao, CabecalhoVoltar, Cartao, ColetorNotaWeb, Tela, Texto } from '@/c
 import type { ResultadoColeta } from '@/componentes';
 import { cupons } from '@/dados';
 import type { CupomLocal, ItemCupomLocal } from '@/dados';
+import { parseMoeda } from '@/nucleo/formato';
 import { enviarHtmlCupom, sincronizarCupom } from '@/nucleo/sincronizador';
 import { cores, espaco, raio } from '@/tema';
 import type { RootStackParamList } from '@/navegacao/tipos';
@@ -29,17 +30,6 @@ const INTERVALO_OFFLINE_MS = 6000;
 
 function moeda(valor: number): string {
   return `R$ ${valor.toFixed(2).replace('.', ',')}`;
-}
-
-/** Lê um valor em reais digitado ("12,50" / "12.50") como número. */
-function parseReais(txt: string): number {
-  const n = Number(
-    txt
-      .replace(/\./g, '')
-      .replace(',', '.')
-      .replace(/[^\d.]/g, ''),
-  );
-  return Number.isFinite(n) && n > 0 ? n : 0;
 }
 
 function quantidade(valor: number): string {
@@ -341,7 +331,7 @@ export function NotaFiscalTela({ navigation, route }: Props) {
               <Botao
                 titulo="Salvar"
                 bloco
-                onPress={() => void salvarDesconto(parseReais(valorInput) || null)}
+                onPress={() => void salvarDesconto(parseMoeda(valorInput))}
               />
               {editando?.desconto ? (
                 <Botao

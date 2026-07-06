@@ -2,7 +2,8 @@ import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
   test: {
-    include: ['{shared,backend}/**/*.{test,spec}.ts'],
+    // `app` entra para os módulos PUROS (sem React Native) — ex.: nucleo/formato.
+    include: ['{shared,backend,app}/**/*.{test,spec}.ts'],
     coverage: {
       provider: 'v8',
       include: ['{shared,backend}/src/**/*.ts'],
