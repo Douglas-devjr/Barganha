@@ -10,7 +10,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 
 import { useAuth } from '@/auth';
 import { Botao, CampoTexto, Tela, Texto } from '@/componentes';
-import { espaco } from '@/tema';
+import { espaco, useTema } from '@/tema';
 import type { AuthStackParamList } from '@/navegacao/tipos';
 
 import { CabecalhoAuth } from './CabecalhoAuth';
@@ -18,6 +18,7 @@ import { CabecalhoAuth } from './CabecalhoAuth';
 type Props = NativeStackScreenProps<AuthStackParamList, 'Login'>;
 
 export function LoginTela({ navigation }: Props) {
+  const { c } = useTema();
   const { entrarComSenha, entrarComGoogle } = useAuth();
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
@@ -99,11 +100,11 @@ export function LoginTela({ navigation }: Props) {
         />
 
         <View style={estilos.divisor}>
-          <View style={estilos.linha} />
-          <Texto cor="textoMudo" tamanho="sm">
+          <View style={[estilos.linha, { backgroundColor: c.borda }]} />
+          <Texto cor="fraco" tamanho="sm">
             ou
           </Texto>
-          <View style={estilos.linha} />
+          <View style={[estilos.linha, { backgroundColor: c.borda }]} />
         </View>
 
         <Botao
@@ -141,7 +142,7 @@ const estilos = StyleSheet.create({
     gap: espaco.md,
     marginVertical: espaco.xs,
   },
-  linha: { flex: 1, height: 1, backgroundColor: '#EEF2F6' },
+  linha: { flex: 1, height: 1 },
   rodape: {
     flexDirection: 'row',
     justifyContent: 'center',

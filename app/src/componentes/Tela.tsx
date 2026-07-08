@@ -1,13 +1,14 @@
 /**
- * C5.2 — Moldura de tela. Aplica o fundo do app, respeita a área segura e, por
- * padrão, rola o conteúdo. Telas de captura/scan passam `scroll={false}`.
+ * Redesign "2a" — moldura de tela. Aplica o fundo creme (ou escuro), respeita a
+ * área segura e, por padrão, rola o conteúdo. Telas de captura/scan passam
+ * `scroll={false}` (e o próprio fundo escuro da câmera).
  */
 
 import type { ReactNode } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { type Edge, SafeAreaView } from 'react-native-safe-area-context';
 
-import { cores, espaco } from '@/tema';
+import { espaco, useTema } from '@/tema';
 
 import { Texto } from './Texto';
 
@@ -17,17 +18,12 @@ export interface TelaProps {
   scroll?: boolean;
   /** Bordas em que aplicar o inset de área segura (padrão: topo). */
   bordas?: Edge[];
-  /** Cor de fundo (padrão: fundo claro do app). */
+  /** Cor de fundo (padrão: fundo do tema ativo). */
   fundo?: string;
 }
 
-export function Tela({
-  children,
-  titulo,
-  scroll = true,
-  bordas = ['top'],
-  fundo = cores.fundo,
-}: TelaProps) {
+export function Tela({ children, titulo, scroll = true, bordas = ['top'], fundo }: TelaProps) {
+  const { c } = useTema();
   const conteudo = (
     <>
       {titulo ? (
@@ -40,7 +36,7 @@ export function Tela({
   );
 
   return (
-    <SafeAreaView edges={bordas} style={[estilos.raiz, { backgroundColor: fundo }]}>
+    <SafeAreaView edges={bordas} style={[estilos.raiz, { backgroundColor: fundo ?? c.fundo }]}>
       {scroll ? (
         <ScrollView
           contentContainerStyle={estilos.scroll}

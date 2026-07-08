@@ -1,32 +1,46 @@
 /**
- * C5.2 — Cartão branco com sombra suave e cantos arredondados (base visual de
- * quase todas as telas do protótipo).
+ * Redesign "2a" — cartão creme (`cartao`) com borda fina (`cartaoBorda`), cantos
+ * arredondados e sombra difusa. Base visual de quase todas as telas. No escuro a
+ * sombra some e a separação vem da borda (ver ThemeContext).
  */
 
 import type { ReactNode } from 'react';
-import { StyleSheet, View, type ViewStyle } from 'react-native';
+import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 
-import { cores, espaco, raio, sombra } from '@/tema';
+import { espaco, raio, sombra, useTema } from '@/tema';
 
 export interface CartaoProps {
   children: ReactNode;
-  style?: ViewStyle;
+  style?: StyleProp<ViewStyle>;
   /** Remove o padding interno (para listas que controlam o próprio espaçamento). */
   semPadding?: boolean;
 }
 
 export function Cartao({ children, style, semPadding = false }: CartaoProps) {
-  return <View style={[estilos.base, semPadding && estilos.semPadding, style]}>{children}</View>;
+  const { c, escuro } = useTema();
+  return (
+    <View
+      style={[
+        estilos.base,
+        {
+          backgroundColor: c.cartao,
+          borderColor: c.cartaoBorda,
+          ...(escuro ? {} : sombra.card),
+        },
+        semPadding && estilos.semPadding,
+        style,
+      ]}
+    >
+      {children}
+    </View>
+  );
 }
 
 const estilos = StyleSheet.create({
   base: {
-    backgroundColor: cores.superficie,
-    borderRadius: raio.xl,
+    borderRadius: raio.cartao,
     borderWidth: 1,
-    borderColor: cores.superficieMuda,
     padding: espaco.lg,
-    ...sombra.card,
   },
   semPadding: { padding: 0 },
 });

@@ -1,7 +1,7 @@
 /**
- * C7.4 — Meus produtos. Lista o catálogo derivado do histórico (offline): nome,
- * típico (mediana, R$/base) e a tendência entre a primeira e a última compra.
- * Toque abre o Detalhe (C7.5).
+ * C7.4 + Redesign "2a" — Meus produtos. Lista o catálogo derivado do histórico
+ * (offline): tile com inicial, nome, típico (mediana, R$/base) e um chip de
+ * tendência entre a primeira e a última compra. Toque abre o Detalhe (C7.5).
  */
 
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
@@ -13,7 +13,9 @@ import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native
 
 import {
   Cartao,
+  Estado,
   IconeBusca,
+  IconeProdutos,
   IconeTendenciaBaixo,
   IconeTendenciaCima,
   IconeTendenciaPlana,
@@ -22,7 +24,7 @@ import {
 } from '@/componentes';
 import * as catalogo from '@/nucleo/catalogo';
 import type { ProdutoLocal } from '@/nucleo/catalogo';
-import { cores, espaco, raio } from '@/tema';
+import { espaco, raio, useTema } from '@/tema';
 import type { RootStackParamList, TabParamList } from '@/navegacao/tipos';
 
 type Props = CompositeScreenProps<
@@ -38,6 +40,7 @@ function moeda(v: number): string {
 const LIMIAR_ESTAVEL = 2;
 
 export function ProdutosTela({ navigation }: Props) {
+  const { c } = useTema();
   const [lista, setLista] = useState<ProdutoLocal[]>([]);
   const [busca, setBusca] = useState('');
   const montado = useRef(true);
@@ -61,26 +64,32 @@ export function ProdutosTela({ navigation }: Props) {
 
   return (
     <Tela titulo="Meus produtos">
-      <View style={estilos.busca}>
-        <IconeBusca tamanho={18} cor={cores.placeholder} />
+      <View style={[estilos.busca, { backgroundColor: c.cartao, borderColor: c.borda }]}>
+        <IconeBusca tamanho={18} cor={c.fraco} />
         <TextInput
           value={busca}
           onChangeText={setBusca}
           placeholder="Buscar produto…"
-          placeholderTextColor={cores.placeholder}
-          style={estilos.buscaInput}
+          placeholderTextColor={c.fraco}
+          style={[estilos.buscaInput, { color: c.tinta }]}
         />
       </View>
 
       {filtrados.length === 0 ? (
         <Cartao style={{ marginTop: espaco.lg }}>
-          <View style={{ alignItems: 'center', paddingVertical: espaco.lg }}>
-            <Texto cor="textoMudo" centralizado>
-              {lista.length === 0
-                ? 'Seus produtos aparecem aqui conforme você escaneia cupons.'
-                : 'Nenhum produto encontrado para esta busca.'}
-            </Texto>
-          </View>
+          {lista.length === 0 ? (
+            <Estado
+              icone={<IconeProdutos tamanho={30} cor={c.teal} />}
+              titulo="Nenhum produto ainda"
+              texto="Seus produtos aparecem aqui conforme você escaneia cupons."
+            />
+          ) : (
+            <View style={{ alignItems: 'center', paddingVertical: espaco.lg }}>
+              <Texto cor="suave" centralizado>
+                Nenhum produto encontrado para esta busca.
+              </Texto>
+            </View>
+          )}
         </Cartao>
       ) : (
         <ScrollView showsVerticalScrollIndicator={false} style={{ marginTop: espaco.md }}>
@@ -88,9 +97,7 @@ export function ProdutosTela({ navigation }: Props) {
             <ProdutoItem
               key={p.chave}
               produto={p}
-              aoTocar={() =>
-                navigation.navigate('ProdutoDetalhe', { chave: p.chave, nome: p.nome })
-              }
+              aoTocar={() => navigation.navigate('ProdutoDetalhe', { chave: p.chave, nome: p.nome })}
             />
           ))}
         </ScrollView>
@@ -100,13 +107,21 @@ export function ProdutosTela({ navigation }: Props) {
 }
 
 function ProdutoItem({ produto, aoTocar }: { produto: ProdutoLocal; aoTocar: () => void }) {
+  const { c } = useTema();
   const tipico = produto.faixaPessoal?.mediana;
   const inicial = produto.nome.trim().charAt(0).toUpperCase() || '?';
 
   return (
-    <Pressable onPress={aoTocar} style={estilos.item}>
-      <View style={estilos.avatar}>
-        <Texto peso="extrabold" cor="marca">
+    <Pressable
+      onPress={aoTocar}
+      style={({ pressed }) => [
+        estilos.item,
+        { backgroundColor: c.cartao, borderColor: c.cartaoBorda },
+        pressed && { opacity: 0.7 },
+      ]}
+    >
+      <View style={[estilos.avatar, { backgroundColor: c.tealWash }]}>
+        <Texto peso="extrabold" cor="teal">
           {inicial}
         </Texto>
       </View>
@@ -114,7 +129,7 @@ function ProdutoItem({ produto, aoTocar }: { produto: ProdutoLocal; aoTocar: () 
         <Texto peso="bold" numberOfLines={1}>
           {produto.nome}
         </Texto>
-        <Texto cor="placeholder" tamanho="sm">
+        <Texto cor="fraco" tamanho="sm" style={{ marginTop: 2 }}>
           {tipico != null
             ? `típico ${moeda(tipico)}${produto.unidadeBase ? `/${produto.unidadeBase}` : ''}`
             : `${produto.nObservacoes} ${produto.nObservacoes === 1 ? 'compra' : 'compras'}`}
@@ -127,10 +142,11 @@ function ProdutoItem({ produto, aoTocar }: { produto: ProdutoLocal; aoTocar: () 
 
 /** Pílula de tendência. Preço subindo é desfavorável (vermelho); caindo, verde. */
 function Tendencia({ pct }: { pct?: number }) {
+  const { c } = useTema();
   if (pct == null) return null;
   const estavel = Math.abs(pct) < LIMIAR_ESTAVEL;
-  const cor = estavel ? cores.textoMudo : pct > 0 ? cores.caro : cores.barato;
-  const bg = estavel ? cores.semDadosBg : pct > 0 ? cores.caroBg : cores.baratoBg;
+  const cor = estavel ? c.suave : pct > 0 ? c.caro : c.barato;
+  const bg = estavel ? c.semDadosBg : pct > 0 ? c.caroBg : c.baratoBg;
   const Icone = estavel ? IconeTendenciaPlana : pct > 0 ? IconeTendenciaCima : IconeTendenciaBaixo;
 
   return (
@@ -148,20 +164,16 @@ const estilos = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: espaco.sm,
-    backgroundColor: cores.superficie,
-    borderColor: cores.borda,
     borderWidth: 1,
     borderRadius: raio.md,
     paddingHorizontal: espaco.md,
     paddingVertical: espaco.sm,
   },
-  buscaInput: { flex: 1, paddingVertical: 6, color: cores.texto, fontSize: 15 },
+  buscaInput: { flex: 1, paddingVertical: 6, fontSize: 15 },
   item: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: espaco.md,
-    backgroundColor: cores.superficie,
-    borderColor: cores.borda,
     borderWidth: 1,
     borderRadius: raio.lg,
     padding: espaco.md,
@@ -170,8 +182,7 @@ const estilos = StyleSheet.create({
   avatar: {
     width: 44,
     height: 44,
-    borderRadius: raio.md,
-    backgroundColor: cores.superficieMuda,
+    borderRadius: raio.sm,
     alignItems: 'center',
     justifyContent: 'center',
   },

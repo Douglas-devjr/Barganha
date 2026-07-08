@@ -7,7 +7,7 @@
 import { StyleSheet, View } from 'react-native';
 import Svg, { Circle, Polyline } from 'react-native-svg';
 
-import { cores, espaco } from '@/tema';
+import { espaco, useTema } from '@/tema';
 
 import { Texto } from './Texto';
 
@@ -25,10 +25,12 @@ const A = 120; // altura útil do viewBox
 const PAD = 10;
 
 export function GraficoLinha({ valores, inicio, fim, altura = 130 }: GraficoLinhaProps) {
+  const { c } = useTema();
+
   if (valores.length < 2) {
     return (
       <View style={[estilos.vazio, { height: altura }]}>
-        <Texto cor="placeholder" tamanho="sm" centralizado>
+        <Texto cor="fraco" tamanho="sm" centralizado>
           Poucas compras para traçar a evolução ainda.
         </Texto>
       </View>
@@ -54,24 +56,24 @@ export function GraficoLinha({ valores, inicio, fim, altura = 130 }: GraficoLinh
   return (
     <View>
       <Svg viewBox={`0 0 ${L} ${A + 10}`} width="100%" height={altura}>
-        <Polyline points={area} fill={cores.marca} fillOpacity={0.07} stroke="none" />
+        <Polyline points={area} fill={c.teal} fillOpacity={0.07} stroke="none" />
         <Polyline
           points={linha}
           fill="none"
-          stroke={cores.marca}
+          stroke={c.teal}
           strokeWidth={3}
           strokeLinecap="round"
           strokeLinejoin="round"
         />
-        <Circle cx={ultimo.x} cy={ultimo.y} r={10} fill={cores.marca} fillOpacity={0.18} />
-        <Circle cx={ultimo.x} cy={ultimo.y} r={5.5} fill={cores.marca} />
+        <Circle cx={ultimo.x} cy={ultimo.y} r={10} fill={c.teal} fillOpacity={0.18} />
+        <Circle cx={ultimo.x} cy={ultimo.y} r={5.5} fill={c.teal} />
       </Svg>
       {inicio || fim ? (
         <View style={estilos.eixo}>
-          <Texto cor="placeholder" tamanho="xs" peso="semibold">
+          <Texto cor="fraco" tamanho="xs" peso="semibold">
             {inicio ?? ''}
           </Texto>
-          <Texto cor="placeholder" tamanho="xs" peso="semibold">
+          <Texto cor="fraco" tamanho="xs" peso="semibold">
             {fim ?? ''}
           </Texto>
         </View>

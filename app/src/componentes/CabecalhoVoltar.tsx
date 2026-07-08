@@ -1,11 +1,11 @@
 /**
- * C5.2 — Cabeçalho com botão de voltar para telas de fluxo (nota, detalhe). Usa
- * o estilo de "botão-ícone" branco com borda do protótipo.
+ * Redesign "2a" — cabeçalho com botão de voltar (nota, detalhe). Botão-ícone
+ * quadrado (cartão + borda) que acompanha o tema.
  */
 
 import { Pressable, StyleSheet, View } from 'react-native';
 
-import { cores, espaco, raio } from '@/tema';
+import { espaco, raio, useTema } from '@/tema';
 
 import { IconeVoltar } from './icones';
 import { Texto } from './Texto';
@@ -17,22 +17,23 @@ export interface CabecalhoVoltarProps {
 }
 
 export function CabecalhoVoltar({ titulo, subtitulo, aoVoltar }: CabecalhoVoltarProps) {
+  const { c } = useTema();
   return (
     <View style={estilos.linha}>
       <Pressable
         onPress={aoVoltar}
         accessibilityRole="button"
         accessibilityLabel="Voltar"
-        style={estilos.botao}
+        style={[estilos.botao, { backgroundColor: c.cartao, borderColor: c.borda }]}
       >
-        <IconeVoltar tamanho={20} cor={cores.texto} />
+        <IconeVoltar tamanho={20} cor={c.tinta} />
       </Pressable>
       <View style={{ flex: 1 }}>
         <Texto peso="extrabold" tamanho="lg">
           {titulo}
         </Texto>
         {subtitulo ? (
-          <Texto cor="placeholder" tamanho="sm">
+          <Texto cor="fraco" tamanho="sm">
             {subtitulo}
           </Texto>
         ) : null}
@@ -49,8 +50,6 @@ const estilos = StyleSheet.create({
     borderRadius: raio.md,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: cores.superficie,
     borderWidth: 1,
-    borderColor: cores.borda,
   },
 });

@@ -11,7 +11,7 @@ import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { CabecalhoVoltar, Cartao, GraficoLinha, Tela, Texto } from '@/componentes';
 import * as catalogo from '@/nucleo/catalogo';
 import type { CompraHistorico, ProdutoLocal } from '@/nucleo/catalogo';
-import { cores, espaco } from '@/tema';
+import { espaco, useTema } from '@/tema';
 import type { RootStackParamList } from '@/navegacao/tipos';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ProdutoDetalhe'>;
@@ -32,6 +32,7 @@ function dataCurta(iso: string): string {
 }
 
 export function ProdutoDetalheTela({ navigation, route }: Props) {
+  const { c } = useTema();
   const { chave, nome } = route.params;
   const [carregando, setCarregando] = useState(true);
   const [produto, setProduto] = useState<ProdutoLocal | null>(null);
@@ -69,12 +70,12 @@ export function ProdutoDetalheTela({ navigation, route }: Props) {
       {carregando ? (
         <Cartao>
           <View style={{ alignItems: 'center', paddingVertical: espaco.xl }}>
-            <ActivityIndicator color={cores.marca} />
+            <ActivityIndicator color={c.teal} />
           </View>
         </Cartao>
       ) : !produto ? (
         <Cartao>
-          <Texto cor="textoMudo" centralizado>
+          <Texto cor="suave" centralizado>
             Não encontramos o histórico deste produto.
           </Texto>
         </Cartao>
@@ -82,10 +83,10 @@ export function ProdutoDetalheTela({ navigation, route }: Props) {
         <>
           <Cartao style={{ marginBottom: espaco.md }}>
             <View style={estilos.tituloGrafico}>
-              <Texto cor="placeholder" tamanho="sm" peso="semibold">
+              <Texto cor="fraco" tamanho="sm" peso="semibold">
                 Evolução do preço
               </Texto>
-              <Texto cor="marca" tamanho="sm" peso="bold">
+              <Texto cor="teal" tamanho="sm" peso="bold">
                 {serie.length} {serie.length === 1 ? 'compra' : 'compras'}
               </Texto>
             </View>
@@ -99,14 +100,14 @@ export function ProdutoDetalheTela({ navigation, route }: Props) {
           </Cartao>
 
           <View style={estilos.cards}>
-            <CardExtremo rotulo="Menor" valor={produto.minimo} sufixo={base} cor={cores.barato} />
+            <CardExtremo rotulo="Menor" valor={produto.minimo} sufixo={base} cor={c.barato} />
             <CardExtremo
               rotulo="Típico"
               valor={produto.faixaPessoal?.mediana}
               sufixo={base}
-              cor={cores.texto}
+              cor={c.tinta}
             />
-            <CardExtremo rotulo="Maior" valor={produto.maximo} sufixo={base} cor={cores.caro} />
+            <CardExtremo rotulo="Maior" valor={produto.maximo} sufixo={base} cor={c.caro} />
           </View>
 
           <Texto peso="extrabold" tamanho="lg" style={{ marginBottom: espaco.sm }}>
@@ -116,21 +117,21 @@ export function ProdutoDetalheTela({ navigation, route }: Props) {
             {recentes.map((h, idx) => (
               <View
                 key={`${h.observadoEm}-${idx}`}
-                style={[estilos.compra, idx < recentes.length - 1 && estilos.compraBorda]}
+                style={[
+                  estilos.compra,
+                  idx < recentes.length - 1 && { borderBottomWidth: 1, borderBottomColor: c.linha },
+                ]}
               >
                 <View style={{ flex: 1 }}>
                   <Texto peso="bold" tamanho="sm">
                     {h.lojaNome ?? 'Mercado'}
                   </Texto>
-                  <Texto cor="placeholder" tamanho="xs">
+                  <Texto cor="fraco" tamanho="xs">
                     {dataCurta(h.observadoEm)}
                     {h.emPromocao ? ' · promoção' : ''}
                   </Texto>
                 </View>
-                <Texto
-                  peso="extrabold"
-                  style={h.emPromocao ? { color: cores.promocao } : undefined}
-                >
+                <Texto peso="extrabold" style={h.emPromocao ? { color: c.ambarTexto } : undefined}>
                   {h.precoNormalizado != null ? `${moeda(h.precoNormalizado)}${base}` : '—'}
                 </Texto>
               </View>
@@ -187,5 +188,4 @@ const estilos = StyleSheet.create({
     paddingHorizontal: espaco.lg,
     paddingVertical: espaco.md,
   },
-  compraBorda: { borderBottomWidth: 1, borderBottomColor: cores.borda },
 });

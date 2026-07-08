@@ -1,7 +1,7 @@
 /**
- * C5.1 — Barra de abas customizada com o botão central de scan (FAB) que flutua
- * sobre a barra, como no protótipo. As 4 abas são fixas; o FAB abre a tela
- * `Scanner` do stack raiz.
+ * Redesign "2a" — barra de abas com o FAB central de scan que flutua sobre a
+ * barra. 4 abas fixas (Início · Verificar · Produtos · Perfil); o FAB abre a tela
+ * `Scanner` (QR) do stack raiz. Cores da paleta ativa (claro/escuro).
  */
 
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
@@ -18,7 +18,7 @@ import {
   Texto,
   type IconeProps,
 } from '@/componentes';
-import { cores, espaco, raio, sombra } from '@/tema';
+import { espaco, raio, sombra, useTema } from '@/tema';
 
 import type { TabParamList } from './tipos';
 
@@ -32,15 +32,25 @@ const META: Record<keyof TabParamList, { rotulo: string; Icone: (p: IconeProps) 
 
 export function BarraAbas({ state, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
+  const { c } = useTema();
 
   return (
-    <View style={[estilos.container, { paddingBottom: Math.max(insets.bottom, espaco.sm) }]}>
+    <View
+      style={[
+        estilos.container,
+        {
+          backgroundColor: c.cartao,
+          borderTopColor: c.linha,
+          paddingBottom: Math.max(insets.bottom, espaco.sm),
+        },
+      ]}
+    >
       <View style={estilos.linha}>
         {state.routes.map((route, idx) => {
           const nome = route.name as keyof TabParamList;
           const meta = META[nome];
           const focada = state.index === idx;
-          const cor = focada ? cores.marca : cores.placeholder;
+          const cor = focada ? c.teal : c.fraco;
 
           const aoTocar = () => {
             const evento = navigation.emit({
@@ -66,7 +76,7 @@ export function BarraAbas({ state, navigation }: BottomTabBarProps) {
                 style={estilos.aba}
               >
                 <meta.Icone tamanho={24} cor={cor} />
-                <Texto peso="bold" tamanho="xs" style={{ color: cor, marginTop: 2 }}>
+                <Texto peso="bold" style={[estilos.rotulo, { color: cor }]}>
                   {meta.rotulo}
                 </Texto>
               </Pressable>
@@ -79,9 +89,9 @@ export function BarraAbas({ state, navigation }: BottomTabBarProps) {
         onPress={() => navigation.getParent()?.navigate('Scanner')}
         accessibilityRole="button"
         accessibilityLabel="Escanear cupom"
-        style={estilos.fab}
+        style={[estilos.fab, { backgroundColor: c.teal, borderColor: c.fundo }]}
       >
-        <IconeScan tamanho={27} cor={cores.branco} />
+        <IconeScan tamanho={27} cor={c.branco} />
       </Pressable>
     </View>
   );
@@ -89,9 +99,7 @@ export function BarraAbas({ state, navigation }: BottomTabBarProps) {
 
 const estilos = StyleSheet.create({
   container: {
-    backgroundColor: cores.superficie,
     borderTopWidth: 1,
-    borderTopColor: cores.borda,
     paddingTop: 9,
     paddingHorizontal: 18,
   },
@@ -99,18 +107,17 @@ const estilos = StyleSheet.create({
   celula: { flexDirection: 'row', alignItems: 'flex-start' },
   gap: { width: 60 },
   aba: { alignItems: 'center', justifyContent: 'center', minWidth: 56 },
+  rotulo: { fontSize: 10.5, marginTop: 2, letterSpacing: 0.1 },
   fab: {
     position: 'absolute',
-    top: -24,
+    top: -22,
     alignSelf: 'center',
     width: 60,
     height: 60,
-    borderRadius: raio.xl,
-    backgroundColor: cores.marca,
+    borderRadius: raio.cartao,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 4,
-    borderColor: cores.fundo,
     ...sombra.flutuante,
   },
 });

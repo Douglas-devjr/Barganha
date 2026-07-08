@@ -30,7 +30,7 @@ import { AuthNavegador, RaizNavegador } from '@/navegacao';
 import { sincronizar } from '@/nucleo/sincronizador';
 import { OnboardingTela } from '@/telas/OnboardingTela';
 import { RedefinirSenhaTela } from '@/telas/auth/RedefinirSenhaTela';
-import { cores } from '@/tema';
+import { ProvedorTema, cores, useTema } from '@/tema';
 
 export default function App() {
   const [fontesProntas] = useFonts({
@@ -57,18 +57,24 @@ export default function App() {
     };
   }, []);
 
-  if (!fontesProntas || !bdPronto || consentidoInicial === null) {
-    return <Splash />;
-  }
+  const pronto = fontesProntas && bdPronto && consentidoInicial !== null;
 
   return (
-    <AuthProvider>
-      <SafeAreaProvider>
-        <StatusBar style="dark" />
-        <Conteudo consentidoInicial={consentidoInicial} />
-      </SafeAreaProvider>
-    </AuthProvider>
+    <ProvedorTema>
+      <AuthProvider>
+        <SafeAreaProvider>
+          <BarraStatus />
+          {pronto ? <Conteudo consentidoInicial={consentidoInicial!} /> : <Splash />}
+        </SafeAreaProvider>
+      </AuthProvider>
+    </ProvedorTema>
   );
+}
+
+/** Barra de status que acompanha o tema (texto claro no escuro, escuro no claro). */
+function BarraStatus() {
+  const { escuro } = useTema();
+  return <StatusBar style={escuro ? 'light' : 'dark'} />;
 }
 
 /** Gate de navegação: consentimento → login → app. Consome a sessão de auth. */

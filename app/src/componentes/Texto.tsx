@@ -1,11 +1,12 @@
 /**
- * C5.2 — Texto com a fonte e a escala do design system. Centraliza a tipografia
- * para nenhuma tela precisar lembrar nomes de `fontFamily`.
+ * Redesign "2a" — Texto com a fonte e a escala do design system. Lê a cor da
+ * paleta ativa (`useTema`), então o mesmo `cor="tinta"` funciona em claro e
+ * escuro. Em RN o `Text` NÃO herda cor de View/Pressable: toda cor é explícita.
  */
 
 import { Text, type TextProps, type TextStyle } from 'react-native';
 
-import { cores, fontes, tamanhos, type Cor, type PesoFonte, type TamanhoTexto } from '@/tema';
+import { fontes, tamanhos, useTema, type Cor, type PesoFonte, type TamanhoTexto } from '@/tema';
 
 export interface TextoProps extends TextProps {
   peso?: PesoFonte;
@@ -17,15 +18,16 @@ export interface TextoProps extends TextProps {
 export function Texto({
   peso = 'medium',
   tamanho = 'md',
-  cor = 'texto',
+  cor = 'tinta',
   centralizado = false,
   style,
   ...rest
 }: TextoProps) {
+  const { c } = useTema();
   const base: TextStyle = {
     fontFamily: fontes[peso],
     fontSize: tamanhos[tamanho],
-    color: cores[cor],
+    color: c[cor],
     ...(centralizado ? { textAlign: 'center' } : {}),
   };
   return <Text {...rest} style={[base, style]} />;

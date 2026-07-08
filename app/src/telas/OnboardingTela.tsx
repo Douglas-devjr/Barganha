@@ -23,7 +23,7 @@ import {
   type IconeProps,
 } from '@/componentes';
 import { meta } from '@/dados';
-import { cores, espaco, raio } from '@/tema';
+import { espaco, raio, useTema } from '@/tema';
 
 export interface OnboardingTelaProps {
   /** Chamado após registrar o consentimento — o gate avança para o login. */
@@ -58,6 +58,7 @@ const PASSOS: Passo[] = [
 ];
 
 export function OnboardingTela({ aoConcordar }: OnboardingTelaProps) {
+  const { c } = useTema();
   const { width } = useWindowDimensions();
   const [indice, setIndice] = useState(0);
   const lista = useRef<FlatList<Passo>>(null);
@@ -79,7 +80,7 @@ export function OnboardingTela({ aoConcordar }: OnboardingTelaProps) {
   }
 
   return (
-    <SafeAreaView style={estilos.raiz} edges={['top', 'bottom']}>
+    <SafeAreaView style={[estilos.raiz, { backgroundColor: c.fundo }]} edges={['top', 'bottom']}>
       <View style={estilos.topo}>
         {ultimo ? (
           <View style={estilos.pular} />
@@ -89,7 +90,7 @@ export function OnboardingTela({ aoConcordar }: OnboardingTelaProps) {
             accessibilityRole="button"
             style={estilos.pular}
           >
-            <Texto cor="textoMudo" peso="semibold">
+            <Texto cor="fraco" peso="semibold">
               Pular
             </Texto>
           </Pressable>
@@ -106,8 +107,8 @@ export function OnboardingTela({ aoConcordar }: OnboardingTelaProps) {
         onMomentumScrollEnd={(e) => setIndice(Math.round(e.nativeEvent.contentOffset.x / width))}
         renderItem={({ item }) => (
           <View style={[estilos.pagina, { width }]}>
-            <View style={estilos.circulo}>
-              <item.Icone tamanho={64} cor={cores.marca} larguraTraco={2} />
+            <View style={[estilos.circulo, { backgroundColor: c.tealWash2 }]}>
+              <item.Icone tamanho={64} cor={c.teal} larguraTraco={2} />
             </View>
             <Texto
               peso="extrabold"
@@ -117,7 +118,7 @@ export function OnboardingTela({ aoConcordar }: OnboardingTelaProps) {
             >
               {item.titulo}
             </Texto>
-            <Texto cor="textoSuave" centralizado style={estilos.descricao}>
+            <Texto cor="suave" centralizado style={estilos.descricao}>
               {item.descricao}
             </Texto>
           </View>
@@ -127,7 +128,14 @@ export function OnboardingTela({ aoConcordar }: OnboardingTelaProps) {
       <View style={estilos.rodape}>
         <View style={estilos.pontos}>
           {PASSOS.map((_, i) => (
-            <View key={i} style={[estilos.ponto, i === indice && estilos.pontoAtivo]} />
+            <View
+              key={i}
+              style={[
+                estilos.ponto,
+                { backgroundColor: c.borda },
+                i === indice && [estilos.pontoAtivo, { backgroundColor: c.teal }],
+              ]}
+            />
           ))}
         </View>
         <Botao titulo={ultimo ? 'Concordar e começar' : 'Continuar'} bloco onPress={avancar} />
@@ -137,7 +145,7 @@ export function OnboardingTela({ aoConcordar }: OnboardingTelaProps) {
 }
 
 const estilos = StyleSheet.create({
-  raiz: { flex: 1, backgroundColor: cores.fundo },
+  raiz: { flex: 1 },
   topo: { height: 40, justifyContent: 'center', paddingHorizontal: espaco.xl },
   pular: {
     alignSelf: 'flex-end',
@@ -155,7 +163,6 @@ const estilos = StyleSheet.create({
     width: 132,
     height: 132,
     borderRadius: raio.pill,
-    backgroundColor: cores.marcaBgMedio,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -166,7 +173,6 @@ const estilos = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: raio.pill,
-    backgroundColor: cores.bordaForte,
   },
-  pontoAtivo: { backgroundColor: cores.marca, width: 22 },
+  pontoAtivo: { width: 22 },
 });

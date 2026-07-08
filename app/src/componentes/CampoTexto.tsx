@@ -1,12 +1,13 @@
 /**
- * C5.2 — Campo de texto do design system (rótulo + input + erro). Usado nas
- * telas de autenticação (C4.3.1) e reutilizável em formulários futuros.
+ * Redesign "2a" — campo de texto (rótulo + input + erro). Lê as cores do tema
+ * ativo; foco realça com `tealBorda`/`tealWash`. Usado nas telas de auth e no
+ * editor de região.
  */
 
 import { useState } from 'react';
 import { StyleSheet, TextInput, View, type TextInputProps } from 'react-native';
 
-import { cores, espaco, fontes, raio, tamanhos } from '@/tema';
+import { espaco, fontes, raio, tamanhos, useTema } from '@/tema';
 
 import { Texto } from './Texto';
 
@@ -17,15 +18,18 @@ export interface CampoTextoProps extends TextInputProps {
 }
 
 export function CampoTexto({ rotulo, erro, style, onFocus, onBlur, ...rest }: CampoTextoProps) {
+  const { c } = useTema();
   const [focado, setFocado] = useState(false);
+
+  const borda = erro != null ? c.caro : focado ? c.tealBorda : c.borda;
 
   return (
     <View style={estilos.raiz}>
-      <Texto peso="semibold" tamanho="sm" cor="textoSuave" style={estilos.rotulo}>
+      <Texto peso="semibold" tamanho="sm" cor="suave" style={estilos.rotulo}>
         {rotulo}
       </Texto>
       <TextInput
-        placeholderTextColor={cores.placeholder}
+        placeholderTextColor={c.fraco}
         {...rest}
         onFocus={(e) => {
           setFocado(true);
@@ -35,7 +39,15 @@ export function CampoTexto({ rotulo, erro, style, onFocus, onBlur, ...rest }: Ca
           setFocado(false);
           onBlur?.(e);
         }}
-        style={[estilos.input, focado && estilos.focado, erro != null && estilos.comErro, style]}
+        style={[
+          estilos.input,
+          {
+            backgroundColor: focado ? c.tealWash : c.cartao,
+            borderColor: borda,
+            color: c.tinta,
+          },
+          style,
+        ]}
       />
       {erro != null ? (
         <Texto tamanho="sm" cor="caro" style={estilos.erro}>
@@ -51,16 +63,11 @@ const estilos = StyleSheet.create({
   rotulo: { marginLeft: espaco.xs },
   input: {
     height: 54,
-    borderRadius: raio.lg,
+    borderRadius: raio.md,
     paddingHorizontal: espaco.lg,
-    backgroundColor: cores.superficie,
     borderWidth: 1.5,
-    borderColor: cores.borda,
-    color: cores.texto,
     fontFamily: fontes.medium,
     fontSize: tamanhos.md,
   },
-  focado: { borderColor: cores.marcaBorda, backgroundColor: cores.marcaBgClaro },
-  comErro: { borderColor: cores.caro },
   erro: { marginLeft: espaco.xs },
 });

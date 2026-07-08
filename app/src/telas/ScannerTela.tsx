@@ -1,30 +1,36 @@
 /**
- * C6.1 — Scanner de QR da NFC-e. Lê o QR com `expo-camera` e grava o QR CRU
- * localmente ANTES de qualquer rede (offline-first, decisão travada): a captura
- * funciona sem sinal; o upload e o parsing vêm depois (C6.2). Após gravar, segue
- * para a Nota fiscal, que acompanha o processamento.
+ * C6.1 + Redesign "2a" — Scanner de QR da NFC-e. Lê o QR com `expo-camera` e
+ * grava o QR CRU localmente ANTES de qualquer rede (offline-first, decisão
+ * travada): a captura funciona sem sinal; o upload e o parsing vêm depois (C6.2).
+ * Após gravar, segue para a Nota fiscal, que acompanha o processamento.
  *
- * Não fazemos parsing da nota no app — só capturamos o conteúdo do QR (decisão
- * travada). A extração da chave e o parser rodam no backend.
+ * Tela sempre ESCURA (câmera): moldura com cantos menta, botão fechar (X).
+ * Não fazemos parsing no app — só capturamos o conteúdo do QR (decisão travada).
  */
 
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import { Alert, Linking, Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { Botao, IconeScan, IconeVoltar, Texto } from '@/componentes';
+import { Botao, IconeFechar, IconeScan, MolduraCamera, Texto } from '@/componentes';
 import { cupons } from '@/dados';
+import { useCameraAtiva } from '@/nucleo/camera';
 import { sincronizar } from '@/nucleo/sincronizador';
-import { cores, espaco, raio } from '@/tema';
+import { espaco, raio } from '@/tema';
 import type { RootStackParamList } from '@/navegacao/tipos';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Scanner'>;
 
+const FUNDO = '#0B120F';
+const MENTA = '#5EEAD4';
+
 export function ScannerTela({ navigation }: Props) {
   const [permissao, pedirPermissao] = useCameraPermissions();
-  // Trava de captura: ignora leituras repetidas do mesmo QR enquanto navegamos.
+  // Desmonta a câmera fora de foco/primeiro plano — senão o preview volta PRETO.
+  const cameraAtiva = useCameraAtiva();
+  const [erroCamera, setErroCamera] = useState<string | null>(null);
   const lido = useRef(false);
 
   async function aoLer(qrPayload: string) {
@@ -32,7 +38,7 @@ export function ScannerTela({ navigation }: Props) {
     lido.current = true;
     try {
       const cupom = await cupons.registrarCaptura({ qrPayload });
-      void sincronizar(); // best-effort: tenta subir já se houver sinal.
+      void sincronizar();
       navigation.replace('NotaFiscal', { cupomLocalId: cupom.id });
     } catch {
       lido.current = false;
@@ -42,12 +48,13 @@ export function ScannerTela({ navigation }: Props) {
 
   return (
     <SafeAreaView style={estilos.raiz} edges={['top', 'bottom']}>
-      {permissao?.granted ? (
+      {permissao?.granted && cameraAtiva && erroCamera == null ? (
         <CameraView
           style={StyleSheet.absoluteFill}
           facing="back"
           barcodeScannerSettings={{ barcodeTypes: ['qr'] }}
           onBarcodeScanned={({ data }) => void aoLer(data)}
+          onMountError={({ message }) => setErroCamera(message || 'erro desconhecido')}
         />
       ) : null}
       <View style={estilos.veu} />
@@ -59,7 +66,7 @@ export function ScannerTela({ navigation }: Props) {
           accessibilityLabel="Fechar"
           style={estilos.fechar}
         >
-          <IconeVoltar tamanho={22} cor={cores.branco} />
+          <IconeFechar tamanho={22} cor="#FFFFFF" />
         </Pressable>
         <Texto cor="branco" peso="bold" tamanho="lg">
           Escanear cupom
@@ -68,11 +75,18 @@ export function ScannerTela({ navigation }: Props) {
       </View>
 
       <View style={estilos.centro}>
-        <View style={estilos.alvo}>
-          {!permissao?.granted ? <IconeScan tamanho={56} cor={cores.marcaClara} /> : null}
-        </View>
+        <MolduraCamera tamanho={250} corGlow={MENTA}>
+          {!permissao?.granted ? <IconeScan tamanho={56} cor={MENTA} /> : null}
+        </MolduraCamera>
 
-        {permissao?.granted ? (
+        {erroCamera != null ? (
+          <View style={estilos.permissao}>
+            <Texto cor="branco" centralizado style={estilos.dica}>
+              A câmera não abriu. Feche outros apps que estejam usando a câmera e tente de novo.
+            </Texto>
+            <Botao titulo="Tentar de novo" onPress={() => setErroCamera(null)} />
+          </View>
+        ) : permissao?.granted ? (
           <Texto cor="branco" centralizado style={estilos.dica}>
             Aponte para o QR Code da nota fiscal.
           </Texto>
@@ -94,9 +108,8 @@ export function ScannerTela({ navigation }: Props) {
 }
 
 const estilos = StyleSheet.create({
-  raiz: { flex: 1, backgroundColor: cores.textoForte },
-  // Escurece a câmera para a moldura e os textos ficarem legíveis.
-  veu: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(11,18,32,0.45)' },
+  raiz: { flex: 1, backgroundColor: FUNDO },
+  veu: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(6,12,10,0.5)' },
   topo: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -113,15 +126,6 @@ const estilos = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.12)',
   },
   centro: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: espaco.xl },
-  alvo: {
-    width: 240,
-    height: 240,
-    borderRadius: raio.xl,
-    borderWidth: 2,
-    borderColor: 'rgba(94,234,212,0.7)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   dica: { marginTop: espaco.xl, maxWidth: 300 },
   permissao: {
     marginTop: espaco.lg,

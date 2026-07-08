@@ -1,44 +1,55 @@
 /**
- * C7.1 — Scanner de código de barras na gôndola (caminho PRINCIPAL de entrada).
- * Lê o EAN do produto e o devolve à aba Verificar, que resolve o veredito. Não
- * grava nada: diferente do scan de QR do cupom (C6.1), aqui só identificamos o
- * produto a consultar.
+ * C7.1 + Redesign "2a" — Scanner de código de barras na gôndola (caminho
+ * PRINCIPAL de entrada). Lê o EAN e o devolve à aba Verificar, que resolve o
+ * veredito. Não grava nada: diferente do scan de QR do cupom (C6.1), aqui só
+ * identificamos o produto a consultar. Tela sempre escura (câmera).
  */
 
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import { Linking, Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { Botao, IconeBarras, IconeVoltar, Texto } from '@/componentes';
-import { cores, espaco, raio } from '@/tema';
+import { Botao, IconeBarras, IconeFechar, MolduraCamera, Texto } from '@/componentes';
+import { useCameraAtiva } from '@/nucleo/camera';
+import { depositarEanEscaneado } from '@/nucleo/scan-pendente';
+import { espaco, raio } from '@/tema';
 import type { RootStackParamList } from '@/navegacao/tipos';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'EscanearBarras'>;
+
+const FUNDO = '#0B120F';
+const MENTA = '#5EEAD4';
 
 // Formatos de código de barras de produto (não QR).
 const FORMATOS_EAN = ['ean13', 'ean8', 'upc_a', 'upc_e'] as const;
 
 export function EscanearBarrasTela({ navigation }: Props) {
   const [permissao, pedirPermissao] = useCameraPermissions();
+  // Desmonta a câmera fora de foco/primeiro plano — senão o preview volta PRETO.
+  const cameraAtiva = useCameraAtiva();
+  const [erroCamera, setErroCamera] = useState<string | null>(null);
   const lido = useRef(false);
 
   function aoLer(ean: string) {
     if (lido.current) return;
     lido.current = true;
-    // Volta à aba Verificar entregando o EAN (params aninhados do navigator).
-    navigation.navigate('Abas', { screen: 'Verificar', params: { ean } });
+    depositarEanEscaneado(ean);
+    navigation.navigate('Abas', { screen: 'Verificar' });
   }
 
   return (
     <SafeAreaView style={estilos.raiz} edges={['top', 'bottom']}>
-      {permissao?.granted ? (
+      {permissao?.granted && cameraAtiva && erroCamera == null ? (
         <CameraView
           style={StyleSheet.absoluteFill}
           facing="back"
+          // Autofoco ligado: o EAN-13 (barras finas 1D) exige foco nítido.
+          autofocus="on"
           barcodeScannerSettings={{ barcodeTypes: [...FORMATOS_EAN] }}
           onBarcodeScanned={({ data }) => aoLer(data)}
+          onMountError={({ message }) => setErroCamera(message || 'erro desconhecido')}
         />
       ) : null}
       <View style={estilos.veu} />
@@ -50,7 +61,7 @@ export function EscanearBarrasTela({ navigation }: Props) {
           accessibilityLabel="Fechar"
           style={estilos.fechar}
         >
-          <IconeVoltar tamanho={22} cor={cores.branco} />
+          <IconeFechar tamanho={22} cor="#FFFFFF" />
         </Pressable>
         <Texto cor="branco" peso="bold" tamanho="lg">
           Código de barras
@@ -59,11 +70,18 @@ export function EscanearBarrasTela({ navigation }: Props) {
       </View>
 
       <View style={estilos.centro}>
-        <View style={estilos.alvo}>
-          {!permissao?.granted ? <IconeBarras tamanho={56} cor={cores.marcaClara} /> : null}
-        </View>
+        <MolduraCamera largura={270} altura={190} corGlow={MENTA}>
+          {!permissao?.granted ? <IconeBarras tamanho={56} cor={MENTA} /> : null}
+        </MolduraCamera>
 
-        {permissao?.granted ? (
+        {erroCamera != null ? (
+          <View style={estilos.permissao}>
+            <Texto cor="branco" centralizado style={estilos.dica}>
+              A câmera não abriu. Feche outros apps que estejam usando a câmera e tente de novo.
+            </Texto>
+            <Botao titulo="Tentar de novo" onPress={() => setErroCamera(null)} />
+          </View>
+        ) : permissao?.granted ? (
           <Texto cor="branco" centralizado style={estilos.dica}>
             Aponte para o código de barras do produto.
           </Texto>
@@ -85,8 +103,8 @@ export function EscanearBarrasTela({ navigation }: Props) {
 }
 
 const estilos = StyleSheet.create({
-  raiz: { flex: 1, backgroundColor: cores.textoForte },
-  veu: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(11,18,32,0.45)' },
+  raiz: { flex: 1, backgroundColor: FUNDO },
+  veu: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(6,12,10,0.5)' },
   topo: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -103,15 +121,6 @@ const estilos = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.12)',
   },
   centro: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: espaco.xl },
-  alvo: {
-    width: 260,
-    height: 180,
-    borderRadius: raio.xl,
-    borderWidth: 2,
-    borderColor: 'rgba(94,234,212,0.7)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   dica: { marginTop: espaco.xl, maxWidth: 300 },
   permissao: {
     marginTop: espaco.lg,

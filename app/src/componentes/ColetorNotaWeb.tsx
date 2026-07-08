@@ -1,15 +1,17 @@
 /**
- * C2.6 — Coletor da nota via WebView. Alguns portais da SEFAZ (ex.: RJ) só
- * entregam a nota a um NAVEGADOR real (reCAPTCHA v3 + postback JSF) e barram
- * robôs/IP de servidor. Como o backend não consegue buscar, o PRÓPRIO app abre a
- * URL do QR num WebView no aparelho do usuário: aí o reCAPTCHA passa e a nota
- * renderiza. Colhemos o HTML final e o entregamos ao backend, que PARSEIA
+ * C2.6 — Coletor da nota via WebView, EM TELA CHEIA e INTERATIVO. Alguns portais
+ * da SEFAZ (ex.: RJ) só entregam a nota a um NAVEGADOR real (reCAPTCHA v3 +
+ * postback JSF) e barram robôs/IP de servidor — e um WebView "escondido" ainda é
+ * pontuado como bot (trava em `grecaptcha-error`). Por isso mostramos a página em
+ * tela cheia e deixamos o PRÓPRIO usuário interagir (tocar "Consultar", resolver
+ * um eventual desafio visível): é o caminho confiável contra reCAPTCHA. Assim que
+ * a nota renderiza, colhemos o HTML e o entregamos ao backend, que PARSEIA
  * (decisão travada nº2: parsing nunca no app — aqui só coletamos o HTML).
  *
- * A cada carregamento (e num timer de segurança) injetamos um script que
- * devolve `document.documentElement.outerHTML`. Enviamos ao backend: se ainda for
- * a página de desafio, ele responde 422 e seguimos tentando; quando vier a nota,
- * ele processa e encerramos. Damos às tentativas um teto para não girar à toa.
+ * A cada carregamento (e num timer de segurança) injetamos um script que devolve
+ * `document.documentElement.outerHTML`. Enviamos ao backend: se ainda for a
+ * página de desafio, ele responde 422 e SEGUIMOS aguardando o usuário (não
+ * desistimos); quando vier a nota, ele processa e encerramos.
  *
  * `react-native-webview` é módulo NATIVO: carregamos de forma preguiçosa e
  * tolerante para um dev build ANTIGO (ainda sem o módulo) não derrubar o app —
@@ -17,10 +19,11 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Modal, Pressable, StyleSheet, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import type { WebViewMessageEvent } from 'react-native-webview';
 
-import { cores, espaco, raio } from '@/tema';
+import { espaco, raio, useTema } from '@/tema';
 
 import { Texto } from './Texto';
 
@@ -50,7 +53,7 @@ export interface ColetorNotaWebProps {
   enviarHtml: (html: string) => Promise<ResultadoColeta>;
   /** Nota lida com sucesso — o pai recarrega e desmonta o coletor. */
   aoProcessar: () => void;
-  /** Esgotou as tentativas (ou erro de rede / módulo ausente) sem ler a nota. */
+  /** Usuário fechou, módulo ausente, ou erros seguidos do backend sem ler a nota. */
   aoDesistir: (motivo: string) => void;
 }
 
@@ -58,14 +61,28 @@ export interface ColetorNotaWebProps {
 const COLETAR_JS = `(function(){try{var h=document.documentElement?document.documentElement.outerHTML:'';if(window.ReactNativeWebView)window.ReactNativeWebView.postMessage(h);}catch(e){if(window.ReactNativeWebView)window.ReactNativeWebView.postMessage('');}})();true;`;
 
 const INTERVALO_COLETA_MS = 3000;
-const MAX_TENTATIVAS = 8; // ~24s de desafio antes de desistir.
+// Só erros REAIS do backend (não o "desafio", que é normal enquanto o usuário
+// resolve). Enquanto for desafio, NÃO desistimos — o humano está no comando.
+const MAX_ERROS_BACKEND = 8;
+// Erros de CARREGAMENTO (onError) costumam ser transitórios no portal da SEFAZ —
+// tipicamente `net::ERR_CONNECTION_RESET`. Recarregamos algumas vezes antes de
+// desistir em vez de estourar no primeiro tropeço de rede.
+const MAX_ERROS_REDE = 4;
+const ATRASO_RECARGA_MS = 1500;
+// UA de Chrome mobile REAL (sem o marcador "; wv" do WebView). O reCAPTCHA v3 do
+// portal do RJ penaliza User-Agent de WebView e trava no desafio (`grecaptcha-error`);
+// apresentar-se como Chrome comum melhora a pontuação e a chance de render a nota.
+const UA_CHROME_MOBILE =
+  'Mozilla/5.0 (Linux; Android 14; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Mobile Safari/537.36';
 
 export function ColetorNotaWeb({ url, enviarHtml, aoProcessar, aoDesistir }: ColetorNotaWebProps) {
+  const { c } = useTema();
   const webRef = useRef<WebViewInstancia>(null);
   const enviando = useRef(false);
   const concluido = useRef(false);
-  const tentativas = useRef(0);
-  const [aguardando, setAguardando] = useState(true);
+  const errosBackend = useRef(0);
+  const errosRede = useRef(0);
+  const [lendoNota, setLendoNota] = useState(false);
 
   const coletar = useCallback(() => {
     if (concluido.current) return;
@@ -73,7 +90,8 @@ export function ColetorNotaWeb({ url, enviarHtml, aoProcessar, aoDesistir }: Col
   }, []);
 
   // Timer de segurança: mesmo sem novo `onLoadEnd` (ex.: atualização via AJAX do
-  // portal), tenta colher o HTML periodicamente até processar/desistir.
+  // portal, ou o postback do reCAPTCHA), tenta colher o HTML periodicamente até
+  // processar/desistir.
   useEffect(() => {
     if (!WebViewNativo) return;
     const t = setInterval(coletar, INTERVALO_COLETA_MS);
@@ -94,6 +112,10 @@ export function ColetorNotaWeb({ url, enviarHtml, aoProcessar, aoDesistir }: Col
     fn();
   }, []);
 
+  const cancelar = useCallback(() => {
+    encerrar(() => aoDesistir('Confirmação fechada. Você pode tentar de novo quando quiser.'));
+  }, [aoDesistir, encerrar]);
+
   const aoMensagem = useCallback(
     async (evento: WebViewMessageEvent) => {
       if (concluido.current || enviando.current) return;
@@ -104,15 +126,22 @@ export function ColetorNotaWeb({ url, enviarHtml, aoProcessar, aoDesistir }: Col
       try {
         const resultado = await enviarHtml(html);
         if (resultado === 'processado') {
+          setLendoNota(true);
           encerrar(aoProcessar);
           return;
         }
-        // 'desafio' (ainda no reCAPTCHA/JSF) ou 'erro' transitório: conta e segue.
-        tentativas.current += 1;
-        setAguardando(true);
-        if (tentativas.current >= MAX_TENTATIVAS) {
+        if (resultado === 'desafio') {
+          // Ainda no reCAPTCHA/JSF: o usuário está resolvendo. Zera o contador de
+          // erros de backend (estamos progredindo, só não é a nota ainda).
+          errosBackend.current = 0;
+          return;
+        }
+        // 'erro' = falha real do backend (não 422). Tolera alguns e só então
+        // desiste — pode ser um blip; o usuário pode ter carregado algo estranho.
+        errosBackend.current += 1;
+        if (errosBackend.current >= MAX_ERROS_BACKEND) {
           encerrar(() =>
-            aoDesistir('Não foi possível ler a nota na SEFAZ agora. Tente de novo em instantes.'),
+            aoDesistir('Não foi possível ler a nota agora. Tente de novo em instantes.'),
           );
         }
       } finally {
@@ -125,46 +154,116 @@ export function ColetorNotaWeb({ url, enviarHtml, aoProcessar, aoDesistir }: Col
   if (!WebViewNativo) return null; // o pai mostra a mensagem via aoDesistir.
 
   return (
-    <View style={estilos.raiz}>
-      <View style={estilos.molduraWeb}>
-        <WebViewNativo
-          ref={webRef}
-          source={{ uri: url }}
-          originWhitelist={['*']}
-          javaScriptEnabled
-          domStorageEnabled
-          thirdPartyCookiesEnabled
-          onLoadEnd={() => {
-            setAguardando(false);
-            coletar();
-          }}
-          onError={() =>
-            encerrar(() =>
-              aoDesistir('Não foi possível abrir a página da SEFAZ. Verifique a rede.'),
-            )
-          }
-          onMessage={(e) => void aoMensagem(e)}
-          style={estilos.web}
-        />
-      </View>
-      <Texto cor="textoMudo" tamanho="sm" centralizado style={{ marginTop: espaco.sm }}>
-        {aguardando ? 'Confirmando a nota na SEFAZ…' : 'Lendo os itens da nota…'}
-      </Texto>
-    </View>
+    <Modal visible animationType="slide" onRequestClose={cancelar}>
+      <SafeAreaView style={[estilos.raiz, { backgroundColor: c.cartao }]} edges={['top', 'bottom']}>
+        <View style={estilos.topo}>
+          <View style={estilos.topoTexto}>
+            <Texto peso="bold" tamanho="lg" numberOfLines={1}>
+              Confirme sua nota
+            </Texto>
+            <Texto cor="fraco" tamanho="sm">
+              Toque em “Consultar” e resolva a verificação se ela aparecer.
+            </Texto>
+          </View>
+          <Pressable
+            onPress={cancelar}
+            accessibilityRole="button"
+            accessibilityLabel="Fechar"
+            hitSlop={8}
+            style={[estilos.fechar, { backgroundColor: c.linha }]}
+          >
+            <Texto peso="bold" cor="suave">
+              Fechar
+            </Texto>
+          </Pressable>
+        </View>
+
+        <View style={estilos.dica}>
+          <Texto tamanho="sm" cor="suave">
+            Assim que a nota da SEFAZ aparecer, a gente lê os itens e fecha sozinho.
+          </Texto>
+        </View>
+
+        <View style={[estilos.molduraWeb, { borderColor: c.borda }]}>
+          <WebViewNativo
+            ref={webRef}
+            source={{ uri: url }}
+            originWhitelist={['*']}
+            userAgent={UA_CHROME_MOBILE}
+            javaScriptEnabled
+            domStorageEnabled
+            thirdPartyCookiesEnabled
+            // Desafios do reCAPTCHA às vezes abrem em nova janela: mantém no mesmo
+            // WebView para o usuário conseguir resolver.
+            setSupportMultipleWindows={false}
+            onLoadEnd={() => coletar()}
+            onError={(e) => {
+              if (concluido.current) return;
+              const { code, description, url: falhaUrl } = e.nativeEvent;
+              console.warn('[ColetorNotaWeb] onError', code, description, falhaUrl);
+              errosRede.current += 1;
+              // Reset/instabilidade do portal é transitório: recarrega e tenta de
+              // novo. Só desiste (com o motivo real) após esgotar as recargas.
+              if (errosRede.current < MAX_ERROS_REDE) {
+                setTimeout(() => {
+                  if (!concluido.current) webRef.current?.reload();
+                }, ATRASO_RECARGA_MS);
+                return;
+              }
+              encerrar(() =>
+                aoDesistir(
+                  `Não foi possível abrir a página da SEFAZ. Verifique a rede. [${code}: ${description}]`,
+                ),
+              );
+            }}
+            onMessage={(e) => void aoMensagem(e)}
+            style={estilos.web}
+          />
+        </View>
+
+        <View style={estilos.rodape}>
+          <ActivityIndicator color={c.teal} size="small" />
+          <Texto cor="fraco" tamanho="sm" style={{ marginLeft: espaco.sm }}>
+            {lendoNota ? 'Lendo os itens da nota…' : 'Aguardando a nota da SEFAZ…'}
+          </Texto>
+        </View>
+      </SafeAreaView>
+    </Modal>
   );
 }
 
 const estilos = StyleSheet.create({
-  raiz: { alignItems: 'stretch' },
-  // Mostramos o WebView (baixo) para o usuário poder resolver um eventual desafio
-  // visível do reCAPTCHA — no v3 costuma ser invisível e nada aparece.
+  raiz: { flex: 1 },
+  topo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: espaco.md,
+    paddingHorizontal: espaco.lg,
+    paddingVertical: espaco.md,
+  },
+  topoTexto: { flex: 1 },
+  fechar: {
+    paddingHorizontal: espaco.md,
+    paddingVertical: espaco.sm,
+    borderRadius: raio.md,
+  },
+  dica: { paddingHorizontal: espaco.lg, paddingBottom: espaco.sm },
   molduraWeb: {
-    height: 220,
+    flex: 1,
+    marginHorizontal: espaco.lg,
     borderRadius: raio.md,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: cores.borda,
-    backgroundColor: cores.branco,
+    // A página da SEFAZ é branca: fundo branco fixo para não "piscar" no escuro.
+    backgroundColor: '#FFFFFF',
   },
   web: { flex: 1, backgroundColor: 'transparent' },
+  rodape: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: espaco.lg,
+    paddingVertical: espaco.md,
+  },
 });
