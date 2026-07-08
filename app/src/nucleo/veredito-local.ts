@@ -22,8 +22,9 @@ import {
 } from '@barganha/shared';
 
 import { clienteApi, ErroApi } from '@/api';
-import { cache, produtos } from '@/dados';
+import { cache } from '@/dados';
 import type { CacheEstatistica } from '@/dados';
+import { resolverLocalizacao } from '@/nucleo/localizacao';
 
 export interface ResultadoVeredito {
   hibrido: VeredictoHibrido;
@@ -53,21 +54,39 @@ const ESPECIFICIDADE: Record<EscopoGeo, number> = ESCOPO_GEO.reduce(
 );
 
 /**
- * Escolhe a melhor linha de cache para o produto: mais observações primeiro e,
- * no empate, o escopo mais específico (loja > município > região > UF). É um
- * fallback offline simples — o cache é alimentado no nível disponível (hoje UF).
+ * Mínimo de observações p/ um nível ser considerado confiável offline. Espelha o
+ * `MIN_OBSERVACOES_FALLBACK` do backend (docs/06, a calibrar com dados reais).
+ */
+const MIN_OBSERVACOES_REGIONAL = 3;
+
+/**
+ * Escolhe a melhor linha de cache para o produto — o análogo OFFLINE do
+ * `resolverFallback` do backend (C3.3): o nível MAIS ESPECÍFICO
+ * (loja→município→região→UF) que atinge o mínimo de observações; se nenhum
+ * atinge, o de MAIOR base. Preferir o mais específico é o que faz o município
+ * (o nível principal) ganhar da UF, que sempre tem mais observações por agregá-lo.
  */
 function melhorEstatistica(linhas: readonly CacheEstatistica[]): CacheEstatistica | undefined {
-  let melhor: CacheEstatistica | undefined;
+  if (linhas.length === 0) return undefined;
+
+  // Uma linha por escopo: a de maior base (mesmo EAN pode vir em unidades diferentes).
+  const porEscopo = new Map<EscopoGeo, CacheEstatistica>();
   for (const l of linhas) {
-    if (
-      !melhor ||
-      l.nObservacoes > melhor.nObservacoes ||
-      (l.nObservacoes === melhor.nObservacoes &&
-        ESPECIFICIDADE[l.escopo] < ESPECIFICIDADE[melhor.escopo])
-    ) {
-      melhor = l;
-    }
+    const atual = porEscopo.get(l.escopo);
+    if (!atual || l.nObservacoes > atual.nObservacoes) porEscopo.set(l.escopo, l);
+  }
+  const candidatos = [...porEscopo.values()].sort(
+    (a, b) => ESPECIFICIDADE[a.escopo] - ESPECIFICIDADE[b.escopo],
+  );
+
+  // 1) Mais específico com base suficiente.
+  for (const l of candidatos) {
+    if (l.nObservacoes >= MIN_OBSERVACOES_REGIONAL) return l;
+  }
+  // 2) Ninguém atinge o mínimo → o de maior base disponível.
+  let melhor: CacheEstatistica | undefined;
+  for (const l of porEscopo.values()) {
+    if (!melhor || l.nObservacoes > melhor.nObservacoes) melhor = l;
   }
   return melhor;
 }
@@ -131,20 +150,22 @@ export async function resolverVeredito(entrada: EntradaVeredito): Promise<Result
 
 /**
  * Refina o ângulo regional online: consulta o pool por EAN/nome no recorte da
- * UF, grava no cache (para ficar offline na próxima vez) e devolve a resposta —
- * inclusive o `produtoCanonicoId` resolvido, útil quando o EAN escaneado ainda
- * não estava no histórico local. Best-effort: `null` quando offline ou sem dado.
+ * região do usuário (município + UF), grava no cache (para ficar offline na
+ * próxima vez) e devolve a resposta — inclusive o `produtoCanonicoId` resolvido,
+ * útil quando o EAN escaneado ainda não estava no histórico local. Best-effort:
+ * `null` quando offline ou sem dado.
  */
 export async function refinarRegionalOnline(ref: {
   ean?: string | null;
   nome?: string | null;
 }): Promise<ConsultaPrecoResponse | null> {
-  const uf = await produtos.obterUfRecente();
+  const local = await resolverLocalizacao();
   try {
     const resp = await clienteApi.consultarPreco({
       ...(ref.ean ? { ean: ref.ean } : {}),
       ...(!ref.ean && ref.nome ? { nome: ref.nome } : {}),
-      ...(uf ? { uf } : {}),
+      ...(local?.uf ? { uf: local.uf } : {}),
+      ...(local?.municipio ? { municipio: local.municipio } : {}),
     });
     if (!resp) return null;
     await cache.salvarEstatisticas([resp.estatistica]);

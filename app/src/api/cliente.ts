@@ -33,6 +33,12 @@ export class ErroApi extends Error {
   }
 }
 
+// Sem timeout, um servidor INALCANÇÁVEL (IP da LAN fora da rede do celular, ou
+// firewall dropando pacotes em silêncio) deixa o fetch pendurado por minutos e a
+// UI presa em "Enviando/Processando…" sem nunca cair no estado offline. Abortar
+// vira `ErroApi(0)` — transitório: o sincronizador re-tenta com backoff.
+const TIMEOUT_REQUISICAO_MS = 15000;
+
 export interface OpcoesClienteApi {
   baseUrl?: string;
   /** Fornece o Bearer (usuarioId) para endpoints privados. */
@@ -143,15 +149,20 @@ export class ClienteApi {
     if (corpo !== undefined) headers['Content-Type'] = 'application/json';
     if (token) headers.Authorization = `Bearer ${token}`;
 
+    const aborto = new AbortController();
+    const timer = setTimeout(() => aborto.abort(), TIMEOUT_REQUISICAO_MS);
     let resposta: Response;
     try {
       resposta = await fetch(`${this.baseUrl}${caminho}`, {
         method: metodo,
         headers,
         body: corpo !== undefined ? JSON.stringify(corpo) : undefined,
+        signal: aborto.signal,
       });
     } catch {
       throw new ErroApi(0, 'Sem conexão com o servidor.');
+    } finally {
+      clearTimeout(timer);
     }
 
     if (!resposta.ok) {

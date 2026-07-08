@@ -71,6 +71,15 @@ export async function salvarEstatisticas(estatisticas: PrecoEstatistica[]): Prom
   });
 }
 
+/**
+ * Zera o cache de estatísticas. Usado ao TROCAR a região: o recorte geográfico
+ * muda, então as linhas do recorte anterior deixam de valer e o próximo sync
+ * repopula do zero (cursor também é resetado).
+ */
+export async function limpar(): Promise<void> {
+  await getBd().runAsync(`DELETE FROM cache_estatistica`);
+}
+
 /** Todas as faixas em cache de um produto (vários escopos). Base do veredito (C7). */
 export async function listarEstatisticasDoProduto(
   produtoCanonicoId: string,

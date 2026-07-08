@@ -8,8 +8,9 @@ import type { NavigatorScreenParams } from '@react-navigation/native';
 
 export type TabParamList = {
   Inicio: undefined;
-  /** `ean` chega quando a aba é aberta a partir do scan de código de barras (C7.1). */
-  Verificar: { ean?: string } | undefined;
+  // O EAN escaneado (C7.1) chega pelo correio de scan em memória
+  // (`nucleo/scan-pendente`), não por param aninhado — mais confiável.
+  Verificar: undefined;
   Produtos: undefined;
   Perfil: undefined;
 };

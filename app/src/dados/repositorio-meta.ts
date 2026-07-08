@@ -11,6 +11,8 @@ import { getBd } from './bd';
 const CHAVE_CURSOR = 'cursor_delta';
 /** Chave do consentimento LGPD. Exportada p/ a limpeza local preservá-la (nucleo/conta). */
 export const CHAVE_CONSENTIMENTO = 'consentimento_em';
+const CHAVE_LOCAL_UF = 'local_uf';
+const CHAVE_LOCAL_MUNICIPIO = 'local_municipio';
 
 export async function obterMeta(chave: string): Promise<string | null> {
   const linha = await getBd().getFirstAsync<{ valor: string | null }>(
@@ -39,3 +41,30 @@ export const definirCursorDelta = (cursor: string): Promise<void> =>
 export const obterConsentimentoEm = (): Promise<string | null> => obterMeta(CHAVE_CONSENTIMENTO);
 export const registrarConsentimento = (): Promise<void> =>
   definirMeta(CHAVE_CONSENTIMENTO, new Date().toISOString());
+
+/**
+ * Localização ESCOLHIDA manualmente pelo usuário (cidade/UF) — o recorte
+ * geográfico das consultas/sync de preço da região. Mora só aqui, no aparelho;
+ * nunca viaja junto com dado privado e serve apenas para recortar a consulta
+ * anônima (decisão travada #4: geo pela loja, sem rastrear o usuário). `municipio`
+ * é opcional (UF já dá o fallback). Ausente = ainda não escolheu (cai na UF
+ * derivada do histórico).
+ */
+export interface LocalEscolhido {
+  uf: string;
+  municipio?: string;
+}
+
+export async function obterLocalEscolhido(): Promise<LocalEscolhido | null> {
+  const [uf, municipio] = await Promise.all([
+    obterMeta(CHAVE_LOCAL_UF),
+    obterMeta(CHAVE_LOCAL_MUNICIPIO),
+  ]);
+  if (!uf) return null;
+  return { uf, ...(municipio ? { municipio } : {}) };
+}
+
+export async function definirLocalEscolhido(local: LocalEscolhido): Promise<void> {
+  await definirMeta(CHAVE_LOCAL_UF, local.uf);
+  await definirMeta(CHAVE_LOCAL_MUNICIPIO, local.municipio?.trim() ?? '');
+}

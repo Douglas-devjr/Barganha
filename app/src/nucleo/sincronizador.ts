@@ -19,6 +19,7 @@ import type { CupomResponse, IngestaoQrResponse } from '@barganha/shared';
 import { clienteApi, ErroApi } from '@/api';
 import { cache, cupons, fila, meta, produtos } from '@/dados';
 import type { CupomLocal, ItemFilaUpload } from '@/dados';
+import { escoposSync, resolverLocalizacao } from '@/nucleo/localizacao';
 
 /** Backoff: 15s, 30s, 1min… até o teto de 1h. */
 const BACKOFF_BASE_S = 15;
@@ -145,23 +146,24 @@ export async function atualizarProcessamentos(): Promise<void> {
 
 /**
  * C7.2 — Delta sync das estatísticas regionais para o cache offline. Baixa só o
- * que mudou desde o cursor, no recorte dos produtos do histórico + a UF do
- * usuário (derivada da LOJA, nunca do usuário). É o que faz o veredito da
- * gôndola funcionar sem sinal. Best-effort e idempotente (cursor por
- * `atualizado_em`).
+ * que mudou desde o cursor, no recorte dos produtos do histórico + a região do
+ * usuário (município + UF de fallback, derivados da localização escolhida ou da
+ * LOJA — nunca do usuário). É o que faz o veredito da gôndola funcionar sem
+ * sinal. Best-effort e idempotente (cursor por `atualizado_em`).
  */
 export async function sincronizarEstatisticas(): Promise<void> {
-  const [produtoCanonicoIds, uf, cursor] = await Promise.all([
+  const [produtoCanonicoIds, local, cursor] = await Promise.all([
     produtos.listarProdutoCanonicoIds(),
-    produtos.obterUfRecente(),
+    resolverLocalizacao(),
     meta.obterCursorDelta(),
   ]);
   // Sem produtos no histórico e sem região conhecida: nada a sincronizar ainda.
-  if (produtoCanonicoIds.length === 0 && !uf) return;
+  if (produtoCanonicoIds.length === 0 && !local) return;
 
+  const municipios = local ? escoposSync(local) : [];
   const resp = await clienteApi.sincronizar({
     ...(cursor ? { cursor } : {}),
-    ...(uf ? { municipios: [uf] } : {}),
+    ...(municipios.length > 0 ? { municipios } : {}),
     ...(produtoCanonicoIds.length > 0 ? { produtoCanonicoIds } : {}),
   });
   await cache.salvarEstatisticas(resp.estatisticas);
