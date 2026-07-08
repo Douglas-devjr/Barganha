@@ -115,7 +115,7 @@ describe('Jornada e2e (C2→C3→C4)', () => {
     const r = await app.inject({
       method: 'POST',
       url: '/sync/estatisticas',
-      payload: { municipios: ['RJ:Rio de Janeiro'] },
+      payload: { municipios: ['RJ:RIO DE JANEIRO', 'RJ'] },
     });
     expect(r.statusCode).toBe(200);
     const corpo = r.json();

@@ -235,9 +235,10 @@ export interface DeltaSyncRequest {
   cursor?: string;
   /**
    * Chaves de `escopo_id` do recorte geográfico do usuário. Apesar do nome,
-   * aceita os DOIS níveis úteis ao fallback offline: `UF:Município` E o código
-   * de `UF`. Inclua ambos (ex.: `["RJ:Rio de Janeiro", "RJ"]`) para o cache ter
-   * a linha de UF quando o município tiver poucos dados.
+   * aceita os DOIS níveis úteis ao fallback offline: `UF:MUNICIPIO` (chave
+   * canônica de `chaveMunicipio`, normalizada) E o código de `UF`. Inclua ambos
+   * (ex.: `["RJ:RIO DE JANEIRO", "RJ"]`) para o cache ter a linha de UF quando o
+   * município tiver poucos dados.
    */
   municipios?: string[];
   /** Produtos do histórico para manter no cache. */

@@ -192,7 +192,7 @@ describe('Servidor HTTP', () => {
         {
           produtoCanonicoId: pid,
           escopo: 'municipio',
-          escopoId: 'RJ:Rio de Janeiro',
+          escopoId: 'RJ:RIO DE JANEIRO',
           unidadeBase: 'L',
           mediana: 5,
           p25: 4.5,
@@ -232,7 +232,7 @@ describe('Servidor HTTP', () => {
       const r = await app.inject({
         method: 'POST',
         url: '/sync/estatisticas',
-        payload: { municipios: ['RJ:Rio de Janeiro'] },
+        payload: { municipios: ['RJ:RIO DE JANEIRO', 'RJ'] },
       });
       expect(r.statusCode).toBe(200);
       const corpo = r.json();

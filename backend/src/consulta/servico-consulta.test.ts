@@ -9,7 +9,7 @@ function linha(
 ): LinhaEstatistica {
   return {
     escopo: 'municipio',
-    escopoId: 'RJ:Rio de Janeiro',
+    escopoId: 'RJ:RIO DE JANEIRO',
     unidadeBase: 'L',
     mediana: 5,
     p25: 4.5,
@@ -38,7 +38,7 @@ describe('ServicoConsulta (C4.1)', () => {
       linha({
         produtoCanonicoId: pid,
         escopo: 'municipio',
-        escopoId: 'RJ:Rio de Janeiro',
+        escopoId: 'RJ:RIO DE JANEIRO',
         nObservacoes: 5,
       }),
       linha({ produtoCanonicoId: pid, escopo: 'uf', escopoId: 'RJ', nObservacoes: 50 }),
@@ -47,7 +47,7 @@ describe('ServicoConsulta (C4.1)', () => {
     const r = await servico.consultar({ ean: '789', municipio: 'Rio de Janeiro', uf: 'RJ' });
     expect(r?.produtoCanonicoId).toBe(pid);
     expect(r?.escopoResolvido).toBe('municipio');
-    expect(r?.estatistica.escopoId).toBe('RJ:Rio de Janeiro');
+    expect(r?.estatistica.escopoId).toBe('RJ:RIO DE JANEIRO');
   });
 
   it('sobe para UF quando o município não atinge o mínimo de observações', async () => {
@@ -60,7 +60,7 @@ describe('ServicoConsulta (C4.1)', () => {
       linha({
         produtoCanonicoId: pid,
         escopo: 'municipio',
-        escopoId: 'RJ:Rio de Janeiro',
+        escopoId: 'RJ:RIO DE JANEIRO',
         nObservacoes: 2,
       }),
       linha({ produtoCanonicoId: pid, escopo: 'uf', escopoId: 'RJ', nObservacoes: 30 }),

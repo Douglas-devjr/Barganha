@@ -54,7 +54,7 @@ describe('PipelineEstatistica (C3.1)', () => {
     expect(escopos).toEqual([
       `loja:${LOJA_A}`,
       `loja:${LOJA_B}`,
-      'municipio:RJ:Rio de Janeiro',
+      'municipio:RJ:RIO DE JANEIRO',
       'uf:RJ',
     ]);
 

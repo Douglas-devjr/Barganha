@@ -16,7 +16,12 @@
  * no fallback até a base de dados existir (a calibrar; docs/06).
  */
 
-import { ESCOPO_GEO, type EscopoGeo, type PrecoEstatistica } from '@barganha/shared';
+import {
+  chaveMunicipio as chaveMunicipioCanonica,
+  ESCOPO_GEO,
+  type EscopoGeo,
+  type PrecoEstatistica,
+} from '@barganha/shared';
 
 /** Mínimo de observações p/ um nível ser considerado confiável (a calibrar). */
 export const MIN_OBSERVACOES_FALLBACK = 3;
@@ -36,10 +41,15 @@ export type ResolvedorRegiao = (local: LocalGeo) => string | undefined;
 
 const semRegiao: ResolvedorRegiao = () => undefined;
 
-/** Chave estável de município: `UF:Município` (nome não é único entre UFs). */
+/**
+ * Chave estável de município: `UF:MUNICIPIO` normalizado (nome não é único entre
+ * UFs). Usa a `chaveMunicipio` canônica do shared — a MESMA da escrita e da
+ * leitura — para o `escopo_id` gravado e as chaves derivadas na consulta baterem
+ * mesmo com caixa/acento divergentes (parser `"SAO PAULO"` vs. seletor `"São Paulo"`).
+ */
 function chaveMunicipio(local: LocalGeo): string | undefined {
   if (!local.uf || !local.municipio) return undefined;
-  return `${local.uf}:${local.municipio}`;
+  return chaveMunicipioCanonica(local.uf, local.municipio) || undefined;
 }
 
 /** Chave de um escopo p/ um local; `undefined` quando o nível não se aplica. */

@@ -110,3 +110,17 @@ export function normalizarDescricao(texto: string): string {
     .replace(/\s+/g, ' ')
     .trim();
 }
+
+/**
+ * Chave canônica de um município (`UF:MUNICIPIO`) — o `escopo_id` do nível
+ * `municipio` em `preco_estatistica`. FONTE ÚNICA usada na ESCRITA (pipeline, ao
+ * derivar escopos) e na LEITURA (consulta/sync do app): o município nasce cru do
+ * endereço da nota (o parser gera `"SAO PAULO"`, caixa alta sem acento) e um
+ * seletor de cidade produz `"São Paulo"` — normalizar os dois lados pelo mesmo
+ * `normalizarDescricao` garante que casem. `''` quando falta UF ou município.
+ */
+export function chaveMunicipio(uf: string, municipio: string): string {
+  const u = uf.trim().toUpperCase();
+  const m = normalizarDescricao(municipio);
+  return u && m ? `${u}:${m}` : '';
+}

@@ -22,13 +22,13 @@ function estat(escopo: EscopoGeo, escopoId: string, n: number): PrecoEstatistica
 describe('chaveEscopo / derivarEscopos (C3.3)', () => {
   it('deriva loja, município (UF:Município) e UF; pula região na v1', () => {
     expect(chaveEscopo('loja', LOCAL)).toBe('12345678000199');
-    expect(chaveEscopo('municipio', LOCAL)).toBe('RJ:Rio de Janeiro');
+    expect(chaveEscopo('municipio', LOCAL)).toBe('RJ:RIO DE JANEIRO');
     expect(chaveEscopo('uf', LOCAL)).toBe('RJ');
     expect(chaveEscopo('regiao', LOCAL)).toBeUndefined();
 
     expect(derivarEscopos(LOCAL)).toEqual([
       { escopo: 'loja', escopoId: '12345678000199' },
-      { escopo: 'municipio', escopoId: 'RJ:Rio de Janeiro' },
+      { escopo: 'municipio', escopoId: 'RJ:RIO DE JANEIRO' },
       { escopo: 'uf', escopoId: 'RJ' },
     ]);
   });
@@ -53,7 +53,7 @@ describe('resolverFallback (C3.3)', () => {
   it('escolhe o nível mais específico com base suficiente', () => {
     const candidatos = [
       estat('loja', '12345678000199', 5),
-      estat('municipio', 'RJ:Rio de Janeiro', 50),
+      estat('municipio', 'RJ:RIO DE JANEIRO', 50),
       estat('uf', 'RJ', 500),
     ];
     const r = resolverFallback(candidatos, LOCAL);
@@ -64,7 +64,7 @@ describe('resolverFallback (C3.3)', () => {
   it('sobe de nível quando o mais específico não atinge o mínimo', () => {
     const candidatos = [
       estat('loja', '12345678000199', 1), // < mínimo
-      estat('municipio', 'RJ:Rio de Janeiro', 50),
+      estat('municipio', 'RJ:RIO DE JANEIRO', 50),
       estat('uf', 'RJ', 500),
     ];
     expect(resolverFallback(candidatos, LOCAL)?.escopoResolvido).toBe('municipio');
@@ -92,8 +92,8 @@ describe('resolverFallback (C3.3)', () => {
 
   it('com duas unidades-base no mesmo nível, escolhe a de maior base (n)', () => {
     const candidatos = [
-      { ...estat('municipio', 'RJ:Rio de Janeiro', 3), unidadeBase: 'un' as const },
-      { ...estat('municipio', 'RJ:Rio de Janeiro', 40), unidadeBase: 'kg' as const },
+      { ...estat('municipio', 'RJ:RIO DE JANEIRO', 3), unidadeBase: 'un' as const },
+      { ...estat('municipio', 'RJ:RIO DE JANEIRO', 40), unidadeBase: 'kg' as const },
     ];
     const r = resolverFallback(candidatos, LOCAL);
     expect(r?.estatistica.unidadeBase).toBe('kg');

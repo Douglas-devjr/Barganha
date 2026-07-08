@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import { normalizarDescricao, normalizarPreco, unidadePadraoDaBase } from './normalizacao';
+import {
+  chaveMunicipio,
+  normalizarDescricao,
+  normalizarPreco,
+  unidadePadraoDaBase,
+} from './normalizacao';
 
 describe('normalizarPreco (shared)', () => {
   it('mantém KG como R$/kg (fator 1)', () => {
@@ -74,5 +79,22 @@ describe('unidadePadraoDaBase', () => {
 describe('normalizarDescricao', () => {
   it('remove acentos, sobe a caixa e colapsa espaços', () => {
     expect(normalizarDescricao('  Café   Pilão  Torrado ')).toBe('CAFE PILAO TORRADO');
+  });
+});
+
+describe('chaveMunicipio', () => {
+  it('monta UF:MUNICIPIO normalizado (sem acento, maiúsculas)', () => {
+    expect(chaveMunicipio('RJ', 'Rio de Janeiro')).toBe('RJ:RIO DE JANEIRO');
+    expect(chaveMunicipio('SP', 'São Paulo')).toBe('SP:SAO PAULO');
+  });
+
+  it('casa a forma do parser (caixa alta) com a do seletor (mista)', () => {
+    // O parser grava "SAO PAULO"; o usuário escolhe "São Paulo" — mesma chave.
+    expect(chaveMunicipio('sp', 'SAO PAULO')).toBe(chaveMunicipio('SP', 'São Paulo'));
+  });
+
+  it('devolve vazio quando falta UF ou município', () => {
+    expect(chaveMunicipio('', 'Rio de Janeiro')).toBe('');
+    expect(chaveMunicipio('RJ', '   ')).toBe('');
   });
 });
