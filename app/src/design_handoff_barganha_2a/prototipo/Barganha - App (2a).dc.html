@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box}
+:root{--bg:#FBF5EC;--card:#FFFCF6;--ink:#0E1B24;--soft:#54636e;--faint:#93A4AE;--line:#F1ECE1;--edge:#E7DECE;--cardborder:rgba(15,23,42,.05);--tint:#ECFBF7;--tint2:#D3F3EC;--teal:#0F766E}
+[data-theme="dark"]{--bg:#0E1512;--card:#18211D;--ink:#EAF2EF;--soft:#9CB2AB;--faint:#617C74;--line:rgba(255,255,255,.07);--edge:rgba(255,255,255,.12);--cardborder:rgba(255,255,255,.08);--tint:rgba(45,212,191,.13);--tint2:rgba(45,212,191,.17);--teal:#18B8A6}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes shim{to{background-position:-200% 0}}
+body{margin:0;background:#e7e4dd;background-image:radial-gradient(circle at 1px 1px, var(--cardborder) 1px, transparent 0);background-size:26px 26px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+a{color:var(--teal);text-decoration:none}a:hover{color:#0B5F58}
+button{font-family:inherit}
+.scr button{color:inherit}
+@keyframes scr{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.wrap{display:flex;gap:44px;padding:44px;align-items:flex-start;justify-content:center;min-height:100vh}
+.wrap[data-bare="true"]{padding:12px;gap:0;justify-content:center}
+.wrap[data-bare="true"] .side{display:none}
+.side{width:236px;position:sticky;top:44px;flex:none}
+.brand{font:800 22px 'Plus Jakarta Sans';color:var(--ink);letter-spacing:-.5px;margin-bottom:3px}
+.brand span{display:block;font:600 11px 'Plus Jakarta Sans';letter-spacing:1.2px;text-transform:uppercase;color:var(--teal);margin-top:4px}
+.idx{margin-top:22px}
+.chip{display:flex;align-items:center;gap:9px;width:100%;text-align:left;font:600 13px 'Plus Jakarta Sans';color:#4a5761;background:#fff;border:1px solid var(--edge);border-radius:11px;padding:9px 13px;margin-bottom:7px;cursor:pointer;transition:.15s}
+.chip:hover{border-color:var(--teal);color:var(--teal)}
+.chip b{display:inline-flex;width:20px;height:20px;border-radius:6px;background:var(--line);color:#93867a;align-items:center;justify-content:center;font:700 11px ui-monospace,Menlo,monospace}
+[data-tela="inicio"] .c-inicio,[data-tela="verificar"] .c-verificar,[data-tela="resultado"] .c-resultado,[data-tela="produtos"] .c-produtos,[data-tela="detalhe"] .c-detalhe,[data-tela="perfil"] .c-perfil,[data-tela="scanner"] .c-scanner,[data-tela="nota"] .c-nota,[data-tela="barras"] .c-barras,[data-tela="onboarding"] .c-onboarding,[data-tela="login"] .c-login{background:var(--teal);color:#fff;border-color:var(--teal)}
+[data-tela="inicio"] .c-inicio b,[data-tela="verificar"] .c-verificar b,[data-tela="resultado"] .c-resultado b,[data-tela="produtos"] .c-produtos b,[data-tela="detalhe"] .c-detalhe b,[data-tela="perfil"] .c-perfil b,[data-tela="scanner"] .c-scanner b,[data-tela="nota"] .c-nota b,[data-tela="barras"] .c-barras b,[data-tela="onboarding"] .c-onboarding b,[data-tela="login"] .c-login b{background:rgba(255,255,255,.22);color:#fff}
+.themetog{display:flex;background:#fff;border:1px solid #E4DCCd;border-radius:11px;padding:3px;margin:6px 0 4px}
+.tg{flex:1;border:0;background:none;cursor:pointer;font:700 12px 'Plus Jakarta Sans';color:#7a7264;padding:8px 6px;border-radius:8px}
+[data-tema="dark"] .tg-d,[data-tema="light"] .tg-l{background:#0F766E;color:#fff}
+.tglabel{font:700 11px 'Plus Jakarta Sans';letter-spacing:1px;text-transform:uppercase;color:#93867a;margin-top:16px}
+[data-tela="vazio"] .c-vazio,[data-tela="carregando"] .c-carregando,[data-tela="erro"] .c-erro,[data-tela="offline"] .c-offline{background:#0F766E;color:#fff;border-color:#0F766E}
+[data-tela="vazio"] .c-vazio b,[data-tela="carregando"] .c-carregando b,[data-tela="erro"] .c-erro b,[data-tela="offline"] .c-offline b{background:rgba(255,255,255,.22);color:#fff}
+[data-theme="dark"] .vhero{background:rgba(45,212,191,.09) !important;border-color:rgba(45,212,191,.30) !important}
+[data-theme="dark"] .vsub{color:#8AE6BE !important}
+[data-theme="dark"] .promo{background:rgba(232,147,12,.15) !important}
+[data-theme="dark"] .promo span{color:#F2B45A !important}
+.hint{font:500 12px/1.5 'Plus Jakarta Sans';color:#8a8072;margin-top:16px}
+.scr{position:absolute;inset:0;display:flex;flex-direction:column;animation:scr .3s ease;font-family:'Plus Jakarta Sans',sans-serif}
+.sb{flex:none;height:54px;padding:15px 30px 0;display:flex;align-items:center;justify-content:space-between}
+.sb span{font-weight:800;font-size:15px}
+.body{flex:1;overflow:hidden;padding:6px 20px 0;display:flex;flex-direction:column}
+.tabbar{flex:none;position:relative;height:84px;border-top:1px solid var(--line);background:var(--card);padding:11px 24px 0;display:flex;align-items:flex-start;justify-content:space-between}
+.tb{border:0;background:none;cursor:pointer;width:52px;display:flex;flex-direction:column;align-items:center;gap:4px}
+.tb span{font:700 10.5px 'Plus Jakarta Sans'}
+.fab{position:absolute;top:-22px;left:50%;transform:translateX(-50%);width:60px;height:60px;border-radius:20px;background:var(--teal);border:4px solid var(--card);display:flex;align-items:center;justify-content:center;color:#fff;cursor:pointer;box-shadow:0 14px 22px -8px rgba(15,118,110,.7)}
+.hind{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:130px;height:5px;border-radius:3px;background:rgba(11,18,32,.2)}
+.card{background:var(--card);border:1px solid var(--cardborder);box-shadow:0 12px 28px -20px rgba(60,45,20,.5)}
+.ib{width:40px;height:40px;border-radius:13px;background:var(--card);border:1px solid var(--cardborder);display:flex;align-items:center;justify-content:center;color:var(--ink);cursor:pointer}
+.pbtn{flex:1;height:52px;border-radius:15px;display:flex;align-items:center;justify-content:center;font:800 14px 'Plus Jakarta Sans';cursor:pointer;border:0}
+</style>
+</helmet>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+<symbol id="ic-home" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.7 12 3.5l9 7.2"/><path d="M5.3 9.3V20h13.4V9.3"/><path d="M9.7 20v-5h4.6v5"/></symbol>
+<symbol id="ic-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="m8.4 12 2.4 2.4 4.8-5.2"/></symbol>
+<symbol id="ic-list" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8 9h8M8 13h8M8 17h5"/></symbol>
+<symbol id="ic-user" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8.2" r="3.7"/><path d="M5.2 19.5c.7-3.3 3.4-5.1 6.8-5.1s6.1 1.8 6.8 5.1"/></symbol>
+<symbol id="ic-scan" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8.5V6a2 2 0 0 1 2-2h2.5"/><path d="M20 8.5V6a2 2 0 0 0-2-2h-2.5"/><path d="M4 15.5V18a2 2 0 0 0 2 2h2.5"/><path d="M20 15.5V18a2 2 0 0 1-2 2h-2.5"/><path d="M3.5 12h17"/></symbol>
+<symbol id="ic-back" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="m15 5-7 7 7 7"/></symbol>
+<symbol id="ic-store" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 9.5 6 5h12l1.5 4.5"/><path d="M4.5 9.5a1.9 1.9 0 0 0 3.75 0 1.9 1.9 0 0 0 3.75 0 1.9 1.9 0 0 0 3.75 0 1.9 1.9 0 0 0 3.75 0"/><path d="M5.7 11.3V20h12.6v-8.7"/><path d="M10 20v-4.3h4V20"/></symbol>
+<symbol id="ic-down" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v13"/><path d="m6 12 6 6 6-6"/></symbol>
+<symbol id="ic-up" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V6"/><path d="m6 12 6-6 6 6"/></symbol>
+<symbol id="ic-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.2-3.2"/></symbol>
+<symbol id="ic-barras" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6v12M7.5 6v12M11 6v12M14 6v12M17 6v12M20 6v12"/></symbol>
+<symbol id="ic-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></symbol>
+<symbol id="ic-close" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+<symbol id="ic-signal" viewBox="0 0 18 12"><rect x="0" y="8" width="3" height="4" rx="1" fill="currentColor"/><rect x="5" y="5" width="3" height="7" rx="1" fill="currentColor"/><rect x="10" y="2.5" width="3" height="9.5" rx="1" fill="currentColor"/><rect x="15" y="0" width="3" height="12" rx="1" fill="currentColor"/></symbol>
+<symbol id="ic-wifi" viewBox="0 0 17 13" fill="currentColor"><path d="M8.5 2.4c2.6 0 5 1 6.8 2.7L13.8 6.8A7.4 7.4 0 0 0 8.5 4.6 7.4 7.4 0 0 0 3.2 6.8L1.7 5.1A9.6 9.6 0 0 1 8.5 2.4Z"/><path d="M8.5 6.3c1.5 0 2.9.6 3.9 1.6l-1.6 1.6c-.6-.6-1.4-.9-2.3-.9s-1.7.3-2.3.9L4.6 7.9A5.5 5.5 0 0 1 8.5 6.3Z"/><circle cx="8.5" cy="10.6" r="1.4"/></symbol>
+<symbol id="ic-batt" viewBox="0 0 26 13"><rect x="1" y="1" width="21" height="11" rx="3.2" fill="none" stroke="currentColor" stroke-opacity=".45" stroke-width="1.2"/><rect x="2.6" y="2.6" width="16.5" height="7.8" rx="1.8" fill="currentColor"/><rect x="23.4" y="4.3" width="1.9" height="4.4" rx="1" fill="currentColor" fill-opacity=".5"/></symbol>
+<symbol id="ic-receipt" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3.5h12v17l-2.2-1.4-2.3 1.4-2.3-1.4-2.3 1.4L6 20.5V3.5Z"/><path d="M9.2 8.5h5.6M9.2 12h5.6"/></symbol>
+<symbol id="ic-alert" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4 21.5 20.2H2.5L12 4Z"/><path d="M12 10v4.4"/><path d="M12 17.6h.01"/></symbol>
+<symbol id="ic-wifioff" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M4.6 10.3a12 12 0 0 1 5.7-3"/><path d="M1.8 6.7A18 18 0 0 1 13.6 3.3"/><path d="M8.6 13.9a6 6 0 0 1 4.3-1.7"/><path d="M12 18h.01"/><path d="m3 3 18 18"/></symbol>
+</defs></svg>
+
+<div class="wrap" data-bare="{{ bare }}">
+<div class="side">
+<div class="brand">Barganha<span>Protótipo · 2a</span></div>
+<div class="tglabel">Tema</div>
+<div class="themetog" data-tema="{{ tema }}"><button class="tg tg-l" onClick="{{ temaClaro }}">Claro</button><button class="tg tg-d" onClick="{{ temaEscuro }}">Escuro</button></div>
+<div class="idx" data-tela="{{ tela }}">
+<button class="chip c-inicio" onClick="{{ irInicio }}"><b>1</b>Início</button>
+<button class="chip c-verificar" onClick="{{ irVerificar }}"><b>2</b>Verificar</button>
+<button class="chip c-resultado" onClick="{{ irResultado }}"><b>3</b>Veredito</button>
+<button class="chip c-produtos" onClick="{{ irProdutos }}"><b>4</b>Meus produtos</button>
+<button class="chip c-detalhe" onClick="{{ irDetalhe }}"><b>5</b>Detalhe do produto</button>
+<button class="chip c-perfil" onClick="{{ irPerfil }}"><b>6</b>Perfil</button>
+<button class="chip c-scanner" onClick="{{ irScanner }}"><b>7</b>Escanear cupom</button>
+<button class="chip c-nota" onClick="{{ irNota }}"><b>8</b>Nota fiscal</button>
+<button class="chip c-barras" onClick="{{ irBarras }}"><b>9</b>Código de barras</button>
+<button class="chip c-onboarding" onClick="{{ irOnboarding }}"><b>+</b>Onboarding</button>
+<button class="chip c-login" onClick="{{ irLogin }}"><b>+</b>Login</button>
+<button class="chip c-vazio" onClick="{{ irVazio }}"><b>&#9679;</b>Estado vazio</button>
+<button class="chip c-carregando" onClick="{{ irCarregando }}"><b>&#9679;</b>Carregando</button>
+<button class="chip c-erro" onClick="{{ irErro }}"><b>&#9679;</b>Erro no cupom</button>
+<button class="chip c-offline" onClick="{{ irOffline }}"><b>&#9679;</b>Sem conexão</button>
+</div>
+<p class="hint">Toque nos elementos do app para navegar de verdade — ou use esta lista para pular para qualquer tela.</p>
+</div>
+
+<div class="stage">
+<div style="position:relative;width:392px;height:844px;background:#0b0c0e;border-radius:54px;padding:12px;box-shadow:0 50px 90px -34px rgba(15,23,42,.5),0 0 0 1.5px rgba(255,255,255,.06) inset">
+<div style="position:relative;width:100%;height:100%;border-radius:43px;overflow:hidden;background:var(--bg)" data-theme="{{ tema }}">
+
+<!-- ═══════════ INÍCIO ═══════════ -->
+<sc-if value="{{ telaInicio }}" hint-placeholder-val="{{ true }}">
+<div class="scr" style="background:var(--bg);color:var(--ink)">
+<div class="sb"><span>9:41</span><div style="display:flex;align-items:center;gap:7px"><svg width="18" height="12"><use href="#ic-signal"/></svg><svg width="17" height="13"><use href="#ic-wifi"/></svg><svg width="26" height="13"><use href="#ic-batt"/></svg></div></div>
+<div class="body">
+<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 2px 18px">
+<div><div style="font:700 11px 'Plus Jakarta Sans';letter-spacing:1.3px;text-transform:uppercase;color:var(--faint)">Sexta · Rio de Janeiro</div><div style="font:800 25px/1.05 'Plus Jakarta Sans';letter-spacing:-.6px;margin-top:6px">Olá, Marina 👋</div></div>
+<div style="width:46px;height:46px;border-radius:15px;background:var(--tint2);display:flex;align-items:center;justify-content:center;font:800 18px 'Plus Jakarta Sans';color:var(--teal)">M</div>
+</div>
+<div style="position:relative;overflow:hidden;border-radius:26px;padding:22px 22px 20px;background:linear-gradient(150deg,#12857C,#0B5F58);box-shadow:0 20px 36px -18px rgba(11,95,88,.7)">
+<div style="position:absolute;top:-44px;right:-34px;width:160px;height:160px;border-radius:50%;background:radial-gradient(circle,rgba(94,234,212,.4),transparent 70%)"></div>
+<svg viewBox="0 0 130 36" style="position:absolute;right:20px;bottom:18px;width:130px;height:36px;opacity:.5"><polyline points="0,30 18,23 34,26 52,15 70,19 88,9 106,13 130,4" fill="none" stroke="#5EEAD4" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+<div style="position:relative;display:flex;align-items:center;justify-content:space-between"><span style="font:700 12.5px 'Plus Jakarta Sans';color:#9DEBDD">Economia em promoções</span><span style="font:700 11px 'Plus Jakarta Sans';color:#CFF7F0;background:rgba(255,255,255,.15);padding:5px 11px;border-radius:99px">Este mês</span></div>
+<div style="position:relative;font:800 41px/1 'Plus Jakarta Sans';letter-spacing:-1.2px;color:#fff;margin-top:13px">R$ 148,50</div>
+<div style="position:relative;display:flex;align-items:center;gap:9px;margin-top:14px"><span style="display:inline-flex;align-items:center;gap:4px;font:700 12px 'Plus Jakarta Sans';color:#052e2b;background:#5EEAD4;padding:4px 10px;border-radius:99px"><svg width="12" height="12" style="color:#052e2b"><use href="#ic-down"/></svg>R$ 32</span><span style="font:500 12px 'Plus Jakarta Sans';color:#BFF3EA">a mais que mês passado</span></div>
+</div>
+<div style="display:flex;gap:12px;margin-top:15px">
+<div class="card" style="flex:1;border-radius:18px;padding:14px 15px"><div style="font:800 21px 'Plus Jakarta Sans'">23</div><div style="font:600 11.5px 'Plus Jakarta Sans';color:var(--soft);margin-top:1px">produtos monitorados</div></div>
+<div class="card" style="flex:1;border-radius:18px;padding:14px 15px"><div style="font:800 21px 'Plus Jakarta Sans'">6</div><div style="font:600 11.5px 'Plus Jakarta Sans';color:var(--soft);margin-top:1px">mercados favoritos</div></div>
+</div>
+<div style="display:flex;align-items:center;justify-content:space-between;margin:22px 2px 12px"><span style="font:800 17px 'Plus Jakarta Sans';letter-spacing:-.3px">Últimas compras</span><button onClick="{{ irProdutos }}" style="border:0;background:none;cursor:pointer;font:700 12.5px 'Plus Jakarta Sans';color:var(--teal)">Ver tudo</button></div>
+<div class="card" style="border-radius:22px;overflow:hidden">
+<button onClick="{{ irNota }}" style="border:0;background:none;cursor:pointer;width:100%;display:flex;align-items:center;gap:13px;padding:14px 16px;border-bottom:1px solid var(--line)"><div style="width:42px;height:42px;border-radius:13px;background:var(--tint);display:flex;align-items:center;justify-content:center;color:var(--teal);flex:none"><svg width="21" height="21"><use href="#ic-store"/></svg></div><div style="flex:1;min-width:0;text-align:left"><div style="font:700 14px 'Plus Jakarta Sans';white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Supermercado Guanabara</div><div style="font:500 12px 'Plus Jakarta Sans';color:var(--faint);margin-top:2px">Hoje · 18 itens</div></div><div style="text-align:right;flex:none"><div style="font:800 14px 'Plus Jakarta Sans'">R$ 213,40</div><div style="font:700 11px 'Plus Jakarta Sans';color:#12A150;margin-top:2px">−R$ 12,90</div></div></button>
+<button onClick="{{ irNota }}" style="border:0;background:none;cursor:pointer;width:100%;display:flex;align-items:center;gap:13px;padding:14px 16px;border-bottom:1px solid var(--line)"><div style="width:42px;height:42px;border-radius:13px;background:var(--tint);display:flex;align-items:center;justify-content:center;color:var(--teal);flex:none"><svg width="21" height="21"><use href="#ic-store"/></svg></div><div style="flex:1;min-width:0;text-align:left"><div style="font:700 14px 'Plus Jakarta Sans';white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Assaí Atacadista</div><div style="font:500 12px 'Plus Jakarta Sans';color:var(--faint);margin-top:2px">Ontem · 32 itens</div></div><div style="text-align:right;flex:none"><div style="font:800 14px 'Plus Jakarta Sans'">R$ 486,10</div><div style="font:700 11px 'Plus Jakarta Sans';color:#12A150;margin-top:2px">−R$ 40,00</div></div></button>
+<button onClick="{{ irNota }}" style="border:0;background:none;cursor:pointer;width:100%;display:flex;align-items:center;gap:13px;padding:14px 16px"><div style="width:42px;height:42px;border-radius:13px;background:var(--tint);display:flex;align-items:center;justify-content:center;color:var(--teal);flex:none"><svg width="21" height="21"><use href="#ic-store"/></svg></div><div style="flex:1;min-width:0;text-align:left"><div style="font:700 14px 'Plus Jakarta Sans';white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Pão de Açúcar</div><div style="font:500 12px 'Plus Jakarta Sans';color:var(--faint);margin-top:2px">3 dez · 9 itens</div></div><div style="text-align:right;flex:none"><div style="font:800 14px 'Plus Jakarta Sans'">R$ 97,30</div></div></button>
+</div>
+</div>
+<div class="tabbar">
+<button class="tb" onClick="{{ irInicio }}" style="color:var(--teal)"><svg width="24" height="24"><use href="#ic-home"/></svg><span>Início</span></button>
+<button class="tb" onClick="{{ irVerificar }}" style="color:var(--faint)"><svg width="24" height="24"><use href="#ic-check"/></svg><span>Verificar</span></button>
+<div style="width:52px"></div>
+<button class="tb" onClick="{{ irProdutos }}" style="color:var(--faint)"><svg width="24" height="24"><use href="#ic-list"/></svg><span>Produtos</span></button>
+<button class="tb" onClick="{{ irPerfil }}" style="color:var(--faint)"><svg width="24" height="24"><use href="#ic-user"/></svg><span>Perfil</span></button>
+<button class="fab" onClick="{{ irScanner }}"><svg width="27" height="27"><use href="#ic-scan"/></svg></button>
+<div class="hind"></div>
+</div>
+</div>
+</sc-if>
+
+<!-- ═══════════ VERIFICAR (entrada) ═══════════ -->
+<sc-if value="{{ telaVerificar }}">
+<div class="scr" style="background:var(--bg);color:var(--ink)">
+<div class="sb"><span>9:41</span><div style="display:flex;align-items:center;gap:7px"><svg width="18" height="12"><use href="#ic-signal"/></svg><svg width="17" height="13"><use href="#ic-wifi"/></svg><svg width="26" height="13"><use href="#ic-batt"/></svg></div></div>
+<div class="body">
+<div style="padding:8px 2px 6px"><div style="font:800 22px 'Plus Jakarta Sans';letter-spacing:-.5px">Verificar preço</div><div style="font:500 13px 'Plus Jakarta Sans';color:var(--faint);margin-top:3px">Na gôndola, veja se vale a barganha.</div></div>
+<button onClick="{{ irBarras }}" style="margin-top:16px;width:100%;height:56px;border:0;border-radius:16px;background:var(--teal);color:#fff;display:flex;align-items:center;justify-content:center;gap:10px;font:800 15px 'Plus Jakarta Sans';cursor:pointer;box-shadow:0 16px 26px -12px rgba(15,118,110,.7)"><svg width="20" height="20"><use href="#ic-barras"/></svg>Escanear código de barras</button>
+<div style="display:flex;align-items:center;gap:10px;margin:18px 0"><div style="flex:1;height:1px;background:var(--edge)"></div><span style="font:600 11px 'Plus Jakarta Sans';color:var(--faint)">ou busque no histórico</span><div style="flex:1;height:1px;background:var(--edge)"></div></div>
+<div class="card" style="display:flex;align-items:center;gap:10px;border-radius:14px;padding:11px 14px"><svg width="18" height="18" style="color:var(--faint)"><use href="#ic-search"/></svg><span style="font:500 14px 'Plus Jakarta Sans';color:var(--faint)">Buscar produto…</span></div>
+<div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap">
+<span style="font:700 13px 'Plus Jakarta Sans';color:#fff;background:var(--teal);padding:9px 14px;border-radius:99px">Leite Integral</span>
+<span style="font:600 13px 'Plus Jakarta Sans';color:var(--soft);background:var(--card);border:1px solid var(--edge);padding:9px 14px;border-radius:99px">Café Pilão</span>
+<span style="font:600 13px 'Plus Jakarta Sans';color:var(--soft);background:var(--card);border:1px solid var(--edge);padding:9px 14px;border-radius:99px">Arroz Tio João</span>
+</div>
+<div style="font:700 12px 'Plus Jakarta Sans';color:var(--faint);margin:22px 2px 8px;text-transform:uppercase;letter-spacing:.8px">Preço na prateleira</div>
+<div class="card" style="border-radius:22px;padding:22px;display:flex;flex-direction:column;align-items:center">
+<div style="display:flex;align-items:baseline;gap:6px"><span style="font:700 26px 'Plus Jakarta Sans';color:var(--faint)">R$</span><span style="font:800 52px/1 'Plus Jakarta Sans';letter-spacing:-2px;color:var(--ink)">5,19</span></div>
+<div style="font:500 12.5px 'Plus Jakarta Sans';color:var(--faint);margin-top:10px">Comparando <b style="color:var(--teal)">Leite Integral Piracanjuba</b> · por litro</div>
+</div>
+<button onClick="{{ irResultado }}" style="margin-top:16px;width:100%;height:54px;border:0;border-radius:15px;background:var(--teal);color:#fff;font:800 15px 'Plus Jakarta Sans';cursor:pointer;box-shadow:0 16px 26px -12px rgba(15,118,110,.7)">Verificar preço</button>
+</div>
+<div class="tabbar">
+<button class="tb" onClick="{{ irInicio }}" style="color:var(--faint)"><svg width="24" height="24"><use href="#ic-home"/></svg><span>Início</span></button>
+<button class="tb" onClick="{{ irVerificar }}" style="color:var(--teal)"><svg width="24" height="24"><use href="#ic-check"/></svg><span>Verificar</span></button>
+<div style="width:52px"></div>
+<button class="tb" onClick="{{ irProdutos }}" style="color:var(--faint)"><svg width="24" height="24"><use href="#ic-list"/></svg><span>Produtos</span></button>
+<button class="tb" onClick="{{ irPerfil }}" style="color:var(--faint)"><svg width="24" height="24"><use href="#ic-user"/></svg><span>Perfil</span></button>
+<button class="fab" onClick="{{ irScanner }}"><svg width="27" height="27"><use href="#ic-scan"/></svg></button>
+<div class="hind"></div>
+</div>
+</div>
+</sc-if>
+
+<!-- ═══════════ RESULTADO (veredito) ═══════════ -->
+<sc-if value="{{ telaResultado }}">
+<div class="scr" style="background:var(--bg);color:var(--ink)">
+<div class="sb"><span>9:41</span><div style="display:flex;align-items:center;gap:7px"><svg width="18" height="12"><use href="#ic-signal"/></svg><svg width="17" height="13"><use href="#ic-wifi"/></svg><svg width="26" height="13"><use href="#ic-batt"/></svg></div></div>
+<div class="body">
+<div style="display:flex;align-items:center;gap:12px;padding:8px 0 14px"><button class="ib" onClick="{{ irVerificar }}"><svg width="20" height="20"><use href="#ic-back"/></svg></button><span style="font:800 19px 'Plus Jakarta Sans';letter-spacing:-.3px">Verificar preço</span></div>
+<div class="card" style="display:flex;align-items:center;gap:14px;border-radius:20px;padding:14px 16px"><div style="width:48px;height:48px;border-radius:14px;background:var(--tint);display:flex;align-items:center;justify-content:center;font:800 18px 'Plus Jakarta Sans';color:var(--teal);flex:none">L</div><div style="flex:1;min-width:0"><div style="font:800 15px 'Plus Jakarta Sans'">Leite Integral Piracanjuba</div><div style="font:500 12px 'Plus Jakarta Sans';color:var(--faint);margin-top:2px">1 L · você viu na prateleira</div></div><div style="font:800 22px 'Plus Jakarta Sans';letter-spacing:-.5px">R$ 5,19</div></div>
+<div class="vhero" style="margin-top:15px;border-radius:24px;padding:22px 20px;background:linear-gradient(160deg,#EAFBF1,#D7F4E1);border:1px solid #BBEAC9">
+<div style="display:flex;flex-direction:column;align-items:center"><div style="display:inline-flex;align-items:center;gap:8px;background:#12A150;padding:9px 20px;border-radius:99px;box-shadow:0 10px 20px -6px rgba(18,161,80,.6)"><span style="width:8px;height:8px;border-radius:50%;background:#fff"></span><span style="font:800 16px 'Plus Jakarta Sans';color:#fff">Barato</span></div><div class="vsub" style="font:600 13px 'Plus Jakarta Sans';color:#15803D;margin-top:12px;text-align:center">12% abaixo do preço típico da sua região</div></div>
+<div style="position:relative;margin-top:24px;padding-top:32px">
+<div style="position:absolute;top:0;left:23%;transform:translateX(-50%);background:var(--teal);color:#fff;font:800 12px 'Plus Jakarta Sans';padding:5px 9px;border-radius:8px;white-space:nowrap">R$ 5,19<span style="position:absolute;left:50%;bottom:-3px;transform:translateX(-50%) rotate(45deg);width:8px;height:8px;background:var(--teal);border-radius:1px"></span></div>
+<div style="position:relative;height:10px;border-radius:99px;background:linear-gradient(90deg,#22C55E,var(--teal) 48%,#EF4444)"><div style="position:absolute;left:23%;top:50%;transform:translate(-50%,-50%);width:19px;height:19px;border-radius:50%;background:#fff;border:4px solid #12A150;box-shadow:0 3px 9px rgba(18,161,80,.55)"></div></div>
+<div style="display:flex;justify-content:space-between;margin-top:10px;font:600 10.5px 'Plus Jakarta Sans';color:var(--faint)"><span>Menor R$4,50</span><span>Típico R$5,90</span><span>Maior R$7,50</span></div>
+</div>
+</div>
+<div class="card" style="margin-top:14px;border-radius:20px;overflow:hidden">
+<div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--line)"><div><div style="font:700 13px 'Plus Jakarta Sans'">Sua região</div><div style="font:500 11.5px 'Plus Jakarta Sans';color:var(--faint);margin-top:2px">faixa normal R$5,40–6,40 · 214 obs.</div></div><div style="text-align:right;flex:none;white-space:nowrap"><div style="font:800 15px 'Plus Jakarta Sans'">R$ 5,90<span style="font:600 11px 'Plus Jakarta Sans';color:var(--faint)">/L</span></div><div style="font:600 11px 'Plus Jakarta Sans';color:var(--soft)">típico</div></div></div>
+<div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--line)"><div><div style="font:700 13px 'Plus Jakarta Sans'">Seu histórico</div><div style="font:500 11.5px 'Plus Jakarta Sans';color:var(--faint);margin-top:2px">8 compras registradas</div></div><div style="text-align:right;flex:none;white-space:nowrap"><div style="font:800 15px 'Plus Jakarta Sans'">R$ 5,20<span style="font:600 11px 'Plus Jakarta Sans';color:var(--faint)">/L</span></div><div style="font:600 11px 'Plus Jakarta Sans';color:var(--soft)">menor já pago</div></div></div>
+<div class="promo" style="display:flex;align-items:center;gap:11px;padding:13px 16px;background:#FCEFD3"><span style="width:9px;height:9px;border-radius:50%;background:#E8930C"></span><span style="flex:1;font:700 12.5px 'Plus Jakarta Sans';color:#B26A05">Menor visto (promoção)</span><span style="flex:none;white-space:nowrap;font:800 14px 'Plus Jakarta Sans';color:#B26A05">R$ 4,79<span style="font:600 11px 'Plus Jakarta Sans'">/L</span></span></div>
+</div>
+<div style="display:flex;gap:11px;margin-top:16px">
+<button class="pbtn" onClick="{{ irDetalhe }}" style="background:var(--tint);border:1.5px solid #B7E9E0;color:var(--teal)">Ver histórico</button>
+<button class="pbtn" onClick="{{ irVerificar }}" style="background:var(--teal);color:#fff;box-shadow:0 14px 22px -10px rgba(15,118,110,.7)">Verificar outro</button>
+</div>
+</div>
+<div class="tabbar">
+<button class="tb" onClick="{{ irInicio }}" style="color:var(--faint)"><svg width="24" height="24"><use href="#ic-home"/></svg><span>Início</span></button>
+<button class="tb" onClick="{{ irVerificar }}" style="color:var(--teal)"><svg width="24" height="24"><use href="#ic-check"/></svg><span>Verificar</span></button>
+<div style="width:52px"></div>
+<button class="tb" onClick="{{ irProdutos }}" style="color:var(--faint)"><svg width="24" height="24"><use href="#ic-list"/></svg><span>Produtos</span></button>
+<button class="tb" onClick="{{ irPerfil }}" style="color:var(--faint)"><svg width="24" height="24"><use href="#ic-user"/></svg><span>Perfil</span></button>
+<button class="fab" onClick="{{ irScanner }}"><svg width="27" height="27"><use href="#ic-scan"/></svg></button>
+<div class="hind"></div>
+</div>
+</div>
+</sc-if>
+
+<!-- ═══════════ PRODUTOS ═══════════ -->
+<sc-if value="{{ telaProdutos }}">
+<div class="scr" style="background:var(--bg);color:var(--ink)">
+<div class="sb"><span>9:41</span><div style="display:flex;align-items:center;gap:7px"><svg width="18" height="12"><use href="#ic-signal"/></svg><svg width="17" height="13"><use href="#ic-wifi"/></svg><svg width="26" height="13"><use href="#ic-batt"/></svg></div></div>
+<div class="body">
+<div style="padding:8px 2px 14px"><div style="font:800 22px 'Plus Jakarta Sans';letter-spacing:-.5px">Meus produtos</div></div>
+<div class="card" style="display:flex;align-items:center;gap:10px;border-radius:14px;padding:11px 14px;margin-bottom:14px"><svg width="18" height="18" style="color:var(--faint)"><use href="#ic-search"/></svg><span style="font:500 14px 'Plus Jakarta Sans';color:var(--faint)">Buscar produto…</span></div>
+<button onClick="{{ irDetalhe }}" style="border:0;cursor:pointer;width:100%;display:flex;align-items:center;gap:13px;background:var(--card);border:1px solid var(--cardborder);border-radius:16px;padding:12px;margin-bottom:9px;box-shadow:0 10px 22px -18px rgba(60,45,20,.5)"><div style="width:44px;height:44px;border-radius:12px;background:var(--tint);display:flex;align-items:center;justify-content:center;font:800 16px 'Plus Jakarta Sans';color:var(--teal);flex:none">L</div><div style="flex:1;min-width:0;text-align:left"><div style="font:800 14px 'Plus Jakarta Sans'">Leite Integral Piracanjuba</div><div style="font:500 12px 'Plus Jakarta Sans';color:var(--faint);margin-top:1px">típico R$ 5,90/L</div></div><div style="display:flex;align-items:center;gap:4px;background:#DBF6E5;padding:5px 9px;border-radius:99px;flex:none"><svg width="13" height="13" style="color:#12A150"><use href="#ic-down"/></svg><span style="font:800 11px 'Plus Jakarta Sans';color:#12A150">−4%</span></div></button>
+<button onClick="{{ irDetalhe }}" style="border:0;cursor:pointer;width:100%;display:flex;align-items:center;gap:13px;background:var(--card);border:1px solid var(--cardborder);border-radius:16px;padding:12px;margin-bottom:9px;box-shadow:0 10px 22px -18px rgba(60,45,20,.5)"><div style="width:44px;height:44px;border-radius:12px;background:var(--tint);display:flex;align-items:center;justify-content:center;font:800 16px 'Plus Jakarta Sans';color:var(--teal);flex:none">C</div><div style="flex:1;min-width:0;text-align:left"><div style="font:800 14px 'Plus Jakarta Sans'">Café Pilão 500g</div><div style="font:500 12px 'Plus Jakarta Sans';color:var(--faint);margin-top:1px">típico R$ 18,90/kg</div></div><div style="display:flex;align-items:center;gap:4px;background:#FDE7E7;padding:5px 9px;border-radius:99px;flex:none"><svg width="13" height="13" style="color:#E5484D"><use href="#ic-up"/></svg><span style="font:800 11px 'Plus Jakarta Sans';color:#E5484D">+7%</span></div></button>
+<button onClick="{{ irDetalhe }}" style="border:0;cursor:pointer;width:100%;display:flex;align-items:center;gap:13px;background:var(--card);border:1px solid var(--cardborder);border-radius:16px;padding:12px;margin-bottom:9px;box-shadow:0 10px 22px -18px rgba(60,45,20,.5)"><div style="width:44px;height:44px;border-radius:12px;background:var(--tint);display:flex;align-items:center;justify-content:center;font:800 16px 'Plus Jakarta Sans';color:var(--teal);flex:none">A</div><div style="flex:1;min-width:0;text-align:left"><div style="font:800 14px 'Plus Jakarta Sans'">Arroz Tio João 5kg</div><div style="font:500 12px 'Plus Jakarta Sans';color:var(--faint);margin-top:1px">típico R$ 5,40/kg</div></div><div style="display:flex;align-items:center;gap:4px;background:var(--line);padding:5px 9px;border-radius:99px;flex:none"><span style="font:800 11px 'Plus Jakarta Sans';color:#8a8072">0%</span></div></button>
+<button onClick="{{ irDetalhe }}" style="border:0;cursor:pointer;width:100%;display:flex;align-items:center;gap:13px;background:var(--card);border:1px solid var(--cardborder);border-radius:16px;padding:12px;margin-bottom:9px;box-shadow:0 10px 22px -18px rgba(60,45,20,.5)"><div style="width:44px;height:44px;border-radius:12px;background:var(--tint);display:flex;align-items:center;justify-content:center;font:800 16px 'Plus Jakarta Sans';color:var(--teal);flex:none">S</div><div style="flex:1;min-width:0;text-align:left"><div style="font:800 14px 'Plus Jakarta Sans'">Sabão em pó OMO 1,6kg</div><div style="font:500 12px 'Plus Jakarta Sans';color:var(--faint);margin-top:1px">típico R$ 22,50/kg</div></div><div style="display:flex;align-items:center;gap:4px;background:#DBF6E5;padding:5px 9px;border-radius:99px;flex:none"><svg width="13" height="13" style="color:#12A150"><use href="#ic-down"/></svg><span style="font:800 11px 'Plus Jakarta Sans';color:#12A150">−11%</span></div></button>
+</div>
+<div class="tabbar">
+<button class="tb" onClick="{{ irInicio }}" style="color:var(--faint)"><svg width="24" height="24"><use href="#ic-home"/></svg><span>Início</span></button>
+<button class="tb" onClick="{{ irVerificar }}" style="color:var(--faint)"><svg width="24" height="24"><use href="#ic-check"/></svg><span>Verificar</span></button>
+<div style="width:52px"></div>
+<button class="tb" onClick="{{ irProdutos }}" style="color:var(--teal)"><svg width="24" height="24"><use href="#ic-list"/></svg><span>Produtos</span></button>
+<button class="tb" onClick="{{ irPerfil }}" style="color:var(--faint)"><svg width="24" height="24"><use href="#ic-user"/></svg><span>Perfil</span></button>
+<button class="fab" onClick="{{ irScanner }}"><svg width="27" height="27"><use href="#ic-scan"/></svg></button>
+<div class="hind"></div>
+</div>
+</div>
+</sc-if>
+
+<!-- ═══════════ DETALHE ═══════════ -->
+<sc-if value="{{ telaDetalhe }}">
+<div class="scr" style="background:var(--bg);color:var(--ink)">
+<div class="sb"><span>9:41</span><div style="display:flex;align-items:center;gap:7px"><svg width="18" height="12"><use href="#ic-signal"/></svg><svg width="17" height="13"><use href="#ic-wifi"/></svg><svg width="26" height="13"><use href="#ic-batt"/></svg></div></div>
+<div class="body" style="overflow:auto">
+<div style="display:flex;align-items:center;gap:12px;padding:8px 0 16px"><button class="ib" onClick="{{ voltar }}"><svg width="20" height="20"><use href="#ic-back"/></svg></button><div style="flex:1"><div style="font:800 17px 'Plus Jakarta Sans';letter-spacing:-.3px">Leite Integral Piracanjuba</div><div style="font:500 12px 'Plus Jakarta Sans';color:var(--faint)">Evolução de preço /L</div></div></div>
+<div class="card" style="border-radius:22px;padding:18px 16px 14px;margin-bottom:12px">
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px"><span style="font:600 12px 'Plus Jakarta Sans';color:var(--faint)">Evolução do preço</span><span style="font:700 12px 'Plus Jakarta Sans';color:var(--teal)">8 compras</span></div>
+<svg viewBox="0 0 300 120" width="100%" height="120" preserveAspectRatio="none"><polyline points="10,30 50,44 90,38 130,62 170,54 210,82 250,70 292,96" fill="none" stroke="var(--teal)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><polyline points="10,30 50,44 90,38 130,62 170,54 210,82 250,70 292,96 292,120 10,120" fill="var(--teal)" fill-opacity="0.07" stroke="none"/><circle cx="292" cy="96" r="10" fill="var(--teal)" fill-opacity="0.18"/><circle cx="292" cy="96" r="5.5" fill="var(--teal)"/></svg>
+<div style="display:flex;justify-content:space-between;margin-top:6px;font:600 11px 'Plus Jakarta Sans';color:var(--faint)"><span>abr</span><span>nov</span></div>
+</div>
+<div style="display:flex;gap:10px;margin-bottom:18px">
+<div class="card" style="flex:1;border-radius:16px;padding:12px;text-align:center"><div style="font:600 10.5px 'Plus Jakarta Sans';color:var(--faint)">Menor</div><div style="font:800 16px 'Plus Jakarta Sans';color:#12A150;margin-top:3px">R$ 4,79</div></div>
+<div class="card" style="flex:1;border-radius:16px;padding:12px;text-align:center"><div style="font:600 10.5px 'Plus Jakarta Sans';color:var(--faint)">Típico</div><div style="font:800 16px 'Plus Jakarta Sans';margin-top:3px">R$ 5,30</div></div>
+<div class="card" style="flex:1;border-radius:16px;padding:12px;text-align:center"><div style="font:600 10.5px 'Plus Jakarta Sans';color:var(--faint)">Maior</div><div style="font:800 16px 'Plus Jakarta Sans';color:#E5484D;margin-top:3px">R$ 6,10</div></div>
+</div>
+<div style="font:800 16px 'Plus Jakarta Sans';margin-bottom:10px">Compras</div>
+<div class="card" style="border-radius:20px;overflow:hidden;margin-bottom:8px">
+<div style="display:flex;align-items:center;justify-content:space-between;padding:13px 16px;border-bottom:1px solid var(--line)"><div><div style="font:700 13px 'Plus Jakarta Sans'">Guanabara</div><div style="font:500 11px 'Plus Jakarta Sans';color:var(--faint)">18 nov · promoção</div></div><div style="font:800 14px 'Plus Jakarta Sans';color:#E8930C">R$ 4,79/L</div></div>
+<div style="display:flex;align-items:center;justify-content:space-between;padding:13px 16px;border-bottom:1px solid var(--line)"><div><div style="font:700 13px 'Plus Jakarta Sans'">Assaí</div><div style="font:500 11px 'Plus Jakarta Sans';color:var(--faint)">2 nov</div></div><div style="font:800 14px 'Plus Jakarta Sans'">R$ 5,20/L</div></div>
+<div style="display:flex;align-items:center;justify-content:space-between;padding:13px 16px"><div><div style="font:700 13px 'Plus Jakarta Sans'">Pão de Açúcar</div><div style="font:500 11px 'Plus Jakarta Sans';color:var(--faint)">15 out</div></div><div style="font:800 14px 'Plus Jakarta Sans'">R$ 5,60/L</div></div>
+</div>
+</div>
+</div>
+</sc-if>
+
+<!-- ═══════════ PERFIL ═══════════ -->
+<sc-if value="{{ telaPerfil }}">
+<div class="scr" style="background:var(--bg);color:var(--ink)">
+<div class="sb"><span>9:41</span><div style="display:flex;align-items:center;gap:7px"><svg width="18" height="12"><use href="#ic-signal"/></svg><svg width="17" height="13"><use href="#ic-wifi"/></svg><svg width="26" height="13"><use href="#ic-batt"/></svg></div></div>
+<div class="body" style="overflow:auto">
+<div style="padding:8px 2px 14px"><div style="font:800 22px 'Plus Jakarta Sans';letter-spacing:-.5px">Perfil</div></div>
+<div style="display:flex;align-items:center;gap:14px;margin-bottom:16px"><div style="width:60px;height:60px;border-radius:20px;background:var(--tint2);display:flex;align-items:center;justify-content:center;font:800 24px 'Plus Jakarta Sans';color:var(--teal)">M</div><div><div style="font:800 17px 'Plus Jakarta Sans'">Marina Souza</div><div style="font:500 12.5px 'Plus Jakarta Sans';color:var(--faint);margin-top:2px">marina.souza@email.com</div></div></div>
+<div class="card" style="border-radius:20px;overflow:hidden;margin-bottom:8px">
+<div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--line)"><span style="font:600 13.5px 'Plus Jakarta Sans';color:var(--soft)">Região</span><span style="display:flex;align-items:center;gap:8px"><span style="font:800 13.5px 'Plus Jakarta Sans'">Rio de Janeiro · RJ</span><span style="font:700 12px 'Plus Jakarta Sans';color:var(--teal)">Editar</span></span></div>
+<div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px"><span style="font:600 13.5px 'Plus Jakarta Sans';color:var(--soft)">Cupons escaneados</span><span style="font:800 13.5px 'Plus Jakarta Sans'">37</span></div>
+</div>
+<div style="font:800 16px 'Plus Jakarta Sans';margin:20px 2px 10px">Seus mercados</div>
+<div class="card" style="border-radius:20px;overflow:hidden;margin-bottom:20px">
+<div style="display:flex;align-items:center;gap:12px;padding:13px 16px;border-bottom:1px solid var(--line)"><div style="width:36px;height:36px;border-radius:11px;background:var(--tint);display:flex;align-items:center;justify-content:center;color:var(--teal);flex:none"><svg width="18" height="18"><use href="#ic-store"/></svg></div><div style="flex:1"><div style="font:700 13.5px 'Plus Jakarta Sans'">Supermercado Guanabara</div><div style="font:500 11px 'Plus Jakarta Sans';color:var(--faint);margin-top:1px">14 compras · última hoje</div></div></div>
+<div style="display:flex;align-items:center;gap:12px;padding:13px 16px"><div style="width:36px;height:36px;border-radius:11px;background:var(--tint);display:flex;align-items:center;justify-content:center;color:var(--teal);flex:none"><svg width="18" height="18"><use href="#ic-store"/></svg></div><div style="flex:1"><div style="font:700 13.5px 'Plus Jakarta Sans'">Assaí Atacadista</div><div style="font:500 11px 'Plus Jakarta Sans';color:var(--faint);margin-top:1px">9 compras · última ontem</div></div></div>
+</div>
+<button onClick="{{ irLogin }}" style="width:100%;height:52px;border-radius:15px;background:var(--tint);border:1.5px solid #B7E9E0;color:var(--teal);font:800 14px 'Plus Jakarta Sans';cursor:pointer;margin-bottom:10px">Sair</button>
+<div style="text-align:center;font:500 11px/1.5 'Plus Jakarta Sans';color:var(--faint);padding:0 10px">Guardamos só seu email. Os preços que você compartilha entram anônimos (LGPD).</div>
+</div>
+<div class="tabbar">
+<button class="tb" onClick="{{ irInicio }}" style="color:var(--faint)"><svg width="24" height="24"><use href="#ic-home"/></svg><span>Início</span></button>
+<button class="tb" onClick="{{ irVerificar }}" style="color:var(--faint)"><svg width="24" height="24"><use href="#ic-check"/></svg><span>Verificar</span></button>
+<div style="width:52px"></div>
+<button class="tb" onClick="{{ irProdutos }}" style="color:var(--faint)"><svg width="24" height="24"><use href="#ic-list"/></svg><span>Produtos</span></button>
+<button class="tb" onClick="{{ irPerfil }}" style="color:var(--teal)"><svg width="24" height="24"><use href="#ic-user"/></svg><span>Perfil</span></button>
+<button class="fab" onClick="{{ irScanner }}"><svg width="27" height="27"><use href="#ic-scan"/></svg></button>
+<div class="hind"></div>
+</div>
+</div>
+</sc-if>
+
+<!-- ═══════════ SCANNER (QR do cupom) ═══════════ -->
+<sc-if value="{{ telaScanner }}">
+<div class="scr" style="background:#0C1411;color:#fff">
+<div style="position:absolute;inset:0;background:radial-gradient(120% 80% at 50% 40%, rgba(15,118,110,.35), rgba(8,15,13,.92))"></div>
+<div class="sb" style="position:relative"><span>9:41</span><div style="display:flex;align-items:center;gap:7px"><svg width="18" height="12"><use href="#ic-signal"/></svg><svg width="17" height="13"><use href="#ic-wifi"/></svg><svg width="26" height="13"><use href="#ic-batt"/></svg></div></div>
+<div style="position:relative;flex:none;display:flex;align-items:center;justify-content:space-between;padding:6px 18px"><button class="ib" onClick="{{ voltar }}" style="background:rgba(255,255,255,.12);border:0;color:#fff;border-radius:12px"><svg width="20" height="20"><use href="#ic-close"/></svg></button><span style="font:800 16px 'Plus Jakarta Sans'">Escanear cupom</span><div style="width:40px"></div></div>
+<div style="position:relative;flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0 32px">
+<div style="position:relative;width:244px;height:244px;border-radius:28px;border:2px solid rgba(94,234,212,.7);box-shadow:0 0 0 400px rgba(8,15,13,.45)">
+<div style="position:absolute;top:-2px;left:-2px;width:44px;height:44px;border-top:4px solid #5EEAD4;border-left:4px solid #5EEAD4;border-radius:28px 0 0 0"></div>
+<div style="position:absolute;top:-2px;right:-2px;width:44px;height:44px;border-top:4px solid #5EEAD4;border-right:4px solid #5EEAD4;border-radius:0 28px 0 0"></div>
+<div style="position:absolute;bottom:-2px;left:-2px;width:44px;height:44px;border-bottom:4px solid #5EEAD4;border-left:4px solid #5EEAD4;border-radius:0 0 0 28px"></div>
+<div style="position:absolute;bottom:-2px;right:-2px;width:44px;height:44px;border-bottom:4px solid #5EEAD4;border-right:4px solid #5EEAD4;border-radius:0 0 28px 0"></div>
+<div style="position:absolute;left:16px;right:16px;top:50%;height:2px;background:linear-gradient(90deg,transparent,#5EEAD4,transparent);box-shadow:0 0 12px #5EEAD4"></div>
+</div>
+<div style="font:500 14px/1.5 'Plus Jakarta Sans';color:rgba(255,255,255,.85);text-align:center;margin-top:28px;max-width:280px">Aponte para o QR Code da nota fiscal. Funciona até sem internet.</div>
+<button onClick="{{ irNota }}" style="margin-top:24px;height:50px;padding:0 22px;border:0;border-radius:14px;background:var(--teal);color:#fff;font:800 14px 'Plus Jakarta Sans';cursor:pointer;box-shadow:0 14px 24px -10px rgba(15,118,110,.8)">Simular leitura do QR</button>
+</div>
+<div class="hind" style="background:rgba(255,255,255,.5)"></div>
+</div>
+</sc-if>
+
+<!-- ═══════════ NOTA FISCAL ═══════════ -->
+<sc-if value="{{ telaNota }}">
+<div class="scr" style="background:var(--bg);color:var(--ink)">
+<div class="sb"><span>9:41</span><div style="display:flex;align-items:center;gap:7px"><svg width="18" height="12"><use href="#ic-signal"/></svg><svg width="17" height="13"><use href="#ic-wifi"/></svg><svg width="26" height="13"><use href="#ic-batt"/></svg></div></div>
+<div class="body" style="overflow:auto">
+<div style="display:flex;align-items:center;gap:12px;padding:8px 0 16px"><button class="ib" onClick="{{ voltar }}"><svg width="20" height="20"><use href="#ic-back"/></svg></button><div style="flex:1"><div style="font:800 17px 'Plus Jakarta Sans';letter-spacing:-.3px">Nota fiscal</div><div style="font:500 12px 'Plus Jakarta Sans';color:var(--faint)">07/07/2026 · processada</div></div></div>
+<div class="card" style="display:flex;align-items:center;gap:13px;border-radius:20px;padding:15px 16px;margin-bottom:14px"><div style="width:44px;height:44px;border-radius:13px;background:var(--tint);display:flex;align-items:center;justify-content:center;color:var(--teal);flex:none"><svg width="22" height="22"><use href="#ic-store"/></svg></div><div><div style="font:800 15px 'Plus Jakarta Sans'">Supermercado Guanabara</div><div style="font:500 12px 'Plus Jakarta Sans';color:var(--faint);margin-top:1px">Rio de Janeiro · RJ</div></div></div>
+<div style="font:800 15px 'Plus Jakarta Sans';margin:2px 2px 10px">4 itens</div>
+<div class="card" style="border-radius:20px;overflow:hidden">
+<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 16px;border-bottom:1px solid var(--line)"><div style="flex:1;min-width:0"><div style="font:600 13.5px 'Plus Jakarta Sans'">Leite Integral Piracanjuba 1L</div><div style="font:500 11.5px 'Plus Jakarta Sans';color:var(--faint);margin-top:1px">3 × R$ 5,19</div></div><div style="font:700 13.5px 'Plus Jakarta Sans';white-space:nowrap">R$ 15,57</div></div>
+<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 16px;border-bottom:1px solid var(--line)"><div style="flex:1;min-width:0"><div style="font:600 13.5px 'Plus Jakarta Sans'">Café Pilão 500g</div><div style="font:500 11.5px 'Plus Jakarta Sans';color:var(--faint);margin-top:1px">2 × R$ 9,45 · desconto R$ 3,00</div></div><div style="font:700 13.5px 'Plus Jakarta Sans';white-space:nowrap">R$ 18,90</div></div>
+<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 16px;border-bottom:1px solid var(--line)"><div style="flex:1;min-width:0"><div style="font:600 13.5px 'Plus Jakarta Sans'">Arroz Tio João 5kg</div><div style="font:500 11.5px 'Plus Jakarta Sans';color:var(--faint);margin-top:1px">1 × R$ 27,00</div></div><div style="font:700 13.5px 'Plus Jakarta Sans';white-space:nowrap">R$ 27,00</div></div>
+<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 16px"><div style="flex:1;min-width:0"><div style="font:600 13.5px 'Plus Jakarta Sans'">Banana Prata kg</div><div style="font:500 11.5px 'Plus Jakarta Sans';color:var(--faint);margin-top:1px">1,2 kg × R$ 5,90</div></div><div style="font:700 13.5px 'Plus Jakarta Sans';white-space:nowrap">R$ 7,08</div></div>
+</div>
+<div class="card" style="border-radius:18px;padding:14px 16px;margin-top:12px">
+<div style="display:flex;justify-content:space-between;padding:3px 0;font:500 13px 'Plus Jakarta Sans';color:var(--soft)"><span>Subtotal</span><span>R$ 71,55</span></div>
+<div style="display:flex;justify-content:space-between;padding:3px 0;font:600 13px 'Plus Jakarta Sans';color:#12A150"><span>Desconto</span><span>− R$ 3,00</span></div>
+<div style="display:flex;justify-content:space-between;padding:6px 0 0;margin-top:6px;border-top:1px solid var(--line);font:800 15px 'Plus Jakarta Sans'"><span>Valor pago</span><span>R$ 68,55</span></div>
+</div>
+<div style="display:flex;gap:11px;margin-top:16px"><button class="pbtn" onClick="{{ voltar }}" style="background:transparent;color:var(--teal)">Descartar</button><button class="pbtn" onClick="{{ irInicio }}" style="background:var(--teal);color:#fff;box-shadow:0 14px 22px -10px rgba(15,118,110,.7)">Salvar no histórico</button></div>
+</div>
+</div>
+</sc-if>
+
+<!-- ═══════════ CÓDIGO DE BARRAS ═══════════ -->
+<sc-if value="{{ telaBarras }}">
+<div class="scr" style="background:#0C1411;color:#fff">
+<div style="position:absolute;inset:0;background:radial-gradient(120% 80% at 50% 40%, rgba(15,118,110,.35), rgba(8,15,13,.92))"></div>
+<div class="sb" style="position:relative"><span>9:41</span><div style="display:flex;align-items:center;gap:7px"><svg width="18" height="12"><use href="#ic-signal"/></svg><svg width="17" height="13"><use href="#ic-wifi"/></svg><svg width="26" height="13"><use href="#ic-batt"/></svg></div></div>
+<div style="position:relative;flex:none;display:flex;align-items:center;justify-content:space-between;padding:6px 18px"><button class="ib" onClick="{{ voltar }}" style="background:rgba(255,255,255,.12);border:0;color:#fff;border-radius:12px"><svg width="20" height="20"><use href="#ic-close"/></svg></button><span style="font:800 16px 'Plus Jakarta Sans'">Código de barras</span><div style="width:40px"></div></div>
+<div style="position:relative;flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0 32px">
+<div style="position:relative;width:280px;height:170px;border-radius:22px;border:2px solid rgba(94,234,212,.7);display:flex;align-items:center;justify-content:center;background:rgba(8,15,13,.35)">
+<svg width="150" height="70" viewBox="0 0 150 70"><g fill="#5EEAD4"><rect x="4" y="6" width="4" height="58"/><rect x="12" y="6" width="2" height="58"/><rect x="18" y="6" width="6" height="58"/><rect x="28" y="6" width="3" height="58"/><rect x="35" y="6" width="5" height="58"/><rect x="44" y="6" width="2" height="58"/><rect x="50" y="6" width="6" height="58"/><rect x="60" y="6" width="3" height="58"/><rect x="67" y="6" width="4" height="58"/><rect x="75" y="6" width="2" height="58"/><rect x="81" y="6" width="6" height="58"/><rect x="91" y="6" width="3" height="58"/><rect x="98" y="6" width="5" height="58"/><rect x="107" y="6" width="2" height="58"/><rect x="113" y="6" width="6" height="58"/><rect x="123" y="6" width="3" height="58"/><rect x="130" y="6" width="4" height="58"/><rect x="138" y="6" width="2" height="58"/><rect x="143" y="6" width="4" height="58"/></g></svg>
+<div style="position:absolute;left:16px;right:16px;top:50%;height:2px;background:linear-gradient(90deg,transparent,#5EEAD4,transparent);box-shadow:0 0 12px #5EEAD4"></div>
+</div>
+<div style="font:500 14px/1.5 'Plus Jakarta Sans';color:rgba(255,255,255,.85);text-align:center;margin-top:28px;max-width:280px">Aponte para o código de barras do produto na gôndola.</div>
+<button onClick="{{ irResultado }}" style="margin-top:24px;height:50px;padding:0 22px;border:0;border-radius:14px;background:var(--teal);color:#fff;font:800 14px 'Plus Jakarta Sans';cursor:pointer;box-shadow:0 14px 24px -10px rgba(15,118,110,.8)">Simular leitura</button>
+</div>
+<div class="hind" style="background:rgba(255,255,255,.5)"></div>
+</div>
+</sc-if>
+
+<!-- ═══════════ ONBOARDING ═══════════ -->
+<sc-if value="{{ telaOnboarding }}">
+<div class="scr" style="background:var(--bg);color:var(--ink)">
+<div class="sb"><span>9:41</span><div style="display:flex;align-items:center;gap:7px"><svg width="18" height="12"><use href="#ic-signal"/></svg><svg width="17" height="13"><use href="#ic-wifi"/></svg><svg width="26" height="13"><use href="#ic-batt"/></svg></div></div>
+<div style="flex:none;display:flex;justify-content:flex-end;padding:4px 24px"><button onClick="{{ irLogin }}" style="border:0;background:none;cursor:pointer;font:700 13px 'Plus Jakarta Sans';color:var(--faint)">Pular</button></div>
+<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0 34px;text-align:center">
+<sc-if value="{{ passo0 }}"><div style="width:132px;height:132px;border-radius:99px;background:var(--tint2);display:flex;align-items:center;justify-content:center;color:var(--teal)"><svg width="60" height="60"><use href="#ic-scan"/></svg></div><div style="font:800 26px/1.15 'Plus Jakarta Sans';letter-spacing:-.6px;margin-top:30px">Escaneie o cupom</div><div style="font:500 15px/1.55 'Plus Jakarta Sans';color:var(--soft);margin-top:12px;max-width:300px">Aponte para o QR da nota fiscal. A gente lê os preços por você — funciona até sem internet.</div></sc-if>
+<sc-if value="{{ passo1 }}"><div style="width:132px;height:132px;border-radius:99px;background:var(--tint2);display:flex;align-items:center;justify-content:center;color:var(--teal)"><svg width="60" height="60"><use href="#ic-check"/></svg></div><div style="font:800 26px/1.15 'Plus Jakarta Sans';letter-spacing:-.6px;margin-top:30px">Saiba o preço justo</div><div style="font:500 15px/1.55 'Plus Jakarta Sans';color:var(--soft);margin-top:12px;max-width:300px">Na gôndola, veja na hora se está barato, na média ou caro — sempre por unidade comparável (kg, L, un).</div></sc-if>
+<sc-if value="{{ passo2 }}"><div style="width:132px;height:132px;border-radius:99px;background:var(--tint2);display:flex;align-items:center;justify-content:center;color:var(--teal)"><svg width="60" height="60"><use href="#ic-user"/></svg></div><div style="font:800 26px/1.15 'Plus Jakarta Sans';letter-spacing:-.6px;margin-top:30px">Privacidade por design</div><div style="font:500 15px/1.55 'Plus Jakarta Sans';color:var(--soft);margin-top:12px;max-width:300px">Os preços que você compartilha entram anônimos. Nunca guardamos nome, CPF ou ligação com você (LGPD).</div></sc-if>
+</div>
+<div style="flex:none;padding:0 28px 26px">
+<div style="display:flex;justify-content:center;gap:8px;margin-bottom:20px">
+<sc-if value="{{ passo0 }}"><span style="width:22px;height:8px;border-radius:99px;background:var(--teal)"></span><span style="width:8px;height:8px;border-radius:99px;background:#CBBFA9"></span><span style="width:8px;height:8px;border-radius:99px;background:#CBBFA9"></span></sc-if>
+<sc-if value="{{ passo1 }}"><span style="width:8px;height:8px;border-radius:99px;background:#CBBFA9"></span><span style="width:22px;height:8px;border-radius:99px;background:var(--teal)"></span><span style="width:8px;height:8px;border-radius:99px;background:#CBBFA9"></span></sc-if>
+<sc-if value="{{ passo2 }}"><span style="width:8px;height:8px;border-radius:99px;background:#CBBFA9"></span><span style="width:8px;height:8px;border-radius:99px;background:#CBBFA9"></span><span style="width:22px;height:8px;border-radius:99px;background:var(--teal)"></span></sc-if>
+</div>
+<button onClick="{{ proximo }}" style="width:100%;height:54px;border:0;border-radius:16px;background:var(--teal);color:#fff;font:800 15px 'Plus Jakarta Sans';cursor:pointer;box-shadow:0 16px 26px -12px rgba(15,118,110,.7)"><sc-if value="{{ passo2 }}">Concordar e começar</sc-if><sc-if value="{{ passo0 }}">Continuar</sc-if><sc-if value="{{ passo1 }}">Continuar</sc-if></button>
+</div>
+</div>
+</sc-if>
+
+<!-- ═══════════ LOGIN ═══════════ -->
+<sc-if value="{{ telaLogin }}">
+<div class="scr" style="background:var(--bg);color:var(--ink)">
+<div class="sb"><span>9:41</span><div style="display:flex;align-items:center;gap:7px"><svg width="18" height="12"><use href="#ic-signal"/></svg><svg width="17" height="13"><use href="#ic-wifi"/></svg><svg width="26" height="13"><use href="#ic-batt"/></svg></div></div>
+<div class="body" style="justify-content:center;padding:0 26px">
+<div style="width:60px;height:60px;border-radius:19px;background:var(--teal);display:flex;align-items:center;justify-content:center;color:#fff;margin-bottom:22px"><svg width="30" height="30"><use href="#ic-check"/></svg></div>
+<div style="font:800 27px 'Plus Jakarta Sans';letter-spacing:-.7px">Entrar</div>
+<div style="font:500 14px/1.5 'Plus Jakarta Sans';color:var(--soft);margin-top:6px;margin-bottom:24px">Acesse sua conta para registrar cupons e acompanhar seus preços.</div>
+<div style="font:600 12.5px 'Plus Jakarta Sans';color:var(--soft);margin:0 4px 6px">Email</div>
+<div class="card" style="border-radius:15px;padding:15px 16px;margin-bottom:14px;font:500 14px 'Plus Jakarta Sans';color:var(--faint)">marina.souza@email.com</div>
+<div style="font:600 12.5px 'Plus Jakarta Sans';color:var(--soft);margin:0 4px 6px">Senha</div>
+<div class="card" style="border-radius:15px;padding:15px 16px;font:500 16px 'Plus Jakarta Sans';color:var(--ink);letter-spacing:2px">••••••••</div>
+<div style="text-align:right;margin:10px 2px 0"><span style="font:700 12.5px 'Plus Jakarta Sans';color:var(--teal)">Esqueci a senha</span></div>
+<button onClick="{{ irInicio }}" style="width:100%;height:54px;border:0;border-radius:16px;background:var(--teal);color:#fff;font:800 15px 'Plus Jakarta Sans';cursor:pointer;margin-top:18px;box-shadow:0 16px 26px -12px rgba(15,118,110,.7)">Entrar</button>
+<div style="display:flex;align-items:center;gap:12px;margin:18px 0"><div style="flex:1;height:1px;background:var(--edge)"></div><span style="font:500 12px 'Plus Jakarta Sans';color:var(--faint)">ou</span><div style="flex:1;height:1px;background:var(--edge)"></div></div>
+<button onClick="{{ irInicio }}" style="width:100%;height:54px;border:1.5px solid #B7E9E0;border-radius:16px;background:var(--tint);color:var(--teal);font:800 14px 'Plus Jakarta Sans';cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px"><span style="width:20px;height:20px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;font:800 12px 'Plus Jakarta Sans';color:#DB4437">G</span>Entrar com Google</button>
+<div style="text-align:center;margin-top:22px;font:500 13px 'Plus Jakarta Sans';color:var(--soft)">Não tem conta? <span style="font:800 13px 'Plus Jakarta Sans';color:var(--teal)">Criar conta</span></div>
+</div>
+</div>
+</sc-if>
+
+
+<!-- ═══════════ ESTADO VAZIO ═══════════ -->
+<sc-if value="{{ telaVazio }}">
+<div class="scr" style="background:var(--bg);color:var(--ink)">
+<div class="sb"><span>9:41</span><div style="display:flex;align-items:center;gap:7px"><svg width="18" height="12"><use href="#ic-signal"/></svg><svg width="17" height="13"><use href="#ic-wifi"/></svg><svg width="26" height="13"><use href="#ic-batt"/></svg></div></div>
+<div class="body">
+<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 2px 18px"><div><div style="font:700 11px 'Plus Jakarta Sans';letter-spacing:1.3px;text-transform:uppercase;color:var(--faint)">Sexta · Rio de Janeiro</div><div style="font:800 25px/1.05 'Plus Jakarta Sans';letter-spacing:-.6px;margin-top:6px">Olá, Marina 👋</div></div><div style="width:46px;height:46px;border-radius:15px;background:var(--tint2);display:flex;align-items:center;justify-content:center;font:800 18px 'Plus Jakarta Sans';color:var(--teal)">M</div></div>
+<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding-bottom:36px">
+<div style="width:122px;height:122px;border-radius:99px;background:var(--tint2);display:flex;align-items:center;justify-content:center;color:var(--teal)"><svg width="56" height="56"><use href="#ic-receipt"/></svg></div>
+<div style="font:800 20px 'Plus Jakarta Sans';margin-top:26px">Nenhuma compra ainda</div>
+<div style="font:500 14px/1.55 'Plus Jakarta Sans';color:var(--soft);margin-top:10px;max-width:280px">Escaneie seu primeiro cupom fiscal para começar a acompanhar preços, promoções e economia.</div>
+<button onClick="{{ irScanner }}" style="margin-top:26px;height:52px;padding:0 22px;border:0;border-radius:15px;background:var(--teal);color:#fff;font:800 14px 'Plus Jakarta Sans';cursor:pointer;display:flex;align-items:center;gap:9px;box-shadow:0 14px 24px -10px rgba(15,118,110,.55)"><svg width="19" height="19"><use href="#ic-scan"/></svg>Escanear primeiro cupom</button>
+</div>
+</div>
+<div class="tabbar">
+<button class="tb" onClick="{{ irInicio }}" style="color:var(--teal)"><svg width="24" height="24"><use href="#ic-home"/></svg><span>Início</span></button>
+<button class="tb" onClick="{{ irVerificar }}" style="color:var(--faint)"><svg width="24" height="24"><use href="#ic-check"/></svg><span>Verificar</span></button>
+<div style="width:52px"></div>
+<button class="tb" onClick="{{ irProdutos }}" style="color:var(--faint)"><svg width="24" height="24"><use href="#ic-list"/></svg><span>Produtos</span></button>
+<button class="tb" onClick="{{ irPerfil }}" style="color:var(--faint)"><svg width="24" height="24"><use href="#ic-user"/></svg><span>Perfil</span></button>
+<button class="fab" onClick="{{ irScanner }}"><svg width="27" height="27"><use href="#ic-scan"/></svg></button>
+<div class="hind"></div>
+</div>
+</div>
+</sc-if>
+
+<!-- ═══════════ CARREGANDO ═══════════ -->
+<sc-if value="{{ telaCarregando }}">
+<div class="scr" style="background:var(--bg);color:var(--ink)">
+<div class="sb"><span>9:41</span><div style="display:flex;align-items:center;gap:7px"><svg width="18" height="12"><use href="#ic-signal"/></svg><svg width="17" height="13"><use href="#ic-wifi"/></svg><svg width="26" height="13"><use href="#ic-batt"/></svg></div></div>
+<div class="body">
+<div style="display:flex;align-items:center;gap:12px;padding:8px 0 16px"><button class="ib" onClick="{{ voltar }}"><svg width="20" height="20"><use href="#ic-back"/></svg></button><div style="flex:1"><div style="font:800 17px 'Plus Jakarta Sans';letter-spacing:-.3px">Nota fiscal</div><div style="font:500 12px 'Plus Jakarta Sans';color:var(--faint)">Aguardando processamento</div></div></div>
+<div class="card" style="border-radius:22px;padding:34px 20px;display:flex;flex-direction:column;align-items:center">
+<div style="width:46px;height:46px;border-radius:50%;border:4px solid var(--line);border-top-color:var(--teal);animation:spin .8s linear infinite"></div>
+<div style="font:800 16px 'Plus Jakarta Sans';margin-top:18px">Processando a nota…</div>
+<div style="font:500 13px/1.5 'Plus Jakarta Sans';color:var(--soft);margin-top:6px;text-align:center;max-width:250px">Salvo no aparelho. Estamos lendo os itens do cupom na SEFAZ.</div>
+</div>
+<div class="card" style="border-radius:22px;padding:16px;margin-top:12px;display:flex;flex-direction:column;gap:16px"><div style="display:flex;align-items:center;justify-content:space-between;gap:14px"><div style="flex:1;display:flex;flex-direction:column;gap:7px"><div style="height:12px;width:72%;border-radius:6px;background:linear-gradient(90deg,var(--line),var(--edge),var(--line));background-size:200% 100%;animation:shim 1.3s linear infinite"></div><div style="height:10px;width:42%;border-radius:6px;background:linear-gradient(90deg,var(--line),var(--edge),var(--line));background-size:200% 100%;animation:shim 1.3s linear infinite"></div></div><div style="height:14px;width:52px;border-radius:6px;background:linear-gradient(90deg,var(--line),var(--edge),var(--line));background-size:200% 100%;animation:shim 1.3s linear infinite"></div></div><div style="display:flex;align-items:center;justify-content:space-between;gap:14px"><div style="flex:1;display:flex;flex-direction:column;gap:7px"><div style="height:12px;width:72%;border-radius:6px;background:linear-gradient(90deg,var(--line),var(--edge),var(--line));background-size:200% 100%;animation:shim 1.3s linear infinite"></div><div style="height:10px;width:42%;border-radius:6px;background:linear-gradient(90deg,var(--line),var(--edge),var(--line));background-size:200% 100%;animation:shim 1.3s linear infinite"></div></div><div style="height:14px;width:52px;border-radius:6px;background:linear-gradient(90deg,var(--line),var(--edge),var(--line));background-size:200% 100%;animation:shim 1.3s linear infinite"></div></div><div style="display:flex;align-items:center;justify-content:space-between;gap:14px"><div style="flex:1;display:flex;flex-direction:column;gap:7px"><div style="height:12px;width:72%;border-radius:6px;background:linear-gradient(90deg,var(--line),var(--edge),var(--line));background-size:200% 100%;animation:shim 1.3s linear infinite"></div><div style="height:10px;width:42%;border-radius:6px;background:linear-gradient(90deg,var(--line),var(--edge),var(--line));background-size:200% 100%;animation:shim 1.3s linear infinite"></div></div><div style="height:14px;width:52px;border-radius:6px;background:linear-gradient(90deg,var(--line),var(--edge),var(--line));background-size:200% 100%;animation:shim 1.3s linear infinite"></div></div></div>
+<div style="font:500 11.5px 'Plus Jakarta Sans';color:var(--faint);text-align:center;margin-top:14px">Pode fechar o app — concluímos em segundo plano.</div>
+</div>
+</div>
+</sc-if>
+
+<!-- ═══════════ ERRO NO CUPOM ═══════════ -->
+<sc-if value="{{ telaErro }}">
+<div class="scr" style="background:var(--bg);color:var(--ink)">
+<div class="sb"><span>9:41</span><div style="display:flex;align-items:center;gap:7px"><svg width="18" height="12"><use href="#ic-signal"/></svg><svg width="17" height="13"><use href="#ic-wifi"/></svg><svg width="26" height="13"><use href="#ic-batt"/></svg></div></div>
+<div class="body">
+<div style="display:flex;align-items:center;gap:12px;padding:8px 0 16px"><button class="ib" onClick="{{ voltar }}"><svg width="20" height="20"><use href="#ic-back"/></svg></button><div style="flex:1"><div style="font:800 17px 'Plus Jakarta Sans';letter-spacing:-.3px">Nota fiscal</div><div style="font:500 12px 'Plus Jakarta Sans';color:var(--faint)">Não foi possível ler</div></div></div>
+<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding-bottom:26px">
+<div style="width:122px;height:122px;border-radius:99px;background:rgba(232,147,12,.15);display:flex;align-items:center;justify-content:center;color:#E8930C"><svg width="56" height="56"><use href="#ic-alert"/></svg></div>
+<div style="font:800 20px 'Plus Jakarta Sans';margin-top:26px;max-width:280px">Não foi possível ler este cupom</div>
+<div style="font:500 14px/1.55 'Plus Jakarta Sans';color:var(--soft);margin-top:10px;max-width:290px">O QR pode ser de um estado ainda não suportado ou estar ilegível. Guardamos o cupom para reprocessar depois.</div>
+<div style="display:flex;gap:11px;margin-top:26px;align-self:stretch"><button class="pbtn" onClick="{{ irInicio }}" style="background:var(--tint);border:1.5px solid #B7E9E0;color:var(--teal)">Descartar</button><button class="pbtn" onClick="{{ irScanner }}" style="background:var(--teal);color:#fff;box-shadow:0 14px 22px -10px rgba(15,118,110,.55)">Tentar de novo</button></div>
+</div>
+</div>
+</div>
+</sc-if>
+
+<!-- ═══════════ SEM CONEXÃO ═══════════ -->
+<sc-if value="{{ telaOffline }}">
+<div class="scr" style="background:var(--bg);color:var(--ink)">
+<div class="sb"><span>9:41</span><div style="display:flex;align-items:center;gap:7px"><svg width="18" height="12"><use href="#ic-signal"/></svg><svg width="17" height="13"><use href="#ic-wifi"/></svg><svg width="26" height="13"><use href="#ic-batt"/></svg></div></div>
+<div class="promo" style="flex:none;margin:0 20px;display:flex;align-items:center;gap:9px;background:rgba(232,147,12,.15);border-radius:12px;padding:10px 13px"><span style="width:8px;height:8px;border-radius:50%;background:#E8930C"></span><span style="font:700 12.5px 'Plus Jakarta Sans';color:#B26A05">Você está offline</span></div>
+<div class="body" style="padding-top:10px">
+<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding-bottom:40px">
+<div style="width:122px;height:122px;border-radius:99px;background:var(--tint2);display:flex;align-items:center;justify-content:center;color:var(--teal)"><svg width="58" height="58"><use href="#ic-wifioff"/></svg></div>
+<div style="font:800 20px 'Plus Jakarta Sans';margin-top:26px">Sem conexão</div>
+<div style="font:500 14px/1.55 'Plus Jakarta Sans';color:var(--soft);margin-top:10px;max-width:290px">Sem problemas — seus cupons ficam salvos no aparelho e sincronizam sozinhos quando o sinal voltar. Você ainda pode consultar seu histórico.</div>
+<button onClick="{{ irInicio }}" style="margin-top:24px;height:52px;padding:0 24px;border:0;border-radius:15px;background:var(--teal);color:#fff;font:800 14px 'Plus Jakarta Sans';cursor:pointer">Ver meu histórico</button>
+</div>
+</div>
+<div class="tabbar">
+<button class="tb" onClick="{{ irInicio }}" style="color:var(--teal)"><svg width="24" height="24"><use href="#ic-home"/></svg><span>Início</span></button>
+<button class="tb" onClick="{{ irVerificar }}" style="color:var(--faint)"><svg width="24" height="24"><use href="#ic-check"/></svg><span>Verificar</span></button>
+<div style="width:52px"></div>
+<button class="tb" onClick="{{ irProdutos }}" style="color:var(--faint)"><svg width="24" height="24"><use href="#ic-list"/></svg><span>Produtos</span></button>
+<button class="tb" onClick="{{ irPerfil }}" style="color:var(--faint)"><svg width="24" height="24"><use href="#ic-user"/></svg><span>Perfil</span></button>
+<button class="fab" onClick="{{ irScanner }}"><svg width="27" height="27"><use href="#ic-scan"/></svg></button>
+<div class="hind"></div>
+</div>
+</div>
+</sc-if>
+
+<!--MORESCREENS-->
+
+</div>
+<div style="position:absolute;top:22px;left:50%;transform:translateX(-50%);width:110px;height:32px;background:#000;border-radius:20px;z-index:30"></div>
+</div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = { tela: 'inicio', hist: [], passo: 0, bare: false, tema: 'light' };
+  componentDidMount() {
+    const h = decodeURIComponent((location.hash || '').replace(/^#/, ''));
+    if (!h) return;
+    const parts = h.split('/');
+    const bare = parts.indexOf('bare') !== -1;
+    const dark = parts.indexOf('dark') !== -1;
+    const t = parts.filter((x) => x !== 'bare' && x !== 'dark')[0];
+    this.setState((s) => ({ tela: t || s.tela, bare: bare, tema: dark ? 'dark' : s.tema }));
+  }
+  ir(t) {
+    if (t === this.state.tela) return;
+    this.setState((s) => ({ tela: t, hist: [...s.hist, s.tela], passo: 0 }));
+  }
+  voltar() {
+    this.setState((s) => {
+      const h = s.hist.slice();
+      const p = h.pop();
+      return { tela: p || 'inicio', hist: h };
+    });
+  }
+  setPasso(n) { this.setState({ passo: n }); }
+  setTema(v) { this.setState({ tema: v }); }
+  proximo() {
+    this.setState((s) =>
+      s.passo >= 2
+        ? { tela: 'login', hist: [...s.hist, 'onboarding'], passo: 0 }
+        : { passo: s.passo + 1 },
+    );
+  }
+  renderVals() {
+    const t = this.state.tela;
+    const is = (x) => t === x;
+    return {
+      tela: t,
+      bare: this.state.bare ? 'true' : 'false',
+      tema: this.state.tema,
+      telaInicio: is('inicio'), telaVerificar: is('verificar'), telaResultado: is('resultado'),
+      telaProdutos: is('produtos'), telaDetalhe: is('detalhe'), telaPerfil: is('perfil'),
+      telaScanner: is('scanner'), telaNota: is('nota'), telaBarras: is('barras'),
+      telaOnboarding: is('onboarding'), telaLogin: is('login'),
+      telaVazio: is('vazio'), telaCarregando: is('carregando'), telaErro: is('erro'), telaOffline: is('offline'),
+      passo0: this.state.passo === 0, passo1: this.state.passo === 1, passo2: this.state.passo === 2,
+      irInicio: () => this.ir('inicio'), irVerificar: () => this.ir('verificar'),
+      irResultado: () => this.ir('resultado'), irProdutos: () => this.ir('produtos'),
+      irDetalhe: () => this.ir('detalhe'), irPerfil: () => this.ir('perfil'),
+      irScanner: () => this.ir('scanner'), irNota: () => this.ir('nota'),
+      irBarras: () => this.ir('barras'), irOnboarding: () => this.ir('onboarding'),
+      irLogin: () => this.ir('login'),
+      irVazio: () => this.ir('vazio'), irCarregando: () => this.ir('carregando'), irErro: () => this.ir('erro'), irOffline: () => this.ir('offline'),
+      temaClaro: () => this.setTema('light'), temaEscuro: () => this.setTema('dark'),
+      voltar: () => this.voltar(), proximo: () => this.proximo(),
+      setP0: () => this.setPasso(0), setP1: () => this.setPasso(1), setP2: () => this.setPasso(2),
+    };
+  }
+}
+</script>
+</body>
+</html>

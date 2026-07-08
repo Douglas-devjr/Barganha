@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#e7e4dd;background-image:radial-gradient(circle at 1px 1px, rgba(15,23,42,.05) 1px, transparent 0);background-size:26px 26px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+a{color:#0F766E}a:hover{color:#0B5F58}
+.gh{padding:52px 56px 8px}
+.gh h1{font:800 26px 'Plus Jakarta Sans';color:#0E1B24;letter-spacing:-.6px;margin:0}
+.gh .eb{font:700 11px 'Plus Jakarta Sans';letter-spacing:1.4px;text-transform:uppercase;color:#0F766E;margin:0 0 8px}
+.gh p{font:500 14px/1.6 'Plus Jakarta Sans';color:#54636e;max-width:660px;margin:12px 0 0}
+.grid{display:flex;flex-wrap:wrap;gap:40px 34px;padding:36px 56px 64px;align-items:flex-start}
+.cell{flex:none;display:flex;flex-direction:column;align-items:center;gap:14px}
+.frame{width:416px;height:868px;border-radius:54px;overflow:hidden;box-shadow:0 50px 90px -40px rgba(15,23,42,.5)}
+.frame iframe{width:416px;height:868px;border:0;display:block;background:transparent}
+.cap{font:700 13px 'Plus Jakarta Sans';color:#0E1B24}
+.cap b{font:700 10.5px ui-monospace,Menlo,monospace;color:#93867a;background:#F1ECE1;padding:2px 7px;border-radius:5px;margin-right:8px}
+.sec{padding:20px 56px 8px}
+.sec .eb{font:700 11px 'Plus Jakarta Sans';letter-spacing:1.4px;text-transform:uppercase;color:#0F766E;margin:0 0 8px}
+.sec h2{font:800 22px 'Plus Jakarta Sans';color:#0E1B24;letter-spacing:-.5px;margin:0}
+.sec p{font:500 14px/1.6 'Plus Jakarta Sans';color:#54636e;max-width:660px;margin:10px 0 0}
+.darkband{margin:24px 32px 0;border-radius:40px;background:#0E1512;background-image:radial-gradient(circle at 30% 20%, rgba(24,184,166,.14), transparent 60%)}
+.darkband .grid{padding:44px 24px 52px}
+.darkband .cap{color:#EAF2EF}
+.darkband .cap b{color:#8AB6AC;background:rgba(255,255,255,.09)}
+</style>
+</helmet>
+
+<div class="gh">
+<p class="eb">Barganha · Direção 2a</p>
+<h1>App completo — 15 telas + modo escuro</h1>
+<p>Todas as telas do app, ao vivo (cada moldura é o app de verdade), incluindo os estados de vazio, carregando, erro e offline. Para navegar tocando entre elas — e alternar claro/escuro — abra o <a href="Barganha%20-%20App%20(2a).dc.html">protótipo interativo</a>. Arraste e dê zoom neste quadro à vontade.</p>
+</div>
+
+<div class="grid">
+<div class="cell"><div class="frame"><iframe src="Barganha%20-%20App%20(2a).dc.html#bare/inicio" loading="lazy"></iframe></div><div class="cap"><b>1</b>Início</div></div>
+<div class="cell"><div class="frame"><iframe src="Barganha%20-%20App%20(2a).dc.html#bare/verificar" loading="lazy"></iframe></div><div class="cap"><b>2</b>Verificar</div></div>
+<div class="cell"><div class="frame"><iframe src="Barganha%20-%20App%20(2a).dc.html#bare/resultado" loading="lazy"></iframe></div><div class="cap"><b>3</b>Veredito</div></div>
+<div class="cell"><div class="frame"><iframe src="Barganha%20-%20App%20(2a).dc.html#bare/produtos" loading="lazy"></iframe></div><div class="cap"><b>4</b>Meus produtos</div></div>
+<div class="cell"><div class="frame"><iframe src="Barganha%20-%20App%20(2a).dc.html#bare/detalhe" loading="lazy"></iframe></div><div class="cap"><b>5</b>Detalhe do produto</div></div>
+<div class="cell"><div class="frame"><iframe src="Barganha%20-%20App%20(2a).dc.html#bare/perfil" loading="lazy"></iframe></div><div class="cap"><b>6</b>Perfil</div></div>
+<div class="cell"><div class="frame"><iframe src="Barganha%20-%20App%20(2a).dc.html#bare/scanner" loading="lazy"></iframe></div><div class="cap"><b>7</b>Escanear cupom (QR)</div></div>
+<div class="cell"><div class="frame"><iframe src="Barganha%20-%20App%20(2a).dc.html#bare/nota" loading="lazy"></iframe></div><div class="cap"><b>8</b>Nota fiscal</div></div>
+<div class="cell"><div class="frame"><iframe src="Barganha%20-%20App%20(2a).dc.html#bare/barras" loading="lazy"></iframe></div><div class="cap"><b>9</b>Código de barras</div></div>
+<div class="cell"><div class="frame"><iframe src="Barganha%20-%20App%20(2a).dc.html#bare/onboarding" loading="lazy"></iframe></div><div class="cap"><b>+</b>Onboarding</div></div>
+<div class="cell"><div class="frame"><iframe src="Barganha%20-%20App%20(2a).dc.html#bare/login" loading="lazy"></iframe></div><div class="cap"><b>+</b>Login</div></div>
+</div>
+
+<div class="sec">
+<p class="eb">Estados</p>
+<h2>Estados vazios, carregando e de erro</h2>
+<p>Momentos que fazem o app parecer cuidado: o primeiro uso, a espera do processamento, e quando algo dá errado.</p>
+</div>
+<div class="grid">
+<div class="cell"><div class="frame"><iframe src="Barganha%20-%20App%20(2a).dc.html#bare/vazio" loading="lazy"></iframe></div><div class="cap"><b>10</b>Estado vazio</div></div>
+<div class="cell"><div class="frame"><iframe src="Barganha%20-%20App%20(2a).dc.html#bare/carregando" loading="lazy"></iframe></div><div class="cap"><b>11</b>Carregando</div></div>
+<div class="cell"><div class="frame"><iframe src="Barganha%20-%20App%20(2a).dc.html#bare/erro" loading="lazy"></iframe></div><div class="cap"><b>12</b>Erro no cupom</div></div>
+<div class="cell"><div class="frame"><iframe src="Barganha%20-%20App%20(2a).dc.html#bare/offline" loading="lazy"></iframe></div><div class="cap"><b>13</b>Sem conexão</div></div>
+</div>
+
+<div class="sec">
+<p class="eb">Modo escuro</p>
+<h2>O mesmo app, à noite</h2>
+<p>A direção 2a em modo escuro — fundo verde-carvão, teal que brilha e os mesmos dados legíveis. Alterne claro/escuro no protótipo interativo.</p>
+</div>
+<div class="darkband">
+<div class="grid">
+<div class="cell"><div class="frame"><iframe src="Barganha%20-%20App%20(2a).dc.html#bare/dark/inicio" loading="lazy"></iframe></div><div class="cap"><b>1</b>Início</div></div>
+<div class="cell"><div class="frame"><iframe src="Barganha%20-%20App%20(2a).dc.html#bare/dark/resultado" loading="lazy"></iframe></div><div class="cap"><b>3</b>Veredito</div></div>
+<div class="cell"><div class="frame"><iframe src="Barganha%20-%20App%20(2a).dc.html#bare/dark/produtos" loading="lazy"></iframe></div><div class="cap"><b>4</b>Meus produtos</div></div>
+<div class="cell"><div class="frame"><iframe src="Barganha%20-%20App%20(2a).dc.html#bare/dark/detalhe" loading="lazy"></iframe></div><div class="cap"><b>5</b>Detalhe do produto</div></div>
+<div class="cell"><div class="frame"><iframe src="Barganha%20-%20App%20(2a).dc.html#bare/dark/perfil" loading="lazy"></iframe></div><div class="cap"><b>6</b>Perfil</div></div>
+<div class="cell"><div class="frame"><iframe src="Barganha%20-%20App%20(2a).dc.html#bare/dark/nota" loading="lazy"></iframe></div><div class="cap"><b>8</b>Nota fiscal</div></div>
+</div>
+</div>
+</x-dc>
+</body>
+</html>

@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700;12..96,800&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#e6e9ec;background-image:radial-gradient(circle at 1px 1px, rgba(15,23,42,.055) 1px, transparent 0);background-size:26px 26px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+a{color:#0F766E;text-decoration:none}a:hover{color:#0B5F58}
+.dv-turn{padding:52px 56px 44px;scroll-margin-top:16px}
+.dv-thd{display:flex;align-items:center;gap:12px;margin:0 0 10px}
+.dv-tid{font:700 11px ui-monospace,Menlo,monospace;padding:4px 9px;background:#0E1B24;color:#fff;border-radius:6px;text-decoration:none}
+.dv-tname{font:800 24px/1.1 'Plus Jakarta Sans',sans-serif;color:#0E1B24;letter-spacing:-.5px}
+.dv-tsub{font:500 14.5px/1.6 'Plus Jakarta Sans';color:#54636e;max-width:720px;margin:0 0 38px}
+.dv-opts{display:flex;flex-wrap:wrap;gap:52px;align-items:flex-start}
+.dv-opt{flex:none;display:flex;flex-direction:column;gap:20px;scroll-margin-top:16px}
+.dv-oid{font:700 11px ui-monospace,Menlo,monospace;padding:3px 8px;background:rgba(14,27,36,.09);color:#0E1B24;border-radius:6px;text-decoration:none}
+.dv-opt:target .dv-oid{background:#0F766E;color:#fff}
+.dv-next{margin:40px 0 0;font:14px/1.7 'Plus Jakarta Sans';color:#54636e}
+.ph-cap{font:600 12.5px 'Plus Jakarta Sans';color:#54636e;text-align:center;margin-top:14px;letter-spacing:.2px}
+.pdot{width:15px;height:15px;border-radius:50%;box-shadow:0 0 0 1px rgba(15,23,42,.08) inset}
+</style>
+</helmet>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+<symbol id="ic-home" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.7 12 3.5l9 7.2"/><path d="M5.3 9.3V20h13.4V9.3"/><path d="M9.7 20v-5h4.6v5"/></symbol>
+<symbol id="ic-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="m8.4 12 2.4 2.4 4.8-5.2"/></symbol>
+<symbol id="ic-list" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8 9h8M8 13h8M8 17h5"/></symbol>
+<symbol id="ic-user" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8.2" r="3.7"/><path d="M5.2 19.5c.7-3.3 3.4-5.1 6.8-5.1s6.1 1.8 6.8 5.1"/></symbol>
+<symbol id="ic-scan" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8.5V6a2 2 0 0 1 2-2h2.5"/><path d="M20 8.5V6a2 2 0 0 0-2-2h-2.5"/><path d="M4 15.5V18a2 2 0 0 0 2 2h2.5"/><path d="M20 15.5V18a2 2 0 0 1-2 2h-2.5"/><path d="M3.5 12h17"/></symbol>
+<symbol id="ic-back" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="m15 5-7 7 7 7"/></symbol>
+<symbol id="ic-store" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 9.5 6 5h12l1.5 4.5"/><path d="M4.5 9.5a1.9 1.9 0 0 0 3.75 0 1.9 1.9 0 0 0 3.75 0 1.9 1.9 0 0 0 3.75 0 1.9 1.9 0 0 0 3.75 0"/><path d="M5.7 11.3V20h12.6v-8.7"/><path d="M10 20v-4.3h4V20"/></symbol>
+<symbol id="ic-down" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v13"/><path d="m6 12 6 6 6-6"/></symbol>
+<symbol id="ic-signal" viewBox="0 0 18 12"><rect x="0" y="8" width="3" height="4" rx="1" fill="currentColor"/><rect x="5" y="5" width="3" height="7" rx="1" fill="currentColor"/><rect x="10" y="2.5" width="3" height="9.5" rx="1" fill="currentColor"/><rect x="15" y="0" width="3" height="12" rx="1" fill="currentColor"/></symbol>
+<symbol id="ic-wifi" viewBox="0 0 17 13" fill="currentColor"><path d="M8.5 2.4c2.6 0 5 1 6.8 2.7L13.8 6.8A7.4 7.4 0 0 0 8.5 4.6 7.4 7.4 0 0 0 3.2 6.8L1.7 5.1A9.6 9.6 0 0 1 8.5 2.4Z"/><path d="M8.5 6.3c1.5 0 2.9.6 3.9 1.6l-1.6 1.6c-.6-.6-1.4-.9-2.3-.9s-1.7.3-2.3.9L4.6 7.9A5.5 5.5 0 0 1 8.5 6.3Z"/><circle cx="8.5" cy="10.6" r="1.4"/></symbol>
+<symbol id="ic-batt" viewBox="0 0 26 13"><rect x="1" y="1" width="21" height="11" rx="3.2" fill="none" stroke="currentColor" stroke-opacity=".45" stroke-width="1.2"/><rect x="2.6" y="2.6" width="16.5" height="7.8" rx="1.8" fill="currentColor"/><rect x="23.4" y="4.3" width="1.9" height="4.4" rx="1" fill="currentColor" fill-opacity=".5"/></symbol>
+</defs></svg>
+
+<section class="dv-turn" id="t3">
+<div class="dv-thd"><a class="dv-tid" href="#t3">3</a><span class="dv-tname">Antes → Depois · 2a</span></div>
+<p class="dv-tsub">O app de hoje (à esquerda de cada par) x a proposta <a class="dv-oid" href="#2a">2a</a> (à direita). Mesmos dados e a mesma marca teal — o "depois" ganha profundidade, a nova barra de posição de preço, ícones, hierarquia e respiro. As outras direções (<a class="dv-oid" href="#1a">1a</a>, <a class="dv-oid" href="#1b">1b</a>, <a class="dv-oid" href="#1c">1c</a>) seguem logo abaixo.</p>
+<div class="dv-opts">
+<div class="dv-opt" id="3a">
+<div style="display:flex;flex-direction:column;gap:8px;max-width:900px"><div style="display:flex;align-items:center;gap:10px"><a class="dv-oid" href="#3a">3a</a><b style="font:800 17px 'Plus Jakarta Sans';color:#0E1B24">Comparativo antes → depois</b></div><span style="font:500 13px/1.5 'Plus Jakarta Sans';color:#54636e">Início e Verificar, lado a lado: como está hoje e como fica no 2a. Recriei o "antes" fielmente a partir do código atual do app.</span></div>
+<div style="display:flex;gap:56px;flex-wrap:wrap;align-items:flex-start">
+<div><div style="font:800 15px 'Plus Jakarta Sans';color:#0E1B24;margin:0 0 14px;display:flex;align-items:center;gap:10px">Início <span style="font:700 10px ui-monospace,Menlo,monospace;color:#fff;background:#A15A2A;padding:3px 7px;border-radius:5px">ANTES</span><span style="color:#94A3B8">→</span><span style="font:700 10px ui-monospace,Menlo,monospace;color:#fff;background:#0F766E;padding:3px 7px;border-radius:5px">DEPOIS</span></div><div style="display:flex;gap:20px"><div style="flex:none">
+<div style="position:relative;width:392px;height:844px;background:#0b0c0e;border-radius:54px;padding:12px;box-shadow:0 44px 84px -34px rgba(15,23,42,.5),0 0 0 1.5px rgba(255,255,255,.06) inset">
+<div style="position:relative;width:100%;height:100%;border-radius:43px;overflow:hidden;display:flex;flex-direction:column;background:#F8FAFC;color:#0F172A;font-family:'Plus Jakarta Sans',sans-serif">
+<div style="flex:none;height:54px;padding:15px 32px 0;display:flex;align-items:center;justify-content:space-between"><span style="font-weight:800;font-size:15px;letter-spacing:.2px">9:41</span><div style="display:flex;align-items:center;gap:7px"><svg width="18" height="12"><use href="#ic-signal"/></svg><svg width="17" height="13"><use href="#ic-wifi"/></svg><svg width="26" height="13"><use href="#ic-batt"/></svg></div></div>
+<div style="flex:1;overflow:hidden;padding:8px 22px 0;display:flex;flex-direction:column">
+<div style="font:800 22px 'Plus Jakarta Sans';letter-spacing:-.4px;margin-bottom:16px">Olá 👋</div>
+<div style="background:#0F766E;border-radius:22px;border:1px solid #F1F5F9;padding:16px;box-shadow:0 12px 24px -14px rgba(15,23,42,.25);margin-bottom:16px">
+<div style="font:600 13px 'Plus Jakarta Sans';color:#F0FDFA">Economia em promoções</div>
+<div style="font:800 28px 'Plus Jakarta Sans';color:#fff;margin-top:4px">R$ 148,50</div>
+<div style="font:500 13px 'Plus Jakarta Sans';color:#F0FDFA;margin-top:4px">Em descontos de promoção nos seus 12 cupons.</div>
+</div>
+<div style="font:800 17px 'Plus Jakarta Sans';margin-bottom:8px">Últimas compras</div>
+<div style="background:#fff;border-radius:22px;border:1px solid #F1F5F9;box-shadow:0 12px 24px -16px rgba(15,23,42,.2);overflow:hidden">
+<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 16px;border-bottom:1px solid #EEF2F6"><div style="flex:1;min-width:0"><div style="font:600 15px 'Plus Jakarta Sans';white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Supermercado Guanabara</div><div style="font:500 13px 'Plus Jakarta Sans';color:#64748B;margin-top:2px">Hoje · 18 itens · economizou R$ 12,90</div></div><div style="font:700 15px 'Plus Jakarta Sans';white-space:nowrap">R$ 213,40</div></div>
+<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 16px;border-bottom:1px solid #EEF2F6"><div style="flex:1;min-width:0"><div style="font:600 15px 'Plus Jakarta Sans';white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Assaí Atacadista</div><div style="font:500 13px 'Plus Jakarta Sans';color:#64748B;margin-top:2px">Ontem · 32 itens · economizou R$ 40,00</div></div><div style="font:700 15px 'Plus Jakarta Sans';white-space:nowrap">R$ 486,10</div></div>
+<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 16px"><div style="flex:1;min-width:0"><div style="font:600 15px 'Plus Jakarta Sans';white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Pão de Açúcar</div><div style="font:500 13px 'Plus Jakarta Sans';color:#64748B;margin-top:2px">3 dez · 9 itens</div></div><div style="font:700 15px 'Plus Jakarta Sans';white-space:nowrap">R$ 97,30</div></div>
+</div>
+</div><div style="flex:none;position:relative;height:84px;border-top:1px solid #EEF2F6;background:#FFFFFF;padding:11px 24px 0;display:flex;align-items:flex-start;justify-content:space-between">
+<div style="width:52px;display:flex;flex-direction:column;align-items:center;gap:4px;color:#0F766E"><svg width="24" height="24"><use href="#ic-home"/></svg><span style="font:700 10.5px 'Plus Jakarta Sans'">Início</span></div>
+<div style="width:52px;display:flex;flex-direction:column;align-items:center;gap:4px;color:#94A3B8"><svg width="24" height="24"><use href="#ic-check"/></svg><span style="font:700 10.5px 'Plus Jakarta Sans'">Verificar</span></div>
+<div style="width:52px"></div>
+<div style="width:52px;display:flex;flex-direction:column;align-items:center;gap:4px;color:#94A3B8"><svg width="24" height="24"><use href="#ic-list"/></svg><span style="font:700 10.5px 'Plus Jakarta Sans'">Produtos</span></div>
+<div style="width:52px;display:flex;flex-direction:column;align-items:center;gap:4px;color:#94A3B8"><svg width="24" height="24"><use href="#ic-user"/></svg><span style="font:700 10.5px 'Plus Jakarta Sans'">Perfil</span></div>
+<div style="position:absolute;top:-22px;left:50%;transform:translateX(-50%);width:60px;height:60px;border-radius:22px;background:#0F766E;display:flex;align-items:center;justify-content:center;color:#fff;border:4px solid #F8FAFC;box-shadow:0 12px 20px -8px rgba(15,118,110,.55)"><svg width="27" height="27"><use href="#ic-scan"/></svg></div>
+<div style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:130px;height:5px;border-radius:3px;background:rgba(11,18,32,.2)"></div>
+</div>
+</div>
+<div style="position:absolute;top:22px;left:50%;transform:translateX(-50%);width:110px;height:32px;background:#000;border-radius:20px;z-index:30"></div>
+</div>
+<div class="ph-cap" style="color:#A15A2A;font-weight:700">Antes · hoje</div>
+</div><div style="flex:none">
+<div style="position:relative;width:392px;height:844px;background:#0b0c0e;border-radius:54px;padding:12px;box-shadow:0 44px 84px -34px rgba(15,23,42,.5),0 0 0 1.5px rgba(255,255,255,.06) inset">
+<div style="position:relative;width:100%;height:100%;border-radius:43px;overflow:hidden;display:flex;flex-direction:column;background:#FBF5EC;color:#0E1B24;font-family:'Plus Jakarta Sans',sans-serif">
+<div style="flex:none;height:54px;padding:15px 32px 0;display:flex;align-items:center;justify-content:space-between"><span style="font-weight:800;font-size:15px;letter-spacing:.2px">9:41</span><div style="display:flex;align-items:center;gap:7px"><svg width="18" height="12"><use href="#ic-signal"/></svg><svg width="17" height="13"><use href="#ic-wifi"/></svg><svg width="26" height="13"><use href="#ic-batt"/></svg></div></div>
+<div style="flex:1;overflow:hidden;padding:6px 20px 0;display:flex;flex-direction:column">
+<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 2px 18px">
+<div><div style="font:700 11px 'Plus Jakarta Sans';letter-spacing:1.3px;text-transform:uppercase;color:#93A4AE">Sexta · Rio de Janeiro</div><div style="font:800 25px/1.05 'Plus Jakarta Sans';letter-spacing:-.6px;margin-top:6px">Olá, Marina 👋</div></div>
+<div style="width:46px;height:46px;border-radius:15px;background:#D3F3EC;display:flex;align-items:center;justify-content:center;font:800 18px 'Plus Jakarta Sans';color:#0F766E">M</div>
+</div>
+<div style="position:relative;overflow:hidden;border-radius:26px;padding:22px 22px 20px;background:linear-gradient(150deg,#12857C,#0B5F58);box-shadow:0 20px 36px -18px rgba(11,95,88,.75)">
+<div style="position:absolute;top:-44px;right:-34px;width:160px;height:160px;border-radius:50%;background:radial-gradient(circle,rgba(94,234,212,.4),transparent 70%)"></div>
+<svg viewBox="0 0 130 36" style="position:absolute;right:20px;bottom:18px;width:130px;height:36px;opacity:.55"><polyline points="0,30 18,23 34,26 52,15 70,19 88,9 106,13 130,4" fill="none" stroke="#5EEAD4" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+<div style="position:relative;display:flex;align-items:center;justify-content:space-between"><span style="font:700 12.5px 'Plus Jakarta Sans';color:#9DEBDD">Economia em promoções</span><span style="font:700 11px 'Plus Jakarta Sans';color:#CFF7F0;background:rgba(255,255,255,.15);padding:5px 11px;border-radius:99px">Este mês</span></div>
+<div style="position:relative;font:800 41px/1 'Plus Jakarta Sans';letter-spacing:-1.2px;color:#fff;margin-top:13px">R$ 148,50</div>
+<div style="position:relative;display:flex;align-items:center;gap:9px;margin-top:14px"><span style="display:inline-flex;align-items:center;gap:4px;font:700 12px 'Plus Jakarta Sans';color:#052e2b;background:#5EEAD4;padding:4px 10px;border-radius:99px"><svg width="12" height="12" style="color:#052e2b"><use href="#ic-down"/></svg>R$ 32</span><span style="font:500 12px 'Plus Jakarta Sans';color:#BFF3EA">a mais que mês passado · 12 cupons</span></div>
+</div>
+<div style="display:flex;gap:12px;margin-top:15px">
+<div style="flex:1;background:#FFFCF6;border:1px solid rgba(15,23,42,.05);border-radius:18px;padding:14px 15px;box-shadow:0 10px 24px -18px rgba(13,60,55,.4)"><div style="font:800 21px 'Plus Jakarta Sans'">23</div><div style="font:600 11.5px 'Plus Jakarta Sans';color:#54636e;margin-top:1px">produtos monitorados</div></div>
+<div style="flex:1;background:#FFFCF6;border:1px solid rgba(15,23,42,.05);border-radius:18px;padding:14px 15px;box-shadow:0 10px 24px -18px rgba(13,60,55,.4)"><div style="font:800 21px 'Plus Jakarta Sans'">6</div><div style="font:600 11.5px 'Plus Jakarta Sans';color:#54636e;margin-top:1px">mercados favoritos</div></div>
+</div>
+<div style="display:flex;align-items:center;justify-content:space-between;margin:22px 2px 12px"><span style="font:800 17px 'Plus Jakarta Sans';letter-spacing:-.3px">Últimas compras</span><span style="font:700 12.5px 'Plus Jakarta Sans';color:#0F766E">Ver tudo</span></div>
+<div style="background:#FFFCF6;border:1px solid rgba(15,23,42,.05);border-radius:22px;box-shadow:0 14px 30px -20px rgba(13,60,55,.45);overflow:hidden">
+<div style="display:flex;align-items:center;gap:13px;padding:14px 16px;border-bottom:1px solid #F1F5F4"><div style="width:42px;height:42px;border-radius:13px;background:#ECFBF7;display:flex;align-items:center;justify-content:center;color:#0F766E"><svg width="21" height="21"><use href="#ic-store"/></svg></div><div style="flex:1;min-width:0"><div style="font:700 14px 'Plus Jakarta Sans';white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Supermercado Guanabara</div><div style="font:500 12px 'Plus Jakarta Sans';color:#93A4AE;margin-top:2px">Hoje · 18 itens</div></div><div style="text-align:right;flex:none;white-space:nowrap"><div style="font:800 14px 'Plus Jakarta Sans'">R$ 213,40</div><div style="font:700 11px 'Plus Jakarta Sans';color:#12A150;margin-top:2px">−R$ 12,90</div></div></div>
+<div style="display:flex;align-items:center;gap:13px;padding:14px 16px;border-bottom:1px solid #F1F5F4"><div style="width:42px;height:42px;border-radius:13px;background:#ECFBF7;display:flex;align-items:center;justify-content:center;color:#0F766E"><svg width="21" height="21"><use href="#ic-store"/></svg></div><div style="flex:1;min-width:0"><div style="font:700 14px 'Plus Jakarta Sans';white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Assaí Atacadista</div><div style="font:500 12px 'Plus Jakarta Sans';color:#93A4AE;margin-top:2px">Ontem · 32 itens</div></div><div style="text-align:right;flex:none;white-space:nowrap"><div style="font:800 14px 'Plus Jakarta Sans'">R$ 486,10</div><div style="font:700 11px 'Plus Jakarta Sans';color:#12A150;margin-top:2px">−R$ 40,00</div></div></div>
+<div style="display:flex;align-items:center;gap:13px;padding:14px 16px"><div style="width:42px;height:42px;border-radius:13px;background:#ECFBF7;display:flex;align-items:center;justify-content:center;color:#0F766E"><svg width="21" height="21"><use href="#ic-store"/></svg></div><div style="flex:1;min-width:0"><div style="font:700 14px 'Plus Jakarta Sans';white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Pão de Açúcar</div><div style="font:500 12px 'Plus Jakarta Sans';color:#93A4AE;margin-top:2px">3 dez · 9 itens</div></div><div style="text-align:right;flex:none;white-space:nowrap"><div style="font:800 14px 'Plus Jakarta Sans'">R$ 97,30</div></div></div>
+</div>
+</div>
+<div style="flex:none;position:relative;height:84px;border-top:1px solid #EAF0EF;background:#FFFCF6;padding:11px 24px 0;display:flex;align-items:flex-start;justify-content:space-between">
+<div style="width:52px;display:flex;flex-direction:column;align-items:center;gap:4px;color:#0F766E"><svg width="24" height="24"><use href="#ic-home"/></svg><span style="font:700 10.5px 'Plus Jakarta Sans'">Início</span></div>
+<div style="width:52px;display:flex;flex-direction:column;align-items:center;gap:4px;color:#93A4AE"><svg width="24" height="24"><use href="#ic-check"/></svg><span style="font:700 10.5px 'Plus Jakarta Sans'">Verificar</span></div>
+<div style="width:52px"></div>
+<div style="width:52px;display:flex;flex-direction:column;align-items:center;gap:4px;color:#93A4AE"><svg width="24" height="24"><use href="#ic-list"/></svg><span style="font:700 10.5px 'Plus Jakarta Sans'">Produtos</span></div>
+<div style="width:52px;display:flex;flex-direction:column;align-items:center;gap:4px;color:#93A4AE"><svg width="24" height="24"><use href="#ic-user"/></svg><span style="font:700 10.5px 'Plus Jakarta Sans'">Perfil</span></div>
+<div style="position:absolute;top:-22px;left:50%;transform:translateX(-50%);width:60px;height:60px;border-radius:20px;background:#0F766E;display:flex;align-items:center;justify-content:center;color:#fff;border:4px solid #FFFCF6;box-shadow:0 14px 22px -8px rgba(15,118,110,.75)"><svg width="27" height="27"><use href="#ic-scan"/></svg></div>
+<div style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:130px;height:5px;border-radius:3px;background:rgba(11,18,32,.22)"></div>
+</div>
+</div>
+<div style="position:absolute;top:22px;left:50%;transform:translateX(-50%);width:110px;height:32px;background:#000;border-radius:20px;z-index:30"></div>
+</div>
+<div class="ph-cap" style="color:#0F766E;font-weight:700">Depois · 2a</div>
+</div></div></div>
+<div><div style="font:800 15px 'Plus Jakarta Sans';color:#0E1B24;margin:0 0 14px;display:flex;align-items:center;gap:10px">Verificar · veredito <span style="font:700 10px ui-monospace,Menlo,monospace;color:#fff;background:#A15A2A;padding:3px 7px;border-radius:5px">ANTES</span><span style="color:#94A3B8">→</span><span style="font:700 10px ui-monospace,Menlo,monospace;color:#fff;background:#0F766E;padding:3px 7px;border-radius:5px">DEPOIS</span></div><div style="display:flex;gap:20px"><div style="flex:none">
+<div style="position:relative;width:392px;height:844px;background:#0b0c0e;border-radius:54px;padding:12px;box-shadow:0 44px 84px -34px rgba(15,23,42,.5),0 0 0 1.5px rgba(255,255,255,.06) inset">
+<div style="position:relative;width:100%;height:100%;border-radius:43px;overflow:hidden;display:flex;flex-direction:column;background:#F8FAFC;color:#0F172A;font-family:'Plus Jakarta Sans',sans-serif">
+<div style="flex:none;height:54px;padding:15px 32px 0;display:flex;align-items:center;justify-content:space-between"><span style="font-weight:800;font-size:15px;letter-spacing:.2px">9:41</span><div style="display:flex;align-items:center;gap:7px"><svg width="18" height="12"><use href="#ic-signal"/></svg><svg width="17" height="13"><use href="#ic-wifi"/></svg><svg width="26" height="13"><use href="#ic-batt"/></svg></div></div>
+<div style="flex:1;overflow:hidden;padding:8px 22px 0;display:flex;flex-direction:column">
+<div style="font:800 22px 'Plus Jakarta Sans';letter-spacing:-.4px;margin-bottom:16px">Verificar preço</div>
+<div style="display:flex;align-items:center;gap:12px;background:#fff;border-radius:22px;border:1px solid #F1F5F9;box-shadow:0 12px 24px -16px rgba(15,23,42,.2);padding:16px;margin-bottom:16px"><div style="flex:1;min-width:0"><div style="font:700 15px 'Plus Jakarta Sans'">Leite Integral Piracanjuba</div><div style="font:500 13px 'Plus Jakarta Sans';color:#94A3B8;margin-top:2px">Você viu na prateleira</div></div><div style="font:800 20px 'Plus Jakarta Sans';white-space:nowrap">R$ 5,19</div></div>
+<div style="display:flex;flex-direction:column;align-items:center;margin-bottom:16px">
+<div style="display:inline-flex;align-items:center;gap:7px;background:#DCFCE7;padding:7px 14px;border-radius:99px"><span style="width:8px;height:8px;border-radius:50%;background:#16A34A"></span><span style="font:700 13px 'Plus Jakarta Sans';color:#16A34A">Barato</span></div>
+<div style="font:500 13px 'Plus Jakarta Sans';color:#64748B;margin-top:8px;text-align:center">comparado ao típico da sua região</div>
+</div>
+<div style="background:#fff;border-radius:22px;border:1px solid #F1F5F9;box-shadow:0 12px 24px -16px rgba(15,23,42,.2);overflow:hidden">
+<div style="padding:12px 16px;border-bottom:1px solid #EEF2F6">
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px"><span style="font:700 13px 'Plus Jakarta Sans';color:#64748B">Sua região</span><span style="display:inline-flex;align-items:center;gap:6px;background:#DCFCE7;padding:4px 10px;border-radius:99px"><span style="width:7px;height:7px;border-radius:50%;background:#16A34A"></span><span style="font:700 12px 'Plus Jakarta Sans';color:#16A34A">Barato</span></span></div>
+<div style="display:flex;align-items:center;justify-content:space-between;padding:3px 0"><span style="font:500 15px 'Plus Jakarta Sans';color:#475569">Típico</span><span style="font:800 15px 'Plus Jakarta Sans';white-space:nowrap">R$ 5,90/L</span></div>
+<div style="display:flex;align-items:center;justify-content:space-between;padding:3px 0"><span style="font:500 13px 'Plus Jakarta Sans';color:#475569">Faixa normal</span><span style="font:600 13px 'Plus Jakarta Sans';color:#64748B;white-space:nowrap">R$ 5,40 – 6,40/L</span></div>
+<div style="font:500 11px 'Plus Jakarta Sans';color:#94A3B8;margin-top:4px">214 observações</div>
+</div>
+<div style="padding:12px 16px;border-bottom:1px solid #EEF2F6">
+<div style="margin-bottom:8px"><span style="font:700 13px 'Plus Jakarta Sans';color:#64748B">Seu histórico</span></div>
+<div style="display:flex;align-items:center;justify-content:space-between;padding:3px 0"><span style="font:500 15px 'Plus Jakarta Sans';color:#475569">Típico</span><span style="font:800 15px 'Plus Jakarta Sans';white-space:nowrap">R$ 5,30/L</span></div>
+<div style="font:500 11px 'Plus Jakarta Sans';color:#94A3B8;margin-top:4px">menor já pago R$ 5,20/L · 8 compras</div>
+</div>
+<div style="display:flex;align-items:center;gap:8px;padding:12px 16px;background:#FEF3C7"><span style="width:8px;height:8px;border-radius:50%;background:#F59E0B"></span><span style="flex:1;font:600 13px 'Plus Jakarta Sans';color:#F59E0B">Menor visto (promoção)</span><span style="font:800 14px 'Plus Jakarta Sans';color:#F59E0B;white-space:nowrap">R$ 4,79/L</span></div>
+</div>
+<div style="font:500 11px 'Plus Jakarta Sans';color:#94A3B8;text-align:center;margin-top:12px">Última atualização: 07/07/2026</div>
+<div style="display:flex;gap:12px;margin-top:16px"><div style="flex:1;height:54px;border-radius:16px;background:#F0FDFA;border:1.5px solid #99F6E4;display:flex;align-items:center;justify-content:center;font:700 15px 'Plus Jakarta Sans';color:#0F766E">Ver histórico</div><div style="flex:1;height:54px;border-radius:16px;background:#0F766E;display:flex;align-items:center;justify-content:center;font:700 15px 'Plus Jakarta Sans';color:#fff">Verificar outro</div></div>
+</div><div style="flex:none;position:relative;height:84px;border-top:1px solid #EEF2F6;background:#FFFFFF;padding:11px 24px 0;display:flex;align-items:flex-start;justify-content:space-between">
+<div style="width:52px;display:flex;flex-direction:column;align-items:center;gap:4px;color:#94A3B8"><svg width="24" height="24"><use href="#ic-home"/></svg><span style="font:700 10.5px 'Plus Jakarta Sans'">Início</span></div>
+<div style="width:52px;display:flex;flex-direction:column;align-items:center;gap:4px;color:#0F766E"><svg width="24" height="24"><use href="#ic-check"/></svg><span style="font:700 10.5px 'Plus Jakarta Sans'">Verificar</span></div>
+<div style="width:52px"></div>
+<div style="width:52px;display:flex;flex-direction:column;align-items:center;gap:4px;color:#94A3B8"><svg width="24" height="24"><use href="#ic-list"/></svg><span style="font:700 10.5px 'Plus Jakarta Sans'">Produtos</span></div>
+<div style="width:52px;display:flex;flex-direction:column;align-items:center;gap:4px;color:#94A3B8"><svg width="24" height="24"><use href="#ic-user"/></svg><span style="font:700 10.5px 'Plus Jakarta Sans'">Perfil</span></div>
+<div style="position:absolute;top:-22px;left:50%;transform:translateX(-50%);width:60px;height:60px;border-radius:22px;background:#0F766E;display:flex;align-items:center;justify-content:center;color:#fff;border:4px solid #F8FAFC;box-shadow:0 12px 20px -8px rgba(15,118,110,.55)"><svg width="27" height="27"><use href="#ic-scan"/></svg></div>
+<div style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:130px;height:5px;border-radius:3px;background:rgba(11,18,32,.2)"></div>
+</div>
+</div>
+<div style="position:absolute;top:22px;left:50%;transform:translateX(-50%);width:110px;height:32px;background:#000;border-radius:20px;z-index:30"></div>
+</div>
+<div class="ph-cap" style="color:#A15A2A;font-weight:700">Antes · hoje</div>
+</div><div style="flex:none">
+<div style="position:relative;width:392px;height:844px;background:#0b0c0e;border-radius:54px;padding:12px;box-shadow:0 44px 84px -34px rgba(15,23,42,.5),0 0 0 1.5px rgba(255,255,255,.06) inset">
+<div style="position:relative;width:100%;height:100%;border-radius:43px;overflow:hidden;display:flex;flex-direction:column;background:#FBF5EC;color:#0E1B24;font-family:'Plus Jakarta Sans',sans-serif">
+<div style="flex:none;height:54px;padding:15px 32px 0;display:flex;align-items:center;justify-content:space-between"><span style="font-weight:800;font-size:15px;letter-spacing:.2px">9:41</span><div style="display:flex;align-items:center;gap:7px"><svg width="18" height="12"><use href="#ic-signal"/></svg><svg width="17" height="13"><use href="#ic-wifi"/></svg><svg width="26" height="13"><use href="#ic-batt"/></svg></div></div>
+<div style="flex:1;overflow:hidden;padding:6px 20px 0;display:flex;flex-direction:column">
+<div style="display:flex;align-items:center;gap:12px;padding:8px 0 16px"><div style="width:40px;height:40px;border-radius:13px;background:#FFFCF6;border:1px solid rgba(15,23,42,.07);display:flex;align-items:center;justify-content:center;color:#0E1B24"><svg width="20" height="20"><use href="#ic-back"/></svg></div><span style="font:800 19px 'Plus Jakarta Sans';letter-spacing:-.3px">Verificar preço</span></div>
+<div style="display:flex;align-items:center;gap:14px;background:#FFFCF6;border:1px solid rgba(15,23,42,.05);border-radius:20px;padding:14px 16px;box-shadow:0 12px 26px -20px rgba(13,60,55,.45)"><div style="width:48px;height:48px;border-radius:14px;background:#ECFBF7;display:flex;align-items:center;justify-content:center;font:800 18px 'Plus Jakarta Sans';color:#0F766E">L</div><div style="flex:1;min-width:0"><div style="font:800 15px 'Plus Jakarta Sans'">Leite Integral Piracanjuba</div><div style="font:500 12px 'Plus Jakarta Sans';color:#93A4AE;margin-top:2px">1 L · você viu na prateleira</div></div><div style="font:800 22px 'Plus Jakarta Sans';letter-spacing:-.5px">R$ 5,19</div></div>
+<div style="margin-top:15px;border-radius:24px;padding:22px 20px;background:linear-gradient(160deg,#EAFBF1,#D7F4E1);border:1px solid #BBEAC9">
+<div style="display:flex;flex-direction:column;align-items:center"><div style="display:inline-flex;align-items:center;gap:8px;background:#12A150;padding:9px 20px;border-radius:99px;box-shadow:0 10px 20px -6px rgba(18,161,80,.6)"><span style="width:8px;height:8px;border-radius:50%;background:#FFFCF6"></span><span style="font:800 16px 'Plus Jakarta Sans';color:#fff;letter-spacing:.2px">Barato</span></div><div style="font:600 13px 'Plus Jakarta Sans';color:#15803D;margin-top:12px;text-align:center">12% abaixo do preço típico da sua região</div></div>
+<div style="position:relative;margin-top:24px;padding-top:32px">
+<div style="position:absolute;top:0;left:23%;transform:translateX(-50%);background:#0E1B24;color:#fff;font:800 12px 'Plus Jakarta Sans';padding:5px 9px;border-radius:8px;white-space:nowrap">R$ 5,19<span style="position:absolute;left:50%;bottom:-3px;transform:translateX(-50%) rotate(45deg);width:8px;height:8px;background:#0E1B24;border-radius:1px"></span></div>
+<div style="position:relative;height:10px;border-radius:99px;background:linear-gradient(90deg,#22C55E,#0F766E 48%,#EF4444)"><div style="position:absolute;left:23%;top:50%;transform:translate(-50%,-50%);width:19px;height:19px;border-radius:50%;background:#FFFCF6;border:4px solid #12A150;box-shadow:0 3px 9px rgba(18,161,80,.55)"></div></div>
+<div style="display:flex;justify-content:space-between;margin-top:10px;font:600 10.5px 'Plus Jakarta Sans';color:#8A9AA3"><span>Menor R$4,50</span><span>Típico R$5,90</span><span>Maior R$7,50</span></div>
+</div>
+</div>
+<div style="margin-top:14px;background:#FFFCF6;border:1px solid rgba(15,23,42,.05);border-radius:20px;overflow:hidden;box-shadow:0 12px 26px -20px rgba(13,60,55,.4)">
+<div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid #F1F5F4"><div><div style="font:700 13px 'Plus Jakarta Sans'">Sua região</div><div style="font:500 11.5px 'Plus Jakarta Sans';color:#93A4AE;margin-top:2px">faixa normal R$5,40–6,40 · 214 obs.</div></div><div style="text-align:right;flex:none;white-space:nowrap"><div style="font:800 15px 'Plus Jakarta Sans'">R$ 5,90<span style="font:600 11px 'Plus Jakarta Sans';color:#93A4AE">/L</span></div><div style="font:600 11px 'Plus Jakarta Sans';color:#54636e">típico</div></div></div>
+<div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid #F1F5F4"><div><div style="font:700 13px 'Plus Jakarta Sans'">Seu histórico</div><div style="font:500 11.5px 'Plus Jakarta Sans';color:#93A4AE;margin-top:2px">8 compras registradas</div></div><div style="text-align:right;flex:none;white-space:nowrap"><div style="font:800 15px 'Plus Jakarta Sans'">R$ 5,20<span style="font:600 11px 'Plus Jakarta Sans';color:#93A4AE">/L</span></div><div style="font:600 11px 'Plus Jakarta Sans';color:#54636e">menor já pago</div></div></div>
+<div style="display:flex;align-items:center;gap:11px;padding:13px 16px;background:#FCEFD3"><span style="width:9px;height:9px;border-radius:50%;background:#E8930C"></span><span style="flex:1;font:700 12.5px 'Plus Jakarta Sans';color:#B26A05">Menor visto (promoção)</span><span style="flex:none;white-space:nowrap;font:800 14px 'Plus Jakarta Sans';color:#B26A05">R$ 4,79<span style="font:600 11px 'Plus Jakarta Sans'">/L</span></span></div>
+</div>
+<div style="font:500 11px 'Plus Jakarta Sans';color:#93A4AE;text-align:center;margin-top:13px">Atualizado hoje · comparado por litro</div>
+<div style="display:flex;gap:11px;margin-top:14px"><div style="flex:1;height:50px;border-radius:15px;background:#ECFBF7;border:1.5px solid #B7E9E0;display:flex;align-items:center;justify-content:center;font:800 14px 'Plus Jakarta Sans';color:#0F766E">Ver histórico</div><div style="flex:1;height:50px;border-radius:15px;background:#0F766E;display:flex;align-items:center;justify-content:center;font:800 14px 'Plus Jakarta Sans';color:#fff;box-shadow:0 14px 22px -10px rgba(15,118,110,.7)">Verificar outro</div></div>
+</div>
+<div style="flex:none;position:relative;height:84px;border-top:1px solid #EAF0EF;background:#FFFCF6;padding:11px 24px 0;display:flex;align-items:flex-start;justify-content:space-between">
+<div style="width:52px;display:flex;flex-direction:column;align-items:center;gap:4px;color:#93A4AE"><svg width="24" height="24"><use href="#ic-home"/></svg><span style="font:700 10.5px 'Plus Jakarta Sans'">Início</span></div>
+<div style="width:52px;display:flex;flex-direction:column;align-items:center;gap:4px;color:#0F766E"><svg width="24" height="24"><use href="#ic-check"/></svg><span style="font:700 10.5px 'Plus Jakarta Sans'">Verificar</span></div>
+<div style="width:52px"></div>
+<div style="width:52px;display:flex;flex-direction:column;align-items:center;gap:4px;color:#93A4AE"><svg width="24" height="24"><use href="#ic-list"/></svg><span style="font:700 10.5px 'Plus Jakarta Sans'">Produtos</span></div>
+<div style="width:52px;display:flex;flex-direction:column;align-items:center;gap:4px;color:#93A4AE"><svg width="24" height="24"><use href="#ic-user"/></svg><span style="font:700 10.5px 'Plus Jakarta Sans'">Perfil</span></div>
+<div style="position:absolute;top:-22px;left:50%;transform:translateX(-50%);width:60px;height:60px;border-radius:20px;background:#0F766E;display:flex;align-items:center;justify-content:center;color:#fff;border:4px solid #FFFCF6;box-shadow:0 14px 22px -8px rgba(15,118,110,.75)"><svg width="27" height="27"><use href="#ic-scan"/></svg></div>
+<div style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:130px;height:5px;border-radius:3px;background:rgba(11,18,32,.22)"></div>
+</div>
+</div>
+<div style="position:absolute;top:22px;left:50%;transform:translateX(-50%);width:110px;height:32px;background:#000;border-radius:20px;z-index:30"></div>
+</div>
+<div class="ph-cap" style="color:#0F766E;font-weight:700">Depois · 2a</div>
+</div></div></div>
+</div>
+</div>
+</div>
+<p class="dv-next">Tente: "faça o app inteiro em <a class="dv-oid" href="#2a">2a</a>" · "mostre antes→depois de Produtos e Perfil" · "quero o antes→depois do <a class="dv-oid" href="#1c">1c</a>"</p>
+</section>
+
+<section class="dv-turn" id="t2">
+<div class="dv-thd"><a class="dv-tid" href="#t2">2</a><span class="dv-tname">Riff em 1a · fundo creme</span></div>
+<p class="dv-tsub">O <a class="dv-oid" href="#1a">1a</a> (Teal Refinado) com o fundo creme do <a class="dv-oid" href="#1b">1b</a> — mesma estrutura limpa e refinada, agora com os cartões num tom creme suave para um clima mais quente e acolhedor. Compare com o <a class="dv-oid" href="#1a">1a</a> original (cinza + branco) na faixa de baixo.</p>
+<div class="dv-opts">
+<div class="dv-opt" id="2a">
+<div style="display:flex;flex-direction:column;gap:8px;max-width:816px">
+<div style="display:flex;align-items:center;gap:10px"><a class="dv-oid" href="#2a">2a</a><b style="font:800 17px 'Plus Jakarta Sans';color:#0E1B24">Teal Refinado · fundo creme</b><div style="display:flex;gap:6px;margin-left:4px"><span class="pdot" style="background:#FBF5EC"></span><span class="pdot" style="background:#0F766E"></span><span class="pdot" style="background:#5EEAD4"></span><span class="pdot" style="background:#12A150"></span><span class="pdot" style="background:#E8930C"></span></div></div>
+<span style="font:500 13px/1.5 'Plus Jakarta Sans';color:#54636e">Fundo e cartões em tons de creme quente, sobre a base refinada do 1a.</span>
+</div>
+<div style="display:flex;gap:24px">
+
+<!-- 2a · INÍCIO -->
+<div style="flex:none">
+<div style="position:relative;width:392px;height:844px;background:#0b0c0e;border-radius:54px;padding:12px;box-shadow:0 44px 84px -34px rgba(15,23,42,.5),0 0 0 1.5px rgba(255,255,255,.06) inset">
+<div style="position:relative;width:100%;height:100%;border-radius:43px;overflow:hidden;display:flex;flex-direction:column;background:#FBF5EC;color:#0E1B24;font-family:'Plus Jakarta Sans',sans-serif">
+<div style="flex:none;height:54px;padding:15px 32px 0;display:flex;align-items:center;justify-content:space-between"><span style="font-weight:800;font-size:15px;letter-spacing:.2px">9:41</span><div style="display:flex;align-items:center;gap:7px"><svg width="18" height="12"><use href="#ic-signal"/></svg><svg width="17" height="13"><use href="#ic-wifi"/></svg><svg width="26" height="13"><use href="#ic-batt"/></svg></div></div>
+<div style="flex:1;overflow:hidden;padding:6px 20px 0;display:flex;flex-direction:column">
+<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 2px 18px">
+<div><div style="font:700 11px 'Plus Jakarta Sans';letter-spacing:1.3px;text-transform:uppercase;color:#93A4AE">Sexta · Rio de Janeiro</div><div style="font:800 25px/1.05 'Plus Jakarta Sans';letter-spacing:-.6px;margin-top:6px">Olá, Marina 👋</div></div>
+<div style="width:46px;height:46px;border-radius:15px;background:#D3F3EC;display:flex;align-items:center;justify-content:center;font:800 18px 'Plus Jakarta Sans';color:#0F766E">M</div>
+</div>
+<div style="position:relative;overflow:hidden;border-radius:26px;padding:22px 22px 20px;background:linear-gradient(150deg,#12857C,#0B5F58);box-shadow:0 20px 36px -18px rgba(11,95,88,.75)">
+<div style="position:absolute;top:-44px;right:-34px;width:160px;height:160px;border-radius:50%;background:radial-gradient(circle,rgba(94,234,212,.4),transparent 70%)"></div>
+<svg viewBox="0 0 130 36" style="position:absolute;right:20px;bottom:18px;width:130px;height:36px;opacity:.55"><polyline points="0,30 18,23 34,26 52,15 70,19 88,9 106,13 130,4" fill="none" stroke="#5EEAD4" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+<div style="position:relative;display:flex;align-items:center;justify-content:space-between"><span style="font:700 12.5px 'Plus Jakarta Sans';color:#9DEBDD">Economia em promoções</span><span style="font:700 11px 'Plus Jakarta Sans';color:#CFF7F0;background:rgba(255,255,255,.15);padding:5px 11px;border-radius:99px">Este mês</span></div>
+<div style="position:relative;font:800 41px/1 'Plus Jakarta Sans';letter-spacing:-1.2px;color:#fff;margin-top:13px">R$ 148,50</div>
+<div style="position:relative;display:flex;align-items:center;gap:9px;margin-top:14px"><span style="display:inline-flex;align-items:center;gap:4px;font:700 12px 'Plus Jakarta Sans';color:#052e2b;background:#5EEAD4;padding:4px 10px;border-radius:99px"><svg width="12" height="12" style="color:#052e2b"><use href="#ic-down"/></svg>R$ 32</span><span style="font:500 12px 'Plus Jakarta Sans';color:#BFF3EA">a mais que mês passado · 12 cupons</span></div>
+</div>
+<div style="display:flex;gap:12px;margin-top:15px">
+<div style="flex:1;background:#FFFCF6;border:1px solid rgba(15,23,42,.05);border-radius:18px;padding:14px 15px;box-shadow:0 10px 24px -18px rgba(13,60,55,.4)"><div style="font:800 21px 'Plus Jakarta Sans'">23</div><div style="font:600 11.5px 'Plus Jakarta Sans';color:#54636e;margin-top:1px">produtos monitorados</div></div>
+<div style="flex:1;background:#FFFCF6;border:1px solid rgba(15,23,42,.05);border-radius:18px;padding:14px 15px;box-shadow:0 10px 24px -18px rgba(13,60,55,.4)"><div style="font:800 21px 'Plus Jakarta Sans'">6</div><div style="font:600 11.5px 'Plus Jakarta Sans';color:#54636e;margin-top:1px">mercados favoritos</div></div>
+</div>
+<div style="display:flex;align-items:center;justify-content:space-between;margin:22px 2px 12px"><span style="font:800 17px 'Plus Jakarta Sans';letter-spacing:-.3px">Últimas compras</span><span style="font:700 12.5px 'Plus Jakarta Sans';color:#0F766E">Ver tudo</span></div>
+<div style="background:#FFFCF6;border:1px solid rgba(15,23,42,.05);border-radius:22px;box-shadow:0 14px 30px -20px rgba(13,60,55,.45);overflow:hidden">
+<div style="display:flex;align-items:center;gap:13px;padding:14px 16px;border-bottom:1px solid #F1F5F4"><div style="width:42px;height:42px;border-radius:13px;background:#ECFBF7;display:flex;align-items:center;justify-content:center;color:#0F766E"><svg width="21" height="21"><use href="#ic-store"/></svg></div><div style="flex:1;min-width:0"><div style="font:700 14px 'Plus Jakarta Sans';white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Supermercado Guanabara</div><div style="font:500 12px 'Plus Jakarta Sans';color:#93A4AE;margin-top:2px">Hoje · 18 itens</div></div><div style="text-align:right;flex:none;white-space:nowrap"><div style="font:800 14px 'Plus Jakarta Sans'">R$ 213,40</div><div style="font:700 11px 'Plus Jakarta Sans';color:#12A150;margin-top:2px">−R$ 12,90</div></div></div>
+<div style="display:flex;align-items:center;gap:13px;padding:14px 16px;border-bottom:1px solid #F1F5F4"><div style="width:42px;height:42px;border-radius:13px;background:#ECFBF7;display:flex;align-items:center;justify-content:center;color:#0F766E"><svg width="21" height="21"><use href="#ic-store"/></svg></div><div style="flex:1;min-width:0"><div style="font:700 14px 'Plus Jakarta Sans';white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Assaí Atacadista</div><div style="font:500 12px 'Plus Jakarta Sans';color:#93A4AE;margin-top:2px">Ontem · 32 itens</div></div><div style="text-align:right;flex:none;white-space:nowrap"><div style="font:800 14px 'Plus Jakarta Sans'">R$ 486,10</div><div style="font:700 11px 'Plus Jakarta Sans';color:#12A150;margin-top:2px">−R$ 40,00</div></div></div>
+<div style="display:flex;align-items:center;gap:13px;padding:14px 16px"><div style="width:42px;height:42px;border-radius:13px;background:#ECFBF7;display:flex;align-items:center;justify-content:center;color:#0F766E"><svg width="21" height="21"><use href="#ic-store"/></svg></div><div style="flex:1;min-width:0"><div style="font:700 14px 'Plus Jakarta Sans';white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Pão de Açúcar</div><div style="font:500 12px 'Plus Jakarta Sans';color:#93A4AE;margin-top:2px">3 dez · 9 itens</div></div><div style="text-align:right;flex:none;white-space:nowrap"><div style="font:800 14px 'Plus Jakarta Sans'">R$ 97,30</div></div></div>
+</div>
+</div>
+<div style="flex:none;position:relative;height:84px;border-top:1px solid #EAF0EF;background:#FFFCF6;padding:11px 24px 0;display:flex;align-items:flex-start;justify-content:space-between">
+<div style="width:52px;display:flex;flex-direction:column;align-items:center;gap:4px;color:#0F766E"><svg width="24" height="24"><use href="#ic-home"/></svg><span style="font:700 10.5px 'Plus Jakarta Sans'">Início</span></div>
+<div style="width:52px;display:flex;flex-direction:column;align-items:center;gap:4px;color:#93A4AE"><svg width="24" height="24"><use href="#ic-check"/></svg><span style="font:700 10.5px 'Plus Jakarta Sans'">Verificar</span></div>
+<div style="width:52px"></div>
+<div style="width:52px;display:flex;flex-direction:column;align-items:center;gap:4px;color:#93A4AE"><svg width="24" height="24"><use href="#ic-list"/></svg><span style="font:700 10.5px 'Plus Jakarta Sans'">Produtos</span></div>
+<div style="width:52px;display:flex;flex-direction:column;align-items:center;gap:4px;color:#93A4AE"><svg width="24" height="24"><use href="#ic-user"/></svg><span style="font:700 10.5px 'Plus Jakarta Sans'">Perfil</span></div>
+<div style="position:absolute;top:-22px;left:50%;transform:translateX(-50%);width:60px;height:60px;border-radius:20px;background:#0F766E;display:flex;align-items:center;justify-content:center;color:#fff;border:4px solid #FFFCF6;box-shadow:0 14px 22px -8px rgba(15,118,110,.75)"><svg width="27" height="27"><use href="#ic-scan"/></svg></div>
+<div style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:130px;height:5px;border-radius:3px;background:rgba(11,18,32,.22)"></div>
+</div>
+</div>
+<div style="position:absolute;top:22px;left:50%;transform:translateX(-50%);width:110px;height:32px;background:#000;border-radius:20px;z-index:30"></div>
+</div>
+<div class="ph-cap">Início</div>
+</div>
+
+<!-- 2a · VERIFICAR -->
+<div style="flex:none">
+<div style="position:relative;width:392px;height:844px;background:#0b0c0e;border-radius:54px;padding:12px;box-shadow:0 44px 84px -34px rgba(15,23,42,.5),0 0 0 1.5px rgba(255,255,255,.06) inset">
+<div style="position:relative;width:100%;height:100%;border-radius:43px;overflow:hidden;display:flex;flex-direction:column;background:#FBF5EC;color:#0E1B24;font-family:'Plus Jakarta Sans',sans-serif">
+<div style="flex:none;height:54px;padding:15px 32px 0;display:flex;align-items:center;justify-content:space-between"><span style="font-weight:800;font-size:15px;letter-spacing:.2px">9:41</span><div style="display:flex;align-items:center;gap:7px"><svg width="18" height="12"><use href="#ic-signal"/></svg><svg width="17" height="13"><use href="#ic-wifi"/></svg><svg width="26" height="13"><use href="#ic-batt"/></svg></div></div>
+<div style="flex:1;overflow:hidden;padding:6px 20px 0;display:flex;flex-direction:column">
+<div style="display:flex;align-items:center;gap:12px;padding:8px 0 16px"><div style="width:40px;height:40px;border-radius:13px;background:#FFFCF6;border:1px solid rgba(15,23,42,.07);display:flex;align-items:center;justify-content:center;color:#0E1B24"><svg width="20" height="20"><use href="#ic-back"/></svg></div><span style="font:800 19px 'Plus Jakarta Sans';letter-spacing:-.3px">Verificar preço</span></div>
+<div style="display:flex;align-items:center;gap:14px;background:#FFFCF6;border:1px solid rgba(15,23,42,.05);border-radius:20px;padding:14px 16px;box-shadow:0 12px 26px -20px rgba(13,60,55,.45)"><div style="width:48px;height:48px;border-radius:14px;background:#ECFBF7;display:flex;align-items:center;justify-content:center;font:800 18px 'Plus Jakarta Sans';color:#0F766E">L</div><div style="flex:1;min-width:0"><div style="font:800 15px 'Plus Jakarta Sans'">Leite Integral Piracanjuba</div><div style="font:500 12px 'Plus Jakarta Sans';color:#93A4AE;margin-top:2px">1 L · você viu na prateleira</div></div><div style="font:800 22px 'Plus Jakarta Sans';letter-spacing:-.5px">R$ 5,19</div></div>
+<div style="margin-top:15px;border-radius:24px;padding:22px 20px;background:linear-gradient(160deg,#EAFBF1,#D7F4E1);border:1px solid #BBEAC9">
+<div style="display:flex;flex-direction:column;align-items:center"><div style="display:inline-flex;align-items:center;gap:8px;background:#12A150;padding:9px 20px;border-radius:99px;box-shadow:0 10px 20px -6px rgba(18,161,80,.6)"><span style="width:8px;height:8px;border-radius:50%;background:#FFFCF6"></span><span style="font:800 16px 'Plus Jakarta Sans';color:#fff;letter-spacing:.2px">Barato</span></div><div style="font:600 13px 'Plus Jakarta Sans';color:#15803D;margin-top:12px;text-align:center">12% abaixo do preço típico da sua região</div></div>
+<div style="position:relative;margin-top:24px;padding-top:32px">
+<div style="position:absolute;top:0;left:23%;transform:translateX(-50%);background:#0E1B24;color:#fff;font:800 12px 'Plus Jakarta Sans';padding:5px 9px;border-radius:8px;white-space:nowrap">R$ 5,19<span style="position:absolute;left:50%;bottom:-3px;transform:translateX(-50%) rotate(45deg);width:8px;height:8px;background:#0E1B24;border-radius:1px"></span></div>
+<div style="position:relative;height:10px;border-radius:99px;background:linear-gradient(90deg,#22C55E,#0F766E 48%,#EF4444)"><div style="position:absolute;left:23%;top:50%;transform:translate(-50%,-50%);width:19px;height:19px;border-radius:50%;background:#FFFCF6;border:4px solid #12A150;box-shadow:0 3px 9px rgba(18,161,80,.55)"></div></div>
+<div style="display:flex;justify-content:space-between;margin-top:10px;font:600 10.5px 'Plus Jakarta Sans';color:#8A9AA3"><span>Menor R$4,50</span><span>Típico R$5,90</span><span>Maior R$7,50</span></div>
+</div>
+</div>
+<div style="margin-top:14px;background:#FFFCF6;border:1px solid rgba(15,23,42,.05);border-radius:20px;overflow:hidden;box-shadow:0 12px 26px -20px rgba(13,60,55,.4)">
+<div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid #F1F5F4"><div><div style="font:700 13px 'Plus Jakarta Sans'">Sua região</div><div style="font:500 11.5px 'Plus Jakarta Sans';color:#93A4AE;margin-top:2px">faixa normal R$5,40–6,40 · 214 obs.</div></div><div style="text-align:right;flex:none;white-space:nowrap"><div style="font:800 15px 'Plus Jakarta Sans'">R$ 5,90<span style="font:600 11px 'Plus Jakarta Sans';color:#93A4AE">/L</span></div><div style="font:600 11px 'Plus Jakarta Sans';color:#54636e">típico</div></div></div>
+<div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid #F1F5F4"><div><div style="font:700 13px 'Plus Jakarta Sans'">Seu histórico</div><div style="font:500 11.5px 'Plus Jakarta Sans';color:#93A4AE;margin-top:2px">8 compras registradas</div></div><div style="text-align:right;flex:none;white-space:nowrap"><div style="font:800 15px 'Plus Jakarta Sans'">R$ 5,20<span style="font:600 11px 'Plus Jakarta Sans';color:#93A4AE">/L</span></div><div style="font:600 11px 'Plus Jakarta Sans';color:#54636e">menor já pago</div></div></div>
+<div style="display:flex;align-items:center;gap:11px;padding:13px 16px;background:#FCEFD3"><span style="width:9px;height:9px;border-radius:50%;background:#E8930C"></span><span style="flex:1;font:700 12.5px 'Plus Jakarta Sans';color:#B26A05">Menor visto (promoção)</span><span style="flex:none;white-space:nowrap;font:800 14px 'Plus Jakarta Sans';color:#B26A05">R$ 4,79<span style="font:600 11px 'Plus Jakarta Sans'">/L</span></span></div>
+</div>
+<div style="font:500 11px 'Plus Jakarta Sans';color:#93A4AE;text-align:center;margin-top:13px">Atualizado hoje · comparado por litro</div>
+<div style="display:flex;gap:11px;margin-top:14px"><div style="flex:1;height:50px;border-radius:15px;background:#ECFBF7;border:1.5px solid #B7E9E0;display:flex;align-items:center;justify-content:center;font:800 14px 'Plus Jakarta Sans';color:#0F766E">Ver histórico</div><div style="flex:1;height:50px;border-radius:15px;background:#0F766E;display:flex;align-items:center;justify-content:center;font:800 14px 'Plus Jakarta Sans';color:#fff;box-shadow:0 14px 22px -10px rgba(15,118,110,.7)">Verificar outro</div></div>
+</div>
+<div style="flex:none;position:relative;height:84px;border-top:1px solid #EAF0EF;background:#FFFCF6;padding:11px 24px 0;display:flex;align-items:flex-start;justify-content:space-between">
+<div style="width:52px;display:flex;flex-direction:column;align-items:center;gap:4px;color:#93A4AE"><svg width="24" height="24"><use href="#ic-home"/></svg><span style="font:700 10.5px 'Plus Jakarta Sans'">Início</span></div>
+<div style="width:52px;display:flex;flex-direction:column;align-items:center;gap:4px;color:#0F766E"><svg width="24" height="24"><use href="#ic-check"/></svg><span style="font:700 10.5px 'Plus Jakarta Sans'">Verificar</span></div>
+<div style="width:52px"></div>
+<div style="width:52px;display:flex;flex-direction:column;align-items:center;gap:4px;color:#93A4AE"><svg width="24" height="24"><use href="#ic-list"/></svg><span style="font:700 10.5px 'Plus Jakarta Sans'">Produtos</span></div>
+<div style="width:52px;display:flex;flex-direction:column;align-items:center;gap:4px;color:#93A4AE"><svg width="24" height="24"><use href="#ic-user"/></svg><span style="font:700 10.5px 'Plus Jakarta Sans'">Perfil</span></div>
+<div style="position:absolute;top:-22px;left:50%;transform:translateX(-50%);width:60px;height:60px;border-radius:20px;background:#0F766E;display:flex;align-items:center;justify-content:center;color:#fff;border:4px solid #FFFCF6;box-shadow:0 14px 22px -8px rgba(15,118,110,.75)"><svg width="27" height="27"><use href="#ic-scan"/></svg></div>
+<div style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:130px;height:5px;border-radius:3px;background:rgba(11,18,32,.22)"></div>
+</div>
+</div>
+<div style="position:absolute;top:22px;left:50%;transform:translateX(-50%);width:110px;height:32px;background:#000;border-radius:20px;z-index:30"></div>
+</div>
+<div class="ph-cap">Verificar · veredito</div>
+</div>
+
+</div>
+</div>
+</div>
+<p class="dv-next">Tente: "gostei, faça o app inteiro em <a class="dv-oid" href="#2a">2a</a>" · "dê um leve tom creme aos cartões também" · "prefiro o 1a original"</p>
+</section>
+
+<section class="dv-turn" id="t1">
+<div class="dv-thd"><a class="dv-tid" href="#t1">1</a><span class="dv-tname">Três direções para o Barganha</span></div>
+<p class="dv-tsub">Mesmo app, três personalidades. <a class="dv-oid" href="#1a">1a</a> evolui a identidade teal atual; <a class="dv-oid" href="#1b">1b</a> e <a class="dv-oid" href="#1c">1c</a> são apostas mais ousadas. Cada uma mostra a <b>Início</b> e o <b>veredito da gôndola</b> — o coração do app, com uma barra de posição de preço nova. Me diga qual seguir e eu construo o app inteiro: protótipo navegável + galeria de telas.</p>
+
+<div class="dv-opts">
+
+<!-- ══════════════════════════ 1a · TEAL REFINADO ══════════════════════════ -->
+<div class="dv-opt" id="1a">
+<div style="display:flex;flex-direction:column;gap:8px;max-width:816px">
+<div style="display:flex;align-items:center;gap:10px"><a class="dv-oid" href="#1a">1a</a><b style="font:800 17px 'Plus Jakarta Sans';color:#0E1B24">Teal Refinado</b><div style="display:flex;gap:6px;margin-left:4px"><span class="pdot" style="background:#0F766E"></span><span class="pdot" style="background:#5EEAD4"></span><span class="pdot" style="background:#12A150"></span><span class="pdot" style="background:#E8930C"></span><span class="pdot" style="background:#F4F7F7"></span></div></div>
+<span style="font:500 13px/1.5 'Plus Jakarta Sans';color:#54636e">Sua identidade, elevada — mais respiro, profundidade suave e uma hierarquia calma e confiável. Clima fintech premium.</span>
+</div>
+<div style="display:flex;gap:24px">
+
+<!-- 1a · INÍCIO -->
+<div style="flex:none">
+<div style="position:relative;width:392px;height:844px;background:#0b0c0e;border-radius:54px;padding:12px;box-shadow:0 44px 84px -34px rgba(15,23,42,.5),0 0 0 1.5px rgba(255,255,255,.06) inset">
+<div style="position:relative;width:100%;height:100%;border-radius:43px;overflow:hidden;display:flex;flex-direction:column;background:#F4F7F7;color:#0E1B24;font-family:'Plus Jakarta Sans',sans-serif">
+<div style="flex:none;height:54px;padding:15px 32px 0;display:flex;align-items:center;justify-content:space-between"><span style="font-weight:800;font-size:15px;letter-spacing:.2px">9:41</span><div style="display:flex;align-items:center;gap:7px"><svg width="18" height="12"><use href="#ic-signal"/></svg><svg width="17" height="13"><use href="#ic-wifi"/></svg><svg width="26" height="13"><use href="#ic-batt"/></svg></div></div>
+<div style="flex:1;overflow:hidden;padding:6px 20px 0;display:flex;flex-direction:column">
+<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 2px 18px">
+<div><div style="font:700 11px 'Plus Jakarta Sans';letter-spacing:1.3px;text-transform:uppercase;color:#93A4AE">Sexta · Rio de Janeiro</div><div style="font:800 25px/1.05 'Plus Jakarta Sans';letter-spacing:-.6px;margin-top:6px">Olá, Marina 👋</div></div>
+<div style="width:46px;height:46px;border-radius:15px;background:#D3F3EC;display:flex;align-items:center;justify-content:center;font:800 18px 'Plus Jakarta Sans';color:#0F766E">M</div>
+</div>
+<div style="position:relative;overflow:hidden;border-radius:26px;padding:22px 22px 20px;background:linear-gradient(150deg,#12857C,#0B5F58);box-shadow:0 20px 36px -18px rgba(11,95,88,.75)">
+<div style="position:absolute;top:-44px;right:-34px;width:160px;height:160px;border-radius:50%;background:radial-gradient(circle,rgba(94,234,212,.4),transparent 70%)"></div>
+<svg viewBox="0 0 130 36" style="position:absolute;right:20px;bottom:18px;width:130px;height:36px;opacity:.55"><polyline points="0,30 18,23 34,26 52,15 70,19 88,9 106,13 130,4" fill="none" stroke="#5EEAD4" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+<div style="position:relative;display:flex;align-items:center;justify-content:space-between"><span style="font:700 12.5px 'Plus Jakarta Sans';color:#9DEBDD">Economia em promoções</span><span style="font:700 11px 'Plus Jakarta Sans';color:#CFF7F0;background:rgba(255,255,255,.15);padding:5px 11px;border-radius:99px">Este mês</span></div>
+<div style="position:relative;font:800 41px/1 'Plus Jakarta Sans';letter-spacing:-1.2px;color:#fff;margin-top:13px">R$ 148,50</div>
+<div style="position:relative;display:flex;align-items:center;gap:9px;margin-top:14px"><span style="display:inline-flex;align-items:center;gap:4px;font:700 12px 'Plus Jakarta Sans';color:#052e2b;background:#5EEAD4;padding:4px 10px;border-radius:99px"><svg width="12" height="12" style="color:#052e2b"><use href="#ic-down"/></svg>R$ 32</span><span style="font:500 12px 'Plus Jakarta Sans';color:#BFF3EA">a mais que mês passado · 12 cupons</span></div>
+</div>
+<div style="display:flex;gap:12px;margin-top:15px">
+<div style="flex:1;background:#fff;border:1px solid rgba(15,23,42,.05);border-radius:18px;padding:14px 15px;box-shadow:0 10px 24px -18px rgba(13,60,55,.4)"><div style="font:800 21px 'Plus Jakarta Sans'">23</div><div style="font:600 11.5px 'Plus Jakarta Sans';color:#54636e;margin-top:1px">produtos monitorados</div></div>
+<div style="flex:1;background:#fff;border:1px solid rgba(15,23,42,.05);border-radius:18px;padding:14px 15px;box-shadow:0 10px 24px -18px rgba(13,60,55,.4)"><div style="font:800 21px 'Plus Jakarta Sans'">6</div><div style="font:600 11.5px 'Plus Jakarta Sans';color:#54636e;margin-top:1px">mercados favoritos</div></div>
+</div>
+<div style="display:flex;align-items:center;justify-content:space-between;margin:22px 2px 12px"><span style="font:800 17px 'Plus Jakarta Sans';letter-spacing:-.3px">Últimas compras</span><span style="font:700 12.5px 'Plus Jakarta Sans';color:#0F766E">Ver tudo</span></div>
+<div style="background:#fff;border:1px solid rgba(15,23,42,.05);border-radius:22px;box-shadow:0 14px 30px -20px rgba(13,60,55,.45);overflow:hidden">
+<div style="display:flex;align-items:center;gap:13px;padding:14px 16px;border-bottom:1px solid #F1F5F4"><div style="width:42px;height:42px;border-radius:13px;background:#ECFBF7;display:flex;align-items:center;justify-content:center;color:#0F766E"><svg width="21" height="21"><use href="#ic-store"/></svg></div><div style="flex:1;min-width:0"><div style="font:700 14px 'Plus Jakarta Sans';white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Supermercado Guanabara</div><div style="font:500 12px 'Plus Jakarta Sans';color:#93A4AE;margin-top:2px">Hoje · 18 itens</div></div><div style="text-align:right;flex:none;white-space:nowrap"><div style="font:800 14px 'Plus Jakarta Sans'">R$ 213,40</div><div style="font:700 11px 'Plus Jakarta Sans';color:#12A150;margin-top:2px">−R$ 12,90</div></div></div>
+<div style="display:flex;align-items:center;gap:13px;padding:14px 16px;border-bottom:1px solid #F1F5F4"><div style="width:42px;height:42px;border-radius:13px;background:#ECFBF7;display:flex;align-items:center;justify-content:center;color:#0F766E"><svg width="21" height="21"><use href="#ic-store"/></svg></div><div style="flex:1;min-width:0"><div style="font:700 14px 'Plus Jakarta Sans';white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Assaí Atacadista</div><div style="font:500 12px 'Plus Jakarta Sans';color:#93A4AE;margin-top:2px">Ontem · 32 itens</div></div><div style="text-align:right;flex:none;white-space:nowrap"><div style="font:800 14px 'Plus Jakarta Sans'">R$ 486,10</div><div style="font:700 11px 'Plus Jakarta Sans';color:#12A150;margin-top:2px">−R$ 40,00</div></div></div>
+<div style="display:flex;align-items:center;gap:13px;padding:14px 16px"><div style="width:42px;height:42px;border-radius:13px;background:#ECFBF7;display:flex;align-items:center;justify-content:center;color:#0F766E"><svg width="21" height="21"><use href="#ic-store"/></svg></div><div style="flex:1;min-width:0"><div style="font:700 14px 'Plus Jakarta Sans';white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Pão de Açúcar</div><div style="font:500 12px 'Plus Jakarta Sans';color:#93A4AE;margin-top:2px">3 dez · 9 itens</div></div><div style="text-align:right;flex:none;white-space:nowrap"><div style="font:800 14px 'Plus Jakarta Sans'">R$ 97,30</div></div></div>
+</div>
+</div>
+<div style="flex:none;position:relative;height:84px;border-top:1px solid #EAF0EF;background:#fff;padding:11px 24px 0;display:flex;align-items:flex-start;justify-content:space-between">
+<div style="width:52px;display:flex;flex-direction:column;align-items:center;gap:4px;color:#0F766E"><svg width="24" height="24"><use href="#ic-home"/></svg><span style="font:700 10.5px 'Plus Jakarta Sans'">Início</span></div>
+<div style="width:52px;display:flex;flex-direction:column;align-items:center;gap:4px;color:#93A4AE"><svg width="24" height="24"><use href="#ic-check"/></svg><span style="font:700 10.5px 'Plus Jakarta Sans'">Verificar</span></div>
+<div style="width:52px"></div>
+<div style="width:52px;display:flex;flex-direction:column;align-items:center;gap:4px;color:#93A4AE"><svg width="24" height="24"><use href="#ic-list"/></svg><span style="font:700 10.5px 'Plus Jakarta Sans'">Produtos</span></div>
+<div style="width:52px;display:flex;flex-direction:column;align-items:center;gap:4px;color:#93A4AE"><svg width="24" height="24"><use href="#ic-user"/></svg><span style="font:700 10.5px 'Plus Jakarta Sans'">Perfil</span></div>
+<div style="position:absolute;top:-22px;left:50%;transform:translateX(-50%);width:60px;height:60px;border-radius:20px;background:#0F766E;display:flex;align-items:center;justify-content:center;color:#fff;border:4px solid #fff;box-shadow:0 14px 22px -8px rgba(15,118,110,.75)"><svg width="27" height="27"><use href="#ic-scan"/></svg></div>
+<div style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:130px;height:5px;border-radius:3px;background:rgba(11,18,32,.22)"></div>
+</div>
+</div>
+<div style="position:absolute;top:22px;left:50%;transform:translateX(-50%);width:110px;height:32px;background:#000;border-radius:20px;z-index:30"></div>
+</div>
+<div class="ph-cap">Início</div>
+</div>
+
+<!-- 1a · VERIFICAR -->
+<div style="flex:none">
+<div style="position:relative;width:392px;height:844px;background:#0b0c0e;border-radius:54px;padding:12px;box-shadow:0 44px 84px -34px rgba(15,23,42,.5),0 0 0 1.5px rgba(255,255,255,.06) inset">
+<div style="position:relative;width:100%;height:100%;border-radius:43px;overflow:hidden;display:flex;flex-direction:column;background:#F4F7F7;color:#0E1B24;font-family:'Plus Jakarta Sans',sans-serif">
+<div style="flex:none;height:54px;padding:15px 32px 0;display:flex;align-items:center;justify-content:space-between"><span style="font-weight:800;font-size:15px;letter-spacing:.2px">9:41</span><div style="display:flex;align-items:center;gap:7px"><svg width="18" height="12"><use href="#ic-signal"/></svg><svg width="17" height="13"><use href="#ic-wifi"/></svg><svg width="26" height="13"><use href="#ic-batt"/></svg></div></div>
+<div style="flex:1;overflow:hidden;padding:6px 20px 0;display:flex;flex-direction:column">
+<div style="display:flex;align-items:center;gap:12px;padding:8px 0 16px"><div style="width:40px;height:40px;border-radius:13px;background:#fff;border:1px solid rgba(15,23,42,.07);display:flex;align-items:center;justify-content:center;color:#0E1B24"><svg width="20" height="20"><use href="#ic-back"/></svg></div><span style="font:800 19px 'Plus Jakarta Sans';letter-spacing:-.3px">Verificar preço</span></div>
+<div style="display:flex;align-items:center;gap:14px;background:#fff;border:1px solid rgba(15,23,42,.05);border-radius:20px;padding:14px 16px;box-shadow:0 12px 26px -20px rgba(13,60,55,.45)"><div style="width:48px;height:48px;border-radius:14px;background:#ECFBF7;display:flex;align-items:center;justify-content:center;font:800 18px 'Plus Jakarta Sans';color:#0F766E">L</div><div style="flex:1;min-width:0"><div style="font:800 15px 'Plus Jakarta Sans'">Leite Integral Piracanjuba</div><div style="font:500 12px 'Plus Jakarta Sans';color:#93A4AE;margin-top:2px">1 L · você viu na prateleira</div></div><div style="font:800 22px 'Plus Jakarta Sans';letter-spacing:-.5px">R$ 5,19</div></div>
+<div style="margin-top:15px;border-radius:24px;padding:22px 20px;background:linear-gradient(160deg,#EAFBF1,#D7F4E1);border:1px solid #BBEAC9">
+<div style="display:flex;flex-direction:column;align-items:center"><div style="display:inline-flex;align-items:center;gap:8px;background:#12A150;padding:9px 20px;border-radius:99px;box-shadow:0 10px 20px -6px rgba(18,161,80,.6)"><span style="width:8px;height:8px;border-radius:50%;background:#fff"></span><span style="font:800 16px 'Plus Jakarta Sans';color:#fff;letter-spacing:.2px">Barato</span></div><div style="font:600 13px 'Plus Jakarta Sans';color:#15803D;margin-top:12px;text-align:center">12% abaixo do preço típico da sua região</div></div>
+<div style="position:relative;margin-top:24px;padding-top:32px">
+<div style="position:absolute;top:0;left:23%;transform:translateX(-50%);background:#0E1B24;color:#fff;font:800 12px 'Plus Jakarta Sans';padding:5px 9px;border-radius:8px;white-space:nowrap">R$ 5,19<span style="position:absolute;left:50%;bottom:-3px;transform:translateX(-50%) rotate(45deg);width:8px;height:8px;background:#0E1B24;border-radius:1px"></span></div>
+<div style="position:relative;height:10px;border-radius:99px;background:linear-gradient(90deg,#22C55E,#0F766E 48%,#EF4444)"><div style="position:absolute;left:23%;top:50%;transform:translate(-50%,-50%);width:19px;height:19px;border-radius:50%;background:#fff;border:4px solid #12A150;box-shadow:0 3px 9px rgba(18,161,80,.55)"></div></div>
+<div style="display:flex;justify-content:space-between;margin-top:10px;font:600 10.5px 'Plus Jakarta Sans';color:#8A9AA3"><span>Menor R$4,50</span><span>Típico R$5,90</span><span>Maior R$7,50</span></div>
+</div>
+</div>
+<div style="margin-top:14px;background:#fff;border:1px solid rgba(15,23,42,.05);border-radius:20px;overflow:hidden;box-shadow:0 12px 26px -20px rgba(13,60,55,.4)">
+<div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid #F1F5F4"><div><div style="font:700 13px 'Plus Jakarta Sans'">Sua região</div><div style="font:500 11.5px 'Plus Jakarta Sans';color:#93A4AE;margin-top:2px">faixa normal R$5,40–6,40 · 214 obs.</div></div><div style="text-align:right;flex:none;white-space:nowrap"><div style="font:800 15px 'Plus Jakarta Sans'">R$ 5,90<span style="font:600 11px 'Plus Jakarta Sans';color:#93A4AE">/L</span></div><div style="font:600 11px 'Plus Jakarta Sans';color:#54636e">típico</div></div></div>
+<div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid #F1F5F4"><div><div style="font:700 13px 'Plus Jakarta Sans'">Seu histórico</div><div style="font:500 11.5px 'Plus Jakarta Sans';color:#93A4AE;margin-top:2px">8 compras registradas</div></div><div style="text-align:right;flex:none;white-space:nowrap"><div style="font:800 15px 'Plus Jakarta Sans'">R$ 5,20<span style="font:600 11px 'Plus Jakarta Sans';color:#93A4AE">/L</span></div><div style="font:600 11px 'Plus Jakarta Sans';color:#54636e">menor já pago</div></div></div>
+<div style="display:flex;align-items:center;gap:11px;padding:13px 16px;background:#FCEFD3"><span style="width:9px;height:9px;border-radius:50%;background:#E8930C"></span><span style="flex:1;font:700 12.5px 'Plus Jakarta Sans';color:#B26A05">Menor visto (promoção)</span><span style="flex:none;white-space:nowrap;font:800 14px 'Plus Jakarta Sans';color:#B26A05">R$ 4,79<span style="font:600 11px 'Plus Jakarta Sans'">/L</span></span></div>
+</div>
+<div style="font:500 11px 'Plus Jakarta Sans';color:#93A4AE;text-align:center;margin-top:13px">Atualizado hoje · comparado por litro</div>
+<div style="display:flex;gap:11px;margin-top:14px"><div style="flex:1;height:50px;border-radius:15px;background:#ECFBF7;border:1.5px solid #B7E9E0;display:flex;align-items:center;justify-content:center;font:800 14px 'Plus Jakarta Sans';color:#0F766E">Ver histórico</div><div style="flex:1;height:50px;border-radius:15px;background:#0F766E;display:flex;align-items:center;justify-content:center;font:800 14px 'Plus Jakarta Sans';color:#fff;box-shadow:0 14px 22px -10px rgba(15,118,110,.7)">Verificar outro</div></div>
+</div>
+<div style="flex:none;position:relative;height:84px;border-top:1px solid #EAF0EF;background:#fff;padding:11px 24px 0;display:flex;align-items:flex-start;justify-content:space-between">
+<div style="width:52px;display:flex;flex-direction:column;align-items:center;gap:4px;color:#93A4AE"><svg width="24" height="24"><use href="#ic-home"/></svg><span style="font:700 10.5px 'Plus Jakarta Sans'">Início</span></div>
+<div style="width:52px;display:flex;flex-direction:column;align-items:center;gap:4px;color:#0F766E"><svg width="24" height="24"><use href="#ic-check"/></svg><span style="font:700 10.5px 'Plus Jakarta Sans'">Verificar</span></div>
+<div style="width:52px"></div>
+<div style="width:52px;display:flex;flex-direction:column;align-items:center;gap:4px;color:#93A4AE"><svg width="24" height="24"><use href="#ic-list"/></svg><span style="font:700 10.5px 'Plus Jakarta Sans'">Produtos</span></div>
+<div style="width:52px;display:flex;flex-direction:column;align-items:center;gap:4px;color:#93A4AE"><svg width="24" height="24"><use href="#ic-user"/></svg><span style="font:700 10.5px 'Plus Jakarta Sans'">Perfil</span></div>
+<div style="position:absolute;top:-22px;left:50%;transform:translateX(-50%);width:60px;height:60px;border-radius:20px;background:#0F766E;display:flex;align-items:center;justify-content:center;color:#fff;border:4px solid #fff;box-shadow:0 14px 22px -8px rgba(15,118,110,.75)"><svg width="27" height="27"><use href="#ic-scan"/></svg></div>
+<div style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:130px;height:5px;border-radius:3px;background:rgba(11,18,32,.22)"></div>
+</div>
+</div>
+<div style="position:absolute;top:22px;left:50%;transform:translateX(-50%);width:110px;height:32px;background:#000;border-radius:20px;z-index:30"></div>
+</div>
+<div class="ph-cap">Verificar · veredito</div>
+</div>
+
+</div>
+</div>
+
+<!-- ══════════════════════════ 1b · MERCADO VIVO ══════════════════════════ -->
+<div class="dv-opt" id="1b">
+<div style="display:flex;flex-direction:column;gap:8px;max-width:816px">
+<div style="display:flex;align-items:center;gap:10px"><a class="dv-oid" href="#1b">1b</a><b style="font:800 17px 'Plus Jakarta Sans';color:#0E1B24">Mercado Vivo</b><div style="display:flex;gap:6px;margin-left:4px"><span class="pdot" style="background:#0C6B63"></span><span class="pdot" style="background:#F4A62A"></span><span class="pdot" style="background:#FF6A45"></span><span class="pdot" style="background:#2FA84F"></span><span class="pdot" style="background:#FBF5EC"></span></div></div>
+<span style="font:500 13px/1.5 'Plus Jakarta Sans';color:#54636e">Mais ousada, calorosa e editorial. Fundo creme, tipografia expressiva (Bricolage) e acentos âmbar/coral — um "companheiro de compras" vivo e otimista.</span>
+</div>
+<div style="display:flex;gap:24px">
+
+<!-- 1b · INÍCIO -->
+<div style="flex:none">
+<div style="position:relative;width:392px;height:844px;background:#0b0c0e;border-radius:54px;padding:12px;box-shadow:0 44px 84px -34px rgba(15,23,42,.5),0 0 0 1.5px rgba(255,255,255,.06) inset">
+<div style="position:relative;width:100%;height:100%;border-radius:43px;overflow:hidden;display:flex;flex-direction:column;background:#FBF5EC;color:#211D16;font-family:'Plus Jakarta Sans',sans-serif">
+<div style="flex:none;height:54px;padding:15px 32px 0;display:flex;align-items:center;justify-content:space-between"><span style="font-weight:800;font-size:15px;letter-spacing:.2px">9:41</span><div style="display:flex;align-items:center;gap:7px"><svg width="18" height="12"><use href="#ic-signal"/></svg><svg width="17" height="13"><use href="#ic-wifi"/></svg><svg width="26" height="13"><use href="#ic-batt"/></svg></div></div>
+<div style="flex:1;overflow:hidden;padding:6px 20px 0;display:flex;flex-direction:column">
+<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 2px 18px">
+<div><div style="font:700 11px 'Plus Jakarta Sans';letter-spacing:1.3px;text-transform:uppercase;color:#A79C8A">Sexta · Rio de Janeiro</div><div style="font:800 27px/1.02 'Bricolage Grotesque',sans-serif;letter-spacing:-.5px;margin-top:5px">Olá, Marina</div></div>
+<div style="width:48px;height:48px;border-radius:16px;background:#FBE7C2;display:flex;align-items:center;justify-content:center;font:800 19px 'Bricolage Grotesque';color:#B26A05">M</div>
+</div>
+<div style="position:relative;overflow:hidden;border-radius:30px;padding:24px 22px 22px;background:linear-gradient(155deg,#0E7C72,#0A544E)">
+<div style="position:absolute;top:16px;right:16px;background:#F4A62A;color:#3A2606;font:800 11.5px 'Plus Jakarta Sans';padding:8px 12px;border-radius:14px;transform:rotate(-7deg);box-shadow:0 8px 16px -6px rgba(0,0,0,.3);text-align:center;line-height:1.1">12<br><span style="font:700 9px 'Plus Jakarta Sans'">CUPONS</span></div>
+<div style="font:700 12px 'Plus Jakarta Sans';letter-spacing:1.5px;text-transform:uppercase;color:#8FE0D4">Você economizou</div>
+<div style="font:800 46px/.98 'Bricolage Grotesque',sans-serif;letter-spacing:-1.5px;color:#fff;margin-top:12px">R$ 148,50</div>
+<div style="display:inline-flex;align-items:center;gap:5px;margin-top:16px;font:800 12px 'Plus Jakarta Sans';color:#0A544E;background:#5EEAD4;padding:6px 12px;border-radius:99px"><svg width="13" height="13" style="color:#0A544E"><use href="#ic-down"/></svg>R$ 32 a mais que o mês passado</div>
+</div>
+<div style="display:flex;gap:12px;margin-top:16px">
+<div style="flex:1;background:#fff;border:1.5px solid #F0E7D6;border-radius:22px;padding:15px 16px"><div style="font:800 22px 'Bricolage Grotesque';color:#0E7C72">23</div><div style="font:600 11.5px 'Plus Jakarta Sans';color:#736A5C;margin-top:2px">produtos monitorados</div></div>
+<div style="flex:1;background:#fff;border:1.5px solid #F0E7D6;border-radius:22px;padding:15px 16px"><div style="font:800 22px 'Bricolage Grotesque';color:#F4A62A">6</div><div style="font:600 11.5px 'Plus Jakarta Sans';color:#736A5C;margin-top:2px">mercados favoritos</div></div>
+</div>
+<div style="display:flex;align-items:center;justify-content:space-between;margin:22px 2px 12px"><span style="font:800 19px 'Bricolage Grotesque';letter-spacing:-.3px">Últimas compras</span><span style="font:800 12.5px 'Plus Jakarta Sans';color:#F4A62A">Ver tudo</span></div>
+<div style="background:#fff;border:1.5px solid #F0E7D6;border-radius:28px;overflow:hidden">
+<div style="display:flex;align-items:center;gap:13px;padding:15px 16px;border-bottom:1.5px solid #F6EFE1"><div style="width:44px;height:44px;border-radius:15px;background:#D8F3EC;display:flex;align-items:center;justify-content:center;color:#0E7C72"><svg width="22" height="22"><use href="#ic-store"/></svg></div><div style="flex:1;min-width:0"><div style="font:800 14px 'Plus Jakarta Sans';white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Supermercado Guanabara</div><div style="font:500 12px 'Plus Jakarta Sans';color:#A79C8A;margin-top:2px">Hoje · 18 itens</div></div><div style="text-align:right;flex:none;white-space:nowrap"><div style="font:800 14px 'Plus Jakarta Sans'">R$ 213,40</div><div style="font:800 11px 'Plus Jakarta Sans';color:#2FA84F;margin-top:2px">−R$ 12,90</div></div></div>
+<div style="display:flex;align-items:center;gap:13px;padding:15px 16px;border-bottom:1.5px solid #F6EFE1"><div style="width:44px;height:44px;border-radius:15px;background:#FBE7C2;display:flex;align-items:center;justify-content:center;color:#B26A05"><svg width="22" height="22"><use href="#ic-store"/></svg></div><div style="flex:1;min-width:0"><div style="font:800 14px 'Plus Jakarta Sans';white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Assaí Atacadista</div><div style="font:500 12px 'Plus Jakarta Sans';color:#A79C8A;margin-top:2px">Ontem · 32 itens</div></div><div style="text-align:right;flex:none;white-space:nowrap"><div style="font:800 14px 'Plus Jakarta Sans'">R$ 486,10</div><div style="font:800 11px 'Plus Jakarta Sans';color:#2FA84F;margin-top:2px">−R$ 40,00</div></div></div>
+<div style="display:flex;align-items:center;gap:13px;padding:15px 16px"><div style="width:44px;height:44px;border-radius:15px;background:#FCE0D8;display:flex;align-items:center;justify-content:center;color:#D9502E"><svg width="22" height="22"><use href="#ic-store"/></svg></div><div style="flex:1;min-width:0"><div style="font:800 14px 'Plus Jakarta Sans';white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Pão de Açúcar</div><div style="font:500 12px 'Plus Jakarta Sans';color:#A79C8A;margin-top:2px">3 dez · 9 itens</div></div><div style="text-align:right;flex:none;white-space:nowrap"><div style="font:800 14px 'Plus Jakarta Sans'">R$ 97,30</div></div></div>
+</div>
+</div>
+<div style="flex:none;position:relative;height:84px;border-top:1.5px solid #EFE6D6;background:#fff;padding:11px 24px 0;display:flex;align-items:flex-start;justify-content:space-between">
+<div style="width:52px;display:flex;flex-direction:column;align-items:center;gap:4px;color:#0E7C72"><svg width="24" height="24"><use href="#ic-home"/></svg><span style="font:800 10.5px 'Plus Jakarta Sans'">Início</span></div>
+<div style="width:52px;display:flex;flex-direction:column;align-items:center;gap:4px;color:#BDB1A0"><svg width="24" height="24"><use href="#ic-check"/></svg><span style="font:800 10.5px 'Plus Jakarta Sans'">Verificar</span></div>
+<div style="width:52px"></div>
+<div style="width:52px;display:flex;flex-direction:column;align-items:center;gap:4px;color:#BDB1A0"><svg width="24" height="24"><use href="#ic-list"/></svg><span style="font:800 10.5px 'Plus Jakarta Sans'">Produtos</span></div>
+<div style="width:52px;display:flex;flex-direction:column;align-items:center;gap:4px;color:#BDB1A0"><svg width="24" height="24"><use href="#ic-user"/></svg><span style="font:800 10.5px 'Plus Jakarta Sans'">Perfil</span></div>
+<div style="position:absolute;top:-24px;left:50%;transform:translateX(-50%);width:62px;height:62px;border-radius:22px;background:#F4A62A;display:flex;align-items:center;justify-content:center;color:#fff;border:4px solid #fff;box-shadow:0 14px 22px -8px rgba(244,166,42,.75)"><svg width="28" height="28"><use href="#ic-scan"/></svg></div>
+<div style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:130px;height:5px;border-radius:3px;background:rgba(33,29,22,.22)"></div>
+</div>
+</div>
+<div style="position:absolute;top:22px;left:50%;transform:translateX(-50%);width:110px;height:32px;background:#000;border-radius:20px;z-index:30"></div>
+</div>
+<div class="ph-cap">Início</div>
+</div>
+
+<!-- 1b · VERIFICAR -->
+<div style="flex:none">
+<div style="position:relative;width:392px;height:844px;background:#0b0c0e;border-radius:54px;padding:12px;box-shadow:0 44px 84px -34px rgba(15,23,42,.5),0 0 0 1.5px rgba(255,255,255,.06) inset">
+<div style="position:relative;width:100%;height:100%;border-radius:43px;overflow:hidden;display:flex;flex-direction:column;background:#FBF5EC;color:#211D16;font-family:'Plus Jakarta Sans',sans-serif">
+<div style="flex:none;height:54px;padding:15px 32px 0;display:flex;align-items:center;justify-content:space-between"><span style="font-weight:800;font-size:15px;letter-spacing:.2px">9:41</span><div style="display:flex;align-items:center;gap:7px"><svg width="18" height="12"><use href="#ic-signal"/></svg><svg width="17" height="13"><use href="#ic-wifi"/></svg><svg width="26" height="13"><use href="#ic-batt"/></svg></div></div>
+<div style="flex:1;overflow:hidden;padding:6px 20px 0;display:flex;flex-direction:column">
+<div style="display:flex;align-items:center;gap:12px;padding:8px 0 16px"><div style="width:42px;height:42px;border-radius:15px;background:#fff;border:1.5px solid #EFE6D6;display:flex;align-items:center;justify-content:center;color:#211D16"><svg width="20" height="20"><use href="#ic-back"/></svg></div><span style="font:800 21px 'Bricolage Grotesque';letter-spacing:-.3px">Verificar preço</span></div>
+<div style="display:flex;align-items:center;gap:14px;background:#fff;border:1.5px solid #F0E7D6;border-radius:24px;padding:15px 16px"><div style="width:50px;height:50px;border-radius:16px;background:#FBE7C2;display:flex;align-items:center;justify-content:center;font:800 19px 'Bricolage Grotesque';color:#B26A05">L</div><div style="flex:1;min-width:0"><div style="font:800 15px 'Plus Jakarta Sans'">Leite Integral Piracanjuba</div><div style="font:500 12px 'Plus Jakarta Sans';color:#A79C8A;margin-top:2px">1 L · você viu na prateleira</div></div><div style="font:800 24px 'Bricolage Grotesque';letter-spacing:-.5px">R$ 5,19</div></div>
+<div style="margin-top:15px;border-radius:30px;padding:24px 20px;background:#E7F7EC;border:1.5px solid #BFE9C9">
+<div style="display:flex;flex-direction:column;align-items:center"><div style="display:inline-flex;align-items:center;gap:8px;background:#2FA84F;padding:8px 18px;border-radius:99px;box-shadow:0 10px 20px -6px rgba(47,168,79,.55)"><span style="width:8px;height:8px;border-radius:50%;background:#fff"></span><span style="font:800 14px 'Plus Jakarta Sans';color:#fff">tá barato</span></div><div style="font:800 30px 'Bricolage Grotesque';color:#1E7A3C;margin-top:14px;letter-spacing:-.5px">12% abaixo do típico</div><div style="font:600 12.5px 'Plus Jakarta Sans';color:#3E7D53;margin-top:4px;text-align:center">na sua região, Rio de Janeiro</div></div>
+<div style="position:relative;margin-top:24px;padding-top:34px">
+<div style="position:absolute;top:0;left:23%;transform:translateX(-50%);background:#211D16;color:#fff;font:800 12.5px 'Plus Jakarta Sans';padding:6px 10px;border-radius:9px;white-space:nowrap">R$ 5,19<span style="position:absolute;left:50%;bottom:-3px;transform:translateX(-50%) rotate(45deg);width:8px;height:8px;background:#211D16;border-radius:1px"></span></div>
+<div style="position:relative;height:14px;border-radius:99px;background:linear-gradient(90deg,#2FA84F,#0E7C72 48%,#E5544A)"><div style="position:absolute;left:23%;top:50%;transform:translate(-50%,-50%);width:22px;height:22px;border-radius:50%;background:#fff;border:4.5px solid #2FA84F;box-shadow:0 4px 10px rgba(47,168,79,.5)"></div></div>
+<div style="display:flex;justify-content:space-between;margin-top:11px;font:700 10.5px 'Plus Jakarta Sans';color:#A79C8A"><span>Menor R$4,50</span><span>Típico R$5,90</span><span>Maior R$7,50</span></div>
+</div>
+</div>
+<div style="margin-top:14px;background:#fff;border:1.5px solid #F0E7D6;border-radius:24px;overflow:hidden">
+<div style="display:flex;align-items:center;justify-content:space-between;padding:15px 16px;border-bottom:1.5px solid #F6EFE1"><div><div style="font:800 13px 'Plus Jakarta Sans'">Sua região</div><div style="font:500 11.5px 'Plus Jakarta Sans';color:#A79C8A;margin-top:2px">faixa normal R$5,40–6,40 · 214 obs.</div></div><div style="text-align:right;flex:none;white-space:nowrap"><div style="font:800 16px 'Bricolage Grotesque'">R$ 5,90<span style="font:600 11px 'Plus Jakarta Sans';color:#A79C8A">/L</span></div><div style="font:600 11px 'Plus Jakarta Sans';color:#736A5C">típico</div></div></div>
+<div style="display:flex;align-items:center;justify-content:space-between;padding:15px 16px;border-bottom:1.5px solid #F6EFE1"><div><div style="font:800 13px 'Plus Jakarta Sans'">Seu histórico</div><div style="font:500 11.5px 'Plus Jakarta Sans';color:#A79C8A;margin-top:2px">8 compras registradas</div></div><div style="text-align:right;flex:none;white-space:nowrap"><div style="font:800 16px 'Bricolage Grotesque'">R$ 5,20<span style="font:600 11px 'Plus Jakarta Sans';color:#A79C8A">/L</span></div><div style="font:600 11px 'Plus Jakarta Sans';color:#736A5C">menor já pago</div></div></div>
+<div style="display:flex;align-items:center;gap:11px;padding:14px 16px;background:#FCEBC8"><span style="width:9px;height:9px;border-radius:50%;background:#E88A0C"></span><span style="flex:1;font:800 12.5px 'Plus Jakarta Sans';color:#9C5D03">Menor visto (promoção)</span><span style="font:800 15px 'Bricolage Grotesque';color:#9C5D03">R$ 4,79</span></div>
+</div>
+<div style="display:flex;gap:11px;margin-top:16px"><div style="flex:1;height:52px;border-radius:18px;background:#fff;border:1.5px solid #E4D9C6;display:flex;align-items:center;justify-content:center;font:800 14px 'Plus Jakarta Sans';color:#0E7C72">Ver histórico</div><div style="flex:1;height:52px;border-radius:18px;background:#0E7C72;display:flex;align-items:center;justify-content:center;font:800 14px 'Plus Jakarta Sans';color:#fff;box-shadow:0 14px 22px -10px rgba(14,124,114,.7)">Verificar outro</div></div>
+</div>
+<div style="flex:none;position:relative;height:84px;border-top:1.5px solid #EFE6D6;background:#fff;padding:11px 24px 0;display:flex;align-items:flex-start;justify-content:space-between">
+<div style="width:52px;display:flex;flex-direction:column;align-items:center;gap:4px;color:#BDB1A0"><svg width="24" height="24"><use href="#ic-home"/></svg><span style="font:800 10.5px 'Plus Jakarta Sans'">Início</span></div>
+<div style="width:52px;display:flex;flex-direction:column;align-items:center;gap:4px;color:#0E7C72"><svg width="24" height="24"><use href="#ic-check"/></svg><span style="font:800 10.5px 'Plus Jakarta Sans'">Verificar</span></div>
+<div style="width:52px"></div>
+<div style="width:52px;display:flex;flex-direction:column;align-items:center;gap:4px;color:#BDB1A0"><svg width="24" height="24"><use href="#ic-list"/></svg><span style="font:800 10.5px 'Plus Jakarta Sans'">Produtos</span></div>
+<div style="width:52px;display:flex;flex-direction:column;align-items:center;gap:4px;color:#BDB1A0"><svg width="24" height="24"><use href="#ic-user"/></svg><span style="font:800 10.5px 'Plus Jakarta Sans'">Perfil</span></div>
+<div style="position:absolute;top:-24px;left:50%;transform:translateX(-50%);width:62px;height:62px;border-radius:22px;background:#F4A62A;display:flex;align-items:center;justify-content:center;color:#fff;border:4px solid #fff;box-shadow:0 14px 22px -8px rgba(244,166,42,.75)"><svg width="28" height="28"><use href="#ic-scan"/></svg></div>
+<div style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:130px;height:5px;border-radius:3px;background:rgba(33,29,22,.22)"></div>
+</div>
+</div>
+<div style="position:absolute;top:22px;left:50%;transform:translateX(-50%);width:110px;height:32px;background:#000;border-radius:20px;z-index:30"></div>
+</div>
+<div class="ph-cap">Verificar · veredito</div>
+</div>
+
+</div>
+</div>
+
+<!-- ══════════════════════════ 1c · NOITE PREMIUM ══════════════════════════ -->
+<div class="dv-opt" id="1c">
+<div style="display:flex;flex-direction:column;gap:8px;max-width:816px">
+<div style="display:flex;align-items:center;gap:10px"><a class="dv-oid" href="#1c">1c</a><b style="font:800 17px 'Plus Jakarta Sans';color:#0E1B24">Noite Premium</b><div style="display:flex;gap:6px;margin-left:4px"><span class="pdot" style="background:#0A0F13"></span><span class="pdot" style="background:#2DD4BF"></span><span class="pdot" style="background:#34D399"></span><span class="pdot" style="background:#5EEAD4"></span><span class="pdot" style="background:#FBBF24"></span></div></div>
+<span style="font:500 13px/1.5 'Plus Jakarta Sans';color:#54636e">A aposta mais ousada: modo escuro premium, cartões de vidro, brilho teal e numerais Space Grotesk. Alto contraste e sofisticação — dados que brilham.</span>
+</div>
+<div style="display:flex;gap:24px">
+
+<!-- 1c · INÍCIO -->
+<div style="flex:none">
+<div style="position:relative;width:392px;height:844px;background:#000;border-radius:54px;padding:12px;box-shadow:0 44px 84px -34px rgba(15,23,42,.6),0 0 0 1.5px rgba(255,255,255,.08) inset">
+<div style="position:relative;width:100%;height:100%;border-radius:43px;overflow:hidden;display:flex;flex-direction:column;background:#0A0F13;color:#EAF2F0;font-family:'Plus Jakarta Sans',sans-serif">
+<div style="position:absolute;top:-60px;left:-40px;width:280px;height:260px;background:radial-gradient(circle,rgba(45,212,191,.22),transparent 68%);pointer-events:none"></div>
+<div style="flex:none;height:54px;padding:15px 32px 0;display:flex;align-items:center;justify-content:space-between;position:relative"><span style="font-weight:800;font-size:15px;letter-spacing:.2px">9:41</span><div style="display:flex;align-items:center;gap:7px"><svg width="18" height="12"><use href="#ic-signal"/></svg><svg width="17" height="13"><use href="#ic-wifi"/></svg><svg width="26" height="13"><use href="#ic-batt"/></svg></div></div>
+<div style="flex:1;overflow:hidden;padding:6px 20px 0;display:flex;flex-direction:column;position:relative">
+<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 2px 18px">
+<div><div style="font:700 11px 'Plus Jakarta Sans';letter-spacing:1.4px;text-transform:uppercase;color:#5F7A74">Sexta · Rio de Janeiro</div><div style="font:700 25px/1.05 'Space Grotesk',sans-serif;letter-spacing:-.6px;margin-top:6px;color:#F4FBF9">Olá, Marina</div></div>
+<div style="width:46px;height:46px;border-radius:15px;background:rgba(45,212,191,.12);border:1px solid rgba(94,234,212,.28);display:flex;align-items:center;justify-content:center;font:700 18px 'Space Grotesk';color:#5EEAD4">M</div>
+</div>
+<div style="position:relative;overflow:hidden;border-radius:26px;padding:22px 22px 20px;background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.09)">
+<div style="position:absolute;top:-30px;right:-20px;width:180px;height:160px;background:radial-gradient(circle,rgba(45,212,191,.28),transparent 65%)"></div>
+<svg viewBox="0 0 130 36" style="position:absolute;right:20px;bottom:18px;width:130px;height:36px"><polyline points="0,30 18,23 34,26 52,15 70,19 88,9 106,13 130,4" fill="none" stroke="#2DD4BF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="filter:drop-shadow(0 0 6px rgba(45,212,191,.8))"/></svg>
+<div style="position:relative;display:flex;align-items:center;justify-content:space-between"><span style="font:700 12.5px 'Plus Jakarta Sans';color:#7FDACE">Economia em promoções</span><span style="font:700 11px 'Plus Jakarta Sans';color:#BFF3EA;background:rgba(94,234,212,.14);padding:5px 11px;border-radius:99px">Este mês</span></div>
+<div style="position:relative;font:700 41px/1 'Space Grotesk',sans-serif;letter-spacing:-1px;color:#fff;margin-top:13px;text-shadow:0 0 24px rgba(45,212,191,.45)">R$ 148,50</div>
+<div style="position:relative;display:flex;align-items:center;gap:9px;margin-top:14px"><span style="display:inline-flex;align-items:center;gap:4px;font:700 12px 'Plus Jakarta Sans';color:#052e2b;background:#2DD4BF;padding:4px 10px;border-radius:99px"><svg width="12" height="12" style="color:#052e2b"><use href="#ic-down"/></svg>R$ 32</span><span style="font:500 12px 'Plus Jakarta Sans';color:#8FB2AB">este mês · 12 cupons</span></div>
+</div>
+<div style="display:flex;gap:12px;margin-top:15px">
+<div style="flex:1;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:18px;padding:14px 15px"><div style="font:700 21px 'Space Grotesk';color:#5EEAD4">23</div><div style="font:600 11.5px 'Plus Jakarta Sans';color:#8FB2AB;margin-top:1px">produtos monitorados</div></div>
+<div style="flex:1;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:18px;padding:14px 15px"><div style="font:700 21px 'Space Grotesk';color:#5EEAD4">6</div><div style="font:600 11.5px 'Plus Jakarta Sans';color:#8FB2AB;margin-top:1px">mercados favoritos</div></div>
+</div>
+<div style="display:flex;align-items:center;justify-content:space-between;margin:22px 2px 12px"><span style="font:700 17px 'Space Grotesk';letter-spacing:-.3px;color:#F4FBF9">Últimas compras</span><span style="font:700 12.5px 'Plus Jakarta Sans';color:#2DD4BF">Ver tudo</span></div>
+<div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:22px;overflow:hidden">
+<div style="display:flex;align-items:center;gap:13px;padding:14px 16px;border-bottom:1px solid rgba(255,255,255,.07)"><div style="width:42px;height:42px;border-radius:13px;background:rgba(45,212,191,.12);display:flex;align-items:center;justify-content:center;color:#2DD4BF"><svg width="21" height="21"><use href="#ic-store"/></svg></div><div style="flex:1;min-width:0"><div style="font:700 14px 'Plus Jakarta Sans';color:#EAF2F0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Supermercado Guanabara</div><div style="font:500 12px 'Plus Jakarta Sans';color:#5F7A74;margin-top:2px">Hoje · 18 itens</div></div><div style="text-align:right;flex:none;white-space:nowrap"><div style="font:700 14px 'Space Grotesk';color:#EAF2F0">R$ 213,40</div><div style="font:700 11px 'Plus Jakarta Sans';color:#34D399;margin-top:2px">−R$ 12,90</div></div></div>
+<div style="display:flex;align-items:center;gap:13px;padding:14px 16px;border-bottom:1px solid rgba(255,255,255,.07)"><div style="width:42px;height:42px;border-radius:13px;background:rgba(45,212,191,.12);display:flex;align-items:center;justify-content:center;color:#2DD4BF"><svg width="21" height="21"><use href="#ic-store"/></svg></div><div style="flex:1;min-width:0"><div style="font:700 14px 'Plus Jakarta Sans';color:#EAF2F0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Assaí Atacadista</div><div style="font:500 12px 'Plus Jakarta Sans';color:#5F7A74;margin-top:2px">Ontem · 32 itens</div></div><div style="text-align:right;flex:none;white-space:nowrap"><div style="font:700 14px 'Space Grotesk';color:#EAF2F0">R$ 486,10</div><div style="font:700 11px 'Plus Jakarta Sans';color:#34D399;margin-top:2px">−R$ 40,00</div></div></div>
+<div style="display:flex;align-items:center;gap:13px;padding:14px 16px"><div style="width:42px;height:42px;border-radius:13px;background:rgba(45,212,191,.12);display:flex;align-items:center;justify-content:center;color:#2DD4BF"><svg width="21" height="21"><use href="#ic-store"/></svg></div><div style="flex:1;min-width:0"><div style="font:700 14px 'Plus Jakarta Sans';color:#EAF2F0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Pão de Açúcar</div><div style="font:500 12px 'Plus Jakarta Sans';color:#5F7A74;margin-top:2px">3 dez · 9 itens</div></div><div style="text-align:right;flex:none;white-space:nowrap"><div style="font:700 14px 'Space Grotesk';color:#EAF2F0">R$ 97,30</div></div></div>
+</div>
+</div>
+<div style="flex:none;position:relative;height:84px;border-top:1px solid rgba(255,255,255,.08);background:rgba(10,15,19,.85);padding:11px 24px 0;display:flex;align-items:flex-start;justify-content:space-between">
+<div style="width:52px;display:flex;flex-direction:column;align-items:center;gap:4px;color:#2DD4BF"><svg width="24" height="24"><use href="#ic-home"/></svg><span style="font:700 10.5px 'Plus Jakarta Sans'">Início</span></div>
+<div style="width:52px;display:flex;flex-direction:column;align-items:center;gap:4px;color:#5F7A74"><svg width="24" height="24"><use href="#ic-check"/></svg><span style="font:700 10.5px 'Plus Jakarta Sans'">Verificar</span></div>
+<div style="width:52px"></div>
+<div style="width:52px;display:flex;flex-direction:column;align-items:center;gap:4px;color:#5F7A74"><svg width="24" height="24"><use href="#ic-list"/></svg><span style="font:700 10.5px 'Plus Jakarta Sans'">Produtos</span></div>
+<div style="width:52px;display:flex;flex-direction:column;align-items:center;gap:4px;color:#5F7A74"><svg width="24" height="24"><use href="#ic-user"/></svg><span style="font:700 10.5px 'Plus Jakarta Sans'">Perfil</span></div>
+<div style="position:absolute;top:-22px;left:50%;transform:translateX(-50%);width:60px;height:60px;border-radius:20px;background:linear-gradient(150deg,#2DD4BF,#0F766E);display:flex;align-items:center;justify-content:center;color:#03211E;border:4px solid #0A0F13;box-shadow:0 0 26px rgba(45,212,191,.6)"><svg width="27" height="27"><use href="#ic-scan"/></svg></div>
+<div style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:130px;height:5px;border-radius:3px;background:rgba(255,255,255,.3)"></div>
+</div>
+</div>
+<div style="position:absolute;top:22px;left:50%;transform:translateX(-50%);width:110px;height:32px;background:#000;border-radius:20px;z-index:30"></div>
+</div>
+<div class="ph-cap">Início</div>
+</div>
+
+<!-- 1c · VERIFICAR -->
+<div style="flex:none">
+<div style="position:relative;width:392px;height:844px;background:#000;border-radius:54px;padding:12px;box-shadow:0 44px 84px -34px rgba(15,23,42,.6),0 0 0 1.5px rgba(255,255,255,.08) inset">
+<div style="position:relative;width:100%;height:100%;border-radius:43px;overflow:hidden;display:flex;flex-direction:column;background:#0A0F13;color:#EAF2F0;font-family:'Plus Jakarta Sans',sans-serif">
+<div style="position:absolute;top:120px;left:50%;transform:translateX(-50%);width:320px;height:220px;background:radial-gradient(circle,rgba(52,211,153,.16),transparent 68%);pointer-events:none"></div>
+<div style="flex:none;height:54px;padding:15px 32px 0;display:flex;align-items:center;justify-content:space-between;position:relative"><span style="font-weight:800;font-size:15px;letter-spacing:.2px">9:41</span><div style="display:flex;align-items:center;gap:7px"><svg width="18" height="12"><use href="#ic-signal"/></svg><svg width="17" height="13"><use href="#ic-wifi"/></svg><svg width="26" height="13"><use href="#ic-batt"/></svg></div></div>
+<div style="flex:1;overflow:hidden;padding:6px 20px 0;display:flex;flex-direction:column;position:relative">
+<div style="display:flex;align-items:center;gap:12px;padding:8px 0 16px"><div style="width:40px;height:40px;border-radius:13px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);display:flex;align-items:center;justify-content:center;color:#EAF2F0"><svg width="20" height="20"><use href="#ic-back"/></svg></div><span style="font:700 19px 'Space Grotesk';letter-spacing:-.3px;color:#F4FBF9">Verificar preço</span></div>
+<div style="display:flex;align-items:center;gap:14px;background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.09);border-radius:20px;padding:14px 16px"><div style="width:48px;height:48px;border-radius:14px;background:rgba(45,212,191,.12);border:1px solid rgba(94,234,212,.25);display:flex;align-items:center;justify-content:center;font:700 18px 'Space Grotesk';color:#5EEAD4">L</div><div style="flex:1;min-width:0"><div style="font:700 15px 'Plus Jakarta Sans';color:#EAF2F0">Leite Integral Piracanjuba</div><div style="font:500 12px 'Plus Jakarta Sans';color:#5F7A74;margin-top:2px">1 L · você viu na prateleira</div></div><div style="font:700 22px 'Space Grotesk';letter-spacing:-.5px;color:#fff">R$ 5,19</div></div>
+<div style="position:relative;margin-top:15px;border-radius:24px;padding:22px 20px;background:rgba(52,211,153,.09);border:1px solid rgba(52,211,153,.3)">
+<div style="display:flex;flex-direction:column;align-items:center"><div style="display:inline-flex;align-items:center;gap:8px;background:#34D399;padding:9px 20px;border-radius:99px;box-shadow:0 0 24px rgba(52,211,153,.6)"><span style="width:8px;height:8px;border-radius:50%;background:#052e2b"></span><span style="font:800 16px 'Plus Jakarta Sans';color:#052e2b;letter-spacing:.2px">Barato</span></div><div style="font:600 13px 'Plus Jakarta Sans';color:#7BE3B4;margin-top:12px;text-align:center">12% abaixo do preço típico da sua região</div></div>
+<div style="position:relative;margin-top:24px;padding-top:32px">
+<div style="position:absolute;top:0;left:23%;transform:translateX(-50%);background:#EAF2F0;color:#0A0F13;font:800 12px 'Space Grotesk';padding:5px 9px;border-radius:8px;white-space:nowrap">R$ 5,19<span style="position:absolute;left:50%;bottom:-3px;transform:translateX(-50%) rotate(45deg);width:8px;height:8px;background:#EAF2F0;border-radius:1px"></span></div>
+<div style="position:relative;height:10px;border-radius:99px;background:linear-gradient(90deg,#34D399,#2DD4BF 48%,#FB7185);box-shadow:0 0 16px rgba(45,212,191,.4)"><div style="position:absolute;left:23%;top:50%;transform:translate(-50%,-50%);width:19px;height:19px;border-radius:50%;background:#0A0F13;border:4px solid #34D399;box-shadow:0 0 12px rgba(52,211,153,.9)"></div></div>
+<div style="display:flex;justify-content:space-between;margin-top:10px;font:600 10.5px 'Plus Jakarta Sans';color:#5F7A74"><span>Menor R$4,50</span><span>Típico R$5,90</span><span>Maior R$7,50</span></div>
+</div>
+</div>
+<div style="margin-top:14px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:20px;overflow:hidden">
+<div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid rgba(255,255,255,.07)"><div><div style="font:700 13px 'Plus Jakarta Sans';color:#EAF2F0">Sua região</div><div style="font:500 11.5px 'Plus Jakarta Sans';color:#5F7A74;margin-top:2px">faixa normal R$5,40–6,40 · 214 obs.</div></div><div style="text-align:right;flex:none;white-space:nowrap"><div style="font:700 15px 'Space Grotesk';color:#EAF2F0">R$ 5,90<span style="font:600 11px 'Plus Jakarta Sans';color:#5F7A74">/L</span></div><div style="font:600 11px 'Plus Jakarta Sans';color:#8FB2AB">típico</div></div></div>
+<div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid rgba(255,255,255,.07)"><div><div style="font:700 13px 'Plus Jakarta Sans';color:#EAF2F0">Seu histórico</div><div style="font:500 11.5px 'Plus Jakarta Sans';color:#5F7A74;margin-top:2px">8 compras registradas</div></div><div style="text-align:right;flex:none;white-space:nowrap"><div style="font:700 15px 'Space Grotesk';color:#EAF2F0">R$ 5,20<span style="font:600 11px 'Plus Jakarta Sans';color:#5F7A74">/L</span></div><div style="font:600 11px 'Plus Jakarta Sans';color:#8FB2AB">menor já pago</div></div></div>
+<div style="display:flex;align-items:center;gap:11px;padding:13px 16px;background:rgba(251,191,36,.13)"><span style="width:9px;height:9px;border-radius:50%;background:#FBBF24;box-shadow:0 0 8px rgba(251,191,36,.8)"></span><span style="flex:1;font:700 12.5px 'Plus Jakarta Sans';color:#FBBF24">Menor visto (promoção)</span><span style="flex:none;white-space:nowrap;font:700 14px 'Space Grotesk';color:#FBBF24">R$ 4,79<span style="font:600 11px 'Plus Jakarta Sans'">/L</span></span></div>
+</div>
+<div style="font:500 11px 'Plus Jakarta Sans';color:#5F7A74;text-align:center;margin-top:13px">Atualizado hoje · comparado por litro</div>
+<div style="display:flex;gap:11px;margin-top:14px"><div style="flex:1;height:50px;border-radius:15px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);display:flex;align-items:center;justify-content:center;font:800 14px 'Plus Jakarta Sans';color:#5EEAD4">Ver histórico</div><div style="flex:1;height:50px;border-radius:15px;background:linear-gradient(150deg,#2DD4BF,#0F766E);display:flex;align-items:center;justify-content:center;font:800 14px 'Plus Jakarta Sans';color:#03211E;box-shadow:0 0 22px rgba(45,212,191,.5)">Verificar outro</div></div>
+</div>
+<div style="flex:none;position:relative;height:84px;border-top:1px solid rgba(255,255,255,.08);background:rgba(10,15,19,.85);padding:11px 24px 0;display:flex;align-items:flex-start;justify-content:space-between">
+<div style="width:52px;display:flex;flex-direction:column;align-items:center;gap:4px;color:#5F7A74"><svg width="24" height="24"><use href="#ic-home"/></svg><span style="font:700 10.5px 'Plus Jakarta Sans'">Início</span></div>
+<div style="width:52px;display:flex;flex-direction:column;align-items:center;gap:4px;color:#2DD4BF"><svg width="24" height="24"><use href="#ic-check"/></svg><span style="font:700 10.5px 'Plus Jakarta Sans'">Verificar</span></div>
+<div style="width:52px"></div>
+<div style="width:52px;display:flex;flex-direction:column;align-items:center;gap:4px;color:#5F7A74"><svg width="24" height="24"><use href="#ic-list"/></svg><span style="font:700 10.5px 'Plus Jakarta Sans'">Produtos</span></div>
+<div style="width:52px;display:flex;flex-direction:column;align-items:center;gap:4px;color:#5F7A74"><svg width="24" height="24"><use href="#ic-user"/></svg><span style="font:700 10.5px 'Plus Jakarta Sans'">Perfil</span></div>
+<div style="position:absolute;top:-22px;left:50%;transform:translateX(-50%);width:60px;height:60px;border-radius:20px;background:linear-gradient(150deg,#2DD4BF,#0F766E);display:flex;align-items:center;justify-content:center;color:#03211E;border:4px solid #0A0F13;box-shadow:0 0 26px rgba(45,212,191,.6)"><svg width="27" height="27"><use href="#ic-scan"/></svg></div>
+<div style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:130px;height:5px;border-radius:3px;background:rgba(255,255,255,.3)"></div>
+</div>
+</div>
+<div style="position:absolute;top:22px;left:50%;transform:translateX(-50%);width:110px;height:32px;background:#000;border-radius:20px;z-index:30"></div>
+</div>
+<div class="ph-cap">Verificar · veredito</div>
+</div>
+
+</div>
+</div>
+
+</div>
+
+<p class="dv-next">Tente: "quero o app inteiro em <a class="dv-oid" href="#1a">1a</a>" · "misture o calor de <a class="dv-oid" href="#1b">1b</a> com a base de <a class="dv-oid" href="#1a">1a</a>" · "mostre <a class="dv-oid" href="#1c">1c</a> também no tema claro"</p>
+</section>
+</x-dc>
+</body>
+</html>
