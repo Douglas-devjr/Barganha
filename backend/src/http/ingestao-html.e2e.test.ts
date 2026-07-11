@@ -156,6 +156,41 @@ describe('POST /ingestao/cupom/:id/html (C2.6)', () => {
       payload: { html: '<html><body><script>grecaptcha.execute(k,{})</script></body></html>' },
     });
     expect(r.statusCode).toBe(422);
+    expect(r.json().codigo).toBe('desafio');
+    expect(repo.statusDoCupom(cupomId)).toBe('qr_capturado');
+  });
+
+  it('página avisoErro (reCAPTCHA recusado) → 422 erro_portal e cupom NÃO vira falha', async () => {
+    const usuarioId = await novaConta();
+    const cupomId = await ingerirQr(usuarioId);
+
+    const r = await app.inject({
+      method: 'POST',
+      url: urlHtml(cupomId),
+      headers: { authorization: `Bearer ${usuarioId}` },
+      payload: {
+        html: '<html class="ui-mobile"><body><div class="ui-page"><div class="avisoErro"></div><iframe></iframe></div></body></html>',
+      },
+    });
+    expect(r.statusCode).toBe(422);
+    expect(r.json().codigo).toBe('erro_portal');
+    // Antes deste tratamento, a página de erro ia ao parser e o cupom era
+    // marcado `falha` PERMANENTE — mesmo quando a tentativa seguinte passaria.
+    expect(repo.statusDoCupom(cupomId)).toBe('qr_capturado');
+  });
+
+  it('página de transição (nem desafio, nem nota) → 422 e cupom NÃO vira falha', async () => {
+    const usuarioId = await novaConta();
+    const cupomId = await ingerirQr(usuarioId);
+
+    const r = await app.inject({
+      method: 'POST',
+      url: urlHtml(cupomId),
+      headers: { authorization: `Bearer ${usuarioId}` },
+      payload: { html: '<html><body><p>Aguarde, carregando a consulta…</p></body></html>' },
+    });
+    expect(r.statusCode).toBe(422);
+    expect(r.json().codigo).toBe('desafio');
     expect(repo.statusDoCupom(cupomId)).toBe('qr_capturado');
   });
 

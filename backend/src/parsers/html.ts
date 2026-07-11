@@ -29,6 +29,20 @@ export function pareceDefesaAntiBot(html: string): boolean {
   );
 }
 
+/**
+ * O portal RECUSOU a verificação e respondeu sua página de ERRO (não a nota):
+ * no RJ, o postback com reCAPTCHA de pontuação baixa termina numa página
+ * `class="avisoErro"` sem a tabela de itens. Diferente do desafio (que se
+ * resolve esperando o usuário), esta página é terminal — a saída é recarregar
+ * a consulta (token novo). A ausência de `tabResult` evita confundir com uma
+ * nota ENCAT válida que mencione a classe por outro motivo.
+ */
+export function pareceErroPortal(html: string): boolean {
+  return (
+    /class\s*=\s*["'][^"']*\bavisoErro\b/i.test(html) && !/id\s*=\s*["']?tabResult\b/i.test(html)
+  );
+}
+
 /** Colapsa espaços/quebras e remove pontas — texto de SEFAZ vem cheio deles. */
 export function textoLimpo(texto: string | undefined | null): string {
   return (texto ?? '').replace(/\s+/g, ' ').trim();

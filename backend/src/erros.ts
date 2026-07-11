@@ -47,6 +47,15 @@ export class FalhaParserSefazError extends ErroDominio {}
 export class HtmlDesafioError extends ErroDominio {}
 
 /**
+ * O portal RECUSOU a verificação (reCAPTCHA v3 com pontuação baixa) e devolveu
+ * sua página de erro (`avisoErro` no RJ) — um beco sem saída: ficar esperando
+ * não resolve. É TRANSITÓRIO (o mesmo aparelho passa minutos depois): o app
+ * deve RECARREGAR a consulta original (token novo) e tentar de novo. Nunca
+ * marca o cupom como `falha`. Mapeada para 4xx com `codigo: 'erro_portal'`.
+ */
+export class HtmlErroPortalError extends ErroDominio {}
+
+/**
  * Lançamento manual de gôndola (C11.3) recusado na entrada: unidade não
  * normalizável ou CNPJ inválido. Erro do cliente — não entra na fila de
  * moderação (só guardamos o que pode virar observação comparável).

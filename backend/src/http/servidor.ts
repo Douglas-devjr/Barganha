@@ -40,6 +40,7 @@ import type { ServicoCuradoria } from '../curadoria/servico-curadoria';
 import {
   ChaveAcessoInvalidaError,
   HtmlDesafioError,
+  HtmlErroPortalError,
   LancamentoInvalidoError,
   PayloadQrInvalidoError,
 } from '../erros';
@@ -477,9 +478,16 @@ export function construirServidor(deps: DependenciasHttp): FastifyInstance {
       return reply.code(400).send({ erro: erro.message });
     }
     // HTML ainda é a página de desafio (C2.6): não é falha do cupom — o app deve
-    // reabrir o WebView e reenviar quando a nota tiver renderizado. 422.
+    // reabrir o WebView e reenviar quando a nota tiver renderizado. 422. O
+    // `codigo` distingue do erro de portal abaixo, que pede outra reação do app.
     if (erro instanceof HtmlDesafioError) {
-      return reply.code(422).send({ erro: erro.message });
+      return reply.code(422).send({ erro: erro.message, codigo: 'desafio' });
+    }
+    // Portal recusou a verificação (reCAPTCHA) e caiu na página de erro: também
+    // 422 (transitório, cupom intacto), mas o app deve RECARREGAR a consulta
+    // (token novo) em vez de seguir esperando nesta página, que é terminal.
+    if (erro instanceof HtmlErroPortalError) {
+      return reply.code(422).send({ erro: erro.message, codigo: 'erro_portal' });
     }
     req.log.error(erro);
     return reply.code(500).send({ erro: 'Erro interno.' });

@@ -130,4 +130,9 @@ export class ParserRj implements ParserSefaz {
   parseHtml(html: string): NotaEstruturada {
     return parseHtmlRj(html);
   }
+
+  /** Marcas dos DOIS layouts do RJ: tabela de itens ENCAT ou cabeçalho legado. */
+  pareceNota(html: string): boolean {
+    return /id\s*=\s*["']?tabResult\b/i.test(html) || html.includes('NFCCabecalho');
+  }
 }

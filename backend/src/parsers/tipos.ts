@@ -35,4 +35,11 @@ export interface ParserSefaz {
    * parsing continua no backend (decisão travada nº2) — o app só entrega o HTML.
    */
   parseHtml(html: string): NotaEstruturada;
+  /**
+   * Diz se o HTML JÁ É a página da nota deste portal (C2.6). O coletor do app
+   * envia o DOM do momento — sem esta checagem, uma página de transição iria ao
+   * parser e viraria `falha` PERMANENTE. Opcional: quem não implementa mantém o
+   * comportamento antigo (todo HTML não-desafio vai direto ao parser).
+   */
+  pareceNota?(html: string): boolean;
 }

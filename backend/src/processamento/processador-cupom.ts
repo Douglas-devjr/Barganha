@@ -20,12 +20,13 @@ import {
   ChaveAcessoInvalidaError,
   FalhaParserSefazError,
   HtmlDesafioError,
+  HtmlErroPortalError,
   PayloadQrInvalidoError,
 } from '../erros';
 import type { Anonimizador } from '../anonimizacao/anonimizador';
 import type { Telemetria } from '../observabilidade/telemetria';
 import { telemetriaNula } from '../observabilidade/telemetria';
-import { pareceDefesaAntiBot } from '../parsers/html';
+import { pareceDefesaAntiBot, pareceErroPortal } from '../parsers/html';
 import { parseQrNfce, type QrNfce } from '../parsers/qr-payload';
 import type { RegistroParsers } from '../parsers/registro';
 import type { ParserSefaz } from '../parsers/tipos';
@@ -125,6 +126,17 @@ export class ProcessadorCupom {
         'O HTML enviado ainda é a página de bloqueio/desafio da SEFAZ, não a nota.',
       );
     }
+    // Portal RECUSOU a verificação (reCAPTCHA de pontuação baixa) e caiu na
+    // página de erro. É transitório — o app recarrega a consulta (token novo)
+    // e tenta de novo. Antes desta checagem o HTML seguia para o parser, virava
+    // `FalhaParserSefazError` e o cupom era marcado `falha` PERMANENTE mesmo
+    // quando a tentativa seguinte passaria.
+    if (pareceErroPortal(html)) {
+      this.telemetria.registrarParsing(cupom.uf, 'erro_portal');
+      throw new HtmlErroPortalError(
+        'O portal da SEFAZ recusou a verificação. Recarregue a consulta e tente de novo.',
+      );
+    }
 
     let uf = cupom.uf;
     try {
@@ -133,6 +145,13 @@ export class ProcessadorCupom {
 
       const alvo = this.resolverParser(uf);
       if (!alvo) return; // sem parser ou UF fora do rollout — represado (C2.5).
+
+      // O coletor manda o DOM do MOMENTO (a cada poucos segundos): páginas de
+      // transição/intermediárias não podem virar `falha` permanente. Se o parser
+      // sabe reconhecer sua nota e este HTML ainda não é uma, seguimos aguardando.
+      if (alvo.pareceNota && !alvo.pareceNota(html)) {
+        throw new HtmlDesafioError('O HTML enviado ainda não é a página da nota.');
+      }
 
       const nota = alvo.parseHtml(html);
       validarNotaContraChave(qr, nota);
