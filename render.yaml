@@ -1,0 +1,39 @@
+# C10.2 — Blueprint do Render para o backend HTTP (docs/13).
+#
+# GATE DE PAGAMENTO: plano FREE de propósito — a instância DORME após ~15 min
+# sem tráfego e o primeiro request acorda em ~30–60s (o app é offline-first e a
+# fila de upload tolera). Upgrade de plano só pós-lançamento, com tração.
+#
+# Uso: Render Dashboard → New → Blueprint → apontar para este repositório.
+# Os segredos (sync: false) são pedidos na criação — NUNCA versionados.
+services:
+  - type: web
+    name: barganha-api
+    runtime: node
+    plan: free
+    # Sem região na América do Sul no free; Virginia é a menor latência p/ BR.
+    region: virginia
+    branch: main
+    # Instala só shared+backend — evita puxar o Expo/app inteiro no build.
+    # Com NODE_ENV=production o npm poda devDependencies (tsx é dependência).
+    buildCommand: npm ci --omit=dev -w @barganha/shared -w @barganha/backend
+    startCommand: npm run start -w @barganha/backend
+    healthCheckPath: /saude
+    autoDeployTrigger: commit
+    envVars:
+      - key: NODE_VERSION
+        value: '22.12.0'
+      - key: NODE_ENV
+        value: production
+      # Atrás do proxy do Render o IP real vem no X-Forwarded-For (rate-limit).
+      - key: TRUST_PROXY
+        value: 'true'
+      - key: UFS_HABILITADAS
+        value: RJ,SP
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      # Tokens da curadoria/moderação (C11). Vazio = endpoints desabilitados.
+      - key: CURADORIA_TOKENS
+        sync: false

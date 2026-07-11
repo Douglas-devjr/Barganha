@@ -14,9 +14,7 @@
     "@barganha/shared": "*",
     "@supabase/supabase-js": "^2.108.2",
     "fastify": "^5.8.5",
-    "node-html-parser": "^8.0.3"
-  },
-  "devDependencies": {
+    "node-html-parser": "^8.0.3",
     "tsx": "^4.22.4"
   }
 }

@@ -53,6 +53,49 @@ sem passar pela revisão da loja. **Backend continua sendo a fonte da verdade**
 
 ---
 
+## Hospedagem do backend (free tier — R$ 0)
+
+> **Gate de pagamento (regra do projeto):** nenhum serviço pago antes do app
+> pronto para lançar. Tudo abaixo roda em free tier; upgrade só pós-lançamento,
+> com tração — os gatilhos estão no fim da seção.
+
+### Arquitetura de produção a R$ 0/mês
+- **Web service:** Render **free** via `render.yaml` na raiz (blueprint). A
+  instância **dorme** após ~15 min sem tráfego e o primeiro request acorda em
+  ~30–60s — o app é offline-first e a fila de upload tolera (retry/backoff).
+- **Banco/Auth:** Supabase free (já em uso). O projeto free **pausa após ~7 dias
+  sem atividade** — os crons diários do GitHub Actions já geram atividade e
+  evitam a pausa.
+- **Jobs agendados:** GitHub Actions cron (`recalculo-estatistica` a cada 30 min,
+  `republicar-pool` 1×/dia). Falam DIRETO com o Supabase — funcionam mesmo com o
+  Render dormindo.
+- **Telemetria durável:** tabela `telemetria_parsing` (ver C10.2) — sobrevive ao
+  sono/restart da instância free.
+
+### Passo a passo (uma vez)
+1. **Migrations:** `npx supabase db push` (inclui `telemetria_parsing`).
+2. **Render:** Dashboard → *New* → *Blueprint* → apontar para o repositório
+   GitHub. Preencher os segredos pedidos (`SUPABASE_URL`,
+   `SUPABASE_SERVICE_ROLE_KEY`, `CURADORIA_TOKENS`). A URL sai como
+   `https://barganha-api.onrender.com`.
+3. **GitHub → Settings → Secrets:** `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY`
+   (jobs cron) e `EXPO_TOKEN` (release).
+4. **App:** trocar `EXPO_PUBLIC_API_URL` nos perfis `preview`/`production` do
+   `app/eas.json` pela URL do Render (os domínios `api.barganha.app` de hoje são
+   placeholders até existir domínio próprio).
+5. **Smoke test:** `GET /saude` → `{ ok: true }`; escanear um cupom com um build
+   apontando para produção; conferir `GET /metricas`.
+6. *(Opcional, R$ 0)* **Keep-warm:** cron-job.org pingando `GET /saude` a cada
+   10 min nos horários de pico — as 750 h/mês do free cobrem 24/7.
+
+### Gatilhos de upgrade (aí sim, pagar)
+- Cold start incomodando usuário real → Render Starter (~US$ 7/mês).
+- Banco > 500 MB **ou** necessidade de backup automático/PITR → Supabase Pro
+  (US$ 25/mês). Até lá: `supabase db dump` periódico (manual ou workflow).
+- Domínio próprio (`api.barganha.app`) → Registro.br (~R$ 40/ano).
+
+---
+
 ## C10.2 — Observabilidade
 
 ### Telemetria de parsing por estado
@@ -66,11 +109,16 @@ conta, **por UF**, o desfecho de cada cupom (`backend/src/observabilidade/`):
 | `transitorio_esgotado` | portal fora do ar além do retry | investigar portal/rede; reprocessar |
 | `sem_parser` | UF sem parser | esperado fora do rollout; entra com o parser novo |
 | `uf_nao_habilitada` | tem parser, fora do rollout (C10.3) | habilitar a UF quando for a vez |
+| `erro_portal` | portal recusou a verificação (reCAPTCHA, C2.6) | intermitente; taxa alta e sustentada no RJ → reavaliar estratégia de captura |
 
-- **Endpoint:** `GET /metricas` — snapshot agregado (`porUf`, `totais`, `geradoEm`).
-  Anônimo e sem dado de cupom. Em produção, restringir a métricas/rede interna.
-- **Coletor:** `TelemetriaMemoria` (processo único). Ao escalar, trocar pelo
-  exportador real (Prometheus/StatsD/OTel) — o domínio só conhece a porta `Telemetria`.
+- **Endpoint:** `GET /metricas` — snapshot agregado (`porUf`, `totais`, `geradoEm`)
+  **desde o último restart do processo**. Anônimo e sem dado de cupom. Em produção,
+  restringir a métricas/rede interna.
+- **Coletor:** `TelemetriaPersistente` — conta em memória (fonte do `/metricas`) e
+  incrementa em best-effort a tabela **`telemetria_parsing`** (dia × UF × evento),
+  o histórico durável consultável no Studio: essencial no free tier, onde a
+  instância dorme e o contador em memória zera. Ao escalar, trocar pelo exportador
+  real (Prometheus/StatsD/OTel) — o domínio só conhece a porta `Telemetria`.
 
 ### Alertas (limiares sugeridos)
 - **Taxa de falha por UF** = `falha_permanente / processado` numa janela. Acima de
@@ -79,7 +127,9 @@ conta, **por UF**, o desfecho de cada cupom (`backend/src/observabilidade/`):
 - **`processado` cai a zero** num estado ativo → ingestão ou portal parados.
 
 ### Backups & retenção
-- **Postgres/Supabase:** PITR + backup diário; testar restauração periodicamente.
+- **Postgres/Supabase:** no free tier não há backup automático — usar
+  `supabase db dump` periódico (manual ou workflow) até o gatilho do Pro; com o
+  Pro, PITR + backup diário e testar restauração periodicamente.
 - O lado **compartilhado** (`observacao_preco`, `preco_estatistica`) é anônimo — backup
   sem implicação de dado pessoal. O lado **privado** vive no aparelho (SQLite); o
   backend não persiste dado pessoal (docs/04), o que reduz a superfície do backup.

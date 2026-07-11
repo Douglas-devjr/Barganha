@@ -1,0 +1,49 @@
+name: Republicação do pool (backfill sem EAN)
+
+# C3.5/C10 — Republica cupons `processado` cujos itens nunca casaram com produto
+# canônico (ex.: RJ/ENCAT sem EAN, antes do casamento por descrição existir ou
+# quando a curadoria aprova novos casamentos). Reconstrói a nota do lado privado
+# e a repassa pelo gate normal de anonimização. Idempotente: item que ganha
+# canônico sai da elegibilidade — repetir é seguro.
+#
+# Requer os segredos de repositório SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY
+# (Settings → Secrets). A chave de serviço NUNCA é versionada.
+
+on:
+  schedule:
+    # 1x ao dia (03:15 UTC ≈ 00:15 em Brasília) — volume baixo, sem pressa.
+    - cron: '15 3 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: republicar-pool
+  cancel-in-progress: false
+
+jobs:
+  republicar:
+    name: Republicar cupons sem casamento
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+    steps:
+      - name: Falha cedo se faltar credencial do Supabase
+        if: ${{ env.SUPABASE_URL == '' || env.SUPABASE_SERVICE_ROLE_KEY == '' }}
+        run: |
+          echo "::error::Segredos SUPABASE_URL/SUPABASE_SERVICE_ROLE_KEY ausentes — configure em Settings → Secrets."
+          exit 1
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configura Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Instala dependências
+        run: npm ci
+
+      - name: Roda a republicação do pool
+        run: npm run job:republicar --workspace @barganha/backend
