@@ -34,6 +34,35 @@ const QR_RJ =
   'https://www.fazenda.rj.gov.br/nfce/qrcode?p=33260612345678000199650010000000011000000016|2|1';
 const CAPTURA = '2026-06-27T12:00:00.000Z';
 
+/** Nota ENCAT mínima do MESMO emitente da chave (12345678000199), com desconto. */
+const HTML_ENCAT_COM_DESCONTO = `
+<div id="conteudo">
+  <div class="txtTopo">SUPERMERCADO MARACANA LTDA</div>
+  <div class="text">CNPJ: 12.345.678/0001-99</div>
+  <div class="text">Rua do Mercado, 10, Centro, RIO DE JANEIRO, RJ</div>
+  <table id="tabResult">
+    <tr><td>
+      <span class="txtTit">CAFE TORRADO 500G</span>
+      <span class="RCod">(Código: 7890000000017)</span>
+      <span class="Rqtd"><strong>Qtde.:</strong>1</span>
+      <span class="RUN"><strong>UN:</strong> UN</span>
+      <span class="RvlUnit"><strong>Vl. Unit.:</strong> 16,90</span>
+    </td><td><span class="valor">16,90</span></td></tr>
+  </table>
+  <div id="totalNota">
+    <div id="linhaTotal"><label>Valor total R$:</label><span class="totalNumb">16,90</span></div>
+    <div id="linhaTotal"><label>Descontos R$:</label><span class="totalNumb">1,90</span></div>
+    <div id="linhaTotal"><label>Valor a pagar R$:</label><span class="totalNumb">15,00</span></div>
+  </div>
+  <div id="infos"><ul><li><strong>Emissão:</strong> 20/06/2026 18:30:00</li></ul></div>
+</div>`;
+
+/** Mesma nota, mas de OUTRO emitente — CNPJ não bate com a chave do cupom. */
+const HTML_OUTRO_EMITENTE = HTML_ENCAT_COM_DESCONTO.replace(
+  'CNPJ: 12.345.678/0001-99',
+  'CNPJ: 61.585.865/0001-51',
+);
+
 const repo = new RepositorioMemoria();
 // Cliente SEFAZ nunca é chamado no caminho por HTML; a fila é no-op para o cupom
 // ficar `qr_capturado` até a ingestão por HTML processá-lo (isola o caminho C2.6).
@@ -128,5 +157,42 @@ describe('POST /ingestao/cupom/:id/html (C2.6)', () => {
     });
     expect(r.statusCode).toBe(422);
     expect(repo.statusDoCupom(cupomId)).toBe('qr_capturado');
+  });
+
+  it('devolve o desconto e o valor pago do cupom (persistidos no processamento)', async () => {
+    const usuarioId = await novaConta();
+    const cupomId = await ingerirQr(usuarioId);
+
+    const r = await app.inject({
+      method: 'POST',
+      url: urlHtml(cupomId),
+      headers: { authorization: `Bearer ${usuarioId}` },
+      payload: { html: HTML_ENCAT_COM_DESCONTO },
+    });
+
+    expect(r.statusCode).toBe(200);
+    const corpo = r.json();
+    expect(corpo.status).toBe('processado');
+    expect(corpo.descontoTotal).toBe(1.9);
+    expect(corpo.valorPago).toBe(15);
+  });
+
+  it('nota de OUTRO emitente (CNPJ ≠ chave) → falha, nada entra no pool', async () => {
+    const usuarioId = await novaConta();
+    const cupomId = await ingerirQr(usuarioId);
+    const poolAntes = repo.observacoesDoPool().length;
+
+    const r = await app.inject({
+      method: 'POST',
+      url: urlHtml(cupomId),
+      headers: { authorization: `Bearer ${usuarioId}` },
+      payload: { html: HTML_OUTRO_EMITENTE },
+    });
+
+    expect(r.statusCode).toBe(200);
+    expect(r.json().status).toBe('falha');
+    expect(repo.statusDoCupom(cupomId)).toBe('falha');
+    expect(repo.motivoDaFalha(cupomId)).toMatch(/CNPJ/);
+    expect(repo.observacoesDoPool()).toHaveLength(poolAntes);
   });
 });

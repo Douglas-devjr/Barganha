@@ -99,13 +99,20 @@ export async function republicarPool(
     );
     if (resultado.observacoes.length === 0) continue;
 
-    await repo.marcarProcessado(cupom.id, {
-      loja: resultado.loja,
-      emitidoEm: resultado.emitidoEm,
-      uf: uf ?? resultado.loja.uf,
-      itensPrivados: resultado.itensPrivados,
-      observacoes: resultado.observacoes,
-    });
+    await repo.marcarProcessado(
+      cupom.id,
+      {
+        loja: resultado.loja,
+        emitidoEm: resultado.emitidoEm,
+        uf: uf ?? resultado.loja.uf,
+        itensPrivados: resultado.itensPrivados,
+        observacoes: resultado.observacoes,
+      },
+      // Backfill reescreve um cupom JÁ `processado` de propósito — a trava
+      // anti-corrida é pulada aqui; a anti-duplicação é a guarda acima
+      // (nenhum item com canônico ⇒ nada foi publicado antes).
+      { sobrescreverProcessado: true },
+    );
     republicados++;
     publicadas += resultado.observacoes.length;
     for (const o of resultado.observacoes) produtos.add(o.produtoCanonicoId);

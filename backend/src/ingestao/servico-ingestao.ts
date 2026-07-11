@@ -11,12 +11,7 @@
  * retroativo (C2.5). Erros só acontecem se o QR/chave forem inválidos.
  */
 
-import type {
-  CupomResponse,
-  IngestaoQrRequest,
-  IngestaoQrResponse,
-  TotaisNota,
-} from '@barganha/shared';
+import type { CupomResponse, IngestaoQrRequest, IngestaoQrResponse } from '@barganha/shared';
 
 import type { FilaProcessamento } from '../fila/tipos';
 import { parseQrNfce } from '../parsers/qr-payload';
@@ -25,11 +20,11 @@ import type { CupomRegistro, RepositorioCupom } from '../persistencia/tipos';
 /**
  * Porta mínima para o processamento a partir de HTML colhido pelo app (C2.6).
  * Mantém a ingestão desacoplada do `ProcessadorCupom` concreto (só o composition
- * root os liga) e trivial de testar com um fake. Devolve os totais do cupom
- * (bruto/desconto/pago) para a resposta, quando o portal os informa.
+ * root os liga) e trivial de testar com um fake. Os totais do cupom
+ * (desconto/pago) são persistidos no próprio cupom e voltam via `obterCupom`.
  */
 export interface ProcessadorHtml {
-  processarComHtml(cupom: CupomRegistro, html: string): Promise<TotaisNota | undefined>;
+  processarComHtml(cupom: CupomRegistro, html: string): Promise<void>;
 }
 
 export class ServicoIngestao {
@@ -87,14 +82,10 @@ export class ServicoIngestao {
     const cupom = await this.repo.obterParaProcessamento(cupomId);
     if (!cupom || cupom.usuarioId !== usuarioId) return undefined;
 
-    const total = await this.processador.processarComHtml(cupom, html);
-    const resposta = await this.obterCupom(usuarioId, cupomId);
-    // Totais vêm do parse (não são persistidos no servidor) — anexa à resposta
-    // para o app espelhar localmente (histórico privado é local-first, docs/05).
-    if (resposta && total) {
-      return { ...resposta, descontoTotal: total.desconto, valorPago: total.pago };
-    }
-    return resposta;
+    await this.processador.processarComHtml(cupom, html);
+    // Os totais (desconto/pago) foram persistidos no cupom pelo processamento;
+    // `obterCupom` já os devolve — mesmo caminho do polling (C6.3).
+    return this.obterCupom(usuarioId, cupomId);
   }
 
   /**
@@ -111,6 +102,8 @@ export class ServicoIngestao {
       ...(cupom.emitidoEm ? { emitidoEm: cupom.emitidoEm } : {}),
       ...(cupom.uf ? { uf: cupom.uf } : {}),
       ...(cupom.loja ? { loja: cupom.loja } : {}),
+      ...(cupom.descontoTotal != null ? { descontoTotal: cupom.descontoTotal } : {}),
+      ...(cupom.valorPago != null ? { valorPago: cupom.valorPago } : {}),
       itens: cupom.itens.map((i) => ({
         ...(i.produtoCanonicoId ? { produtoCanonicoId: i.produtoCanonicoId } : {}),
         descricaoOriginal: i.descricaoOriginal,

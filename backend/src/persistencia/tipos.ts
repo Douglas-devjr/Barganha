@@ -9,7 +9,7 @@
  * tipo, então não há caminho de escrita no pool que burle a anonimização.
  */
 
-import type { NotaEstruturada, ObservacaoAnonima, StatusCupom } from '@barganha/shared';
+import type { NotaEstruturada, ObservacaoAnonima, StatusCupom, TotaisNota } from '@barganha/shared';
 
 import type { ItemCupomNovo } from '../anonimizacao/anonimizador';
 
@@ -47,6 +47,12 @@ export interface DadosNotaProcessada {
   uf: string;
   itensPrivados: ItemCupomNovo[];
   observacoes: ObservacaoAnonima[];
+  /**
+   * Totais do cupom (bruto/desconto/pago), quando o portal os fornece. São
+   * persistidos no CUPOM (lado privado) para o app exibir o desconto também no
+   * caminho servidor — não só na ingestão por HTML (C2.6).
+   */
+  total?: TotaisNota;
 }
 
 /**
@@ -67,6 +73,10 @@ export interface CupomComItens {
     uf?: string;
   };
   itens: ItemCupomNovo[];
+  /** Desconto total do cupom (R$), quando o portal informa. */
+  descontoTotal?: number;
+  /** Valor efetivamente pago (R$) = bruto − desconto. */
+  valorPago?: number;
 }
 
 export interface FiltroReprocessamento {
@@ -87,8 +97,18 @@ export interface RepositorioCupom {
    * acesso): de outro dono ou inexistente → `undefined` (não vaza existência).
    */
   obterDoUsuario(cupomId: string, usuarioId: string): Promise<CupomComItens | undefined>;
-  /** Grava nota privada + pool anônimo e marca o cupom como `processado`. */
-  marcarProcessado(cupomId: string, dados: DadosNotaProcessada): Promise<void>;
+  /**
+   * Grava nota privada + pool anônimo e marca o cupom como `processado`.
+   * Cupom JÁ `processado` é no-op (trava anti-corrida: fila × ingestão por
+   * HTML não podem duplicar o pool). `sobrescreverProcessado` é a exceção
+   * DELIBERADA do backfill (job:republicar), que reescreve um processado —
+   * ele traz a própria guarda anti-duplicação (só cupons sem canônico algum).
+   */
+  marcarProcessado(
+    cupomId: string,
+    dados: DadosNotaProcessada,
+    opcoes?: { sobrescreverProcessado?: boolean },
+  ): Promise<void>;
   /** Marca o cupom como `falha` (erro permanente de parsing). */
   marcarFalha(cupomId: string, motivo?: string): Promise<void>;
   /** Lista ids de cupons elegíveis a reprocessamento (C2.5). */

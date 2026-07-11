@@ -155,7 +155,7 @@ export class RepositorioSupabase
     // Gate de acesso na própria consulta: `usuario_id` casa o dono.
     const c = await this.db
       .from('cupom')
-      .select('id, status, emitido_em, uf, loja_cnpj')
+      .select('id, status, emitido_em, uf, loja_cnpj, desconto_total, valor_pago')
       .eq('id', cupomId)
       .eq('usuario_id', usuarioId)
       .maybeSingle();
@@ -195,6 +195,8 @@ export class RepositorioSupabase
       ...(c.data.emitido_em ? { emitidoEm: c.data.emitido_em } : {}),
       ...(c.data.uf ? { uf: c.data.uf } : {}),
       ...(loja ? { loja } : {}),
+      ...(c.data.desconto_total != null ? { descontoTotal: Number(c.data.desconto_total) } : {}),
+      ...(c.data.valor_pago != null ? { valorPago: Number(c.data.valor_pago) } : {}),
       itens: (itensR.data ?? []).map((i) => ({
         ...(i.produto_canonico_id ? { produtoCanonicoId: i.produto_canonico_id } : {}),
         descricaoOriginal: i.descricao_original,
@@ -208,7 +210,11 @@ export class RepositorioSupabase
     };
   }
 
-  async marcarProcessado(cupomId: string, dados: DadosNotaProcessada): Promise<void> {
+  async marcarProcessado(
+    cupomId: string,
+    dados: DadosNotaProcessada,
+    opcoes?: { sobrescreverProcessado?: boolean },
+  ): Promise<void> {
     // C9.2 — última trava antes do pool: aborta se algum campo proibido escapou
     // ao tipo (a escrita via RPC fala JSON, onde a marca do gate se perde).
     const observacoes = dados.observacoes.map((o) => garantirSemDadoPessoal(o));
@@ -247,14 +253,24 @@ export class RepositorioSupabase
         em_promocao: o.emPromocao,
         observado_em: o.observadoEm,
       })),
+      p_desconto_total: dados.total?.desconto ?? null,
+      p_valor_pago: dados.total?.pago ?? null,
+      p_sobrescrever_processado: opcoes?.sobrescreverProcessado ?? false,
     });
     if (r.error) falhar('processamento transacional do cupom', r.error);
   }
 
-  async marcarFalha(cupomId: string): Promise<void> {
+  async marcarFalha(cupomId: string, motivo?: string): Promise<void> {
     const r = await this.db
       .from('cupom')
-      .update({ status: 'falha', atualizado_em: new Date().toISOString() })
+      .update({
+        status: 'falha',
+        // Diagnóstico (C10.2): sem o motivo persistido, a falha permanente só
+        // existia no console do servidor — impossível saber POR QUE um cupom
+        // não leu. Truncado: é campo de operação, não de conteúdo.
+        falha_motivo: motivo ? motivo.slice(0, 500) : null,
+        atualizado_em: new Date().toISOString(),
+      })
       .eq('id', cupomId);
     if (r.error) falhar('marcação de falha do cupom', r.error);
   }

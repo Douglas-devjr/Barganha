@@ -55,6 +55,9 @@ interface CupomInterno extends CupomRegistro {
   lojaCnpj?: string;
   emitidoEm?: string;
   capturadoEm: string;
+  descontoTotal?: number;
+  valorPago?: number;
+  falhaMotivo?: string;
 }
 
 interface ItemCupomArmazenado extends ItemCupomNovo {
@@ -183,6 +186,8 @@ export class RepositorioMemoria
             },
           }
         : {}),
+      ...(c.descontoTotal != null ? { descontoTotal: c.descontoTotal } : {}),
+      ...(c.valorPago != null ? { valorPago: c.valorPago } : {}),
       itens: this.itensCupom
         .filter((i) => i.cupomId === cupomId)
         .map((i) => ({
@@ -198,9 +203,20 @@ export class RepositorioMemoria
     });
   }
 
-  marcarProcessado(cupomId: string, dados: DadosNotaProcessada): Promise<void> {
+  marcarProcessado(
+    cupomId: string,
+    dados: DadosNotaProcessada,
+    opcoes?: { sobrescreverProcessado?: boolean },
+  ): Promise<void> {
     const cupom = this.cupons.get(cupomId);
     if (!cupom) return Promise.reject(new Error(`Cupom ${cupomId} inexistente.`));
+    // Espelha a trava da RPC `processar_cupom` (FOR UPDATE + status): dois
+    // processadores em corrida (fila × ingestão por HTML) — o segundo vira
+    // no-op em vez de duplicar o pool (append-only, indedupável a posteriori).
+    // O backfill (job:republicar) é a exceção deliberada (ver tipos.ts).
+    if (cupom.status === 'processado' && !opcoes?.sobrescreverProcessado) {
+      return Promise.resolve();
+    }
 
     this.upsertLoja(dados.loja);
 
@@ -224,12 +240,19 @@ export class RepositorioMemoria
     cupom.lojaCnpj = dados.loja.cnpj;
     cupom.emitidoEm = dados.emitidoEm;
     cupom.uf = dados.uf;
+    if (dados.total) {
+      cupom.descontoTotal = dados.total.desconto;
+      cupom.valorPago = dados.total.pago;
+    }
     return Promise.resolve();
   }
 
-  marcarFalha(cupomId: string): Promise<void> {
+  marcarFalha(cupomId: string, motivo?: string): Promise<void> {
     const cupom = this.cupons.get(cupomId);
-    if (cupom) cupom.status = 'falha';
+    if (cupom) {
+      cupom.status = 'falha';
+      cupom.falhaMotivo = motivo;
+    }
     return Promise.resolve();
   }
 
@@ -507,6 +530,10 @@ export class RepositorioMemoria
 
   statusDoCupom(cupomId: string): StatusCupom | undefined {
     return this.cupons.get(cupomId)?.status;
+  }
+
+  motivoDaFalha(cupomId: string): string | undefined {
+    return this.cupons.get(cupomId)?.falhaMotivo;
   }
 
   totalProdutos(): number {

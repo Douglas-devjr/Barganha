@@ -184,7 +184,7 @@ describe('Fluxo de captura C2 (ingestão → parse → anonimização → pool)'
     expect(telemetria.snapshot().porUf.RJ?.processado).toBe(1);
   });
 
-  it('marca falha em erro permanente de parsing (sem retry)', async () => {
+  it('marca falha em erro permanente de parsing (sem retry) e PERSISTE o motivo', async () => {
     const clienteQuebrado = new (class implements ClienteSefaz {
       buscarConsulta(): Promise<string> {
         return Promise.resolve('<html><body>sem nota</body></html>');
@@ -197,6 +197,64 @@ describe('Fluxo de captura C2 (ingestão → parse → anonimização → pool)'
 
     expect(repo.statusDoCupom(res.cupomId)).toBe('falha');
     expect(repo.observacoesDoPool()).toHaveLength(0);
+    // Diagnóstico (C10.2): sem o motivo gravado, a falha era invisível fora do
+    // console do servidor.
+    expect(repo.motivoDaFalha(res.cupomId)).toMatch(/layout|ausente|inesperad/i);
+  });
+
+  it('persiste os totais do cupom (desconto/pago) também no caminho SERVIDOR', async () => {
+    // O fixture de SP (formato real, com #totalNota) traz desconto de R$ 2,00.
+    // Antes, os totais só chegavam ao app pela ingestão por HTML (C2.6); no
+    // caminho fila+polling eram extraídos e descartados.
+    const { repo, servico, fila } = montar((c) => [new ParserRj(c), new ParserSp(c)], clienteRjSp);
+    const res = await servico.ingerir('user-1', { qrPayload: QR_SP, ...CAPTURA });
+    await fila.ociosa();
+
+    expect(repo.statusDoCupom(res.cupomId)).toBe('processado');
+    const cupom = await servico.obterCupom('user-1', res.cupomId);
+    expect(cupom?.descontoTotal).toBe(2);
+    expect(cupom?.valorPago).toBe(44.66);
+  });
+
+  it('rejeita nota cujo CNPJ não bate com a chave de acesso (anti-envenenamento)', async () => {
+    // Cliente devolve a nota de SP (CNPJ 61585865000151) para um QR do RJ
+    // (chave com CNPJ 12345678000199): página errada ou HTML forjado.
+    const clienteTrocado = new (class implements ClienteSefaz {
+      buscarConsulta(): Promise<string> {
+        return Promise.resolve(HTML_SP);
+      }
+    })();
+    const { repo, servico, fila } = montar((c) => [new ParserRj(c)], clienteTrocado);
+
+    const res = await servico.ingerir('user-1', { qrPayload: QR_RJ, ...CAPTURA });
+    await fila.ociosa();
+
+    expect(repo.statusDoCupom(res.cupomId)).toBe('falha');
+    expect(repo.observacoesDoPool()).toHaveLength(0);
+    expect(repo.motivoDaFalha(res.cupomId)).toMatch(/CNPJ/);
+  });
+
+  it('não duplica o pool quando fila e ingestão por HTML processam o MESMO cupom em corrida', async () => {
+    // Fila no-op: o cupom fica `qr_capturado` para a corrida ser disparada à mão.
+    const repo = new RepositorioMemoria();
+    const registro = new RegistroParsers([new ParserRj(clienteRjSp)]);
+    const processador = new ProcessadorCupom(repo, registro, new Anonimizador(repo));
+    const servico = new ServicoIngestao(repo, { enfileirar: () => Promise.resolve() });
+
+    const res = await servico.ingerir('user-1', { qrPayload: QR_RJ, ...CAPTURA });
+    const cupom = await repo.obterParaProcessamento(res.cupomId);
+    expect(cupom?.status).toBe('qr_capturado');
+
+    // Os dois caminhos disparam JUNTOS — ambos leem `qr_capturado` antes de
+    // qualquer commit. A trava de status em marcarProcessado (espelho do FOR
+    // UPDATE da RPC `processar_cupom`) faz o segundo virar no-op.
+    await Promise.all([
+      processador.processar(res.cupomId),
+      processador.processarComHtml(cupom!, HTML_RJ),
+    ]);
+
+    expect(repo.statusDoCupom(res.cupomId)).toBe('processado');
+    expect(repo.observacoesDoPool()).toHaveLength(3); // e não 6
   });
 
   it('dá retry em erro transitório da SEFAZ e conclui', async () => {

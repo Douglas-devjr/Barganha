@@ -14,7 +14,7 @@
  * Cada desfecho é registrado na telemetria por estado (C10.2).
  */
 
-import type { NotaEstruturada, TotaisNota } from '@barganha/shared';
+import type { NotaEstruturada } from '@barganha/shared';
 
 import {
   ChaveAcessoInvalidaError,
@@ -26,7 +26,7 @@ import type { Anonimizador } from '../anonimizacao/anonimizador';
 import type { Telemetria } from '../observabilidade/telemetria';
 import { telemetriaNula } from '../observabilidade/telemetria';
 import { pareceDefesaAntiBot } from '../parsers/html';
-import { parseQrNfce } from '../parsers/qr-payload';
+import { parseQrNfce, type QrNfce } from '../parsers/qr-payload';
 import type { RegistroParsers } from '../parsers/registro';
 import type { ParserSefaz } from '../parsers/tipos';
 import type { CupomRegistro, RepositorioCupom } from '../persistencia/tipos';
@@ -40,6 +40,20 @@ function ehErroPermanente(erro: unknown): boolean {
     erro instanceof PayloadQrInvalidoError ||
     erro instanceof ChaveAcessoInvalidaError
   );
+}
+
+/**
+ * Integridade: a nota parseada precisa SER a nota da chave de acesso. A chave
+ * carrega o CNPJ do emitente (posições 6–20), então uma nota cujo CNPJ não bate
+ * é outra nota — HTML da página errada no WebView ou conteúdo forjado tentando
+ * envenenar o pool (C9.2). Erro permanente: marca `falha`, não adianta retry.
+ */
+function validarNotaContraChave(qr: QrNfce, nota: NotaEstruturada): void {
+  if (nota.loja.cnpj !== qr.chave.cnpj) {
+    throw new FalhaParserSefazError(
+      `CNPJ do emitente na nota (${nota.loja.cnpj}) não corresponde ao da chave de acesso (${qr.chave.cnpj}).`,
+    );
+  }
 }
 
 export interface OpcoesProcessador {
@@ -90,6 +104,7 @@ export class ProcessadorCupom {
       // Busca na SEFAZ + parse. UF da chave (cUF) é canônica — mais confiável
       // que o endereço parseado.
       const nota = await alvo.parse(qr);
+      validarNotaContraChave(qr, nota);
       await this.finalizar(cupom, uf!, nota);
     } catch (erro) {
       await this.tratarErro(cupom.id, uf, erro);
@@ -103,8 +118,8 @@ export class ProcessadorCupom {
    * o dono). Lança `HtmlDesafioError` se o HTML ainda for a página de
    * bloqueio/desafio — nesse caso o app reabre e reenvia (não marca `falha`).
    */
-  async processarComHtml(cupom: CupomRegistro, html: string): Promise<TotaisNota | undefined> {
-    if (cupom.status === 'processado') return undefined;
+  async processarComHtml(cupom: CupomRegistro, html: string): Promise<void> {
+    if (cupom.status === 'processado') return;
     if (pareceDefesaAntiBot(html)) {
       throw new HtmlDesafioError(
         'O HTML enviado ainda é a página de bloqueio/desafio da SEFAZ, não a nota.',
@@ -117,16 +132,13 @@ export class ProcessadorCupom {
       uf = qr.uf ?? cupom.uf;
 
       const alvo = this.resolverParser(uf);
-      if (!alvo) return undefined; // sem parser ou UF fora do rollout — represado (C2.5).
+      if (!alvo) return; // sem parser ou UF fora do rollout — represado (C2.5).
 
       const nota = alvo.parseHtml(html);
+      validarNotaContraChave(qr, nota);
       await this.finalizar(cupom, uf!, nota);
-      // Totais do cupom (bruto/desconto/pago) voltam para o app exibir — não são
-      // persistidos no servidor (histórico privado é local-first, docs/05).
-      return nota.total;
     } catch (erro) {
       await this.tratarErro(cupom.id, uf, erro);
-      return undefined;
     }
   }
 
@@ -165,6 +177,9 @@ export class ProcessadorCupom {
       uf,
       itensPrivados: resultado.itensPrivados,
       observacoes: resultado.observacoes,
+      // Totais do cupom (desconto/pago) persistem no CUPOM privado: o app os
+      // recebe também pelo polling do caminho servidor, não só pelo HTML (C2.6).
+      ...(nota.total ? { total: nota.total } : {}),
     });
     this.telemetria.registrarParsing(uf, 'processado');
 
