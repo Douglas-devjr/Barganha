@@ -90,9 +90,32 @@ describe('Anonimizador (C2.4)', () => {
     });
   });
 
-  it('marca em_promocao a partir do desconto da NFC-e', async () => {
+  it('marca em_promocao e publica o preço EFETIVO (líquido do desconto do item)', async () => {
+    // LEITE: unitário cheio 5,29 com desconto de 0,50 → o consumidor pagou 4,79.
+    // Publicar 5,29 faria o "menor promocional" reportar um preço que ninguém pagou.
     const r = await new Anonimizador(catalogoFake()).anonimizar(NOTA, CONTEXTO);
-    expect(r.observacoes[1]).toMatchObject({ emPromocao: true, precoNormalizado: 5.29 });
+    expect(r.observacoes[1]).toMatchObject({ emPromocao: true, precoNormalizado: 4.79 });
+  });
+
+  it('rateia o desconto do item pela quantidade ao publicar o preço efetivo', async () => {
+    const nota: NotaEstruturada = {
+      ...NOTA,
+      itens: [
+        {
+          descricao: 'SABAO EM PO 1KG',
+          ean: '7891234500017',
+          quantidade: 2,
+          unidade: 'UN',
+          valorUnitario: 10,
+          valorTotal: 20,
+          desconto: 1, // desconto TOTAL do item → R$ 0,50 por unidade
+        },
+      ],
+    };
+    const r = await new Anonimizador(catalogoFake()).anonimizar(nota, CONTEXTO);
+    expect(r.observacoes[0]).toMatchObject({ emPromocao: true, precoNormalizado: 9.5 });
+    // O lado privado preserva os valores originais da nota (unitário cheio).
+    expect(r.itensPrivados[0]).toMatchObject({ valorUnitario: 10, desconto: 1 });
   });
 
   it('usa a UF canônica (da chave) na loja e no pool, ignorando o endereço', async () => {

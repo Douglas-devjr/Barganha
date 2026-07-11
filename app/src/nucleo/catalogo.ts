@@ -16,6 +16,7 @@ import {
   normalizarDescricao,
   normalizarPreco,
   type ObservacaoNormalizada,
+  precoUnitarioEfetivo,
   type UnidadeBase,
 } from '@barganha/shared';
 
@@ -71,6 +72,22 @@ function emPromocao(o: ObservacaoLocal): boolean {
   return o.desconto != null && o.desconto > 0;
 }
 
+/**
+ * Normaliza o preço que o usuário PAGOU: com desconto no item, o unitário
+ * efetivo (líquido) — a mesma regra do pool (shared), para o "menor pago" e o
+ * típico pessoal refletirem o preço real, não o cheio de um item em promoção.
+ */
+function normalizarPago(o: ObservacaoLocal) {
+  return normalizarPreco({
+    unidade: o.unidade,
+    valorUnitario: precoUnitarioEfetivo({
+      valorUnitario: o.valorUnitario,
+      quantidade: o.quantidade,
+      ...(o.desconto != null ? { desconto: o.desconto } : {}),
+    }),
+  });
+}
+
 /** Agrupa observações soltas em produtos + histórico ordenado. */
 function agrupar(observacoes: readonly ObservacaoLocal[]): Map<string, Grupo> {
   // Pré-ordena por data crescente: o histórico já sai pronto e o "nome mais
@@ -88,7 +105,7 @@ function agrupar(observacoes: readonly ObservacaoLocal[]): Map<string, Grupo> {
   const resultado = new Map<string, Grupo>();
   for (const [chave, { obs }] of grupos) {
     const historico: CompraHistorico[] = obs.map((o) => {
-      const norm = normalizarPreco({ unidade: o.unidade, valorUnitario: o.valorUnitario });
+      const norm = normalizarPago(o);
       return {
         lojaNome: o.lojaNome,
         observadoEm: o.observadoEm,
@@ -99,7 +116,7 @@ function agrupar(observacoes: readonly ObservacaoLocal[]): Map<string, Grupo> {
     });
 
     const normalizadas: ObservacaoNormalizada[] = obs.flatMap((o) => {
-      const norm = normalizarPreco({ unidade: o.unidade, valorUnitario: o.valorUnitario });
+      const norm = normalizarPago(o);
       if (!norm) return [];
       return [
         {

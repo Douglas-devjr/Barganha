@@ -4,8 +4,37 @@ import {
   chaveMunicipio,
   normalizarDescricao,
   normalizarPreco,
+  precoUnitarioEfetivo,
   unidadePadraoDaBase,
 } from './normalizacao';
+
+describe('precoUnitarioEfetivo (shared)', () => {
+  it('sem desconto: devolve o próprio unitário', () => {
+    expect(precoUnitarioEfetivo({ valorUnitario: 5.29, quantidade: 1 })).toBe(5.29);
+    expect(precoUnitarioEfetivo({ valorUnitario: 5.29, quantidade: 1, desconto: 0 })).toBe(5.29);
+  });
+
+  it('com desconto: rateia o desconto TOTAL do item pela quantidade', () => {
+    expect(precoUnitarioEfetivo({ valorUnitario: 5.29, quantidade: 1, desconto: 0.5 })).toBeCloseTo(
+      4.79,
+      10,
+    );
+    expect(precoUnitarioEfetivo({ valorUnitario: 10, quantidade: 2, desconto: 1 })).toBe(9.5);
+  });
+
+  it('quantidade inválida (0/NaN): não divide, devolve o unitário', () => {
+    expect(precoUnitarioEfetivo({ valorUnitario: 10, quantidade: 0, desconto: 1 })).toBe(10);
+    expect(precoUnitarioEfetivo({ valorUnitario: 10, quantidade: Number.NaN, desconto: 1 })).toBe(
+      10,
+    );
+  });
+
+  it('desconto maior que o item: resultado ≤ 0 (rejeitado adiante pelo normalizarPreco)', () => {
+    const efetivo = precoUnitarioEfetivo({ valorUnitario: 2, quantidade: 1, desconto: 3 });
+    expect(efetivo).toBeLessThanOrEqual(0);
+    expect(normalizarPreco({ unidade: 'UN', valorUnitario: efetivo })).toBeUndefined();
+  });
+});
 
 describe('normalizarPreco (shared)', () => {
   it('mantém KG como R$/kg (fator 1)', () => {

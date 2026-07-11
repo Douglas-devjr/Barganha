@@ -85,6 +85,31 @@ export function normalizarPreco(item: {
 }
 
 /**
+ * Preço unitário EFETIVO de um item de cupom: quando a NFC-e traz desconto no
+ * próprio item, o que o consumidor pagou por unidade é
+ * `valorUnitario − desconto/quantidade` (o `vDesc` da NFC-e é o desconto TOTAL
+ * do item; o unitário impresso é sempre o cheio). É este o preço que vale como
+ * observação — publicar o unitário cheio de um item em promoção faria o
+ * "menor promocional" (docs/06) reportar um preço que ninguém pagou.
+ *
+ * Independe da convenção de exibição do "valor total" do portal (bruto ou
+ * líquido), por derivar só de unitário/desconto/quantidade. Sem desconto (ou
+ * com dados inválidos), devolve o próprio `valorUnitario`. Um resultado ≤ 0
+ * (desconto maior que o item — dado quebrado) é rejeitado adiante pelo
+ * `normalizarPreco`, ficando fora do pool.
+ */
+export function precoUnitarioEfetivo(item: {
+  valorUnitario: number;
+  quantidade: number;
+  desconto?: number;
+}): number {
+  if (item.desconto == null || item.desconto <= 0 || !(item.quantidade > 0)) {
+    return item.valorUnitario;
+  }
+  return item.valorUnitario - item.desconto / item.quantidade;
+}
+
+/**
  * Unidade de venda canônica de uma unidade-base (R$/kg → "KG", etc.). Útil na
  * gôndola (C7): quando o usuário digita o preço de prateleira de um produto
  * cuja base é conhecida mas sem unidade explícita, assume-se a venda na própria

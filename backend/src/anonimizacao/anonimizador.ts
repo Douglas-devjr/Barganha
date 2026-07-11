@@ -21,6 +21,7 @@ import {
   type NotaEstruturada,
   type NotaProcessada,
   type ObservacaoAnonima,
+  precoUnitarioEfetivo,
 } from '@barganha/shared';
 
 import type { CatalogoProdutos } from './casamento';
@@ -65,7 +66,13 @@ export class Anonimizador {
     const itensPool: ItemProcessado[] = [];
 
     for (const item of nota.itens) {
-      const norm = normalizarPreco(item);
+      // O pool recebe o preço que o consumidor PAGOU: com desconto no item, o
+      // unitário efetivo (líquido) — senão o "menor promocional" (docs/06)
+      // reportaria o preço cheio de um item que estava em promoção.
+      const norm = normalizarPreco({
+        unidade: item.unidade,
+        valorUnitario: precoUnitarioEfetivo(item),
+      });
       // Sinal de promoção da própria NFC-e (docs/06, camada 1).
       const emPromocao = item.desconto != null && item.desconto > 0;
 
