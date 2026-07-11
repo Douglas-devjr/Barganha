@@ -43,8 +43,13 @@ function carregarWebView(): WebViewClasse | null {
 
 const WebViewNativo = carregarWebView();
 
-/** Resultado do envio do HTML ao backend, do ponto de vista do coletor. */
-export type ResultadoColeta = 'processado' | 'desafio' | 'erro';
+/**
+ * Resultado do envio do HTML ao backend, do ponto de vista do coletor.
+ * `erro_portal` = a SEFAZ recusou a verificação (reCAPTCHA com pontuação baixa)
+ * e caiu na página de erro — beco sem saída: esperar não resolve, mas recarregar
+ * a consulta (token novo) costuma passar. O coletor recarrega sozinho.
+ */
+export type ResultadoColeta = 'processado' | 'desafio' | 'erro' | 'erro_portal';
 
 export interface ColetorNotaWebProps {
   /** URL do QR da NFC-e (o payload capturado) — a página a renderizar. */
@@ -69,6 +74,10 @@ const MAX_ERROS_BACKEND = 8;
 // desistir em vez de estourar no primeiro tropeço de rede.
 const MAX_ERROS_REDE = 4;
 const ATRASO_RECARGA_MS = 1500;
+// Recusas do reCAPTCHA (`erro_portal`) são intermitentes: o MESMO aparelho passa
+// minutos depois. Cada recarga da consulta gera um token novo — vale re-tentar
+// algumas vezes antes de devolver o cupom (que segue pendente, nunca `falha`).
+const MAX_RECARGAS_PORTAL = 4;
 // UA de Chrome mobile REAL (sem o marcador "; wv" do WebView). O reCAPTCHA v3 do
 // portal do RJ penaliza User-Agent de WebView e trava no desafio (`grecaptcha-error`);
 // apresentar-se como Chrome comum melhora a pontuação e a chance de render a nota.
@@ -82,7 +91,12 @@ export function ColetorNotaWeb({ url, enviarHtml, aoProcessar, aoDesistir }: Col
   const concluido = useRef(false);
   const errosBackend = useRef(0);
   const errosRede = useRef(0);
+  const recargasPortal = useRef(0);
+  // Entre disparar a recarga e a página nova carregar, o timer ainda colheria a
+  // MESMA página de erro e contaria recargas a mais — silencia até o onLoadEnd.
+  const aguardandoRecarga = useRef(false);
   const [lendoNota, setLendoNota] = useState(false);
+  const [avisoPortal, setAvisoPortal] = useState<string | null>(null);
 
   const coletar = useCallback(() => {
     if (concluido.current) return;
@@ -118,7 +132,7 @@ export function ColetorNotaWeb({ url, enviarHtml, aoProcessar, aoDesistir }: Col
 
   const aoMensagem = useCallback(
     async (evento: WebViewMessageEvent) => {
-      if (concluido.current || enviando.current) return;
+      if (concluido.current || enviando.current || aguardandoRecarga.current) return;
       const html = evento.nativeEvent.data;
       if (!html || html.length < 200) return; // página ainda vazia/carregando.
 
@@ -136,6 +150,27 @@ export function ColetorNotaWeb({ url, enviarHtml, aoProcessar, aoDesistir }: Col
           errosBackend.current = 0;
           return;
         }
+        if (resultado === 'erro_portal') {
+          // A SEFAZ recusou a verificação e caiu na página de erro (beco sem
+          // saída). Recarrega a CONSULTA ORIGINAL — `reload()` re-enviaria o
+          // postback recusado — para o reCAPTCHA emitir um token novo.
+          errosBackend.current = 0;
+          recargasPortal.current += 1;
+          if (recargasPortal.current > MAX_RECARGAS_PORTAL) {
+            encerrar(() =>
+              aoDesistir(
+                'A SEFAZ está recusando a verificação neste momento. Seu cupom fica guardado — abra-o de novo mais tarde para tentar outra vez.',
+              ),
+            );
+            return;
+          }
+          aguardandoRecarga.current = true;
+          setAvisoPortal(
+            `A SEFAZ recusou a verificação (tentativa ${recargasPortal.current} de ${MAX_RECARGAS_PORTAL}). Recarregando — toque em “Consultar” quando a página voltar.`,
+          );
+          webRef.current?.injectJavaScript(`window.location.replace(${JSON.stringify(url)});true;`);
+          return;
+        }
         // 'erro' = falha real do backend (não 422). Tolera alguns e só então
         // desiste — pode ser um blip; o usuário pode ter carregado algo estranho.
         errosBackend.current += 1;
@@ -148,7 +183,7 @@ export function ColetorNotaWeb({ url, enviarHtml, aoProcessar, aoDesistir }: Col
         enviando.current = false;
       }
     },
-    [enviarHtml, aoProcessar, aoDesistir, encerrar],
+    [enviarHtml, aoProcessar, aoDesistir, encerrar, url],
   );
 
   if (!WebViewNativo) return null; // o pai mostra a mensagem via aoDesistir.
@@ -180,7 +215,8 @@ export function ColetorNotaWeb({ url, enviarHtml, aoProcessar, aoDesistir }: Col
 
         <View style={estilos.dica}>
           <Texto tamanho="sm" cor="suave">
-            Assim que a nota da SEFAZ aparecer, a gente lê os itens e fecha sozinho.
+            {avisoPortal ??
+              'Assim que a nota da SEFAZ aparecer, a gente lê os itens e fecha sozinho.'}
           </Texto>
         </View>
 
@@ -196,7 +232,10 @@ export function ColetorNotaWeb({ url, enviarHtml, aoProcessar, aoDesistir }: Col
             // Desafios do reCAPTCHA às vezes abrem em nova janela: mantém no mesmo
             // WebView para o usuário conseguir resolver.
             setSupportMultipleWindows={false}
-            onLoadEnd={() => coletar()}
+            onLoadEnd={() => {
+              aguardandoRecarga.current = false;
+              coletar();
+            }}
             onError={(e) => {
               if (concluido.current) return;
               const { code, description, url: falhaUrl } = e.nativeEvent;

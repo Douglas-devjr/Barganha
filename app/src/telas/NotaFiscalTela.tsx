@@ -83,7 +83,11 @@ export function NotaFiscalTela({ navigation, route }: Props) {
         if (atualizado?.status === 'falha') return 'erro';
         return 'desafio';
       } catch (e) {
-        if (e instanceof ErroApi && e.status === 422) return 'desafio';
+        if (e instanceof ErroApi && e.status === 422) {
+          // `erro_portal` = a SEFAZ recusou a verificação (beco sem saída): o
+          // coletor recarrega a consulta. Qualquer outro 422 é o desafio normal.
+          return e.codigo === 'erro_portal' ? 'erro_portal' : 'desafio';
+        }
         return 'erro';
       }
     },

@@ -27,6 +27,8 @@ export class ErroApi extends Error {
   constructor(
     readonly status: number,
     mensagem: string,
+    /** Código de máquina do backend (ex.: `desafio`/`erro_portal` no 422 da C2.6). */
+    readonly codigo?: string,
   ) {
     super(mensagem);
     this.name = 'ErroApi';
@@ -47,6 +49,7 @@ export interface OpcoesClienteApi {
 
 interface CorpoErro {
   erro?: string;
+  codigo?: string;
 }
 
 export class ClienteApi {
@@ -167,13 +170,15 @@ export class ClienteApi {
 
     if (!resposta.ok) {
       let mensagem = `Erro ${resposta.status}.`;
+      let codigo: string | undefined;
       try {
         const json = (await resposta.json()) as CorpoErro;
         if (json.erro) mensagem = json.erro;
+        codigo = json.codigo;
       } catch {
         // resposta sem corpo JSON — mantém a mensagem padrão.
       }
-      throw new ErroApi(resposta.status, mensagem);
+      throw new ErroApi(resposta.status, mensagem, codigo);
     }
 
     if (resposta.status === 204) return undefined as T;
