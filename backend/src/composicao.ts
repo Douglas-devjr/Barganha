@@ -18,7 +18,8 @@ import { PipelineEstatistica } from './estatistica/pipeline';
 import { FilaMemoria } from './fila/fila-memoria';
 import { ServicoIngestao } from './ingestao/servico-ingestao';
 import { ServicoModeracao } from './moderacao/servico-moderacao';
-import { TelemetriaMemoria } from './observabilidade/telemetria-memoria';
+import type { FonteMetricas, Telemetria } from './observabilidade/telemetria';
+import { TelemetriaPersistente } from './observabilidade/telemetria-persistente';
 import { ParserMg } from './parsers/mg';
 import { RegistroParsers } from './parsers/registro';
 import { ParserRj } from './parsers/rj';
@@ -49,8 +50,8 @@ export interface Backend {
   gerenciadorConta: GerenciadorContaSupabase;
   /** Gate de lançamento faseado por UF (C10.3). */
   rollout: ControleRollout;
-  /** Telemetria de parsing por estado — fonte do endpoint `/metricas` (C10.2). */
-  telemetria: TelemetriaMemoria;
+  /** Telemetria de parsing por estado — fonte do `/metricas` + histórico durável (C10.2). */
+  telemetria: Telemetria & FonteMetricas;
   /** Lançamento manual de gôndola + moderação (C11.3). */
   servicoModeracao: ServicoModeracao;
   /** Enriquecimento de produto pela curadoria (C11.5). */
@@ -71,8 +72,10 @@ export function montarBackend(config: ConfigBackend): Backend {
   ]);
 
   // C10 — lançamento faseado (quais UFs atender agora) + observabilidade do parsing.
+  // Telemetria persiste no Postgres (tabela `telemetria_parsing`): no free tier a
+  // instância dorme e o contador em memória zera — o histórico durável fica no banco.
   const rollout = new ControleRollout(config.ufsHabilitadas);
-  const telemetria = new TelemetriaMemoria();
+  const telemetria = new TelemetriaPersistente(db);
 
   // C3 — motor estatístico sobre o pool anônimo. Montado ANTES do processador
   // para ser o gatilho de recálculo pós-ingestão (sem ele o pool enche mas a
