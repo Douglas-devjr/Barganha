@@ -83,6 +83,36 @@ export function dataHoraBrParaIso(texto: string | undefined | null): string {
 }
 
 /**
+ * Extrai município e UF do FIM de uma linha de endereço da SEFAZ.
+ *
+ * Nos portais reais o endereço vem numa ÚNICA linha terminada na UF, com o
+ * município no penúltimo segmento (formato posicional do ENCAT):
+ *   "AVENIDA X, 123, CENTRO, RIO DE JANEIRO, RJ"
+ *   "SAO PAULO, SP"                                 (linha só de cidade)
+ *   "Av. Y, 500 - Copacabana - Rio de Janeiro/RJ"   (layout antigo do RJ)
+ *
+ * Um regex que capturasse "tudo antes da UF" pegaria o ENDEREÇO INTEIRO como
+ * município — a chave `UF:MUNICIPIO` gravada nunca casaria com a cidade
+ * escolhida no app e a média regional caía silenciosamente para a UF. Por isso:
+ * isola-se a UF no fim e toma-se o ÚLTIMO segmento do restante (por vírgula;
+ * dentro dele, por " - " ou "/") como município.
+ */
+export function municipioUfDeEndereco(texto: string | undefined | null): {
+  municipio?: string;
+  uf?: string;
+} {
+  const linha = textoLimpo(texto);
+  const m = linha.match(/^(.*?)\s*[,\-/]\s*([A-Z]{2})\s*$/);
+  if (!m) return {};
+  const uf = m[2] as string;
+  const porVirgula = (m[1] ?? '').split(',').at(-1) ?? '';
+  // " - " (com espaços) não quebra municípios hifenizados (ex.: "NAO-ME-TOQUE").
+  const municipio = textoLimpo(porVirgula.split(/\s+-\s+|\//).at(-1));
+  if (!municipio || !/\p{L}/u.test(municipio)) return { uf };
+  return { municipio, uf };
+}
+
+/**
  * Devolve o código como EAN/GTIN só quando tem comprimento de código de barras
  * (8/12/13/14 dígitos). Itens de hortifruti/padaria têm código interno da loja,
  * não EAN — esses voltam `undefined` e seguem para casamento por texto (C3.5).

@@ -17,10 +17,21 @@ describe('parseHtmlSp (C2.3)', () => {
     expect(nota.loja).toEqual({
       cnpj: '61585865000151',
       razaoSocial: 'MERCADO PAULISTA COMERCIO DE ALIMENTOS LTDA',
-      endereco: 'Rua das Flores, 123 - Centro, SAO PAULO, SP',
+      endereco: 'Rua das Flores, 123, Centro, SAO PAULO, SP',
       municipio: 'SAO PAULO',
       uf: 'SP',
     });
+  });
+
+  it('isola o MUNICÍPIO do endereço em linha única (formato real do portal)', () => {
+    // Regressão: capturar "tudo antes da UF" viraria "Rua das Flores, 123,
+    // Centro, SAO PAULO" e a chave UF:MUNICIPIO nunca casaria com a cidade
+    // escolhida no app (a média regional cairia para a UF).
+    expect(nota.loja.municipio).toBe('SAO PAULO');
+  });
+
+  it('extrai os totais do cupom (bruto/desconto/pago) da seção #totalNota', () => {
+    expect(nota.total).toEqual({ bruto: 46.66, desconto: 2, pago: 44.66 });
   });
 
   it('converte a emissão para ISO 8601 (UTC, de -03:00)', () => {

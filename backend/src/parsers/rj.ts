@@ -17,6 +17,7 @@ import {
   dataHoraBrParaIso,
   eanDeCodigo,
   exigir,
+  municipioUfDeEndereco,
   numeroBr,
   parseHtml,
   textoDe,
@@ -28,13 +29,6 @@ import type { ClienteSefaz, ParserSefaz } from './tipos';
 
 export const UF_RJ = 'RJ';
 export const VERSAO_PARSER_RJ = '2026.1';
-
-/** Separa "Cidade/UF" ou "Cidade - UF" no fim do endereço. */
-function municipioUf(endereco: string): { municipio?: string; uf?: string } {
-  const m = endereco.match(/([^/-]+?)\s*[/-]\s*([A-Z]{2})\s*$/);
-  if (!m) return {};
-  return { municipio: textoLimpo(m[1]), uf: m[2] };
-}
 
 function parseItemRj(linha: HTMLElement): ItemEstruturado {
   const descricao = exigir(textoLimpo(linha.querySelector('.descItem')?.text), 'descrição do item');
@@ -95,7 +89,7 @@ export function parseHtmlRjLegado(html: string): NotaEstruturada {
   }
 
   const endereco = textoDe(raiz, '.NFCCabecalho .endereco');
-  const { municipio, uf } = municipioUf(endereco);
+  const { municipio, uf } = municipioUfDeEndereco(endereco);
 
   const itens = raiz.querySelectorAll('.linhaItem').map(parseItemRj);
   if (itens.length === 0) {

@@ -1,17 +1,22 @@
 <!doctype html>
 <!--
-  Fixture modelando o layout "via consumidor" (ENCAT) do portal NFC-e de SP:
-  #tabResult com spans por item. NÃO é captura real — substituir por cupons
-  reais na suíte de QA (C9.1). Traz uma linha de CPF para garantir que some.
+  Fixture modelando o layout "via consumidor" (ENCAT) do portal NFC-e de SP,
+  com a ESTRUTURA observada em notas reais (esqueletos em backend/.debug-html):
+  • endereço do emitente numa ÚNICA div.text ("rua, número, bairro, cidade, UF");
+  • #totalNota com linhas label + span.totalNumb (inclui desconto);
+  • #infos como div com lista (li) contendo a emissão.
+  Os TEXTOS são sintéticos — substituir por capturas reais na suíte de QA (C9.1).
+  Traz uma linha de CPF para garantir que some.
 -->
 <html lang="pt-br">
   <body>
     <div id="conteudo">
-      <div class="txtTopo">MERCADO PAULISTA COMERCIO DE ALIMENTOS LTDA</div>
-      <div class="text">CNPJ: 61.585.865/0001-51</div>
-      <div class="text">Rua das Flores, 123 - Centro</div>
-      <div class="text">SAO PAULO, SP</div>
-      <div class="text">CPF do Consumidor: 222.333.444-55</div>
+      <div class="txtCenter">
+        <div id="u20" class="txtTopo">MERCADO PAULISTA COMERCIO DE ALIMENTOS LTDA</div>
+        <div class="text">CNPJ: 61.585.865/0001-51</div>
+        <div class="text">Rua das Flores, 123, Centro, SAO PAULO, SP</div>
+        <div class="text">CPF do Consumidor: 222.333.444-55</div>
+      </div>
 
       <table id="tabResult">
         <tr id="Item1">
@@ -22,7 +27,7 @@
             <span class="RUN"><strong>UN:</strong> UN</span>
             <span class="RvlUnit"><strong>Vl. Unit.:</strong>&nbsp; 22,90</span>
           </td>
-          <td class="noprint"><span class="valor">22,90</span></td>
+          <td class="txtTit noWrap">Vl. Total<br /><span class="valor">22,90</span></td>
         </tr>
         <tr id="Item2">
           <td>
@@ -32,7 +37,7 @@
             <span class="RUN"><strong>UN:</strong> UN</span>
             <span class="RvlUnit"><strong>Vl. Unit.:</strong>&nbsp; 8,49</span>
           </td>
-          <td class="noprint"><span class="valor">16,98</span></td>
+          <td class="txtTit noWrap">Vl. Total<br /><span class="valor">16,98</span></td>
         </tr>
         <tr id="Item3">
           <td>
@@ -42,14 +47,35 @@
             <span class="RUN"><strong>UN:</strong> KG</span>
             <span class="RvlUnit"><strong>Vl. Unit.:</strong>&nbsp; 7,98</span>
           </td>
-          <td class="noprint"><span class="valor">6,78</span></td>
+          <td class="txtTit noWrap">Vl. Total<br /><span class="valor">6,78</span></td>
         </tr>
       </table>
 
-      <ul id="infos">
-        <li><strong>Número:</strong> 1 <strong>Série:</strong> 1</li>
-        <li><strong>Emissão:</strong> 21/06/2026 09:15:00</li>
-      </ul>
+      <div id="totalNota" class="txtRight">
+        <div id="linhaTotal">
+          <label>Qtd. total de itens:</label>
+          <span class="totalNumb">3</span>
+        </div>
+        <div id="linhaTotal">
+          <label>Valor total R$:</label>
+          <span class="totalNumb">46,66</span>
+        </div>
+        <div id="linhaTotal">
+          <label>Descontos R$:</label>
+          <span class="totalNumb">2,00</span>
+        </div>
+        <div id="linhaTotal" class="linhaShade">
+          <label>Valor a pagar R$:</label>
+          <span class="totalNumb txtMax">44,66</span>
+        </div>
+      </div>
+
+      <div id="infos" class="txtCenter">
+        <ul>
+          <li><strong>Número:</strong> 1 <strong>Série:</strong> 1</li>
+          <li><strong>Emissão:</strong> 21/06/2026 09:15:00</li>
+        </ul>
+      </div>
     </div>
   </body>
 </html>

@@ -21,6 +21,7 @@ import {
   dataHoraBrParaIso,
   eanDeCodigo,
   exigir,
+  municipioUfDeEndereco,
   numeroBr,
   parseHtml,
   textoDe,
@@ -32,13 +33,6 @@ import type { ClienteSefaz, ParserSefaz } from './tipos';
 
 export const UF_MG = 'MG';
 export const VERSAO_PARSER_MG = '2026.1';
-
-/** Separa "Cidade/UF" ou "Cidade - UF" no fim do endereço. */
-function municipioUf(endereco: string): { municipio?: string; uf?: string } {
-  const m = endereco.match(/([^/-]+?)\s*[/-]\s*([A-Z]{2})\s*$/);
-  if (!m) return {};
-  return { municipio: textoLimpo(m[1]), uf: m[2] };
-}
 
 function parseItemMg(linha: HTMLElement): ItemEstruturado {
   const descricao = exigir(textoLimpo(linha.querySelector('.prodDesc')?.text), 'descrição do item');
@@ -80,7 +74,7 @@ export function parseHtmlMg(html: string): NotaEstruturada {
   }
 
   const endereco = textoDe(raiz, '.endEmit');
-  const { municipio, uf } = municipioUf(endereco);
+  const { municipio, uf } = municipioUfDeEndereco(endereco);
 
   const itens = raiz.querySelectorAll('.ItemNFCe').map(parseItemMg);
   if (itens.length === 0) {

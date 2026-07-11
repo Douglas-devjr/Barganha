@@ -19,6 +19,7 @@ import {
   dataHoraBrParaIso,
   eanDeCodigo,
   exigir,
+  municipioUfDeEndereco,
   numeroBr,
   parseHtml,
   textoDe,
@@ -102,9 +103,10 @@ export function parseHtmlEncat(html: string, ufPadrao: string): NotaEstruturada 
   }
   // Nunca deixa CNPJ nem PII (CPF/consumidor) entrarem no endereço (docs/04).
   const ehLinhaPii = (t: string): boolean => /CNPJ|CPF|consumidor/i.test(t);
-  // Linha do município no formato "SAO PAULO, SP" / "SAO PAULO - SP".
-  const linhaMunicipio = textos.find((t) => /[,-]\s*[A-Z]{2}\s*$/.test(t) && !ehLinhaPii(t));
-  const matchMun = linhaMunicipio?.match(/(.+?)\s*[,-]\s*([A-Z]{2})\s*$/);
+  // Linha terminada em UF: no portal real é o ENDEREÇO COMPLETO numa linha só
+  // ("RUA X, 123, BAIRRO, CIDADE, UF") — o município sai do último segmento.
+  const linhaMunicipio = textos.find((t) => /[,\-/]\s*[A-Z]{2}\s*$/.test(t) && !ehLinhaPii(t));
+  const { municipio, uf } = municipioUfDeEndereco(linhaMunicipio);
   const endereco = textos.filter((t) => !ehLinhaPii(t)).join(', ');
 
   const itens = raiz.querySelectorAll('#tabResult tr').map(parseItemEncat);
@@ -125,8 +127,8 @@ export function parseHtmlEncat(html: string, ufPadrao: string): NotaEstruturada 
       cnpj,
       razaoSocial,
       endereco,
-      municipio: matchMun ? textoLimpo(matchMun[1]) : '',
-      uf: matchMun?.[2] ?? ufPadrao,
+      municipio: municipio ?? '',
+      uf: uf ?? ufPadrao,
     },
     emitidoEm,
     itens,
