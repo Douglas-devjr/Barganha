@@ -28,13 +28,20 @@ export interface CartaoEconomiaProps {
 // Pontos da sparkline decorativa (0..100 no eixo x; y menor = mais alto).
 const SPARK = [26, 20, 24, 12, 18, 8, 14, 4];
 
-export function CartaoEconomia({ rotulo, valor, legenda, pilula, delta, style }: CartaoEconomiaProps) {
+export function CartaoEconomia({
+  rotulo,
+  valor,
+  legenda,
+  pilula,
+  delta,
+  style,
+}: CartaoEconomiaProps) {
   const { c } = useTema();
   const [larguraSpark, setLarguraSpark] = useState(0);
 
-  const pontosSpark = SPARK.map(
-    (y, i) => `${(i / (SPARK.length - 1)) * larguraSpark},${y}`,
-  ).join(' ');
+  const pontosSpark = SPARK.map((y, i) => `${(i / (SPARK.length - 1)) * larguraSpark},${y}`).join(
+    ' ',
+  );
 
   return (
     <GradienteLinear

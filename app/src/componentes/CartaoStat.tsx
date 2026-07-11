@@ -22,9 +22,7 @@ export function CartaoStat({ numero, legenda, icone }: CartaoStatProps) {
   const { c } = useTema();
   return (
     <Cartao style={estilos.card}>
-      {icone ? (
-        <View style={[estilos.tile, { backgroundColor: c.tealWash }]}>{icone}</View>
-      ) : null}
+      {icone ? <View style={[estilos.tile, { backgroundColor: c.tealWash }]}>{icone}</View> : null}
       <Texto peso="extrabold" style={estilos.numero}>
         {numero}
       </Texto>

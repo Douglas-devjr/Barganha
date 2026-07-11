@@ -18,7 +18,12 @@ export interface EsqueletoProps {
   style?: View['props']['style'];
 }
 
-export function Esqueleto({ largura = '100%', altura = 14, raioBarra = raio.sm, style }: EsqueletoProps) {
+export function Esqueleto({
+  largura = '100%',
+  altura = 14,
+  raioBarra = raio.sm,
+  style,
+}: EsqueletoProps) {
   const { c } = useTema();
   const [l, setL] = useState(0);
   const anim = useRef(new Animated.Value(0)).current;

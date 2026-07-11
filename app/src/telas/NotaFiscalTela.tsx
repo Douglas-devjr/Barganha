@@ -160,7 +160,11 @@ export function NotaFiscalTela({ navigation, route }: Props) {
 
   return (
     <Tela>
-      <CabecalhoVoltar titulo="Nota fiscal" subtitulo={subtitulo} aoVoltar={() => navigation.goBack()} />
+      <CabecalhoVoltar
+        titulo="Nota fiscal"
+        subtitulo={subtitulo}
+        aoVoltar={() => navigation.goBack()}
+      />
 
       {processado ? (
         <>
@@ -184,7 +188,8 @@ export function NotaFiscalTela({ navigation, route }: Props) {
           {temDesconto && restanteMarcar > 0 ? (
             <Cartao style={[estilos.dicaDesconto, { backgroundColor: c.ambarBg }]}>
               <Texto tamanho="sm" style={{ color: c.ambarTexto }}>
-                Este cupom teve {moeda(descontoCupom)} de desconto. Toque no item que teve o desconto
+                Este cupom teve {moeda(descontoCupom)} de desconto. Toque no item que teve o
+                desconto
                 {restanteMarcar < descontoCupom ? ` (falta marcar ${moeda(restanteMarcar)})` : ''}.
               </Texto>
             </Cartao>
@@ -314,7 +319,10 @@ export function NotaFiscalTela({ navigation, route }: Props) {
         onRequestClose={() => setEditando(null)}
       >
         <Pressable style={estilos.modalFundo} onPress={() => setEditando(null)}>
-          <Pressable style={[estilos.modalCartao, { backgroundColor: c.cartao }]} onPress={() => {}}>
+          <Pressable
+            style={[estilos.modalCartao, { backgroundColor: c.cartao }]}
+            onPress={() => {}}
+          >
             <Texto peso="extrabold" tamanho="lg">
               Desconto do item
             </Texto>
@@ -334,7 +342,11 @@ export function NotaFiscalTela({ navigation, route }: Props) {
               Desconto do cupom: {moeda(descontoCupom)} · falta marcar {moeda(restanteMarcar)}
             </Texto>
             <View style={{ marginTop: espaco.md, gap: espaco.sm }}>
-              <Botao titulo="Salvar" bloco onPress={() => void salvarDesconto(parseMoeda(valorInput))} />
+              <Botao
+                titulo="Salvar"
+                bloco
+                onPress={() => void salvarDesconto(parseMoeda(valorInput))}
+              />
               {editando?.desconto ? (
                 <Botao
                   titulo="Remover desconto"

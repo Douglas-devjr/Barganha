@@ -20,7 +20,11 @@ export interface VeredictoBadgeProps {
   pequeno?: boolean;
 }
 
-export function VeredictoBadge({ veredito, poucosDados = false, pequeno = false }: VeredictoBadgeProps) {
+export function VeredictoBadge({
+  veredito,
+  poucosDados = false,
+  pequeno = false,
+}: VeredictoBadgeProps) {
   const { c } = useTema();
   const v = mapaVeredito(c)[veredito];
   const rotulo = poucosDados ? `${v.rotulo} · poucos dados` : v.rotulo;

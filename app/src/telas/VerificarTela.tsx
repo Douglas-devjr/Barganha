@@ -21,7 +21,14 @@ import {
   type UnidadeBase,
 } from '@barganha/shared';
 import { useCallback, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  TextInput,
+  View,
+} from 'react-native';
 
 import {
   BarraPreco,
@@ -227,10 +234,17 @@ export function VerificarTela({ navigation }: Props) {
                 }}
                 style={[
                   estilos.chip,
-                  { backgroundColor: ativo ? c.teal : c.cartao, borderColor: ativo ? c.teal : c.borda },
+                  {
+                    backgroundColor: ativo ? c.teal : c.cartao,
+                    borderColor: ativo ? c.teal : c.borda,
+                  },
                 ]}
               >
-                <Texto tamanho="sm" peso={ativo ? 'bold' : 'semibold'} cor={ativo ? 'branco' : 'suave'}>
+                <Texto
+                  tamanho="sm"
+                  peso={ativo ? 'bold' : 'semibold'}
+                  cor={ativo ? 'branco' : 'suave'}
+                >
                   {p.nome}
                 </Texto>
               </Pressable>
@@ -297,9 +311,11 @@ interface ResultadoProps {
 function referencias(faixa: FaixaPreco, preco: number) {
   const mediana = faixa.mediana;
   const min =
-    faixa.p25 ?? (mediana != null ? mediana * 0.8 : Math.min(preco, faixa.menorPromocional ?? preco));
+    faixa.p25 ??
+    (mediana != null ? mediana * 0.8 : Math.min(preco, faixa.menorPromocional ?? preco));
   const max = faixa.p75 ?? (mediana != null ? mediana * 1.2 : Math.max(preco, min * 1.4));
-  const tipico = mediana ?? (faixa.p25 != null && faixa.p75 != null ? (faixa.p25 + faixa.p75) / 2 : preco);
+  const tipico =
+    mediana ?? (faixa.p25 != null && faixa.p75 != null ? (faixa.p25 + faixa.p75) / 2 : preco);
   return { min, max, tipico };
 }
 
@@ -357,12 +373,7 @@ function ResultadoVeredictoView({
       </Cartao>
 
       {/* painel de veredito ⭐ */}
-      <View
-        style={[
-          estilos.painel,
-          { backgroundColor: painel.bg, borderColor: painel.borda },
-        ]}
-      >
+      <View style={[estilos.painel, { backgroundColor: painel.bg, borderColor: painel.borda }]}>
         <VeredictoBadge
           veredito={hibrido.veredito}
           poucosDados={(hibrido.regional ?? hibrido.pessoal)?.poucosDados ?? false}
@@ -455,7 +466,12 @@ function ResultadoVeredictoView({
 
       <View style={{ flexDirection: 'row', gap: espaco.md, marginTop: espaco.lg }}>
         {aoVerHistorico ? (
-          <Botao titulo="Ver histórico" variante="secundario" onPress={aoVerHistorico} style={{ flex: 1 }} />
+          <Botao
+            titulo="Ver histórico"
+            variante="secundario"
+            onPress={aoVerHistorico}
+            style={{ flex: 1 }}
+          />
         ) : null}
         <Botao titulo="Verificar outro" onPress={aoVerOutro} style={{ flex: 1 }} />
       </View>
@@ -476,14 +492,17 @@ function AnguloLinha({
 }) {
   const { c } = useTema();
   const { faixa } = angulo;
-  const tipico = faixa.mediana != null ? `${moeda(faixa.mediana)}${sufixo(faixa.unidadeBase)}` : '—';
+  const tipico =
+    faixa.mediana != null ? `${moeda(faixa.mediana)}${sufixo(faixa.unidadeBase)}` : '—';
   const faixaTexto =
     faixa.p25 != null && faixa.p75 != null
       ? `${moeda(faixa.p25)} – ${moeda(faixa.p75)}${sufixo(faixa.unidadeBase)}`
       : null;
 
   return (
-    <View style={[estilos.angulo, comBorda && { borderBottomWidth: 1, borderBottomColor: c.linha }]}>
+    <View
+      style={[estilos.angulo, comBorda && { borderBottomWidth: 1, borderBottomColor: c.linha }]}
+    >
       <View style={estilos.anguloTopo}>
         <Texto peso="bold" tamanho="sm" cor="suave">
           {titulo}
@@ -593,5 +612,10 @@ const estilos = StyleSheet.create({
   },
   pontoPromo: { width: 8, height: 8, borderRadius: 4 },
   rodape: { marginTop: espaco.md, minHeight: 20 },
-  refinando: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: espaco.sm },
+  refinando: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: espaco.sm,
+  },
 });

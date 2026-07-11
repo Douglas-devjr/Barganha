@@ -32,7 +32,12 @@ export interface BotaoProps {
 function variante(v: VarianteBotao, c: Paleta, pressed: boolean) {
   switch (v) {
     case 'primario':
-      return { bg: pressed ? c.tealPressed : c.teal, fg: 'branco' as Cor, borda: undefined, sombra: true };
+      return {
+        bg: pressed ? c.tealPressed : c.teal,
+        fg: 'branco' as Cor,
+        borda: undefined,
+        sombra: true,
+      };
     case 'secundario':
       return { bg: c.tealWash, fg: 'teal' as Cor, borda: c.tealBorda, sombra: false };
     case 'fantasma':

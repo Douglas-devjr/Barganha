@@ -74,8 +74,20 @@ const styles = StyleSheet.create({
   },
   tl: { top: 0, left: 0, borderTopWidth: ESP, borderLeftWidth: ESP, borderTopLeftRadius: 14 },
   tr: { top: 0, right: 0, borderTopWidth: ESP, borderRightWidth: ESP, borderTopRightRadius: 14 },
-  bl: { bottom: 0, left: 0, borderBottomWidth: ESP, borderLeftWidth: ESP, borderBottomLeftRadius: 14 },
-  br: { bottom: 0, right: 0, borderBottomWidth: ESP, borderRightWidth: ESP, borderBottomRightRadius: 14 },
+  bl: {
+    bottom: 0,
+    left: 0,
+    borderBottomWidth: ESP,
+    borderLeftWidth: ESP,
+    borderBottomLeftRadius: 14,
+  },
+  br: {
+    bottom: 0,
+    right: 0,
+    borderBottomWidth: ESP,
+    borderRightWidth: ESP,
+    borderBottomRightRadius: 14,
+  },
   linha: {
     position: 'absolute',
     top: 0,

@@ -12,6 +12,8 @@ export default tseslint.config(
       'design/**',
       'supabase/**',
       '**/*.config.{js,cjs,mjs,ts}',
+      // Protótipo estático do handoff de design (não é código do app).
+      'app/src/design_handoff_barganha_2a/**',
     ],
   },
   js.configs.recommended,

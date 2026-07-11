@@ -95,7 +95,10 @@ export function PerfilTela() {
     if (!ufSel) return;
     setSalvandoRegiao(true);
     try {
-      await meta.definirLocalEscolhido({ uf: ufSel, municipio: municipioInput.trim() || undefined });
+      await meta.definirLocalEscolhido({
+        uf: ufSel,
+        municipio: municipioInput.trim() || undefined,
+      });
       await meta.definirCursorDelta('');
       await cache.limpar();
       setEditando(false);
@@ -159,7 +162,10 @@ export function PerfilTela() {
       </View>
 
       <Cartao semPadding style={{ paddingHorizontal: espaco.lg }}>
-        <Pressable onPress={abrirEditor} style={[estilos.dado, { borderBottomWidth: 1, borderBottomColor: c.linha }]}>
+        <Pressable
+          onPress={abrirEditor}
+          style={[estilos.dado, { borderBottomWidth: 1, borderBottomColor: c.linha }]}
+        >
           <Texto cor="suave">Região</Texto>
           <View style={estilos.regiaoValor}>
             <Texto peso="bold" cor={dados.escolhido ? 'tinta' : 'teal'}>
@@ -206,7 +212,10 @@ export function PerfilTela() {
               key={m.lojaNome}
               style={[
                 estilos.mercado,
-                idx < dados.mercados.length - 1 && { borderBottomWidth: 1, borderBottomColor: c.linha },
+                idx < dados.mercados.length - 1 && {
+                  borderBottomWidth: 1,
+                  borderBottomColor: c.linha,
+                },
               ]}
             >
               <View style={[estilos.mercadoIcone, { backgroundColor: c.tealWash }]}>
@@ -248,20 +257,33 @@ export function PerfilTela() {
         style={{ marginTop: espaco.xs }}
       />
 
-      <Modal visible={editando} transparent animationType="fade" onRequestClose={() => setEditando(false)}>
+      <Modal
+        visible={editando}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setEditando(false)}
+      >
         <Pressable style={estilos.modalFundo} onPress={() => setEditando(false)}>
-          <Pressable style={[estilos.modalCartao, { backgroundColor: c.cartao }]} onPress={() => {}}>
+          <Pressable
+            style={[estilos.modalCartao, { backgroundColor: c.cartao }]}
+            onPress={() => {}}
+          >
             <Texto peso="extrabold" tamanho="lg">
               Sua região
             </Texto>
             <Texto cor="suave" tamanho="sm" style={{ marginTop: espaco.xs }}>
-              Escolha o estado e, se quiser, a cidade — a comparação fica mais próxima da sua gôndola.
+              Escolha o estado e, se quiser, a cidade — a comparação fica mais próxima da sua
+              gôndola.
             </Texto>
 
             <Texto peso="semibold" tamanho="sm" cor="suave" style={estilos.rotuloUf}>
               Estado (UF)
             </Texto>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={estilos.ufChips}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={estilos.ufChips}
+            >
               {UFS.map((uf) => {
                 const ativo = ufSel === uf;
                 return (
@@ -270,10 +292,17 @@ export function PerfilTela() {
                     onPress={() => setUfSel(uf)}
                     style={[
                       estilos.ufChip,
-                      { backgroundColor: ativo ? c.teal : c.cartao, borderColor: ativo ? c.teal : c.borda },
+                      {
+                        backgroundColor: ativo ? c.teal : c.cartao,
+                        borderColor: ativo ? c.teal : c.borda,
+                      },
                     ]}
                   >
-                    <Texto tamanho="sm" peso={ativo ? 'bold' : 'semibold'} cor={ativo ? 'branco' : 'suave'}>
+                    <Texto
+                      tamanho="sm"
+                      peso={ativo ? 'bold' : 'semibold'}
+                      cor={ativo ? 'branco' : 'suave'}
+                    >
                       {uf}
                     </Texto>
                   </Pressable>
@@ -299,7 +328,12 @@ export function PerfilTela() {
                 desabilitado={!ufSel || salvandoRegiao}
                 onPress={() => void salvarRegiao()}
               />
-              <Botao titulo="Cancelar" variante="fantasma" bloco onPress={() => setEditando(false)} />
+              <Botao
+                titulo="Cancelar"
+                variante="fantasma"
+                bloco
+                onPress={() => setEditando(false)}
+              />
             </View>
           </Pressable>
         </Pressable>

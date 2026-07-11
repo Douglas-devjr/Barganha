@@ -97,7 +97,9 @@ export function ProdutosTela({ navigation }: Props) {
             <ProdutoItem
               key={p.chave}
               produto={p}
-              aoTocar={() => navigation.navigate('ProdutoDetalhe', { chave: p.chave, nome: p.nome })}
+              aoTocar={() =>
+                navigation.navigate('ProdutoDetalhe', { chave: p.chave, nome: p.nome })
+              }
             />
           ))}
         </ScrollView>
