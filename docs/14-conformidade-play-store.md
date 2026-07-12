@@ -52,14 +52,14 @@ Pontos de atenção (julgamentos documentados):
   "histórico de compras" na tabela acima. O CPF, quando presente na nota, é
   **descartado no parsing** e nunca persistido (decisão travada nº 3).
 
-## C10.0.4 — Target API 36 (Android 16) ⚠️ PENDENTE
+## C10.0.4 — Target API 36 (Android 16) ✅ código pronto (validar no device)
 
 - Exigência: a partir de **31/08/2026**, apps novos devem mirar **API 36**.
-- Estado atual: **Expo SDK 52** (target API 35) → **precisa de upgrade para
-  Expo SDK 54+ antes do build de produção**.
-- Cuidados no upgrade (regressões conhecidas a revalidar em device físico):
-  câmera (`expo-camera` — hook `useCameraAtiva`, câmera preta no Android),
-  WebView do coletor (C2.6) e novo **dev build** EAS obrigatório.
+- Feito em 11/07/2026: upgrade **Expo SDK 52 → 54** (React 19.1, RN 0.81,
+  target API 36), typecheck e `expo-doctor` verdes.
+- **Pendente no device físico** (exige novo **dev build** EAS — o binário antigo
+  não abre o JS novo): câmera (`expo-camera` 17 — hook `useCameraAtiva`, tela
+  preta no Android) e WebView do coletor (C2.6).
 
 ## C10.0.5 — Classificação de conteúdo e ficha
 
