@@ -212,6 +212,76 @@ describe('POST /ingestao/cupom/:id/html (C2.6)', () => {
     expect(corpo.valorPago).toBe(15);
   });
 
+  it('backfill: cupom processado SEM totais ganha desconto/pago pelo HTML, sem duplicar o pool', async () => {
+    const usuarioId = await novaConta();
+    const cupomId = await ingerirQr(usuarioId);
+
+    // 1º processamento com uma nota SEM a seção #totalNota (como as processadas
+    // antes do recurso de totais existir): fica `processado` com totais nulos.
+    const semTotais = HTML_ENCAT_COM_DESCONTO.replace(
+      /<div id="totalNota">[\s\S]*?<\/div>\s*<div id="infos">/,
+      '<div id="infos">',
+    );
+    const r1 = await app.inject({
+      method: 'POST',
+      url: urlHtml(cupomId),
+      headers: { authorization: `Bearer ${usuarioId}` },
+      payload: { html: semTotais },
+    });
+    expect(r1.statusCode).toBe(200);
+    expect(r1.json().status).toBe('processado');
+    expect(r1.json().descontoTotal).toBeUndefined();
+    const poolAposProcessar = repo.observacoesDoPool().length;
+
+    // 2º envio (reescaneando o mesmo cupom), agora com a nota completa: só os
+    // totais entram — itens/pool intactos.
+    const r2 = await app.inject({
+      method: 'POST',
+      url: urlHtml(cupomId),
+      headers: { authorization: `Bearer ${usuarioId}` },
+      payload: { html: HTML_ENCAT_COM_DESCONTO },
+    });
+    expect(r2.statusCode).toBe(200);
+    expect(r2.json().descontoTotal).toBe(1.9);
+    expect(r2.json().valorPago).toBe(15);
+    expect(repo.observacoesDoPool()).toHaveLength(poolAposProcessar);
+
+    // 3º envio com outro desconto: totais JÁ gravados nunca são sobrescritos.
+    const adulterado = HTML_ENCAT_COM_DESCONTO.replace('1,90', '9,99');
+    const r3 = await app.inject({
+      method: 'POST',
+      url: urlHtml(cupomId),
+      headers: { authorization: `Bearer ${usuarioId}` },
+      payload: { html: adulterado },
+    });
+    expect(r3.statusCode).toBe(200);
+    expect(r3.json().descontoTotal).toBe(1.9);
+  });
+
+  it('backfill: página de desafio num cupom processado → 422 (coletor segue aguardando)', async () => {
+    const usuarioId = await novaConta();
+    const cupomId = await ingerirQr(usuarioId);
+    const semTotais = HTML_ENCAT_COM_DESCONTO.replace(
+      /<div id="totalNota">[\s\S]*?<\/div>\s*<div id="infos">/,
+      '<div id="infos">',
+    );
+    await app.inject({
+      method: 'POST',
+      url: urlHtml(cupomId),
+      headers: { authorization: `Bearer ${usuarioId}` },
+      payload: { html: semTotais },
+    });
+
+    const r = await app.inject({
+      method: 'POST',
+      url: urlHtml(cupomId),
+      headers: { authorization: `Bearer ${usuarioId}` },
+      payload: { html: '<html><body><script>grecaptcha.execute(k,{})</script></body></html>' },
+    });
+    expect(r.statusCode).toBe(422);
+    expect(repo.statusDoCupom(cupomId)).toBe('processado');
+  });
+
   it('nota de OUTRO emitente (CNPJ ≠ chave) → falha, nada entra no pool', async () => {
     const usuarioId = await novaConta();
     const cupomId = await ingerirQr(usuarioId);

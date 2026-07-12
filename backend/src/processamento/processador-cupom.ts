@@ -120,7 +120,6 @@ export class ProcessadorCupom {
    * bloqueio/desafio — nesse caso o app reabre e reenvia (não marca `falha`).
    */
   async processarComHtml(cupom: CupomRegistro, html: string): Promise<void> {
-    if (cupom.status === 'processado') return;
     if (pareceDefesaAntiBot(html)) {
       throw new HtmlDesafioError(
         'O HTML enviado ainda é a página de bloqueio/desafio da SEFAZ, não a nota.',
@@ -136,6 +135,13 @@ export class ProcessadorCupom {
       throw new HtmlErroPortalError(
         'O portal da SEFAZ recusou a verificação. Recarregue a consulta e tente de novo.',
       );
+    }
+    // Cupom JÁ processado: nunca re-publica itens/pool. Mas cupons processados
+    // ANTES do recurso de totais ficaram sem desconto/pago para sempre (o retro
+    // C2.5 não alveja `processado`) — este é o único caminho de backfill.
+    if (cupom.status === 'processado') {
+      await this.backfillTotais(cupom, html);
+      return;
     }
 
     let uf = cupom.uf;
@@ -215,6 +221,31 @@ export class ProcessadorCupom {
       } catch (erro) {
         console.error(`Falha ao recalcular estatística após cupom ${cupom.id}:`, erro);
       }
+    }
+  }
+
+  /**
+   * C2.6 — Backfill dos TOTAIS de um cupom já `processado` (o repositório só
+   * grava se `valor_pago` ainda for nulo). Qualquer falha vira `HtmlDesafioError`
+   * (422 — o coletor segue aguardando/tentando): um cupom processado JAMAIS pode
+   * regredir a `falha` por causa de um HTML ruim.
+   */
+  private async backfillTotais(cupom: CupomRegistro, html: string): Promise<void> {
+    try {
+      const qr = parseQrNfce(cupom.qrPayload);
+      const uf = qr.uf ?? cupom.uf;
+      // Direto no registro, SEM gate de rollout: a UF já foi processada um dia.
+      const alvo = uf && this.registro.suporta(uf) ? this.registro.resolver(uf) : undefined;
+      if (!alvo) return;
+      if (alvo.pareceNota && !alvo.pareceNota(html)) {
+        throw new HtmlDesafioError('O HTML enviado ainda não é a página da nota.');
+      }
+      const nota = alvo.parseHtml(html);
+      validarNotaContraChave(qr, nota);
+      if (nota.total) await this.repo.atualizarTotais(cupom.id, nota.total);
+    } catch (erro) {
+      if (erro instanceof HtmlDesafioError) throw erro;
+      throw new HtmlDesafioError('Não foi possível ler os totais desta nota ainda.');
     }
   }
 

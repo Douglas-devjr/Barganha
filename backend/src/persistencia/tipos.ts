@@ -109,6 +109,13 @@ export interface RepositorioCupom {
     dados: DadosNotaProcessada,
     opcoes?: { sobrescreverProcessado?: boolean },
   ): Promise<void>;
+  /**
+   * C2.6 — BACKFILL dos totais de um cupom JÁ `processado` que ainda não os tem
+   * (processado antes do recurso de totais existir; o retro C2.5 não o alcança).
+   * Só escreve quando `valor_pago` ainda é nulo — nunca sobrescreve, nunca toca
+   * itens/pool (zero risco de duplicação).
+   */
+  atualizarTotais(cupomId: string, total: TotaisNota): Promise<void>;
   /** Marca o cupom como `falha` (erro permanente de parsing). */
   marcarFalha(cupomId: string, motivo?: string): Promise<void>;
   /** Lista ids de cupons elegíveis a reprocessamento (C2.5). */

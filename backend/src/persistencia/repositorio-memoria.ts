@@ -15,6 +15,7 @@ import {
   type ProdutoResumo,
   type StatusCupom,
   type StatusModeracao,
+  type TotaisNota,
   type UnidadeBase,
 } from '@barganha/shared';
 
@@ -206,6 +207,16 @@ export class RepositorioMemoria
           ...(i.desconto != null ? { desconto: i.desconto } : {}),
         })),
     });
+  }
+
+  atualizarTotais(cupomId: string, total: TotaisNota): Promise<void> {
+    const cupom = this.cupons.get(cupomId);
+    // Mesmas guardas do adaptador real: só processado e ainda sem totais.
+    if (cupom && cupom.status === 'processado' && cupom.valorPago == null) {
+      cupom.descontoTotal = total.desconto;
+      cupom.valorPago = total.pago;
+    }
+    return Promise.resolve();
   }
 
   marcarProcessado(

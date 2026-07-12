@@ -17,6 +17,7 @@ import {
   type ObservacaoAnonima,
   type PrecoEstatistica,
   type ProdutoResumo,
+  type TotaisNota,
 } from '@barganha/shared';
 import type { PostgrestError, SupabaseClient } from '@supabase/supabase-js';
 
@@ -213,6 +214,22 @@ export class RepositorioSupabase
         ...(i.desconto != null ? { desconto: Number(i.desconto) } : {}),
       })),
     };
+  }
+
+  async atualizarTotais(cupomId: string, total: TotaisNota): Promise<void> {
+    // Guarda dupla: só cupom `processado` e SÓ quando ainda sem totais
+    // (`valor_pago` nulo) — nunca sobrescreve o que a captura já gravou.
+    const r = await this.db
+      .from('cupom')
+      .update({
+        desconto_total: total.desconto,
+        valor_pago: total.pago,
+        atualizado_em: new Date().toISOString(),
+      })
+      .eq('id', cupomId)
+      .eq('status', 'processado')
+      .is('valor_pago', null);
+    if (r.error) falhar('backfill de totais do cupom (C2.6)', r.error);
   }
 
   async marcarProcessado(
