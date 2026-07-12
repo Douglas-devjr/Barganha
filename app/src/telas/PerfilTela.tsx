@@ -19,6 +19,7 @@ import { cache, cupons, meta, produtos } from '@/dados';
 import type { LocalEscolhido } from '@/dados/repositorio-meta';
 import type { MercadoFrequente } from '@/dados/repositorio-cupom';
 import { dataCurta } from '@/nucleo/formato';
+import { calcularContribuicao, type Contribuicao } from '@/nucleo/gamificacao';
 import { UFS } from '@/nucleo/localizacao';
 import { sincronizarEstatisticas } from '@/nucleo/sincronizador';
 import { espaco, raio, useTema } from '@/tema';
@@ -28,6 +29,8 @@ interface DadosPerfil {
   ufHistorico: string | null;
   cuponsEscaneados: number;
   mercados: MercadoFrequente[];
+  /** C12.2 — sequência de semanas + selos, do histórico local. */
+  contribuicao: Contribuicao;
 }
 
 const VAZIO: DadosPerfil = {
@@ -35,6 +38,7 @@ const VAZIO: DadosPerfil = {
   ufHistorico: null,
   cuponsEscaneados: 0,
   mercados: [],
+  contribuicao: calcularContribuicao([]),
 };
 
 function descreverRegiao(d: DadosPerfil): string {
@@ -64,13 +68,20 @@ export function PerfilTela() {
   const [salvandoRegiao, setSalvandoRegiao] = useState(false);
 
   const carregar = useCallback(async () => {
-    const [escolhido, ufHistorico, cuponsEscaneados, mercados] = await Promise.all([
+    const [escolhido, ufHistorico, cuponsEscaneados, mercados, datas] = await Promise.all([
       meta.obterLocalEscolhido(),
       produtos.obterUfRecente(),
       cupons.contarCupons(),
       cupons.listarMercadosFrequentes(5),
+      cupons.listarDatasCapturas(),
     ]);
-    return { escolhido, ufHistorico, cuponsEscaneados, mercados };
+    return {
+      escolhido,
+      ufHistorico,
+      cuponsEscaneados,
+      mercados,
+      contribuicao: calcularContribuicao(datas),
+    };
   }, []);
 
   useFocusEffect(
@@ -193,6 +204,57 @@ export function PerfilTela() {
       <Texto cor="fraco" tamanho="sm" style={estilos.regiaoNota}>
         A região é usada só para achar os preços da sua cidade. Não é enviada com seus dados.
       </Texto>
+
+      {/* C12.2 — gamificação da contribuição: cada cupom alimenta a base anônima. */}
+      <Texto peso="extrabold" tamanho="lg" style={estilos.secao}>
+        Sua contribuição
+      </Texto>
+      <Cartao>
+        <View style={estilos.contribuicaoTopo}>
+          <View style={{ flex: 1 }}>
+            <Texto peso="extrabold" tamanho="lg">
+              {dados.contribuicao.sequenciaSemanas > 0
+                ? `🔥 ${dados.contribuicao.sequenciaSemanas} ${
+                    dados.contribuicao.sequenciaSemanas === 1
+                      ? 'semana seguida'
+                      : 'semanas seguidas'
+                  }`
+                : 'Comece uma sequência'}
+            </Texto>
+            <Texto cor="fraco" tamanho="sm">
+              {dados.contribuicao.cuponsNaSemana > 0
+                ? `${dados.contribuicao.cuponsNaSemana} ${
+                    dados.contribuicao.cuponsNaSemana === 1 ? 'cupom' : 'cupons'
+                  } esta semana — cada um melhora os preços da sua região.`
+                : 'Escaneie um cupom esta semana para manter a sequência viva.'}
+            </Texto>
+          </View>
+        </View>
+        <View style={estilos.selos}>
+          {dados.contribuicao.selos.map((selo) => (
+            <View
+              key={selo.id}
+              style={[
+                estilos.selo,
+                { backgroundColor: selo.conquistado ? c.tealWash : c.linha },
+                !selo.conquistado && estilos.seloApagado,
+              ]}
+            >
+              <Texto
+                tamanho="xs"
+                peso="bold"
+                cor={selo.conquistado ? 'teal' : 'placeholder'}
+                centralizado
+              >
+                {selo.titulo}
+              </Texto>
+              <Texto tamanho="xs" cor={selo.conquistado ? 'suave' : 'placeholder'} centralizado>
+                {selo.descricao}
+              </Texto>
+            </View>
+          ))}
+        </View>
+      </Cartao>
 
       <Texto peso="extrabold" tamanho="lg" style={estilos.secao}>
         Seus mercados
@@ -361,6 +423,17 @@ const estilos = StyleSheet.create({
   regiaoNota: { marginTop: espaco.xs, marginLeft: espaco.xs, lineHeight: 18 },
   secao: { marginTop: espaco.xl, marginBottom: espaco.sm },
   vazio: { alignItems: 'center', paddingVertical: espaco.lg },
+  contribuicaoTopo: { flexDirection: 'row', alignItems: 'center', marginBottom: espaco.md },
+  selos: { flexDirection: 'row', flexWrap: 'wrap', gap: espaco.sm },
+  selo: {
+    flexBasis: '31%',
+    flexGrow: 1,
+    borderRadius: raio.md,
+    paddingVertical: espaco.sm,
+    paddingHorizontal: espaco.xs,
+    gap: 2,
+  },
+  seloApagado: { opacity: 0.55 },
   mercado: {
     flexDirection: 'row',
     alignItems: 'center',
