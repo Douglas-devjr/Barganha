@@ -7,3 +7,4 @@ export * as produtos from './repositorio-produtos';
 export * as cache from './repositorio-cache';
 export * as fila from './repositorio-fila';
 export * as meta from './repositorio-meta';
+export * as lista from './repositorio-lista';

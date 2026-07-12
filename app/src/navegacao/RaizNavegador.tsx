@@ -8,6 +8,7 @@
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
 import { EscanearBarrasTela } from '@/telas/EscanearBarrasTela';
+import { ListaComprasTela } from '@/telas/ListaComprasTela';
 import { NotaFiscalTela } from '@/telas/NotaFiscalTela';
 import { ProdutoDetalheTela } from '@/telas/ProdutoDetalheTela';
 import { ScannerTela } from '@/telas/ScannerTela';
@@ -29,6 +30,7 @@ export function RaizNavegador() {
       />
       <Stack.Screen name="NotaFiscal" component={NotaFiscalTela} />
       <Stack.Screen name="ProdutoDetalhe" component={ProdutoDetalheTela} />
+      <Stack.Screen name="ListaCompras" component={ListaComprasTela} />
     </Stack.Navigator>
   );
 }

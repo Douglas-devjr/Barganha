@@ -23,6 +23,8 @@ export type RootStackParamList = {
   NotaFiscal: { cupomLocalId: string };
   /** `chave` = id canônico, EAN ou descrição (chave do catálogo local, C7.5). */
   ProdutoDetalhe: { chave: string; nome?: string };
+  /** Lista de compras comparada por loja (C12.1). */
+  ListaCompras: undefined;
 };
 
 /**

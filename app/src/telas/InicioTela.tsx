@@ -125,6 +125,23 @@ export function InicioTela() {
         />
       </View>
 
+      {/* C12.1 — atalho para a lista comparada por loja. */}
+      <Pressable
+        onPress={() => navigation.navigate('ListaCompras')}
+        accessibilityRole="button"
+        accessibilityLabel="Abrir minha lista de compras"
+      >
+        <Cartao style={estilos.atalhoLista}>
+          <View style={{ flex: 1 }}>
+            <Texto peso="bold">Minha lista de compras</Texto>
+            <Texto cor="fraco" tamanho="xs">
+              Compare onde a cesta sai mais barata
+            </Texto>
+          </View>
+          <IconeChevron tamanho={18} cor={c.teal} />
+        </Cartao>
+      </Pressable>
+
       <View style={estilos.secao}>
         <Texto peso="extrabold" tamanho="lg" style={estilos.secaoTitulo}>
           Últimas compras
@@ -271,6 +288,12 @@ const estilos = StyleSheet.create({
     marginLeft: espaco.md,
   },
   stats: { flexDirection: 'row', gap: espaco.md, marginBottom: espaco.xl },
+  atalhoLista: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: espaco.md,
+    marginBottom: espaco.xl,
+  },
   secao: {
     flexDirection: 'row',
     alignItems: 'center',

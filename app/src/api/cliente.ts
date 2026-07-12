@@ -11,6 +11,8 @@
  */
 
 import type {
+  ComparacaoListaRequest,
+  ComparacaoListaResponse,
   ConsultaPrecoRequest,
   ConsultaPrecoResponse,
   CupomResponse,
@@ -128,6 +130,14 @@ export class ClienteApi {
       if (e instanceof ErroApi && e.status === 404) return null;
       throw e;
     }
+  }
+
+  /**
+   * `POST /consulta/lista` (C12.1) — ANÔNIMO. Compara a cesta entre as lojas do
+   * recorte geográfico ("onde minha lista sai mais barata").
+   */
+  compararLista(req: ComparacaoListaRequest): Promise<ComparacaoListaResponse> {
+    return this.requisitar<ComparacaoListaResponse>('POST', '/consulta/lista', req);
   }
 
   /** `POST /sync/estatisticas` (C4.2) — ANÔNIMO. Delta desde o cursor. */

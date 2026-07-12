@@ -8,7 +8,8 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
-import { CabecalhoVoltar, Cartao, GraficoLinha, Tela, Texto } from '@/componentes';
+import { Botao, CabecalhoVoltar, Cartao, GraficoLinha, Tela, Texto } from '@/componentes';
+import { lista } from '@/dados';
 import * as catalogo from '@/nucleo/catalogo';
 import type { CompraHistorico, ProdutoLocal } from '@/nucleo/catalogo';
 import { espaco, useTema } from '@/tema';
@@ -37,6 +38,7 @@ export function ProdutoDetalheTela({ navigation, route }: Props) {
   const [carregando, setCarregando] = useState(true);
   const [produto, setProduto] = useState<ProdutoLocal | null>(null);
   const [historico, setHistorico] = useState<CompraHistorico[]>([]);
+  const [naLista, setNaLista] = useState(false);
 
   useEffect(() => {
     let ativo = true;
@@ -45,12 +47,28 @@ export function ProdutoDetalheTela({ navigation, route }: Props) {
       if (!ativo) return;
       setProduto(dados?.produto ?? null);
       setHistorico(dados?.historico ?? []);
+      if (dados?.produto?.produtoCanonicoId) {
+        setNaLista(await lista.contem(dados.produto.produtoCanonicoId));
+      }
       setCarregando(false);
     })();
     return () => {
       ativo = false;
     };
   }, [chave]);
+
+  // C12.1 — entra/sai da lista de compras. Só produtos com id canônico são
+  // comparáveis entre lojas; sem ele o botão nem aparece.
+  async function alternarLista() {
+    const id = produto?.produtoCanonicoId;
+    if (!id) return;
+    if (naLista) {
+      await lista.remover(id);
+    } else {
+      await lista.adicionar(id, produto?.nome ?? nome ?? 'Produto');
+    }
+    setNaLista(!naLista);
+  }
 
   const base = produto?.unidadeBase ? `/${produto.unidadeBase}` : '';
   const serie = historico.filter((h) => h.precoNormalizado != null);
@@ -109,6 +127,16 @@ export function ProdutoDetalheTela({ navigation, route }: Props) {
             />
             <CardExtremo rotulo="Maior" valor={produto.maximo} sufixo={base} cor={c.caro} />
           </View>
+
+          {produto.produtoCanonicoId ? (
+            <Botao
+              titulo={naLista ? 'Tirar da minha lista' : 'Adicionar à minha lista'}
+              variante={naLista ? 'fantasma' : 'secundario'}
+              bloco
+              onPress={() => void alternarLista()}
+              style={{ marginBottom: espaco.lg }}
+            />
+          ) : null}
 
           <Texto peso="extrabold" tamanho="lg" style={{ marginBottom: espaco.sm }}>
             Compras

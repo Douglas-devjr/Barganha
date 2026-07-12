@@ -86,4 +86,15 @@ export const MIGRACOES: string[] = [
   ALTER TABLE cupom_local ADD COLUMN desconto_total REAL;
   ALTER TABLE cupom_local ADD COLUMN valor_pago REAL;
   `,
+  // v3 — lista de compras (C12.1). Local-first: a lista vive só no aparelho;
+  // a comparação por loja consulta o pool anônimo sob demanda. `quantidade` é
+  // multiplicador da unidade-base do produto (padrão 1).
+  `
+  CREATE TABLE lista_compras (
+    produto_canonico_id TEXT PRIMARY KEY NOT NULL,
+    nome                TEXT NOT NULL,
+    quantidade          REAL NOT NULL DEFAULT 1,
+    criado_em           TEXT NOT NULL
+  );
+  `,
 ];
