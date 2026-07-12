@@ -277,6 +277,53 @@ export async function resumoCompras(): Promise<ResumoCompras> {
   };
 }
 
+/**
+ * C8.4 — Economia (descontos honestos da NFC-e) agregada POR MÊS ("AAAA-MM",
+ * fuso local do aparelho), mais recente primeiro. Mesma regra do resumo: o
+ * `desconto_total` do cupom é autoritativo; sem ele, a soma dos descontos por
+ * item. Base do chip de tendência (este mês vs anterior).
+ */
+export interface EconomiaMensal {
+  /** "AAAA-MM". */
+  mes: string;
+  economia: number;
+}
+
+export async function economiaPorMes(limite = 12): Promise<EconomiaMensal[]> {
+  const linhas = await getBd().getAllAsync<{ mes: string; economia: number }>(
+    `SELECT
+       strftime('%Y-%m', COALESCE(x.emitido_em, x.capturado_em)) AS mes,
+       COALESCE(SUM(COALESCE(x.desconto_total, x.desc_itens)), 0) AS economia
+     FROM (
+       SELECT
+         c.emitido_em                                                   AS emitido_em,
+         c.capturado_em                                                 AS capturado_em,
+         c.desconto_total                                               AS desconto_total,
+         COALESCE(SUM(CASE WHEN i.desconto > 0 THEN i.desconto END), 0) AS desc_itens
+       FROM cupom_local c
+       LEFT JOIN item_cupom_local i ON i.cupom_local_id = c.id
+       WHERE c.status = 'processado'
+       GROUP BY c.id
+     ) x
+     GROUP BY mes
+     ORDER BY mes DESC
+     LIMIT ?`,
+    [limite],
+  );
+  return linhas.map((l) => ({ mes: l.mes, economia: l.economia }));
+}
+
+/**
+ * C12.2 — Datas de captura de TODOS os cupons (qualquer status): escanear já é
+ * contribuir, mesmo antes do parsing. Base da sequência de semanas e dos selos.
+ */
+export async function listarDatasCapturas(): Promise<string[]> {
+  const linhas = await getBd().getAllAsync<{ capturado_em: string }>(
+    `SELECT capturado_em FROM cupom_local ORDER BY capturado_em ASC`,
+  );
+  return linhas.map((l) => l.capturado_em);
+}
+
 /** Total de cupons capturados (todos os status) — Perfil "cupons escaneados". */
 export async function contarCupons(): Promise<number> {
   const linha = await getBd().getFirstAsync<{ total: number }>(

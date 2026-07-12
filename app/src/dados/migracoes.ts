@@ -97,4 +97,14 @@ export const MIGRACOES: string[] = [
     criado_em           TEXT NOT NULL
   );
   `,
+  // v4 — alertas de preço (C8.4). Alvo em R$/unidade-base do produto; a
+  // checagem roda no aparelho contra o cache regional (sem push na v1).
+  `
+  CREATE TABLE alerta_preco (
+    produto_canonico_id TEXT PRIMARY KEY NOT NULL,
+    nome                TEXT NOT NULL,
+    preco_alvo          REAL NOT NULL,
+    criado_em           TEXT NOT NULL
+  );
+  `,
 ];

@@ -27,7 +27,8 @@ import {
   Texto,
 } from '@/componentes';
 import { cupons } from '@/dados';
-import type { CompraResumo, ResumoCompras } from '@/dados/repositorio-cupom';
+import type { CompraResumo, EconomiaMensal, ResumoCompras } from '@/dados/repositorio-cupom';
+import { verificarAlertas, type AlertaDisparado } from '@/nucleo/alertas';
 import { dataCurta, moeda } from '@/nucleo/formato';
 import { resolverLocalizacao } from '@/nucleo/localizacao';
 import { espaco, raio, useTema } from '@/tema';
@@ -59,26 +60,36 @@ export function InicioTela() {
   const [resumo, setResumo] = useState<ResumoCompras>(RESUMO_VAZIO);
   const [recentes, setRecentes] = useState<CompraResumo[]>([]);
   const [cidade, setCidade] = useState<string | null>(null);
+  const [meses, setMeses] = useState<EconomiaMensal[]>([]);
+  const [disparos, setDisparos] = useState<AlertaDisparado[]>([]);
 
   useFocusEffect(
     useCallback(() => {
       let ativo = true;
       void (async () => {
-        const [r, lista, local] = await Promise.all([
+        const [r, lista, local, porMes, alertas] = await Promise.all([
           cupons.resumoCompras(),
           cupons.listarComprasRecentes(6),
           resolverLocalizacao(),
+          cupons.economiaPorMes(2),
+          verificarAlertas(),
         ]);
         if (!ativo) return;
         setResumo(r);
         setRecentes(lista);
         setCidade(local?.municipio ?? local?.uf ?? null);
+        setMeses(porMes);
+        setDisparos(alertas);
       })();
       return () => {
         ativo = false;
       };
     }, []),
   );
+
+  // C8.4 — tendência: economia deste mês vs o anterior. Só mostra o chip
+  // quando os DOIS meses têm dado (comparação honesta, nunca estimativa).
+  const delta = tendenciaEconomia(meses);
 
   const nome = primeiroNome(
     (usuario?.user_metadata?.full_name ?? usuario?.user_metadata?.name) as string | undefined,
@@ -110,7 +121,39 @@ export function InicioTela() {
         valor={moeda(resumo.economiaTotal)}
         legenda={legendaEconomia(resumo)}
         pilula="Total"
+        {...(delta ? { delta } : {})}
       />
+
+      {disparos.length > 0 ? (
+        <Cartao style={estilos.cartaoAlertas}>
+          <Texto peso="bold" style={{ marginBottom: espaco.xs }}>
+            🔔 Alerta de preço
+          </Texto>
+          {disparos.slice(0, 3).map((d) => (
+            <Pressable
+              key={d.produtoCanonicoId}
+              onPress={() =>
+                navigation.navigate('ProdutoDetalhe', { chave: d.produtoCanonicoId, nome: d.nome })
+              }
+              accessibilityRole="button"
+              style={estilos.linhaAlerta}
+            >
+              <View style={{ flex: 1 }}>
+                <Texto tamanho="sm" peso="semibold" numberOfLines={1}>
+                  {d.nome}
+                </Texto>
+                <Texto cor="fraco" tamanho="xs">
+                  {d.motivo === 'tipico'
+                    ? `Típico na região: ${moeda(d.mediana ?? 0)}`
+                    : `Menor visto: ${moeda(d.menorVisto ?? 0)}`}
+                  {` · seu alvo ${moeda(d.precoAlvo)}`}
+                </Texto>
+              </View>
+              <IconeChevron tamanho={16} cor={c.teal} />
+            </Pressable>
+          ))}
+        </Cartao>
+      ) : null}
 
       <View style={estilos.stats}>
         <CartaoStat
@@ -171,6 +214,25 @@ export function InicioTela() {
       )}
     </Tela>
   );
+}
+
+/**
+ * C8.4 — Chip de tendência: economia deste mês vs o anterior. `null` quando
+ * não há dado nos dois meses (sem comparação honesta) ou a diferença é zero.
+ */
+function tendenciaEconomia(
+  meses: EconomiaMensal[],
+): { texto: string; sentido: 'cima' | 'baixo' } | null {
+  const mesAtual = new Date().toISOString().slice(0, 7);
+  const atual = meses.find((m) => m.mes === mesAtual);
+  const anterior = meses.find((m) => m.mes !== mesAtual);
+  if (!atual || !anterior || anterior.economia <= 0) return null;
+  const diff = atual.economia - anterior.economia;
+  if (diff === 0) return null;
+  return {
+    texto: `${diff > 0 ? '+' : '−'}${moeda(Math.abs(diff))} vs mês passado`,
+    sentido: diff > 0 ? 'cima' : 'baixo',
+  };
 }
 
 function legendaEconomia(resumo: ResumoCompras): string {
@@ -293,6 +355,13 @@ const estilos = StyleSheet.create({
     alignItems: 'center',
     gap: espaco.md,
     marginBottom: espaco.xl,
+  },
+  cartaoAlertas: { marginTop: espaco.md, marginBottom: espaco.xs },
+  linhaAlerta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: espaco.md,
+    paddingVertical: espaco.sm,
   },
   secao: {
     flexDirection: 'row',

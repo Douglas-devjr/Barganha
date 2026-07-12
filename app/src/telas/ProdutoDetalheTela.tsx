@@ -8,10 +8,20 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
-import { Botao, CabecalhoVoltar, Cartao, GraficoLinha, Tela, Texto } from '@/componentes';
-import { lista } from '@/dados';
+import {
+  Botao,
+  CabecalhoVoltar,
+  CampoTexto,
+  Cartao,
+  GraficoLinha,
+  Tela,
+  Texto,
+} from '@/componentes';
+import { alertas, lista } from '@/dados';
+import type { AlertaPreco } from '@/dados/repositorio-alertas';
 import * as catalogo from '@/nucleo/catalogo';
 import type { CompraHistorico, ProdutoLocal } from '@/nucleo/catalogo';
+import { moeda as moedaFmt, parseMoeda } from '@/nucleo/formato';
 import { espaco, useTema } from '@/tema';
 import type { RootStackParamList } from '@/navegacao/tipos';
 
@@ -39,6 +49,9 @@ export function ProdutoDetalheTela({ navigation, route }: Props) {
   const [produto, setProduto] = useState<ProdutoLocal | null>(null);
   const [historico, setHistorico] = useState<CompraHistorico[]>([]);
   const [naLista, setNaLista] = useState(false);
+  const [alerta, setAlerta] = useState<AlertaPreco | null>(null);
+  const [editandoAlerta, setEditandoAlerta] = useState(false);
+  const [alvoInput, setAlvoInput] = useState('');
 
   useEffect(() => {
     let ativo = true;
@@ -48,7 +61,14 @@ export function ProdutoDetalheTela({ navigation, route }: Props) {
       setProduto(dados?.produto ?? null);
       setHistorico(dados?.historico ?? []);
       if (dados?.produto?.produtoCanonicoId) {
-        setNaLista(await lista.contem(dados.produto.produtoCanonicoId));
+        const id = dados.produto.produtoCanonicoId;
+        const [estaNaLista, alertaExistente] = await Promise.all([
+          lista.contem(id),
+          alertas.obter(id),
+        ]);
+        if (!ativo) return;
+        setNaLista(estaNaLista);
+        setAlerta(alertaExistente);
       }
       setCarregando(false);
     })();
@@ -56,6 +76,30 @@ export function ProdutoDetalheTela({ navigation, route }: Props) {
       ativo = false;
     };
   }, [chave]);
+
+  // C8.4 — alerta de preço: alvo em R$/unidade-base, checado no Início contra
+  // o cache regional. Pré-preenche com ~90% do típico pessoal (um alvo realista).
+  function abrirEditorAlerta() {
+    const sugestao = produto?.faixaPessoal?.mediana ?? produto?.minimo;
+    setAlvoInput(sugestao != null ? (sugestao * 0.9).toFixed(2).replace('.', ',') : '');
+    setEditandoAlerta(true);
+  }
+
+  async function salvarAlerta() {
+    const id = produto?.produtoCanonicoId;
+    const alvo = parseMoeda(alvoInput);
+    if (!id || alvo == null || alvo <= 0) return;
+    await alertas.definir(id, produto?.nome ?? nome ?? 'Produto', alvo);
+    setAlerta(await alertas.obter(id));
+    setEditandoAlerta(false);
+  }
+
+  async function removerAlerta() {
+    const id = produto?.produtoCanonicoId;
+    if (!id) return;
+    await alertas.remover(id);
+    setAlerta(null);
+  }
 
   // C12.1 — entra/sai da lista de compras. Só produtos com id canônico são
   // comparáveis entre lojas; sem ele o botão nem aparece.
@@ -129,13 +173,66 @@ export function ProdutoDetalheTela({ navigation, route }: Props) {
           </View>
 
           {produto.produtoCanonicoId ? (
-            <Botao
-              titulo={naLista ? 'Tirar da minha lista' : 'Adicionar à minha lista'}
-              variante={naLista ? 'fantasma' : 'secundario'}
-              bloco
-              onPress={() => void alternarLista()}
-              style={{ marginBottom: espaco.lg }}
-            />
+            <>
+              <Botao
+                titulo={naLista ? 'Tirar da minha lista' : 'Adicionar à minha lista'}
+                variante={naLista ? 'fantasma' : 'secundario'}
+                bloco
+                onPress={() => void alternarLista()}
+                style={{ marginBottom: espaco.sm }}
+              />
+
+              <Cartao style={{ marginBottom: espaco.lg }}>
+                {editandoAlerta ? (
+                  <>
+                    <CampoTexto
+                      rotulo={`Me avise quando a região chegar a (R$${base})`}
+                      value={alvoInput}
+                      onChangeText={setAlvoInput}
+                      keyboardType="decimal-pad"
+                      placeholder="0,00"
+                    />
+                    <View style={estilos.acoesAlerta}>
+                      <Botao
+                        titulo="Cancelar"
+                        variante="fantasma"
+                        onPress={() => setEditandoAlerta(false)}
+                        style={{ flex: 1 }}
+                      />
+                      <Botao
+                        titulo="Salvar alerta"
+                        onPress={() => void salvarAlerta()}
+                        style={{ flex: 1 }}
+                      />
+                    </View>
+                  </>
+                ) : alerta ? (
+                  <View style={estilos.linhaAlerta}>
+                    <View style={{ flex: 1 }}>
+                      <Texto peso="bold" tamanho="sm">
+                        🔔 Alerta ativo
+                      </Texto>
+                      <Texto cor="fraco" tamanho="xs">
+                        Avisamos no Início quando a região chegar a {moedaFmt(alerta.precoAlvo)}
+                        {base}.
+                      </Texto>
+                    </View>
+                    <Botao
+                      titulo="Remover"
+                      variante="fantasma"
+                      onPress={() => void removerAlerta()}
+                    />
+                  </View>
+                ) : (
+                  <Botao
+                    titulo="Criar alerta de preço"
+                    variante="fantasma"
+                    bloco
+                    onPress={abrirEditorAlerta}
+                  />
+                )}
+              </Cartao>
+            </>
           ) : null}
 
           <Texto peso="extrabold" tamanho="lg" style={{ marginBottom: espaco.sm }}>
@@ -207,6 +304,8 @@ const estilos = StyleSheet.create({
     marginBottom: espaco.md,
   },
   cards: { flexDirection: 'row', gap: espaco.sm, marginBottom: espaco.lg },
+  acoesAlerta: { flexDirection: 'row', gap: espaco.sm, marginTop: espaco.sm },
+  linhaAlerta: { flexDirection: 'row', alignItems: 'center', gap: espaco.md },
   cardExtremo: { flex: 1, alignItems: 'center', paddingVertical: espaco.md },
   compra: {
     flexDirection: 'row',
