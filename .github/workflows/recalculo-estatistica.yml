@@ -13,6 +13,11 @@ on:
     # A cada 30 min. Cron do GitHub é UTC e pode atrasar sob carga — o job é
     # idempotente, então atrasos/execuções sobrepostas não causam problema.
     - cron: '*/30 * * * *'
+    # Recálculo COMPLETO semanal (segunda 04:00 UTC): o decaimento temporal
+    # (C3.2) só é reaplicado quando o produto é recalculado, e o incremental
+    # acima só alveja produtos com observação NOVA — um produto dormente
+    # ficaria com pesos velhos (e observações além dos 180 dias) congelados.
+    - cron: '0 4 * * 1'
   workflow_dispatch:
     inputs:
       lookback:
@@ -31,8 +36,9 @@ jobs:
     env:
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-      # Disparo manual pode sobrescrever a janela; no cron usa o padrão da config.
-      RECALCULO_LOOKBACK_MINUTES: ${{ github.event.inputs.lookback }}
+      # Cron semanal → '0' (recálculo COMPLETO). Disparo manual → valor do
+      # input. Cron de 30 min → vazio → padrão da config (180 min, incremental).
+      RECALCULO_LOOKBACK_MINUTES: ${{ github.event.schedule == '0 4 * * 1' && '0' || github.event.inputs.lookback }}
     steps:
       - name: Falha cedo se faltar credencial do Supabase
         if: ${{ env.SUPABASE_URL == '' || env.SUPABASE_SERVICE_ROLE_KEY == '' }}
