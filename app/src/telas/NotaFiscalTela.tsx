@@ -60,6 +60,11 @@ export function NotaFiscalTela({ navigation, route }: Props) {
   const [itens, setItens] = useState<ItemCupomLocal[]>([]);
   const [offline, setOffline] = useState(false);
   const [coletaMsg, setColetaMsg] = useState<string | null>(null);
+  // C2.6 — backfill de totais: nota processada ANTES do recurso de desconto
+  // pode buscar os totais na SEFAZ sob demanda (o backend só completa, nunca
+  // re-publica itens/pool).
+  const [buscandoTotais, setBuscandoTotais] = useState(false);
+  const [avisoTotais, setAvisoTotais] = useState<string | null>(null);
   const [editando, setEditando] = useState<ItemCupomLocal | null>(null);
   const [valorInput, setValorInput] = useState('');
   const ativo = useRef(true);
@@ -138,6 +143,12 @@ export function NotaFiscalTela({ navigation, route }: Props) {
     cupom.cupomIdServidor != null &&
     /^https?:/i.test(cupom.qrPayload);
   const podeDescartar = cupom != null && (!cupom.cupomIdServidor || falhou);
+  // Sem totais = `valor_pago` nulo (o parse novo sempre grava, mesmo desconto 0).
+  const semTotais =
+    processado &&
+    cupom?.valorPago == null &&
+    cupom?.cupomIdServidor != null &&
+    /^https?:/i.test(cupom?.qrPayload ?? '');
   const total = itens.reduce((s, i) => s + i.valorTotal, 0);
   const descontoCupom = cupom?.descontoTotal ?? 0;
   const temDesconto = descontoCupom > 0;
@@ -252,6 +263,55 @@ export function NotaFiscalTela({ navigation, route }: Props) {
               </View>
             )}
           </Cartao>
+
+          {semTotais ? (
+            <Cartao style={{ marginTop: espaco.md }}>
+              {buscandoTotais ? (
+                <>
+                  <Texto peso="bold" style={{ marginBottom: espaco.xs }}>
+                    Buscando o desconto na SEFAZ
+                  </Texto>
+                  <Texto cor="suave" tamanho="sm" style={{ marginBottom: espaco.md }}>
+                    Toque em “Consultar” e resolva a verificação se aparecer — lemos o desconto e o
+                    total e fechamos sozinhos.
+                  </Texto>
+                  <ColetorNotaWeb
+                    url={cupom!.qrPayload}
+                    enviarHtml={enviarHtmlColeta}
+                    aoProcessar={() => {
+                      setBuscandoTotais(false);
+                      void recarregarLocal();
+                    }}
+                    aoDesistir={(m) => {
+                      setBuscandoTotais(false);
+                      setAvisoTotais(m);
+                    }}
+                  />
+                </>
+              ) : (
+                <>
+                  <Texto cor="suave" tamanho="sm" style={{ marginBottom: espaco.sm }}>
+                    Esta nota foi lida antes do recurso de desconto. Dá para completar o desconto e
+                    o valor pago direto da SEFAZ.
+                  </Texto>
+                  <Botao
+                    titulo="Buscar desconto e total"
+                    variante="secundario"
+                    bloco
+                    onPress={() => {
+                      setAvisoTotais(null);
+                      setBuscandoTotais(true);
+                    }}
+                  />
+                  {avisoTotais ? (
+                    <Texto cor="fraco" tamanho="xs" centralizado style={{ marginTop: espaco.sm }}>
+                      {avisoTotais}
+                    </Texto>
+                  ) : null}
+                </>
+              )}
+            </Cartao>
+          ) : null}
         </>
       ) : falhou ? (
         <Cartao>
