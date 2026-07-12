@@ -124,6 +124,7 @@ Este documento dá um **nome e um código curto** a cada etapa do desenvolviment
 |---|---|
 | C9.1 | Pirâmide de testes (unit→e2e) + fixtures de cupons |
 | C9.2 | Gate LGPD + checagem de re-identificação |
+| C9.2.1 | Dedup global do pool por hash da chave (`chave_publicada`): contas diferentes com o MESMO cupom publicam uma vez — anti-distorção da mediana e anti-abuso multi-conta |
 | C9.3 | Performance (índices/EXPLAIN) + plano de escala |
 | C9.3.1 | Ingestão transacional: `marcarProcessado` numa função SQL (RPC) — hoje são escritas sequenciais e uma falha parcial após inserir no pool pode duplicar observações no retry |
 | C9.3.2 | Rate-limit/anti-abuso: `POST /conta/anonima` e consulta/sync são sem limite hoje (criação ilimitada de contas; scraping do pool público) |

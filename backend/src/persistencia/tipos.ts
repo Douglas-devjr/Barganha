@@ -9,9 +9,19 @@
  * tipo, então não há caminho de escrita no pool que burle a anonimização.
  */
 
+import { createHash } from 'node:crypto';
+
 import type { NotaEstruturada, ObservacaoAnonima, StatusCupom, TotaisNota } from '@barganha/shared';
 
 import type { ItemCupomNovo } from '../anonimizacao/anonimizador';
+
+/**
+ * C9.2.1 — Hash da chave de acesso para o dedup GLOBAL do pool. A chave crua
+ * nunca sai do lado privado; `chave_publicada` só conhece este SHA-256.
+ */
+export function hashChavePool(chaveAcesso: string): string {
+  return createHash('sha256').update(chaveAcesso).digest('hex');
+}
 
 /** Dados de uma ingestão de QR (lado privado). */
 export interface DadosIngestao {
@@ -53,6 +63,22 @@ export interface DadosNotaProcessada {
    * caminho servidor — não só na ingestão por HTML (C2.6).
    */
   total?: TotaisNota;
+  /**
+   * C9.2.1 — Hash (`hashChavePool`) da chave de acesso: dedup global do pool.
+   * Com ele presente e havendo observações, a chave só publica UMA vez —
+   * qualquer conta que reprocessar o mesmo cupom mantém o histórico privado,
+   * mas o pool não recebe de novo.
+   */
+  chaveHash?: string;
+}
+
+/** Desfecho do `marcarProcessado` do ponto de vista do POOL. */
+export interface ResultadoMarcarProcessado {
+  /**
+   * `false` = havia observações mas a chave JÁ tinha publicado (dedup C9.2.1):
+   * o chamador não deve disparar recálculo nem contar publicação.
+   */
+  poolPublicado: boolean;
 }
 
 /**
@@ -108,7 +134,7 @@ export interface RepositorioCupom {
     cupomId: string,
     dados: DadosNotaProcessada,
     opcoes?: { sobrescreverProcessado?: boolean },
-  ): Promise<void>;
+  ): Promise<ResultadoMarcarProcessado>;
   /**
    * C2.6 — BACKFILL dos totais de um cupom JÁ `processado` que ainda não os tem
    * (processado antes do recurso de totais existir; o retro C2.5 não o alcança).

@@ -14,6 +14,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { Anonimizador } from '../anonimizacao/anonimizador';
 import { Autenticador } from '../auth/autenticador';
+import { digitoVerificadorChave } from '../parsers/chave-acesso';
 import { ServicoConta } from '../auth/servico-conta';
 import { ServicoConsulta } from '../consulta/servico-consulta';
 import type { FilaProcessamento } from '../fila/tipos';
@@ -280,6 +281,48 @@ describe('POST /ingestao/cupom/:id/html (C2.6)', () => {
     });
     expect(r.statusCode).toBe(422);
     expect(repo.statusDoCupom(cupomId)).toBe('processado');
+  });
+
+  it('C9.2.1: duas contas com o MESMO cupom físico → pool recebe UMA vez; histórico dos dois existe', async () => {
+    // Chave própria deste teste (nNF distinto, DV recalculado) — mesmo emitente.
+    const chave43 = '33260612345678000199650010000007771000000019'.slice(0, 43);
+    const qr = `https://www.fazenda.rj.gov.br/nfce/qrcode?p=${chave43}${digitoVerificadorChave(chave43)}|2|1`;
+
+    const ingerir = async (usuarioId: string): Promise<string> => {
+      const r = await app.inject({
+        method: 'POST',
+        url: '/ingestao/qr',
+        headers: { authorization: `Bearer ${usuarioId}` },
+        payload: { qrPayload: qr, capturadoEm: CAPTURA },
+      });
+      return r.json().cupomId as string;
+    };
+    const enviarNota = (usuarioId: string, cupomId: string) =>
+      app.inject({
+        method: 'POST',
+        url: urlHtml(cupomId),
+        headers: { authorization: `Bearer ${usuarioId}` },
+        payload: { html: HTML_RJ },
+      });
+
+    const contaA = await novaConta();
+    const contaB = await novaConta();
+    const cupomA = await ingerir(contaA);
+    const cupomB = await ingerir(contaB);
+    expect(cupomA).not.toBe(cupomB); // idempotência é POR usuário — dois registros privados.
+
+    const rA = await enviarNota(contaA, cupomA);
+    expect(rA.statusCode).toBe(200);
+    expect(rA.json().status).toBe('processado');
+    const poolAposA = repo.observacoesDoPool().length;
+
+    const rB = await enviarNota(contaB, cupomB);
+    expect(rB.statusCode).toBe(200);
+    // B tem a nota COMPLETA no histórico privado…
+    expect(rB.json().status).toBe('processado');
+    expect(rB.json().itens.length).toBeGreaterThan(0);
+    // …mas o pool NÃO cresce: a chave já publicou (mediana da região intacta).
+    expect(repo.observacoesDoPool()).toHaveLength(poolAposA);
   });
 
   it('nota de OUTRO emitente (CNPJ ≠ chave) → falha, nada entra no pool', async () => {

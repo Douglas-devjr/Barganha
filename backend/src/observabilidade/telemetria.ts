@@ -14,7 +14,8 @@ export type EventoParsing =
   | 'transitorio_esgotado' // portal fora do ar além do limite de retries da fila
   | 'sem_parser' // UF sem parser — represado p/ reprocessamento retroativo (C2.5)
   | 'uf_nao_habilitada' // tem parser, mas fora do rollout atual (C10.3)
-  | 'erro_portal'; // portal recusou a verificação (reCAPTCHA) — app recarrega e re-tenta (C2.6)
+  | 'erro_portal' // portal recusou a verificação (reCAPTCHA) — app recarrega e re-tenta (C2.6)
+  | 'pool_deduplicado'; // observações retidas: chave já publicada por outra conta (C9.2.1)
 
 export interface Telemetria {
   /** Registra o desfecho do parsing de um cupom. `uf` ausente → "desconhecida". */

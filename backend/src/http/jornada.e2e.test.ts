@@ -24,6 +24,7 @@ import { ServicoConsulta } from '../consulta/servico-consulta';
 import { PipelineEstatistica } from '../estatistica/pipeline';
 import { FilaMemoria } from '../fila/fila-memoria';
 import { ServicoIngestao } from '../ingestao/servico-ingestao';
+import { digitoVerificadorChave } from '../parsers/chave-acesso';
 import { RegistroParsers } from '../parsers/registro';
 import { ParserRj } from '../parsers/rj';
 import { ParserSp } from '../parsers/sp';
@@ -36,8 +37,15 @@ import { construirServidor } from './servidor';
 const fix = (n: string): string =>
   readFileSync(fileURLToPath(new URL(`../parsers/__fixtures__/${n}`, import.meta.url)), 'utf8');
 
-const QR_RJ =
-  'https://www.fazenda.rj.gov.br/nfce/qrcode?p=33260612345678000199650010000000011000000016|2|1';
+// Um QR por usuário (nNF varia; DV recalculado): cupons FÍSICOS distintos.
+// Mesmo QR entre contas não acumularia mais — o dedup global (C9.2.1) retém
+// a segunda publicação da MESMA chave.
+function qrRj(numeroNota: number): string {
+  const nNF = String(numeroNota).padStart(9, '0');
+  // cUF(33) AAMM(2606) CNPJ(12345678000199) mod(65) série(001) nNF(9) tpEmis(1) cNF(8)
+  const chave43 = `3326061234567800019965001${nNF}100000001`;
+  return `https://www.fazenda.rj.gov.br/nfce/qrcode?p=${chave43}${digitoVerificadorChave(chave43)}|2|1`;
+}
 const EAN_CAFE = '7890000000017';
 const CHAVES_PERMITIDAS_POOL = [
   'produtoCanonicoId',
@@ -71,8 +79,8 @@ const cupons: string[] = [];
 
 beforeAll(async () => {
   await app.ready();
-  // Três usuários distintos compram o MESMO cupom (mesmos produtos). Não é
-  // idempotente entre contas → o pool acumula 3 observações por produto.
+  // Três usuários distintos compram CUPONS distintos dos mesmos produtos →
+  // o pool acumula 3 observações por produto (cada chave publica uma vez).
   for (let i = 0; i < N_USUARIOS; i++) {
     const conta = await app.inject({ method: 'POST', url: '/conta/anonima' });
     const usuarioId = conta.json().usuarioId as string;
@@ -80,7 +88,7 @@ beforeAll(async () => {
       method: 'POST',
       url: '/ingestao/qr',
       headers: { authorization: `Bearer ${usuarioId}` },
-      payload: { qrPayload: QR_RJ, capturadoEm: '2026-06-27T12:00:00.000Z' },
+      payload: { qrPayload: qrRj(i + 1), capturadoEm: '2026-06-27T12:00:00.000Z' },
     });
     cupons.push(ing.json().cupomId as string);
     await fila.ociosa();

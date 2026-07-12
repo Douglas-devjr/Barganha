@@ -54,6 +54,7 @@ import type {
   FiltroReprocessamento,
   RepositorioCupom,
   ResultadoIngestao,
+  ResultadoMarcarProcessado,
 } from './tipos';
 
 interface CupomInterno extends CupomRegistro {
@@ -120,6 +121,8 @@ export class RepositorioMemoria
   // Pool com o instante de INSERÇÃO (criadoEm), separado da emissão (observadoEm),
   // para o sinal incremental do pipeline ser por inserção (F1).
   private readonly poolEntradas: { obs: ObservacaoAnonima; criadoEm: string }[] = [];
+  /** C9.2.1 — hashes de chave já publicados no pool (espelha `chave_publicada`). */
+  private readonly chavesPublicadas = new Set<string>();
   private readonly estatisticas = new Map<string, PrecoEstatistica>();
 
   // ───────────────────────── RepositorioUsuario (C4.3) ────────────────
@@ -223,7 +226,7 @@ export class RepositorioMemoria
     cupomId: string,
     dados: DadosNotaProcessada,
     opcoes?: { sobrescreverProcessado?: boolean },
-  ): Promise<void> {
+  ): Promise<ResultadoMarcarProcessado> {
     const cupom = this.cupons.get(cupomId);
     if (!cupom) return Promise.reject(new Error(`Cupom ${cupomId} inexistente.`));
     // Espelha a trava da RPC `processar_cupom` (FOR UPDATE + status): dois
@@ -231,7 +234,7 @@ export class RepositorioMemoria
     // no-op em vez de duplicar o pool (append-only, indedupável a posteriori).
     // O backfill (job:republicar) é a exceção deliberada (ver tipos.ts).
     if (cupom.status === 'processado' && !opcoes?.sobrescreverProcessado) {
-      return Promise.resolve();
+      return Promise.resolve({ poolPublicado: false });
     }
 
     this.upsertLoja(dados.loja);
@@ -244,12 +247,26 @@ export class RepositorioMemoria
       this.itensCupom.push({ ...item, id: randomUUID(), cupomId });
     }
 
+    // C9.2.1 — dedup GLOBAL do pool: a chave publica uma vez, seja qual for a
+    // conta. Só reivindica o hash quando HÁ observações (um cupom sem casamento
+    // não "queima" a chave — o job:republicar publica depois).
+    let poolPublicado = true;
+    if (dados.chaveHash && dados.observacoes.length > 0) {
+      if (this.chavesPublicadas.has(dados.chaveHash)) {
+        poolPublicado = false;
+      } else {
+        this.chavesPublicadas.add(dados.chaveHash);
+      }
+    }
+
     // Pool anônimo é append-only (sem vínculo com o cupom — por isso o
     // reprocessamento só alveja cupons ainda não processados, C2.5). O guard
     // (C9.2) espelha a trava da escrita real antes de cada inserção.
-    const agoraPool = new Date().toISOString();
-    for (const obs of dados.observacoes) {
-      this.poolEntradas.push({ obs: garantirSemDadoPessoal(obs), criadoEm: agoraPool });
+    if (poolPublicado) {
+      const agoraPool = new Date().toISOString();
+      for (const obs of dados.observacoes) {
+        this.poolEntradas.push({ obs: garantirSemDadoPessoal(obs), criadoEm: agoraPool });
+      }
     }
 
     cupom.status = 'processado';
@@ -260,7 +277,7 @@ export class RepositorioMemoria
       cupom.descontoTotal = dados.total.desconto;
       cupom.valorPago = dados.total.pago;
     }
-    return Promise.resolve();
+    return Promise.resolve({ poolPublicado });
   }
 
   marcarFalha(cupomId: string, motivo?: string): Promise<void> {

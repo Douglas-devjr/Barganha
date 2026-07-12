@@ -28,6 +28,7 @@ import { Anonimizador as AnonimizadorReal } from '../anonimizacao/anonimizador';
 import { type ConfigBackend, lerConfig } from '../config/env';
 import { PipelineEstatistica } from '../estatistica/pipeline';
 import { RepositorioSupabase } from '../persistencia/repositorio-supabase';
+import { hashChavePool } from '../persistencia/tipos';
 import { criarClienteSupabase } from '../persistencia/supabase';
 import type { RepositorioCupom } from '../persistencia/tipos';
 
@@ -99,7 +100,7 @@ export async function republicarPool(
     );
     if (resultado.observacoes.length === 0) continue;
 
-    await repo.marcarProcessado(
+    const { poolPublicado } = await repo.marcarProcessado(
       cupom.id,
       {
         loja: resultado.loja,
@@ -107,6 +108,10 @@ export async function republicarPool(
         uf: uf ?? resultado.loja.uf,
         itensPrivados: resultado.itensPrivados,
         observacoes: resultado.observacoes,
+        // C9.2.1 — o dedup global vale também aqui: se OUTRA conta com o mesmo
+        // cupom já publicou (na captura ou numa republicação anterior), esta
+        // republicação atualiza o privado mas não duplica o pool.
+        ...(cupom.chaveAcesso ? { chaveHash: hashChavePool(cupom.chaveAcesso) } : {}),
       },
       // Backfill reescreve um cupom JÁ `processado` de propósito — a trava
       // anti-corrida é pulada aqui; a anti-duplicação é a guarda acima
@@ -114,8 +119,10 @@ export async function republicarPool(
       { sobrescreverProcessado: true },
     );
     republicados++;
-    publicadas += resultado.observacoes.length;
-    for (const o of resultado.observacoes) produtos.add(o.produtoCanonicoId);
+    if (poolPublicado) {
+      publicadas += resultado.observacoes.length;
+      for (const o of resultado.observacoes) produtos.add(o.produtoCanonicoId);
+    }
   }
 
   for (const id of produtos) await recalcularProduto(id);

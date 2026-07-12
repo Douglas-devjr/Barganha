@@ -30,6 +30,7 @@ import { pareceDefesaAntiBot, pareceErroPortal } from '../parsers/html';
 import { parseQrNfce, type QrNfce } from '../parsers/qr-payload';
 import type { RegistroParsers } from '../parsers/registro';
 import type { ParserSefaz } from '../parsers/tipos';
+import { hashChavePool } from '../persistencia/tipos';
 import type { CupomRegistro, RepositorioCupom } from '../persistencia/tipos';
 import type { Rollout } from '../rollout/controle-rollout';
 import { ROLLOUT_TUDO } from '../rollout/controle-rollout';
@@ -196,7 +197,7 @@ export class ProcessadorCupom {
       uf,
     );
 
-    await this.repo.marcarProcessado(cupom.id, {
+    const { poolPublicado } = await this.repo.marcarProcessado(cupom.id, {
       loja: resultado.loja,
       emitidoEm: resultado.emitidoEm,
       uf,
@@ -205,8 +206,17 @@ export class ProcessadorCupom {
       // Totais do cupom (desconto/pago) persistem no CUPOM privado: o app os
       // recebe também pelo polling do caminho servidor, não só pelo HTML (C2.6).
       ...(nota.total ? { total: nota.total } : {}),
+      // C9.2.1 — dedup global do pool: a mesma chave (outra conta) não publica
+      // duas vezes. O histórico privado do usuário existe normalmente.
+      ...(cupom.chaveAcesso ? { chaveHash: hashChavePool(cupom.chaveAcesso) } : {}),
     });
     this.telemetria.registrarParsing(uf, 'processado');
+    if (!poolPublicado && resultado.observacoes.length > 0) {
+      // Observações retidas (chave já publicada): conta para a operação
+      // enxergar o volume — pico sustentado = abuso ativo (C9.2.1).
+      this.telemetria.registrarParsing(uf, 'pool_deduplicado');
+      return;
+    }
 
     // C3 — o pool já foi gravado (transação da RPC commitada). Dispara o
     // recálculo da mediana/faixa dos produtos afetados para o veredito na gôndola
