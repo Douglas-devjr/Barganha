@@ -133,10 +133,11 @@ Este documento dá um **nome e um código curto** a cada etapa do desenvolviment
 ### `C10` — Lançamento *(Release & Operação)* `[MVP]`
 | Código | Sub-passo |
 |---|---|
+| C10.0 | Conformidade de loja (docs/14): política em URL pública (C9.4), página web de exclusão de conta, Data Safety, classificação, **target API 36** (upgrade Expo SDK 54+) |
 | C10.1 | Build EAS + Google Play (beta fechado → aberto) |
 | C10.2 | Observabilidade (telemetria por estado, alertas, backups) |
 | C10.3 | Lançamento faseado RJ + SP |
-*Responsáveis:* devops-engineer, product-manager
+*Responsáveis:* devops-engineer, product-manager, privacy-lgpd-specialist
 
 ### `C11` — Expansão *(Pós-lançamento)* `[Pós]`
 | Código | Sub-passo |
@@ -147,6 +148,17 @@ Este documento dá um **nome e um código curto** a cada etapa do desenvolviment
 | C11.4 | OCR de cupons ECF antigos |
 | C11.5 | Enriquecimento de produtos (nome/foto/categoria) |
 *Responsáveis:* conforme o item
+
+### `C12` — Diferenciação *(Pós-lançamento — benchmark de mercado)* `[Pós]`
+Features que fazem o app ser escolhido, inspiradas no que funciona nos
+concorrentes (Preço da Hora BA, Menor Preço RS/PR, apps de cashback por nota).
+Alertas de preço e economia acumulada já estão em **C8.4**.
+| Código | Sub-passo |
+|---|---|
+| C12.1 | Lista de compras comparada por mercado ("onde minha cesta sai mais barata") |
+| C12.2 | Gamificação da contribuição (sequências, selos, contador de cupons enviados) |
+| C12.3 | Recortes de combustíveis e farmácia (curadoria de categoria + UI) |
+*Responsáveis:* product-manager, data-scientist, mobile-engineer, ux-designer
 
 ---
 
