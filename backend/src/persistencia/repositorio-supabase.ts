@@ -22,7 +22,11 @@ import type { PostgrestError, SupabaseClient } from '@supabase/supabase-js';
 
 import type { CatalogoProdutos, SugestaoProduto } from '../anonimizacao/casamento';
 import type { RepositorioUsuario } from '../auth/tipos';
-import type { FonteProdutoConsulta } from '../consulta/tipos';
+import type {
+  EstatisticaLojaLinha,
+  FonteComparacaoLojas,
+  FonteProdutoConsulta,
+} from '../consulta/tipos';
 import type { EnriquecimentoProduto, RepositorioCuradoria } from '../curadoria/tipos';
 import {
   type CandidatoCanonico,
@@ -67,6 +71,7 @@ export class RepositorioSupabase
     RepositorioUsuario,
     CatalogoProdutos,
     FonteProdutoConsulta,
+    FonteComparacaoLojas,
     FonteObservacoes,
     RepositorioEstatistica,
     FonteDeltaSync,
@@ -472,6 +477,49 @@ export class RepositorioSupabase
       nObservacoes: Number(e.n_observacoes),
       atualizadoEm: e.atualizado_em,
     }));
+  }
+
+  // ───────────────────────── FonteComparacaoLojas (C12.1) ─────────────
+
+  async estatisticasDeLojasPorProdutos(
+    produtoCanonicoIds: readonly string[],
+  ): Promise<EstatisticaLojaLinha[]> {
+    if (produtoCanonicoIds.length === 0) return [];
+    const r = await this.db
+      .from('preco_estatistica')
+      .select('produto_canonico_id, escopo_id, mediana, menor_promocional, n_observacoes')
+      .eq('escopo', 'loja')
+      .in('produto_canonico_id', [...produtoCanonicoIds]);
+    if (r.error) falhar('consulta de estatísticas por loja (C12.1)', r.error);
+    const linhas = r.data ?? [];
+    if (linhas.length === 0) return [];
+
+    // Referência pública das lojas (nome/geo) numa segunda leitura em lote — a
+    // normalização da chave de município fica no serviço (uma fonte só).
+    const cnpjs = [...new Set(linhas.map((l) => l.escopo_id as string))];
+    const rl = await this.db
+      .from('loja')
+      .select('cnpj, nome_fantasia, razao_social, municipio, uf')
+      .in('cnpj', cnpjs);
+    if (rl.error) falhar('consulta de lojas da comparação (C12.1)', rl.error);
+    const lojas = new Map((rl.data ?? []).map((l) => [l.cnpj as string, l]));
+
+    return linhas.map((e) => {
+      const loja = lojas.get(e.escopo_id as string);
+      const nome = (loja?.nome_fantasia ?? loja?.razao_social) as string | undefined;
+      const mediana = num(e.mediana);
+      const menorPromocional = num(e.menor_promocional);
+      return {
+        produtoCanonicoId: e.produto_canonico_id as string,
+        lojaCnpj: e.escopo_id as string,
+        ...(nome ? { nomeLoja: nome } : {}),
+        ...(loja?.municipio ? { municipioLoja: loja.municipio as string } : {}),
+        ...(loja?.uf ? { ufLoja: loja.uf as string } : {}),
+        ...(mediana != null ? { mediana } : {}),
+        ...(menorPromocional != null ? { menorPromocional } : {}),
+        nObservacoes: Number(e.n_observacoes),
+      };
+    });
   }
 
   // ───────────────────────── FonteDeltaSync (C4.2) ────────────────────

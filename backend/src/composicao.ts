@@ -11,6 +11,7 @@ import { GuardaCuradoria } from './auth/curadoria';
 import { GerenciadorContaSupabase } from './auth/gerenciador-conta';
 import { VerificadorTokenSupabase } from './auth/verificador-token';
 import type { ConfigBackend } from './config/env';
+import { ServicoComparacaoLista } from './consulta/servico-comparacao-lista';
 import { ServicoConsulta } from './consulta/servico-consulta';
 import { ServicoCuradoria } from './curadoria/servico-curadoria';
 import { MatcherTexto } from './estatistica/casamento-texto';
@@ -42,6 +43,8 @@ export interface Backend {
   matcherTexto: MatcherTexto;
   /** API de consulta de preço com fallback geo (C4.1). */
   servicoConsulta: ServicoConsulta;
+  /** Lista de compras comparada por loja (C12.1). */
+  servicoComparacaoLista: ServicoComparacaoLista;
   /** Delta sync incremental do cache de estatística (C4.2). */
   servicoSync: ServicoSync;
   /** Autenticação dos endpoints privados (C4.3.1) — valida o JWT do Supabase. */
@@ -112,6 +115,7 @@ export function montarBackend(config: ConfigBackend): Backend {
   // contra o GoTrue; o `usuarioId` (= auth.users.id) só identifica o lado
   // PRIVADO — o pool segue anônimo (docs/04). Sem conta anônima em produção.
   const servicoConsulta = new ServicoConsulta(repo, repo);
+  const servicoComparacaoLista = new ServicoComparacaoLista(repo);
   const servicoSync = new ServicoSync(repo);
   const autenticacao = new AutenticadorSupabase(new VerificadorTokenSupabase(db));
   const gerenciadorConta = new GerenciadorContaSupabase(db);
@@ -130,6 +134,7 @@ export function montarBackend(config: ConfigBackend): Backend {
     pipelineEstatistica,
     matcherTexto,
     servicoConsulta,
+    servicoComparacaoLista,
     servicoSync,
     autenticacao,
     gerenciadorConta,

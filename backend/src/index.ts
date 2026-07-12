@@ -14,6 +14,7 @@ export async function main(): Promise<void> {
   const {
     servicoIngestao,
     servicoConsulta,
+    servicoComparacaoLista,
     servicoSync,
     autenticacao,
     gerenciadorConta,
@@ -27,6 +28,7 @@ export async function main(): Promise<void> {
   const app = construirServidor({
     servicoIngestao,
     servicoConsulta,
+    servicoComparacaoLista,
     servicoSync,
     autenticacao,
     gerenciadorConta,

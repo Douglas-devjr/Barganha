@@ -12,6 +12,31 @@ import type { ProdutoResumo } from '@barganha/shared';
 
 import type { CandidatoCanonico } from '../estatistica/casamento-texto';
 
+/**
+ * Linha de estatística no escopo LOJA para a comparação de lista (C12.1),
+ * já com a referência mínima da loja (nome/geo) para exibição e filtro.
+ * Só lado compartilhado: `preco_estatistica` (escopo `loja`) + `loja`.
+ */
+export interface EstatisticaLojaLinha {
+  produtoCanonicoId: string;
+  /** `escopo_id` do nível loja = CNPJ. */
+  lojaCnpj: string;
+  nomeLoja?: string;
+  municipioLoja?: string;
+  ufLoja?: string;
+  mediana?: number;
+  menorPromocional?: number;
+  nObservacoes: number;
+}
+
+/** Fonte das estatísticas por loja para a comparação de lista (C12.1). */
+export interface FonteComparacaoLojas {
+  /** Todas as linhas escopo `loja` dos produtos pedidos (filtro geo é do serviço). */
+  estatisticasDeLojasPorProdutos(
+    produtoCanonicoIds: readonly string[],
+  ): Promise<EstatisticaLojaLinha[]>;
+}
+
 export interface FonteProdutoConsulta {
   /** Lookup direto por EAN; `undefined` se o produto ainda não existe na base. */
   obterProdutoPorEan(ean: string): Promise<string | undefined>;

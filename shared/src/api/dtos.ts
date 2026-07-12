@@ -127,6 +127,47 @@ export interface ConsultaPrecoResponse {
   produto?: ProdutoResumo;
 }
 
+// ───────────────── Lista de compras comparada por loja (C12.1) ──────────────
+
+/**
+ * Compara uma cesta entre as lojas da região: "onde minha lista sai mais
+ * barata". Anônima como a consulta de preço — lê só `preco_estatistica` no
+ * escopo `loja`. A `quantidade` é um multiplicador da unidade-base do produto
+ * (padrão 1); a comparação é RELATIVA entre lojas, não um orçamento exato.
+ */
+export interface ComparacaoListaRequest {
+  itens: Array<{ produtoCanonicoId: string; quantidade?: number }>;
+  /** Recorte geográfico das lojas candidatas (mesma semântica da consulta). */
+  municipio?: string;
+  uf?: string;
+}
+
+/** Preço de UM item da lista numa loja (mediana × quantidade). */
+export interface ItemComparacaoLoja {
+  produtoCanonicoId: string;
+  /** Ausente = a loja não tem estatística para este item (fora da cobertura). */
+  preco?: number;
+  /** Menor preço promocional visto (informativo — não entra no total). */
+  menorPromocional?: number;
+}
+
+export interface LojaComparacao {
+  lojaCnpj: string;
+  nome?: string;
+  municipio?: string;
+  /** Soma das medianas × quantidade dos itens COBERTOS. */
+  total: number;
+  /** Quantos itens da lista têm preço nesta loja (cobertura). */
+  itensCobertos: number;
+  itens: ItemComparacaoLoja[];
+}
+
+/** Lojas ordenadas por cobertura (desc) e total (asc). */
+export interface ComparacaoListaResponse {
+  itensTotal: number;
+  lojas: LojaComparacao[];
+}
+
 // ─────────────────── Enriquecimento de produto — curadoria (C11.5) ───────────
 
 /**

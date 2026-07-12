@@ -21,7 +21,11 @@ import {
 import type { ItemCupomNovo } from '../anonimizacao/anonimizador';
 import type { CatalogoProdutos, SugestaoProduto } from '../anonimizacao/casamento';
 import type { RepositorioUsuario } from '../auth/tipos';
-import type { FonteProdutoConsulta } from '../consulta/tipos';
+import type {
+  EstatisticaLojaLinha,
+  FonteComparacaoLojas,
+  FonteProdutoConsulta,
+} from '../consulta/tipos';
 import type { EnriquecimentoProduto, RepositorioCuradoria } from '../curadoria/tipos';
 import {
   type CandidatoCanonico,
@@ -93,6 +97,7 @@ export class RepositorioMemoria
     RepositorioUsuario,
     CatalogoProdutos,
     FonteProdutoConsulta,
+    FonteComparacaoLojas,
     FonteObservacoes,
     RepositorioEstatistica,
     FonteDeltaSync,
@@ -384,6 +389,31 @@ export class RepositorioMemoria
     return Promise.resolve(r);
   }
 
+  // ───────────────────────── FonteComparacaoLojas (C12.1) ─────────────
+
+  estatisticasDeLojasPorProdutos(
+    produtoCanonicoIds: readonly string[],
+  ): Promise<EstatisticaLojaLinha[]> {
+    const ids = new Set(produtoCanonicoIds);
+    const r = [...this.estatisticas.values()]
+      .filter((e) => e.escopo === 'loja' && ids.has(e.produtoCanonicoId))
+      .map((e): EstatisticaLojaLinha => {
+        const loja = this.lojas.get(e.escopoId);
+        const nome = loja?.nomeFantasia ?? loja?.razaoSocial;
+        return {
+          produtoCanonicoId: e.produtoCanonicoId,
+          lojaCnpj: e.escopoId,
+          ...(nome ? { nomeLoja: nome } : {}),
+          ...(loja?.municipio ? { municipioLoja: loja.municipio } : {}),
+          ...(loja?.uf ? { ufLoja: loja.uf } : {}),
+          ...(e.mediana != null ? { mediana: e.mediana } : {}),
+          ...(e.menorPromocional != null ? { menorPromocional: e.menorPromocional } : {}),
+          nObservacoes: e.nObservacoes,
+        };
+      });
+    return Promise.resolve(r);
+  }
+
   // ───────────────────────── FonteDeltaSync (C4.2) ────────────────────
 
   deltaEstatisticas(filtro: FiltroDeltaSync): Promise<PrecoEstatistica[]> {
@@ -542,6 +572,11 @@ export class RepositorioMemoria
 
   totalLojas(): number {
     return this.lojas.size;
+  }
+
+  /** Semeia uma loja direto (testes da comparação de lista, C12.1). */
+  semearLoja(loja: Loja): void {
+    this.lojas.set(loja.cnpj, loja);
   }
 
   private upsertLoja(loja: DadosNotaProcessada['loja']): void {

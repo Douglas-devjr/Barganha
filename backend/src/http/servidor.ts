@@ -20,6 +20,7 @@
 
 import type {
   CasamentoSugestoesRequest,
+  ComparacaoListaRequest,
   ConsultaPrecoRequest,
   DecisaoModeracaoRequest,
   DeltaSyncRequest,
@@ -35,6 +36,7 @@ import type { Autenticacao } from '../auth/autenticador';
 import type { AutorizacaoCuradoria } from '../auth/curadoria';
 import type { GerenciadorConta } from '../auth/gerenciador-conta';
 import type { ServicoConta } from '../auth/servico-conta';
+import type { ServicoComparacaoLista } from '../consulta/servico-comparacao-lista';
 import type { ServicoConsulta } from '../consulta/servico-consulta';
 import type { ServicoCuradoria } from '../curadoria/servico-curadoria';
 import {
@@ -75,6 +77,8 @@ export const LIMITES_PADRAO: LimitesTaxa = {
 export interface DependenciasHttp {
   servicoIngestao: ServicoIngestao;
   servicoConsulta: ServicoConsulta;
+  /** Lista de compras comparada por loja (C12.1). Omitido → rota não sobe. */
+  servicoComparacaoLista?: ServicoComparacaoLista;
   servicoSync: ServicoSync;
   /**
    * Conta anônima (C4.3) — afordância de testes/legado. Em produção o login é
@@ -138,6 +142,34 @@ const SCHEMA_INGESTAO_HTML = {
       properties: {
         html: { type: 'string', minLength: 1 },
       },
+    },
+  },
+} as const;
+
+// Lista comparada (C12.1) — teto de 40 itens espelha o benchmark de mercado
+// (Preço da Hora BA) e limita o custo da consulta anônima.
+const SCHEMA_COMPARACAO_LISTA = {
+  body: {
+    type: 'object',
+    required: ['itens'],
+    additionalProperties: false,
+    properties: {
+      itens: {
+        type: 'array',
+        minItems: 1,
+        maxItems: 40,
+        items: {
+          type: 'object',
+          required: ['produtoCanonicoId'],
+          additionalProperties: false,
+          properties: {
+            produtoCanonicoId: { type: 'string', minLength: 1 },
+            quantidade: { type: 'number', exclusiveMinimum: 0 },
+          },
+        },
+      },
+      municipio: { type: 'string', minLength: 1 },
+      uf: { type: 'string', minLength: 2, maxLength: 2 },
     },
   },
 } as const;
@@ -354,6 +386,17 @@ export function construirServidor(deps: DependenciasHttp): FastifyInstance {
       return reply.send(resposta);
     },
   );
+
+  // ── Lista de compras comparada (C12.1) — anônima ────────────────────
+  // Mesmo mundo da consulta: lê só o pool (estatística por loja); sem conta.
+  if (deps.servicoComparacaoLista) {
+    const comparacao = deps.servicoComparacaoLista;
+    app.post<{ Body: ComparacaoListaRequest }>(
+      '/consulta/lista',
+      { schema: SCHEMA_COMPARACAO_LISTA, onRequest: guardaLeitura },
+      async (req) => comparacao.comparar(req.body),
+    );
+  }
 
   // ── Delta sync (C4.2) — anônima ────────────────────────────────────
   app.post<{ Body: DeltaSyncRequest }>(
