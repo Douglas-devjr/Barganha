@@ -8,7 +8,8 @@
     "dev": "node --env-file-if-exists=../.env --watch --import tsx src/index.ts",
     "start": "node --env-file-if-exists=../.env --import tsx src/index.ts",
     "job:recalculo": "node --env-file-if-exists=../.env --import tsx src/jobs/recalculo-estatistica.ts",
-    "job:republicar": "node --env-file-if-exists=../.env --import tsx src/jobs/republicar-pool.ts"
+    "job:republicar": "node --env-file-if-exists=../.env --import tsx src/jobs/republicar-pool.ts",
+    "job:enriquecer": "node --env-file-if-exists=../.env --import tsx src/jobs/enriquecer-catalogo.ts"
   },
   "dependencies": {
     "@barganha/shared": "*",

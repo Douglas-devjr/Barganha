@@ -27,7 +27,11 @@ import type {
   FonteComparacaoLojas,
   FonteProdutoConsulta,
 } from '../consulta/tipos';
-import type { EnriquecimentoProduto, RepositorioCuradoria } from '../curadoria/tipos';
+import type {
+  AlvoEnriquecimento,
+  EnriquecimentoProduto,
+  RepositorioCuradoria,
+} from '../curadoria/tipos';
 import {
   type CandidatoCanonico,
   type FonteCandidatosTexto,
@@ -529,6 +533,15 @@ export class RepositorioMemoria
   }
 
   // ───────────────────────── RepositorioCuradoria (C11.5) ─────────────
+
+  listarProdutosParaEnriquecer(limite: number): Promise<AlvoEnriquecimento[]> {
+    const alvos: AlvoEnriquecimento[] = [];
+    for (const [ean, p] of this.produtosPorEan) {
+      if (p.nomeExibicao == null) alvos.push({ produtoCanonicoId: p.id, ean });
+      if (alvos.length >= limite) break;
+    }
+    return Promise.resolve(alvos);
+  }
 
   enriquecerProduto(dados: EnriquecimentoProduto): Promise<string | undefined> {
     const alvo = dados.produtoCanonicoId

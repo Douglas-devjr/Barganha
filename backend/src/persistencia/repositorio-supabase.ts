@@ -28,7 +28,11 @@ import type {
   FonteComparacaoLojas,
   FonteProdutoConsulta,
 } from '../consulta/tipos';
-import type { EnriquecimentoProduto, RepositorioCuradoria } from '../curadoria/tipos';
+import type {
+  AlvoEnriquecimento,
+  EnriquecimentoProduto,
+  RepositorioCuradoria,
+} from '../curadoria/tipos';
 import {
   type CandidatoCanonico,
   type FonteCandidatosTexto,
@@ -699,6 +703,21 @@ export class RepositorioSupabase
   }
 
   // ───────────────────────── RepositorioCuradoria (C11.5) ─────────────
+
+  async listarProdutosParaEnriquecer(limite: number): Promise<AlvoEnriquecimento[]> {
+    const r = await this.db
+      .from('produto_canonico')
+      .select('id, ean')
+      .not('ean', 'is', null)
+      .is('nome_exibicao', null)
+      .order('criado_em', { ascending: true })
+      .limit(limite);
+    if (r.error) falhar('listagem de produtos para enriquecer (C11.5)', r.error);
+    return (r.data ?? []).map((p) => ({
+      produtoCanonicoId: p.id as string,
+      ean: p.ean as string,
+    }));
+  }
 
   async enriquecerProduto(dados: EnriquecimentoProduto): Promise<string | undefined> {
     // Só os campos de EXIBIÇÃO — nunca descricao_normalizada/ean (base do casamento).

@@ -1,0 +1,54 @@
+name: Enriquecimento de catálogo (VTEX)
+
+# C11.5 automático — dá nome amigável, marca, categoria e foto aos produtos
+# canônicos com EAN, consultando o catálogo público das redes configuradas.
+# Lote pequeno (50/dia) + pausa entre requisições: cada EAN é consultado UMA
+# vez na vida. Preço anunciado NUNCA entra no pool (regra travada; C12.4 é
+# camada separada).
+#
+# Config: variável de repositório REDES_VTEX (Settings → Variables), JSON:
+#   [{"id":"zonasul","nome":"Zona Sul","dominio":"www.zonasul.com.br"}]
+# Vazia → o job vira no-op (feature desligada). Remover uma rede é editar a
+# variável — sem deploy.
+#
+# Requer os segredos SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY.
+
+on:
+  schedule:
+    # 1x ao dia (05:20 UTC ≈ 02:20 em Brasília) — horário de baixo tráfego.
+    - cron: '20 5 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: enriquecer-catalogo
+  cancel-in-progress: false
+
+jobs:
+  enriquecer:
+    name: Enriquecer produtos via catálogo
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      REDES_VTEX: ${{ vars.REDES_VTEX }}
+    steps:
+      - name: Falha cedo se faltar credencial do Supabase
+        if: ${{ env.SUPABASE_URL == '' || env.SUPABASE_SERVICE_ROLE_KEY == '' }}
+        run: |
+          echo "::error::Segredos SUPABASE_URL/SUPABASE_SERVICE_ROLE_KEY ausentes — configure em Settings → Secrets."
+          exit 1
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configura Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Instala dependências
+        run: npm ci
+
+      - name: Roda o enriquecimento
+        run: npm run job:enriquecer --workspace @barganha/backend

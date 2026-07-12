@@ -17,10 +17,21 @@ export interface EnriquecimentoProduto {
   imagemUrl?: string;
 }
 
+/** Alvo do enriquecimento automático: produto com EAN e sem nome de exibição. */
+export interface AlvoEnriquecimento {
+  produtoCanonicoId: string;
+  ean: string;
+}
+
 export interface RepositorioCuradoria {
   /**
    * Aplica o enriquecimento ao produto-alvo. Devolve o `produtoCanonicoId`
    * afetado, ou `undefined` se nenhum produto casar (id/EAN inexistente).
    */
   enriquecerProduto(dados: EnriquecimentoProduto): Promise<string | undefined>;
+  /**
+   * Produtos elegíveis ao enriquecimento AUTOMÁTICO por catálogo (C11.5): têm
+   * EAN (chave da busca) e ainda não têm `nome_exibicao`. Mais antigos primeiro.
+   */
+  listarProdutosParaEnriquecer(limite: number): Promise<AlvoEnriquecimento[]>;
 }
