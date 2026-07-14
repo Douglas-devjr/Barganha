@@ -159,7 +159,7 @@ Alertas de preço e economia acumulada já estão em **C8.4**.
 | C12.1 | Lista de compras comparada por mercado ("onde minha cesta sai mais barata") |
 | C12.2 | Gamificação da contribuição (sequências, selos, contador de cupons enviados) |
 | C12.3 | Recortes de combustíveis e farmácia (curadoria de categoria + UI) |
-| C12.4 | Ofertas anunciadas (fontes externas): tabela `oferta_anunciada` + coleta via adaptador VTEX + exibição SEPARADA no app — **nunca no pool/mediana** (regra travada; o cliente VTEX do C11.5 já lê o preço) |
+| C12.4 | Ofertas anunciadas (fontes externas): tabela `oferta_anunciada` + coleta via adaptador VTEX + exibição SEPARADA no app — **nunca no pool/mediana** (regra travada; o cliente VTEX do C11.5 já lê o preço). Mesmo encaixe recebe, na Fase 2, o **feed de parceria** dos mercados (ver `docs/18-ofertas-e-monetizacao.md`) |
 *Responsáveis:* product-manager, data-scientist, mobile-engineer, ux-designer
 
 ---

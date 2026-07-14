@@ -11,7 +11,7 @@ Fase: **fim da ideação / início do desenvolvimento.** O escopo e as restriç�
 
 ## Como navegar este repositório
 - **`docs/`** — a fonte da verdade do produto e da arquitetura. Leia antes de codar.
-  - `00-visao-produto.md` · `01-arquitetura.md` · `02-modelo-de-dados.md` · `03-captura-nfce-sefaz.md` · `04-privacidade-lgpd.md` · `05-offline-sync.md` · `06-comparacao-estatistica.md` · `07-roadmap-mvp.md` · `08-equipe-agentes.md` · `09-padrao-commits.md` · `10-plano-de-desenvolvimento.md` · `11-catalogo-de-etapas.md` · `12-qualidade-performance-escala.md` · `13-lancamento-operacao.md` · `14-conformidade-play-store.md` · `15-beta-fechado.md` · `16-lancamento-aberto.md` · `17-fontes-catalogo.md` · `politica-de-privacidade.md`
+  - `00-visao-produto.md` · `01-arquitetura.md` · `02-modelo-de-dados.md` · `03-captura-nfce-sefaz.md` · `04-privacidade-lgpd.md` · `05-offline-sync.md` · `06-comparacao-estatistica.md` · `07-roadmap-mvp.md` · `08-equipe-agentes.md` · `09-padrao-commits.md` · `10-plano-de-desenvolvimento.md` · `11-catalogo-de-etapas.md` · `12-qualidade-performance-escala.md` · `13-lancamento-operacao.md` · `14-conformidade-play-store.md` · `15-beta-fechado.md` · `16-lancamento-aberto.md` · `17-fontes-catalogo.md` · `18-ofertas-e-monetizacao.md` · `politica-de-privacidade.md`
 - **`site/`** — páginas legais estáticas (política de privacidade + exclusão de conta) publicadas via GitHub Pages (ver `site/README.md`).
 
 ## Códigos de etapa (como o dono pede implementações)
@@ -33,6 +33,7 @@ Toda contribuição de código ou design DEVE respeitar:
 5. **Preço comparável sempre normalizado** para R$/kg, R$/L ou R$/un. Nunca comparar valor cru.
 6. **Veredito usa a faixa típica (mediana/percentis), nunca a média.** Promoção é exibida separada ("menor visto"), nunca colapsada num número único.
 7. **Offline obrigatório** para registrar cupom e consultar (cache escopado + delta sync). Dado de preço é minúsculo; sincronização incremental, não download total.
+8. **Muro da neutralidade.** O veredito (pool → mediana/faixa) **nunca** é influenciado por quem paga, patrocina ou fornece dados — sem exceção, sem "leve destaque". Preço **anunciado** (catálogo/e-commerce/parceria) jamais entra em `observacao_preco` nem na mediana: vive numa camada **separada e rotulada** como oferta (C12.4). Ver `docs/18-ofertas-e-monetizacao.md`.
 
 > Se uma tarefa parecer exigir violar um destes pontos, **pare e levante a questão** em vez de prosseguir.
 
