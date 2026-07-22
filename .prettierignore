@@ -4,6 +4,8 @@ coverage
 .expo
 design
 supabase/migrations
+# Scratch do CLI do Supabase (já ignorado pelo git; o Prettier também não deve olhar).
+supabase/.temp
 package-lock.json
 *.sqlite
 *.db
