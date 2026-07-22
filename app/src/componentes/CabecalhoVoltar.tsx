@@ -1,5 +1,5 @@
 /**
- * Redesign "2a" — cabeçalho com botão de voltar (nota, detalhe). Botão-ícone
+ * Redesign "3a" — cabeçalho com botão de voltar (nota, detalhe). Botão-ícone
  * quadrado (cartão + borda) que acompanha o tema.
  */
 

@@ -1,8 +1,9 @@
 /**
- * Redesign "2a" — pílula SÓLIDA de veredito (barato / na média / caro / sem
- * dados). Fundo na cor do veredito, ponto branco à esquerda, texto branco,
- * sombra colorida. Usa o tipo `Veredito` de @barganha/shared (mesma classificação
- * do backend). A promoção nunca entra aqui — vai numa linha à parte.
+ * Redesign "3a" — pílula de veredito (barato / na média / caro / sem dados).
+ * Fundo no wash do veredito, texto e ponto na cor do veredito, contorno de
+ * 1.5px. Chapada, sem sombra (o 3a é flat). Usa o tipo `Veredito` de
+ * @barganha/shared (mesma classificação do backend). A promoção nunca entra
+ * aqui — vai numa linha à parte.
  */
 
 import type { Veredito } from '@barganha/shared';
@@ -34,14 +35,11 @@ export function VeredictoBadge({
       style={[
         estilos.base,
         pequeno ? estilos.pequeno : estilos.grande,
-        {
-          backgroundColor: v.fg,
-          shadowColor: v.fg,
-        },
+        { backgroundColor: v.bg, borderColor: v.fg },
       ]}
     >
-      <View style={[estilos.ponto, pequeno && estilos.pontoPequeno]} />
-      <Texto peso="extrabold" tamanho={pequeno ? 'sm' : 'lg'} cor="branco">
+      <View style={[estilos.ponto, pequeno && estilos.pontoPequeno, { backgroundColor: v.fg }]} />
+      <Texto peso="bold" tamanho={pequeno ? 'sm' : 'md'} style={{ color: v.fg }}>
         {rotulo}
       </Texto>
     </View>
@@ -54,13 +52,10 @@ const estilos = StyleSheet.create({
     alignItems: 'center',
     alignSelf: 'flex-start',
     borderRadius: raio.pill,
-    shadowOpacity: 0.35,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 4,
+    borderWidth: 1.5,
   },
-  grande: { gap: espaco.sm, paddingVertical: 9, paddingHorizontal: espaco.lg },
-  pequeno: { gap: 5, paddingVertical: 4, paddingHorizontal: espaco.sm + 2 },
-  ponto: { width: 9, height: 9, borderRadius: 5, backgroundColor: '#FFFFFF' },
+  grande: { gap: espaco.sm, paddingVertical: 7, paddingHorizontal: espaco.md },
+  pequeno: { gap: 5, paddingVertical: 3, paddingHorizontal: espaco.sm + 2 },
+  ponto: { width: 8, height: 8, borderRadius: 4 },
   pontoPequeno: { width: 6, height: 6, borderRadius: 3 },
 });

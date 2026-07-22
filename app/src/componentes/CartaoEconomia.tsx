@@ -1,94 +1,57 @@
 /**
- * Redesign "2a" — hero do Início. Cartão em gradiente teal (150°) com um círculo
- * radial decorativo no canto e uma mini-sparkline menta no rodapé. Mostra a
- * economia (valor honesto vindo dos cupons) e, quando houver, um chip de delta.
+ * Redesign "3a" — card de economia do Início. No 2a era um hero em gradiente;
+ * o 3a é um CARTÃO CHAPADO: eyebrow + número gigante (40/700/-2, tabular) +
+ * legenda, e uma linha inferior de stats separada por divisória.
+ *
+ * O valor é o desconto honesto vindo dos próprios cupons (nunca estimativa),
+ * então quando não há economia registrada o número é R$ 0,00 e a legenda
+ * explica — não inventamos projeção.
  */
 
-import { useState } from 'react';
 import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
-import Svg, { Polyline } from 'react-native-svg';
 
-import { espaco, raio, useTema } from '@/tema';
+import { espaco, tabular, useTema } from '@/tema';
 
-import { GradienteLinear } from './GradienteLinear';
-import { IconeSetaBaixo, IconeSetaCima } from './icones';
+import { Eyebrow } from './layout3a';
 import { Texto } from './Texto';
 
 export interface CartaoEconomiaProps {
+  /** Legenda MAIÚSCULA (ex.: "ECONOMIA · JULHO"). */
   rotulo: string;
   valor: string;
   legenda?: string;
-  /** Pílula no canto superior direito (ex.: "Este mês"). */
-  pilula?: string;
-  /** Chip de variação vs. período anterior (omitido quando não há dado). */
-  delta?: { texto: string; sentido: 'cima' | 'baixo' };
+  /** Ação textual no canto superior direito (ex.: "Ver resumo →"). */
+  acao?: string;
+  /** Linha inferior de estatísticas (ex.: "23 produtos"). Até 3. */
+  stats?: string[];
   style?: StyleProp<ViewStyle>;
 }
-
-// Pontos da sparkline decorativa (0..100 no eixo x; y menor = mais alto).
-const SPARK = [26, 20, 24, 12, 18, 8, 14, 4];
 
 export function CartaoEconomia({
   rotulo,
   valor,
   legenda,
-  pilula,
-  delta,
+  acao,
+  stats,
   style,
 }: CartaoEconomiaProps) {
   const { c } = useTema();
-  const [larguraSpark, setLarguraSpark] = useState(0);
-
-  const pontosSpark = SPARK.map((y, i) => `${(i / (SPARK.length - 1)) * larguraSpark},${y}`).join(
-    ' ',
-  );
 
   return (
-    <GradienteLinear
-      cores={[c.heroDe, c.heroPara]}
-      angulo={150}
-      raio={raio.hero}
-      style={[estilos.hero, style]}
+    <View
+      style={[estilos.cartao, { backgroundColor: c.cartao, borderColor: c.cartaoBorda }, style]}
     >
-      {/* círculo radial decorativo */}
-      <View style={estilos.circulo} pointerEvents="none" />
-      {/* mini-sparkline no rodapé */}
-      <View
-        style={estilos.sparkWrap}
-        pointerEvents="none"
-        onLayout={(e) => setLarguraSpark(e.nativeEvent.layout.width)}
-      >
-        {larguraSpark > 0 ? (
-          <Svg width={larguraSpark} height={34}>
-            <Polyline
-              points={pontosSpark}
-              fill="none"
-              stroke={c.menta}
-              strokeOpacity={0.45}
-              strokeWidth={2}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </Svg>
-        ) : null}
-      </View>
-
       <View style={estilos.topo}>
-        <Texto peso="bold" tamanho="sm" cor="menta" numberOfLines={1} style={estilos.rotulo}>
-          {rotulo}
-        </Texto>
-        {pilula ? (
-          <View style={estilos.pilula}>
-            <Texto peso="bold" style={estilos.pilulaTxt}>
-              {pilula}
-            </Texto>
-          </View>
+        <Eyebrow style={{ flex: 1 }}>{rotulo}</Eyebrow>
+        {acao ? (
+          <Texto peso="semibold" style={estilos.acao}>
+            {acao}
+          </Texto>
         ) : null}
       </View>
 
       <Texto
-        peso="extrabold"
-        cor="branco"
+        peso="bold"
         style={estilos.valor}
         numberOfLines={1}
         adjustsFontSizeToFit
@@ -97,59 +60,44 @@ export function CartaoEconomia({
         {valor}
       </Texto>
 
-      {delta ? (
-        <View style={estilos.chip}>
-          {delta.sentido === 'cima' ? (
-            <IconeSetaCima tamanho={14} cor={c.sobreTeal} />
-          ) : (
-            <IconeSetaBaixo tamanho={14} cor={c.sobreTeal} />
-          )}
-          <Texto peso="bold" tamanho="xs" cor="sobreTeal">
-            {delta.texto}
-          </Texto>
-        </View>
-      ) : legenda ? (
-        <Texto tamanho="sm" cor="menta" style={estilos.legenda}>
+      {legenda ? (
+        <Texto cor="suave" style={estilos.legenda}>
           {legenda}
         </Texto>
       ) : null}
-    </GradienteLinear>
+
+      {stats && stats.length > 0 ? (
+        <View style={[estilos.stats, { borderTopColor: c.cartaoBorda }]}>
+          {stats.map((s) => (
+            <Texto key={s} cor="suave" numerico style={estilos.stat}>
+              {s}
+            </Texto>
+          ))}
+        </View>
+      ) : null}
+    </View>
   );
 }
 
 const estilos = StyleSheet.create({
-  hero: { padding: espaco.xl, marginBottom: espaco.lg, minHeight: 168 },
-  circulo: {
-    position: 'absolute',
-    top: -60,
-    right: -50,
-    width: 160,
-    height: 160,
-    borderRadius: 80,
-    backgroundColor: 'rgba(255,255,255,0.10)',
+  cartao: {
+    borderRadius: 16,
+    borderWidth: 1,
+    paddingHorizontal: 18,
+    paddingTop: 16,
+    paddingBottom: 14,
   },
-  sparkWrap: { position: 'absolute', left: 0, right: 0, bottom: 0, height: 34 },
-  topo: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  rotulo: { flex: 1, marginRight: espaco.sm },
-  pilula: {
-    flexShrink: 0,
-    backgroundColor: 'rgba(255,255,255,0.16)',
-    borderRadius: raio.pill,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-  },
-  pilulaTxt: { color: '#EAFBF7', fontSize: 11 },
-  valor: { fontSize: 41, letterSpacing: -1.2, marginTop: espaco.sm },
-  legenda: { marginTop: espaco.xs, opacity: 0.92 },
-  chip: {
+  topo: { flexDirection: 'row', alignItems: 'center', gap: espaco.sm },
+  acao: { fontSize: 11.5 },
+  // "número gigante" do 3a
+  valor: { fontSize: 40, letterSpacing: -2, marginTop: 6, ...tabular },
+  legenda: { fontSize: 12.5, marginTop: 2 },
+  stats: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    alignSelf: 'flex-start',
+    justifyContent: 'space-between',
+    borderTopWidth: 1,
     marginTop: espaco.md,
-    backgroundColor: '#5EEAD4',
-    borderRadius: raio.pill,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
+    paddingTop: 10,
   },
+  stat: { fontSize: 11 },
 });

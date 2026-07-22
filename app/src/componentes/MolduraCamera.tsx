@@ -1,11 +1,14 @@
 /**
- * Redesign "2a" — moldura de mira das telas de câmera (QR e código de barras).
- * Cantos em menta + uma linha de scan com glow que varre verticalmente. Sempre
- * sobre fundo escuro; cores fixas (não dependem do tema).
+ * Redesign "3a" — moldura de mira das telas de câmera (QR e código de barras).
+ * 4 cantos claros + uma linha de scan que varre verticalmente (~1.8s alternando).
+ * Sempre sobre fundo escuro, nos dois temas — por isso o padrão sai da paleta
+ * escura e não do tema ativo (quem chama passa a cor explicitamente).
  */
 
 import { useEffect, useRef, type ReactNode } from 'react';
 import { Animated, StyleSheet, View } from 'react-native';
+
+import { escuro as paletaEscura } from '@/tema';
 
 export interface MolduraCameraProps {
   /** Lado do quadrado (usado quando largura/altura não vêm). */
@@ -23,7 +26,7 @@ export function MolduraCamera({
   tamanho = 240,
   largura,
   altura,
-  corGlow = '#5EEAD4',
+  corGlow = paletaEscura.tinta,
   children,
 }: MolduraCameraProps) {
   const w = largura ?? tamanho;
@@ -33,8 +36,8 @@ export function MolduraCamera({
   useEffect(() => {
     const loop = Animated.loop(
       Animated.sequence([
-        Animated.timing(anim, { toValue: 1, duration: 1600, useNativeDriver: true }),
-        Animated.timing(anim, { toValue: 0, duration: 1600, useNativeDriver: true }),
+        Animated.timing(anim, { toValue: 1, duration: 1800, useNativeDriver: true }),
+        Animated.timing(anim, { toValue: 0, duration: 1800, useNativeDriver: true }),
       ]),
     );
     loop.start();

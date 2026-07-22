@@ -1,7 +1,7 @@
 /**
  * C7.5 — Mini-gráfico de evolução (sparkline) em react-native-svg, no estilo do
- * protótipo: área teal suave + linha + ponto no último valor. Recebe os preços
- * em ordem cronológica; escala sozinho ao mín/máx da série.
+ * protótipo 3a: área suave na tinta + linha + ponto no último valor. Recebe os
+ * preços em ordem cronológica; escala sozinho ao mín/máx da série.
  */
 
 import { StyleSheet, View } from 'react-native';
@@ -56,17 +56,17 @@ export function GraficoLinha({ valores, inicio, fim, altura = 130 }: GraficoLinh
   return (
     <View>
       <Svg viewBox={`0 0 ${L} ${A + 10}`} width="100%" height={altura}>
-        <Polyline points={area} fill={c.teal} fillOpacity={0.07} stroke="none" />
+        <Polyline points={area} fill={c.tinta} fillOpacity={0.07} stroke="none" />
         <Polyline
           points={linha}
           fill="none"
-          stroke={c.teal}
-          strokeWidth={3}
+          stroke={c.tinta}
+          strokeWidth={2}
           strokeLinecap="round"
           strokeLinejoin="round"
         />
-        <Circle cx={ultimo.x} cy={ultimo.y} r={10} fill={c.teal} fillOpacity={0.18} />
-        <Circle cx={ultimo.x} cy={ultimo.y} r={5.5} fill={c.teal} />
+        <Circle cx={ultimo.x} cy={ultimo.y} r={10} fill={c.tinta} fillOpacity={0.18} />
+        <Circle cx={ultimo.x} cy={ultimo.y} r={5.5} fill={c.tinta} />
       </Svg>
       {inicio || fim ? (
         <View style={estilos.eixo}>

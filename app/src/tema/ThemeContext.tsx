@@ -1,9 +1,13 @@
 /**
- * Redesign "2a" — contexto de tema. Troca o objeto de paleta (`claro`/`escuro`)
+ * Redesign "3a" — contexto de tema. Troca o objeto de paleta (`claro`/`escuro`)
  * e expõe `useTema()`. Inicia pela preferência do sistema (`Appearance`) e deixa
  * um `alternar()` para um toggle manual (ex.: no Perfil).
  *
  * Regra de ouro: nenhum componente usa hex fixo — tudo vem de `c` (a paleta ativa).
+ *
+ * `TemaFixo` fixa uma paleta para uma subárvore. Existe por causa das
+ * superfícies que são escuras nos DOIS temas (o overlay da câmera): sem ele, o
+ * botão primário do tema claro é quase-preto e some sobre o overlay escuro.
  */
 
 import {
@@ -61,5 +65,23 @@ export function ProvedorTema({ children }: { children: ReactNode }) {
     [dark, alternar, definir],
   );
 
+  return <Ctx.Provider value={valor}>{children}</Ctx.Provider>;
+}
+
+/**
+ * Fixa a paleta de uma subárvore, ignorando o tema do app. Use em superfícies
+ * que são escuras (ou claras) nos dois temas — ex.: o overlay da câmera:
+ *
+ *   <TemaFixo modo="escuro">…</TemaFixo>
+ *
+ * `alternar`/`definir` continuam valendo para o app inteiro.
+ */
+export function TemaFixo({ modo, children }: { modo: 'claro' | 'escuro'; children: ReactNode }) {
+  const pai = useContext(Ctx);
+  const dark = modo === 'escuro';
+  const valor = useMemo<Tema>(
+    () => ({ ...pai, c: dark ? escuro : claro, escuro: dark }),
+    [pai, dark],
+  );
   return <Ctx.Provider value={valor}>{children}</Ctx.Provider>;
 }

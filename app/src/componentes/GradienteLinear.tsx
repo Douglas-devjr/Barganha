@@ -1,5 +1,5 @@
 /**
- * Redesign "2a" — gradiente linear via `react-native-svg` (evita depender de
+ * Redesign "3a" — gradiente linear via `react-native-svg` (evita depender de
  * `expo-linear-gradient`, que é módulo nativo e exigiria novo dev build). Mede o
  * próprio tamanho com `onLayout` e desenha o SVG em PIXELS — porcentagem em `Svg`
  * absoluto não resolve de forma confiável e some. O ângulo segue a convenção CSS

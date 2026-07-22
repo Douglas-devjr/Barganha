@@ -227,3 +227,117 @@ export function IconeSetaCima(p: IconeProps) {
     </Base>
   );
 }
+
+/** pino de mapa — região escolhida (nunca GPS: é escolha manual). */
+export function IconePino(p: IconeProps) {
+  return (
+    <Base {...p}>
+      <Path d="M12 21s-7-6-7-11a7 7 0 0 1 14 0c0 5-7 11-7 11z" />
+      <Circle cx="12" cy="10" r="2.5" />
+    </Base>
+  );
+}
+
+/** sol — controle de tema (claro/escuro). */
+export function IconeTema(p: IconeProps) {
+  return (
+    <Base {...p}>
+      <Circle cx="12" cy="12" r="4" />
+      <Path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
+    </Base>
+  );
+}
+
+/** cadeado — privacidade dos dados. */
+export function IconeCadeado(p: IconeProps) {
+  return (
+    <Base {...p}>
+      <Rect x="4" y="10" width="16" height="11" rx="2" />
+      <Path d="M8 10V7a4 4 0 0 1 8 0v3" />
+    </Base>
+  );
+}
+
+/** lixeira — ação destrutiva (excluir conta). */
+export function IconeLixeira(p: IconeProps) {
+  return (
+    <Base {...p}>
+      <Path d="M3 6h18" />
+      <Path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2" />
+      <Path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+    </Base>
+  );
+}
+
+/** kebab (⋮) — abre o sheet de ações do item. */
+export function IconeKebab(p: IconeProps) {
+  return (
+    <Base {...p}>
+      <Circle cx="12" cy="5" r="1.4" />
+      <Circle cx="12" cy="12" r="1.4" />
+      <Circle cx="12" cy="19" r="1.4" />
+    </Base>
+  );
+}
+
+/** funil — filtrar e ordenar. */
+export function IconeFiltro(p: IconeProps) {
+  return (
+    <Base {...p}>
+      <Path d="M3.5 5.5h17l-6.6 7.7v5.6l-3.8 1.7v-7.3L3.5 5.5Z" />
+    </Base>
+  );
+}
+
+/** check — item escolhido na ordenação. */
+export function IconeCheck(p: IconeProps) {
+  return (
+    <Base {...p}>
+      <Polyline points="4.5 12.5 9.5 17.5 19.5 6.5" />
+    </Base>
+  );
+}
+
+/** sino — feed de notificações (o ponto de não-lida fica por conta de quem usa). */
+export function IconeSino(p: IconeProps) {
+  return (
+    <Base {...p}>
+      <Path d="M18 8.5a6 6 0 1 0-12 0c0 6-2.5 7.5-2.5 7.5h17S18 14.5 18 8.5" />
+      <Path d="M13.7 19.5a2 2 0 0 1-3.4 0" />
+    </Base>
+  );
+}
+
+/** troféu — conquistas e selos de contribuição. */
+export function IconeTrofeu(p: IconeProps) {
+  return (
+    <Base {...p}>
+      <Path d="M7 4h10v6a5 5 0 0 1-10 0V4Z" />
+      <Path d="M7 6H4.5v1.5A3.5 3.5 0 0 0 8 11" />
+      <Path d="M17 6h2.5v1.5A3.5 3.5 0 0 1 16 11" />
+      <Path d="M12 15v3.5M8.5 20.5h7" />
+    </Base>
+  );
+}
+
+/** olho aberto — revelar senha. */
+export function IconeOlho(p: IconeProps) {
+  return (
+    <Base {...p}>
+      <Path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z" />
+      <Circle cx={12} cy={12} r={3} />
+    </Base>
+  );
+}
+
+/** olho cortado — senha oculta. */
+export function IconeOlhoFechado(p: IconeProps) {
+  return (
+    <Base {...p}>
+      <Path d="M9.9 5.8A9.3 9.3 0 0 1 12 5.5c6 0 9.5 6.5 9.5 6.5a17 17 0 0 1-2.7 3.6" />
+      <Path d="M6.2 7.7A16.7 16.7 0 0 0 2.5 12S6 18.5 12 18.5c1.5 0 2.8-.4 4-1" />
+      <Path d="M10 10a2.8 2.8 0 0 0 4 4" />
+      <Line x1={3.5} y1={3.5} x2={20.5} y2={20.5} />
+    </Base>
+  );
+}

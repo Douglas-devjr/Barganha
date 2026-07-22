@@ -1,13 +1,13 @@
 /**
- * Redesign "2a" — cartão de estatística pequeno (número + legenda). Usado em par
+ * Redesign "3a" — cartão de estatística pequeno (número + legenda). Usado em par
  * no Início (ex.: produtos monitorados / mercados). Opcionalmente um tile de
- * ícone teal no topo.
+ * ícone neutro no topo. O número é tabular (regra do 3a para estatística).
  */
 
 import type { ReactNode } from 'react';
 import { StyleSheet, View } from 'react-native';
 
-import { espaco, raio, useTema } from '@/tema';
+import { espaco, raio, tabular, useTema } from '@/tema';
 
 import { Cartao } from './Cartao';
 import { Texto } from './Texto';
@@ -23,7 +23,7 @@ export function CartaoStat({ numero, legenda, icone }: CartaoStatProps) {
   return (
     <Cartao style={estilos.card}>
       {icone ? <View style={[estilos.tile, { backgroundColor: c.tealWash }]}>{icone}</View> : null}
-      <Texto peso="extrabold" style={estilos.numero}>
+      <Texto peso="bold" style={estilos.numero}>
         {numero}
       </Texto>
       <Texto peso="semibold" cor="suave" style={estilos.legenda}>
@@ -43,6 +43,6 @@ const estilos = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: espaco.sm,
   },
-  numero: { fontSize: 21 },
+  numero: { fontSize: 21, letterSpacing: -0.5, ...tabular },
   legenda: { fontSize: 11.5, marginTop: 2 },
 });

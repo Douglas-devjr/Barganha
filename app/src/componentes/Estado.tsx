@@ -1,5 +1,5 @@
 /**
- * Redesign "2a" — bloco de estado (vazio / erro / offline): ícone em círculo +
+ * Redesign "3a" — bloco de estado (vazio / erro / offline): ícone em círculo +
  * título + texto de apoio + ação opcional. Funciona em claro e escuro; o círculo
  * usa o tom teal (padrão) ou âmbar (avisos/erro).
  */

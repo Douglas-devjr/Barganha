@@ -23,7 +23,7 @@ import { ActivityIndicator, Modal, Pressable, StyleSheet, View } from 'react-nat
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { WebViewMessageEvent } from 'react-native-webview';
 
-import { espaco, raio, useTema } from '@/tema';
+import { claro as paletaClara, espaco, raio, useTema } from '@/tema';
 
 import { Texto } from './Texto';
 
@@ -294,8 +294,8 @@ const estilos = StyleSheet.create({
     borderRadius: raio.md,
     overflow: 'hidden',
     borderWidth: 1,
-    // A página da SEFAZ é branca: fundo branco fixo para não "piscar" no escuro.
-    backgroundColor: '#FFFFFF',
+    // A página da SEFAZ é branca: fundo claro fixo para não "piscar" no escuro.
+    backgroundColor: paletaClara.cartao,
   },
   web: { flex: 1, backgroundColor: 'transparent' },
   rodape: {

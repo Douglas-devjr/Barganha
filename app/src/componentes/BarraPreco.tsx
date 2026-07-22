@@ -1,21 +1,23 @@
 /**
- * Redesign "2a" — BarraPreco ⭐ (a peça-chave do veredito). Posiciona o preço
- * visto entre um mínimo e um máximo de referência da região, sobre um trilho
- * verde→teal→vermelho. O balão mostra o preço; abaixo, as três âncoras
- * (Menor / Típico / Maior).
+ * Redesign "3a" — BarraPreco ⭐ (a peça-chave do veredito). Posiciona o preço
+ * visto entre um mínimo e um máximo de referência da região.
+ *
+ * O 3a trocou o trilho colorido (verde→teal→vermelho do 2a) por uma RÉGUA
+ * NEUTRA: trilho `borda` de 3px, um tick do "típico" e um marcador de 14px na
+ * tinta com anel `cartao`. A cor saiu da régua porque no 3a o semáforo vive só
+ * na pílula do veredito — a régua informa posição, não julgamento.
  *
  * Componente puramente visual: recebe os números já resolvidos e um formatador.
- * A classificação (barato/na média/caro) vem de @barganha/shared e entra só na
- * cor da borda do thumb.
+ * O preço em destaque é responsabilidade de quem chama (no handoff ele aparece
+ * grande, acima da régua).
  */
 
-import type { Veredito } from '@barganha/shared';
-import { useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { Animated, StyleSheet, View } from 'react-native';
 
-import { espaco, raio, useTema, veredito as mapaVeredito } from '@/tema';
+import { espaco, raio, tabular, useTema } from '@/tema';
 
-import { GradienteLinear } from './GradienteLinear';
+import { useDuracao } from './movimento';
 import { Texto } from './Texto';
 
 export interface BarraPrecoProps {
@@ -24,65 +26,60 @@ export interface BarraPrecoProps {
   min: number;
   /** Referência superior (ex.: p75 da faixa). */
   max: number;
-  /** Típico (mediana) — só rótulo central. */
+  /** Típico (mediana) — vira o tick da régua e o rótulo central. */
   tipico: number;
-  veredito: Veredito;
   formatar: (v: number) => string;
 }
 
-const THUMB = 19;
+const MARCADOR = 14;
+const ANEL = 3;
 
 function clamp(v: number, lo: number, hi: number) {
   return Math.max(lo, Math.min(hi, v));
 }
 
-export function BarraPreco({ preco, min, max, tipico, veredito, formatar }: BarraPrecoProps) {
-  const { c, escuro } = useTema();
-  const corV = mapaVeredito(c)[veredito].fg;
-  const [larguraTrilho, setLarguraTrilho] = useState(0);
-  const [larguraBalao, setLarguraBalao] = useState(0);
+export function BarraPreco({ preco, min, max, tipico, formatar }: BarraPrecoProps) {
+  const { c } = useTema();
+  const [largura, setLargura] = useState(0);
 
   const span = max - min || 1;
-  const pct = clamp((preco - min) / span, 0.04, 0.96);
+  // O marcador é preso à régua; o tick do típico segue o dado real (o protótipo
+  // fixava 46% só porque o exemplo caía ali).
+  const pct = clamp((preco - min) / span, 0, 1);
+  const pctTipico = clamp((tipico - min) / span, 0, 1);
 
-  const centro = larguraTrilho * pct;
-  const thumbLeft = centro - THUMB / 2;
-  const balaoLeft = clamp(centro - larguraBalao / 2, 0, Math.max(0, larguraTrilho - larguraBalao));
-  const corBalao = escuro ? c.teal : c.tinta;
+  // Handoff: o marcador desliza até a nova posição em 0.5s (0 com "reduzir
+  // movimento"). Anima `left`, que não é suportado pelo driver nativo.
+  const duracao = useDuracao(500);
+  const anim = useRef(new Animated.Value(pct)).current;
+  useEffect(() => {
+    Animated.timing(anim, { toValue: pct, duration: duracao, useNativeDriver: false }).start();
+  }, [anim, pct, duracao]);
+
+  const esquerda = anim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [-MARCADOR / 2 - ANEL, largura - MARCADOR / 2 - ANEL],
+  });
 
   return (
     <View>
-      {/* balão do preço */}
-      <View style={estilos.faixaBalao}>
-        {larguraTrilho > 0 ? (
-          <View
-            style={[estilos.balao, { left: balaoLeft }]}
-            onLayout={(e) => setLarguraBalao(e.nativeEvent.layout.width)}
-          >
-            <View style={[estilos.balaoPilula, { backgroundColor: corBalao }]}>
-              <Texto peso="extrabold" tamanho="sm" cor="branco">
-                {formatar(preco)}
-              </Texto>
-            </View>
-            <View style={[estilos.caret, { borderTopColor: corBalao }]} />
-          </View>
-        ) : null}
-      </View>
+      <View style={estilos.trilhoWrap} onLayout={(e) => setLargura(e.nativeEvent.layout.width)}>
+        <View style={[estilos.trilho, { backgroundColor: c.borda }]} />
 
-      {/* trilho */}
-      <View
-        style={[estilos.trilhoWrap, escuro && { shadowColor: c.teal }]}
-        onLayout={(e) => setLarguraTrilho(e.nativeEvent.layout.width)}
-      >
-        <GradienteLinear
-          cores={['#22C55E', '#0F766E', '#EF4444']}
-          locais={[0, 0.48, 1]}
-          angulo={90}
-          raio={raio.pill}
-          style={estilos.trilho}
-        />
-        {larguraTrilho > 0 ? (
-          <View style={[estilos.thumb, { left: thumbLeft, borderColor: corV }]} />
+        {largura > 0 ? (
+          <>
+            {/* tick do típico */}
+            <View
+              style={[estilos.tick, { left: largura * pctTipico - 1, backgroundColor: c.fraco }]}
+            />
+            {/* marcador do preço visto */}
+            <Animated.View
+              style={[
+                estilos.marcador,
+                { left: esquerda, backgroundColor: c.tinta, borderColor: c.cartao },
+              ]}
+            />
+          </>
         ) : null}
       </View>
 
@@ -103,46 +100,18 @@ export function BarraPreco({ preco, min, max, tipico, veredito, formatar }: Barr
 }
 
 const estilos = StyleSheet.create({
-  faixaBalao: { height: 34, justifyContent: 'flex-end' },
-  balao: { position: 'absolute', alignItems: 'center' },
-  balaoPilula: {
-    borderRadius: raio.sm,
-    paddingHorizontal: 9,
-    paddingVertical: 4,
-  },
-  caret: {
-    width: 0,
-    height: 0,
-    borderLeftWidth: 5,
-    borderRightWidth: 5,
-    borderTopWidth: 6,
-    borderLeftColor: 'transparent',
-    borderRightColor: 'transparent',
-    marginTop: -1,
-  },
-  trilhoWrap: {
-    height: THUMB,
-    justifyContent: 'center',
-    shadowOpacity: 0.6,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 0 },
-  },
-  trilho: { height: 10, width: '100%' },
-  thumb: {
+  trilhoWrap: { height: MARCADOR + ANEL * 2, justifyContent: 'center' },
+  trilho: { height: 3, width: '100%', borderRadius: raio.pill },
+  tick: { position: 'absolute', width: 2, height: 9, borderRadius: 1 },
+  marcador: {
     position: 'absolute',
-    width: THUMB,
-    height: THUMB,
-    borderRadius: THUMB / 2,
-    borderWidth: 4,
-    backgroundColor: '#FFFFFF',
-    shadowColor: '#0F172A',
-    shadowOpacity: 0.2,
-    shadowRadius: 3,
-    shadowOffset: { width: 0, height: 1 },
-    elevation: 3,
+    width: MARCADOR,
+    height: MARCADOR,
+    borderRadius: raio.pill,
+    borderWidth: ANEL,
   },
   legendas: { flexDirection: 'row', marginTop: espaco.sm },
-  legenda: { flex: 1, fontSize: 10.5 },
+  legenda: { flex: 1, fontSize: 10.5, ...tabular },
   legendaCentro: { textAlign: 'center' },
   legendaFim: { textAlign: 'right' },
 });

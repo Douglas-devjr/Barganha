@@ -9,10 +9,10 @@
       "policy": "appVersion"
     },
     "orientation": "portrait",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "splash": {
-      "backgroundColor": "#0F766E",
+      "backgroundColor": "#1B1B19",
       "resizeMode": "contain"
     },
     "assetBundlePatterns": ["**/*"],
@@ -35,7 +35,7 @@
       "package": "com.barganha.app",
       "versionCode": 1,
       "adaptiveIcon": {
-        "backgroundColor": "#0F766E"
+        "backgroundColor": "#1B1B19"
       }
     },
     "plugins": [

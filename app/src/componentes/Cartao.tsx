@@ -1,13 +1,13 @@
 /**
- * Redesign "2a" — cartão creme (`cartao`) com borda fina (`cartaoBorda`), cantos
- * arredondados e sombra difusa. Base visual de quase todas as telas. No escuro a
- * sombra some e a separação vem da borda (ver ThemeContext).
+ * Redesign "3a" — cartão (`cartao`) com borda fina (`cartaoBorda`) e cantos de
+ * 16px. Base visual de quase todas as telas. O 3a é flat: a separação vem
+ * SEMPRE da borda, nos dois temas — não há sombra de cartão.
  */
 
 import type { ReactNode } from 'react';
 import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 
-import { espaco, raio, sombra, useTema } from '@/tema';
+import { espaco, raio, useTema } from '@/tema';
 
 export interface CartaoProps {
   children: ReactNode;
@@ -17,16 +17,12 @@ export interface CartaoProps {
 }
 
 export function Cartao({ children, style, semPadding = false }: CartaoProps) {
-  const { c, escuro } = useTema();
+  const { c } = useTema();
   return (
     <View
       style={[
         estilos.base,
-        {
-          backgroundColor: c.cartao,
-          borderColor: c.cartaoBorda,
-          ...(escuro ? {} : sombra.card),
-        },
+        { backgroundColor: c.cartao, borderColor: c.cartaoBorda },
         semPadding && estilos.semPadding,
         style,
       ]}

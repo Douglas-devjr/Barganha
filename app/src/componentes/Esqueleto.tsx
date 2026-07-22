@@ -1,5 +1,5 @@
 /**
- * Redesign "2a" — esqueleto (shimmer) para carregamento. Uma barra na cor `linha`
+ * Redesign "3a" — esqueleto (shimmer) para carregamento. Uma barra na cor `linha`
  * com um brilho (`borda`) deslizando em loop. Use várias empilhadas enquanto a
  * nota processa.
  */

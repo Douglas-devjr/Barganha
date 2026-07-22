@@ -1,6 +1,6 @@
 /**
- * Redesign "2a" — ponto único do design system. Importe daqui:
- *   import { useTema, fontes, espaco, raio } from '@/tema';
+ * Redesign "3a" — ponto único do design system. Importe daqui:
+ *   import { useTema, fontes, espaco, raio, tabular } from '@/tema';
  *
  * Telas novas leem cores de `useTema()` (tema claro/escuro). O export estático
  * `cores` (= paleta clara) segue disponível para o código ainda não migrado.
@@ -10,11 +10,11 @@ import { claro } from './cores';
 import { espaco, raio, sombra } from './espacamento';
 import { fontes, tamanhos } from './tipografia';
 
-export { claro, escuro, cores } from './cores';
+export { claro, escuro, cores, comAlfa } from './cores';
 export type { Cor, Paleta } from './cores';
-export { ProvedorTema, useTema } from './ThemeContext';
+export { ProvedorTema, TemaFixo, useTema } from './ThemeContext';
 export type { Tema } from './ThemeContext';
-export { fontes, tamanhos } from './tipografia';
+export { fontes, tamanhos, tabular } from './tipografia';
 export type { PesoFonte, TamanhoTexto } from './tipografia';
 export { espaco, raio, sombra } from './espacamento';
 export type { Espaco } from './espacamento';
@@ -30,7 +30,8 @@ export type ChaveVeredito = 'barato' | 'na_media' | 'caro' | 'sem_dados';
 export function veredito(c: Paleta) {
   return {
     barato: { fg: c.barato, bg: c.baratoBg, borda: c.baratoBorda, rotulo: 'Barato' },
-    na_media: { fg: c.medio, bg: c.tealWash2, borda: c.tealBorda, rotulo: 'Na média' },
+    // 3a: a média é ÂMBAR e tem wash próprio — não herda mais o wash da marca.
+    na_media: { fg: c.medio, bg: c.naMediaBg, borda: c.medio, rotulo: 'Na média' },
     caro: { fg: c.caro, bg: c.caroBg, borda: c.caro, rotulo: 'Caro' },
     sem_dados: { fg: c.semDados, bg: c.semDadosBg, borda: c.borda, rotulo: 'Sem dados' },
   } as const;
@@ -42,7 +43,7 @@ export function veredito(c: Paleta) {
  */
 export const coresVeredito = {
   barato: { fg: claro.barato, bg: claro.baratoBg, rotulo: 'Barato' },
-  na_media: { fg: claro.medio, bg: claro.tealWash2, rotulo: 'Na média' },
+  na_media: { fg: claro.medio, bg: claro.naMediaBg, rotulo: 'Na média' },
   caro: { fg: claro.caro, bg: claro.caroBg, rotulo: 'Caro' },
   sem_dados: { fg: claro.semDados, bg: claro.semDadosBg, rotulo: 'Sem dados' },
 } as const;

@@ -1,16 +1,18 @@
 /**
- * Redesign "2a" — Botão do design system. Três variantes:
- *   • primario   — teal preenchido + sombra teal (ação principal)
- *   • secundario — tealWash com borda tealBorda (ação alternativa)
- *   • fantasma   — só o label teal (ações terciárias/links)
+ * Redesign "3a" — Botão do design system. Três variantes:
+ *   • primario   — tinta preenchida, chapado (ação principal)
+ *   • secundario — contorno `borda` sobre o cartão (ação alternativa)
+ *   • fantasma   — só o label na tinta (ações terciárias/links)
  *
  * Lê as cores da paleta ativa (`useTema`), então funciona em claro e escuro.
+ * O primário INVERTE entre os temas (tinta escura no claro, clara no escuro),
+ * por isso o label usa `sobreTeal` (chipink) e nunca `branco`.
  */
 
 import type { ReactNode } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, View, type ViewStyle } from 'react-native';
 
-import { espaco, raio, sombra, useTema, type Cor, type Paleta } from '@/tema';
+import { espaco, raio, useTema, type Cor, type Paleta } from '@/tema';
 
 import { Texto } from './Texto';
 
@@ -32,16 +34,12 @@ export interface BotaoProps {
 function variante(v: VarianteBotao, c: Paleta, pressed: boolean) {
   switch (v) {
     case 'primario':
-      return {
-        bg: pressed ? c.tealPressed : c.teal,
-        fg: 'branco' as Cor,
-        borda: undefined,
-        sombra: true,
-      };
+      return { bg: pressed ? c.tealPressed : c.teal, fg: 'sobreTeal' as Cor, borda: undefined };
     case 'secundario':
-      return { bg: c.tealWash, fg: 'teal' as Cor, borda: c.tealBorda, sombra: false };
+      // 3a: contorno sobre o cartão (o "Continuar com Google" do handoff).
+      return { bg: pressed ? c.linha : c.cartao, fg: 'tinta' as Cor, borda: c.borda };
     case 'fantasma':
-      return { bg: 'transparent', fg: 'teal' as Cor, borda: undefined, sombra: false };
+      return { bg: 'transparent', fg: 'tinta' as Cor, borda: undefined };
   }
 }
 
@@ -72,7 +70,6 @@ export function Botao({
             borderColor: v.borda,
             borderWidth: v.borda ? 1.5 : 0,
           },
-          v.sombra && sombra.flutuante,
           bloco && estilos.bloco,
           inativo && estilos.atenuado,
           style,
