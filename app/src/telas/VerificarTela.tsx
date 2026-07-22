@@ -1,56 +1,55 @@
 /**
- * C7.1/C7.2/C7.3 + Redesign "2a" — Verificar (o momento de valor, na gôndola).
+ * C7.1/C7.2/C7.3 + Redesign "3a" — Verificar (o momento de valor, na gôndola).
+ *
+ * TELA ÚNICA, como o handoff: busca + chips + o card do veredito logo abaixo,
+ * recalculando ao vivo. A diferença em relação ao protótipo é QUAL campo dispara
+ * o recálculo: lá era o nome (cada produto do mock já trazia um preço "atual");
+ * aqui é o PREÇO, porque o valor da gôndola só o usuário sabe — é justamente o
+ * que ele veio conferir. O preço grande do card é o próprio input.
  *
  *  • Entrada do produto: código de barras (principal) + busca por nome (fallback).
  *  • Veredito resolvido do CACHE LOCAL primeiro (offline) e refinado online.
- *  • Exibição HÍBRIDA: veredito de destaque (pílula + BarraPreco) + sua região e
- *    seu histórico, com a promoção numa linha à parte ("menor visto").
- *
- * As decisões travadas vivem em `@barganha/shared` (mediana/percentis, nunca
- * média; promoção nunca colapsa no veredito). Aqui só orquestramos e exibimos.
+ *  • Promoção ("menor visto") sempre numa linha à parte — nunca colapsa no
+ *    veredito (decisão travada; a inteligência mora em `@barganha/shared`).
  */
 
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { CompositeScreenProps } from '@react-navigation/native';
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import {
-  type AnguloVeredito,
-  type FaixaPreco,
-  normalizarDescricao,
-  type UnidadeBase,
-} from '@barganha/shared';
-import { useCallback, useRef, useState } from 'react';
-import {
-  ActivityIndicator,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  TextInput,
-  View,
-} from 'react-native';
+import { type FaixaPreco, normalizarDescricao } from '@barganha/shared';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 
 import {
   BarraPreco,
   Botao,
-  CabecalhoVoltar,
   Cartao,
+  Eyebrow,
+  FolhaDenuncia,
+  IconeBandeira,
   IconeBarras,
   IconeBusca,
+  IconeSino,
   Tela,
   Texto,
+  TituloTela,
   VeredictoBadge,
+  useToast,
 } from '@/componentes';
+import { clienteApi } from '@/api';
+import { alertas } from '@/dados';
 import * as catalogo from '@/nucleo/catalogo';
 import type { ProdutoLocal } from '@/nucleo/catalogo';
 import { parseMoeda } from '@/nucleo/formato';
+import { type LocalizacaoEfetiva, resolverLocalizacao } from '@/nucleo/localizacao';
 import { consumirEanEscaneado } from '@/nucleo/scan-pendente';
 import {
   refinarRegionalOnline,
   resolverVeredito,
   type ResultadoVeredito,
 } from '@/nucleo/veredito-local';
-import { espaco, raio, useTema, veredito } from '@/tema';
+import { espaco, raio, useTema } from '@/tema';
 import type { RootStackParamList, TabParamList } from '@/navegacao/tipos';
 
 type Props = CompositeScreenProps<
@@ -62,252 +61,7 @@ function moeda(v: number): string {
   return `R$ ${v.toFixed(2).replace('.', ',')}`;
 }
 
-function sufixo(base?: UnidadeBase | null): string {
-  return base ? `/${base}` : '';
-}
-
-function dataCurta(iso: string): string {
-  const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? '—' : d.toLocaleDateString('pt-BR');
-}
-
-export function VerificarTela({ navigation }: Props) {
-  const { c } = useTema();
-  const [lista, setLista] = useState<ProdutoLocal[]>([]);
-  const [busca, setBusca] = useState('');
-  const [selecionado, setSelecionado] = useState<ProdutoLocal | null>(null);
-  const [preco, setPreco] = useState('');
-  const [resultado, setResultado] = useState<ResultadoVeredito | null>(null);
-  const [calculando, setCalculando] = useState(false);
-  const [refinando, setRefinando] = useState(false);
-  const montado = useRef(true);
-
-  // Recarrega o catálogo e trata um EAN recém-escaneado a cada foco da aba.
-  useFocusEffect(
-    useCallback(() => {
-      montado.current = true;
-      void (async () => {
-        const todos = await catalogo.carregarCatalogo();
-        if (!montado.current) return;
-        setLista(todos);
-
-        const ean = consumirEanEscaneado();
-        if (ean) {
-          const achado = todos.find((p) => p.ean === ean);
-          setSelecionado(
-            achado ?? {
-              chave: `ean:${ean}`,
-              produtoCanonicoId: null,
-              ean,
-              nome: 'Produto escaneado',
-              unidadeBase: null,
-              nObservacoes: 0,
-            },
-          );
-          setResultado(null);
-        }
-      })();
-      return () => {
-        montado.current = false;
-      };
-    }, []),
-  );
-
-  const alvoBusca = normalizarDescricao(busca);
-  const filtrados = alvoBusca
-    ? lista.filter((p) => normalizarDescricao(p.nome).includes(alvoBusca))
-    : lista;
-
-  const valor = parseMoeda(preco);
-  const podeVerificar = selecionado != null && valor != null && !calculando;
-
-  async function verificar() {
-    if (!selecionado || valor == null) return;
-    setCalculando(true);
-    const offline = await resolverVeredito({
-      precoPrateleira: valor,
-      produtoCanonicoId: selecionado.produtoCanonicoId,
-      ...(selecionado.faixaPessoal ? { faixaPessoal: selecionado.faixaPessoal } : {}),
-    });
-    if (!montado.current) return;
-    setResultado(offline);
-    setCalculando(false);
-
-    setRefinando(true);
-    try {
-      const resp = await refinarRegionalOnline({ ean: selecionado.ean, nome: selecionado.nome });
-      if (resp && montado.current) {
-        const canonico = selecionado.produtoCanonicoId ?? resp.produtoCanonicoId;
-        const refinado = await resolverVeredito({
-          precoPrateleira: valor,
-          produtoCanonicoId: canonico,
-          ...(selecionado.faixaPessoal ? { faixaPessoal: selecionado.faixaPessoal } : {}),
-        });
-        if (montado.current) setResultado(refinado);
-      }
-    } finally {
-      if (montado.current) setRefinando(false);
-    }
-  }
-
-  function reiniciar() {
-    setResultado(null);
-    setPreco('');
-  }
-
-  if (resultado && selecionado) {
-    return (
-      <Tela>
-        <ResultadoVeredictoView
-          produto={selecionado}
-          precoDigitado={valor ?? 0}
-          resultado={resultado}
-          refinando={refinando}
-          aoVerOutro={reiniciar}
-          aoVerHistorico={
-            selecionado.nObservacoes > 0
-              ? () =>
-                  navigation.navigate('ProdutoDetalhe', {
-                    chave: selecionado.chave,
-                    nome: selecionado.nome,
-                  })
-              : undefined
-          }
-        />
-      </Tela>
-    );
-  }
-
-  return (
-    <Tela titulo="Verificar preço">
-      <Texto cor="suave" style={{ marginTop: -espaco.sm, marginBottom: espaco.lg }}>
-        Escaneie o código de barras na gôndola ou escolha um produto do seu histórico.
-      </Texto>
-
-      <Botao
-        titulo="Escanear código de barras"
-        icone={<IconeBarras tamanho={20} cor={c.branco} />}
-        bloco
-        onPress={() => navigation.navigate('EscanearBarras')}
-        style={{ marginBottom: espaco.lg }}
-      />
-
-      <View style={estilos.divisor}>
-        <View style={[estilos.divisorLinha, { backgroundColor: c.borda }]} />
-        <Texto cor="fraco" tamanho="sm" peso="semibold">
-          ou busque no histórico
-        </Texto>
-        <View style={[estilos.divisorLinha, { backgroundColor: c.borda }]} />
-      </View>
-
-      <View style={[estilos.busca, { backgroundColor: c.cartao, borderColor: c.borda }]}>
-        <IconeBusca tamanho={18} cor={c.fraco} />
-        <TextInput
-          value={busca}
-          onChangeText={setBusca}
-          placeholder="Buscar produto…"
-          placeholderTextColor={c.fraco}
-          style={[estilos.buscaInput, { color: c.tinta }]}
-        />
-      </View>
-
-      {lista.length === 0 ? (
-        <Cartao style={{ marginTop: espaco.md }}>
-          <Texto cor="suave" centralizado>
-            Escaneie cupons para montar seu histórico — ou use o código de barras na gôndola.
-          </Texto>
-        </Cartao>
-      ) : (
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={estilos.chips}
-        >
-          {filtrados.map((p) => {
-            const ativo = selecionado?.chave === p.chave;
-            return (
-              <Pressable
-                key={p.chave}
-                onPress={() => {
-                  setSelecionado(p);
-                  setResultado(null);
-                }}
-                style={[
-                  estilos.chip,
-                  {
-                    backgroundColor: ativo ? c.teal : c.cartao,
-                    borderColor: ativo ? c.teal : c.borda,
-                  },
-                ]}
-              >
-                <Texto
-                  tamanho="sm"
-                  peso={ativo ? 'bold' : 'semibold'}
-                  cor={ativo ? 'branco' : 'suave'}
-                >
-                  {p.nome}
-                </Texto>
-              </Pressable>
-            );
-          })}
-        </ScrollView>
-      )}
-
-      <Texto cor="fraco" tamanho="sm" peso="semibold" style={estilos.rotuloPreco}>
-        Preço que você viu na prateleira
-      </Texto>
-      <View style={[estilos.precoCartao, { backgroundColor: c.cartao, borderColor: c.borda }]}>
-        <Texto tamanho="display" peso="bold" cor="fraco">
-          R$
-        </Texto>
-        <TextInput
-          value={preco}
-          onChangeText={setPreco}
-          inputMode="decimal"
-          keyboardType="decimal-pad"
-          placeholder="0,00"
-          placeholderTextColor={c.fraco}
-          style={[estilos.precoInput, { color: c.tinta }]}
-        />
-      </View>
-
-      {selecionado ? (
-        <Texto cor="suave" tamanho="sm" centralizado style={{ marginBottom: espaco.md }}>
-          Comparando{' '}
-          <Texto peso="bold" cor="teal">
-            {selecionado.nome}
-          </Texto>
-          {selecionado.unidadeBase ? ` (por ${selecionado.unidadeBase})` : ''}
-        </Texto>
-      ) : (
-        <Texto cor="fraco" tamanho="sm" centralizado style={{ marginBottom: espaco.md }}>
-          Escaneie ou escolha um produto acima.
-        </Texto>
-      )}
-
-      <Botao
-        titulo="Verificar preço"
-        bloco
-        carregando={calculando}
-        desabilitado={!podeVerificar}
-        onPress={() => void verificar()}
-      />
-    </Tela>
-  );
-}
-
-// ─────────────────────────────── Resultado ───────────────────────────────
-
-interface ResultadoProps {
-  produto: ProdutoLocal;
-  precoDigitado: number;
-  resultado: ResultadoVeredito;
-  refinando: boolean;
-  aoVerOutro: () => void;
-  aoVerHistorico?: () => void;
-}
-
-/** Referências da BarraPreco a partir da faixa de destaque (região ou histórico). */
+/** Referências da régua a partir da faixa de destaque. */
 function referencias(faixa: FaixaPreco, preco: number) {
   const mediana = faixa.mediana;
   const min =
@@ -319,303 +73,437 @@ function referencias(faixa: FaixaPreco, preco: number) {
   return { min, max, tipico };
 }
 
-function ResultadoVeredictoView({
-  produto,
-  precoDigitado,
-  resultado,
-  refinando,
-  aoVerOutro,
-  aoVerHistorico,
-}: ResultadoProps) {
+export function VerificarTela({ navigation }: Props) {
   const { c } = useTema();
-  const { hibrido } = resultado;
-  const inicial = produto.nome.trim().charAt(0).toUpperCase() || '?';
-  const destaque = hibrido.regional ?? hibrido.pessoal;
-  const painel = veredito(c)[hibrido.veredito];
+  const toast = useToast();
+  const [lista, setLista] = useState<ProdutoLocal[]>([]);
+  const [busca, setBusca] = useState('');
+  const [selecionado, setSelecionado] = useState<ProdutoLocal | null>(null);
+  const [preco, setPreco] = useState('');
+  const [resultado, setResultado] = useState<ResultadoVeredito | null>(null);
+  const [refinando, setRefinando] = useState(false);
+  /** Recorte geo ativo — rotula o card e acompanha a denúncia. */
+  const [local, setLocal] = useState<LocalizacaoEfetiva | null>(null);
+  const [alertaAtivo, setAlertaAtivo] = useState(false);
+  const [sheetDenuncia, setSheetDenuncia] = useState(false);
+  const montado = useRef(true);
 
+  // Recarrega o catálogo e trata um EAN recém-escaneado a cada foco da aba.
+  useFocusEffect(
+    useCallback(() => {
+      montado.current = true;
+      void (async () => {
+        const [todos, local] = await Promise.all([
+          catalogo.carregarCatalogo(),
+          resolverLocalizacao(),
+        ]);
+        if (!montado.current) return;
+        setLista(todos);
+        setLocal(local);
+
+        const ean = consumirEanEscaneado();
+        if (ean) {
+          const achado = todos.find((p) => p.ean === ean);
+          escolher(
+            achado ?? {
+              chave: `ean:${ean}`,
+              produtoCanonicoId: null,
+              ean,
+              nome: 'Produto escaneado',
+              unidadeBase: null,
+              nObservacoes: 0,
+            },
+          );
+        }
+      })();
+      return () => {
+        montado.current = false;
+      };
+    }, []),
+  );
+
+  /** Troca o produto: limpa o veredito e busca a faixa regional em background. */
+  function escolher(p: ProdutoLocal) {
+    setSelecionado(p);
+    setResultado(null);
+    void (async () => {
+      if (p.produtoCanonicoId) {
+        const existente = await alertas.obter(p.produtoCanonicoId);
+        if (montado.current) setAlertaAtivo(existente != null);
+      } else if (montado.current) {
+        setAlertaAtivo(false);
+      }
+
+      setRefinando(true);
+      try {
+        await refinarRegionalOnline({ ean: p.ean, nome: p.nome });
+      } finally {
+        if (montado.current) setRefinando(false);
+      }
+    })();
+  }
+
+  const valor = parseMoeda(preco);
+
+  // Recálculo AO VIVO: o veredito sai do cache local a cada dígito do preço.
+  useEffect(() => {
+    if (!selecionado || valor == null || valor <= 0) {
+      setResultado(null);
+      return;
+    }
+    let ativo = true;
+    void resolverVeredito({
+      precoPrateleira: valor,
+      produtoCanonicoId: selecionado.produtoCanonicoId,
+      ...(selecionado.faixaPessoal ? { faixaPessoal: selecionado.faixaPessoal } : {}),
+    }).then((r) => {
+      if (ativo && montado.current) setResultado(r);
+    });
+    return () => {
+      ativo = false;
+    };
+  }, [selecionado, valor, refinando]);
+
+  async function alternarAlerta() {
+    const id = selecionado?.produtoCanonicoId;
+    if (!id || !selecionado) return;
+    if (alertaAtivo) {
+      await alertas.remover(id);
+      setAlertaAtivo(false);
+      toast('Alerta de preço desativado');
+      return;
+    }
+    // Alvo: o preço digitado, se houver; senão ~90% do típico (um alvo realista).
+    const alvo = valor ?? (selecionado.faixaPessoal?.mediana ?? 0) * 0.9;
+    if (alvo <= 0) return;
+    await alertas.definir(id, selecionado.nome, alvo);
+    setAlertaAtivo(true);
+    toast(`Avisamos quando baixar de ${moeda(alvo)}`);
+  }
+
+  const alvoBusca = normalizarDescricao(busca);
+  const filtrados = alvoBusca
+    ? lista.filter((p) => normalizarDescricao(p.nome).includes(alvoBusca))
+    : lista;
+
+  const hibrido = resultado?.hibrido;
+  const destaque = hibrido ? (hibrido.regional ?? hibrido.pessoal) : undefined;
   const faixaDestaque = destaque?.faixa;
   const base = faixaDestaque?.unidadeBase;
-  const fmt = (v: number) => `${moeda(v)}${sufixo(base)}`;
+  const fmt = (v: number) => `${moeda(v)}${base ? `/${base}` : ''}`;
 
-  const subtitulo = (() => {
+  /** "13% abaixo do típico da sua região" — a mensagem sob o preço. */
+  const mensagem = (() => {
+    if (!hibrido || !destaque) return null;
     const tip = faixaDestaque?.mediana;
-    if (resultado.semDados || !destaque) return 'Ainda sem base para opinar na sua região.';
-    if (tip != null && hibrido.veredito !== 'na_media') {
-      const d = Math.round((Math.abs(precoDigitado - tip) / tip) * 100);
-      const dir = hibrido.veredito === 'barato' ? 'abaixo' : 'acima';
-      return `${d}% ${dir} do preço típico ${hibrido.regional ? 'da sua região' : 'do seu histórico'}.`;
+    const origem = hibrido.regional ? 'da sua região' : 'do seu histórico';
+    if (tip != null && hibrido.veredito !== 'na_media' && valor != null) {
+      const d = Math.round((Math.abs(valor - tip) / tip) * 100);
+      return `${d}% ${hibrido.veredito === 'barato' ? 'abaixo' : 'acima'} do típico ${origem}`;
     }
-    return `Dentro da faixa típica ${hibrido.regional ? 'da sua região' : 'do seu histórico'}.`;
+    return `Dentro da faixa típica ${origem}`;
   })();
 
   return (
-    <View>
-      <CabecalhoVoltar titulo="Resultado" aoVoltar={aoVerOutro} />
+    <Tela>
+      <TituloTela titulo="Verificar preço" />
+      <Texto cor="suave" style={estilos.subtitulo}>
+        Compare com o típico da sua região antes de levar.
+      </Texto>
 
-      {/* card do produto */}
-      <Cartao style={estilos.cabecalhoResultado}>
-        <View style={[estilos.tileProduto, { backgroundColor: c.tealWash }]}>
-          <Texto peso="extrabold" tamanho="lg" cor="teal">
-            {inicial}
-          </Texto>
-        </View>
-        <View style={{ flex: 1 }}>
-          <Texto peso="bold" numberOfLines={2}>
-            {produto.nome}
-          </Texto>
-          <Texto cor="fraco" tamanho="sm" style={{ marginTop: 2 }}>
-            {base ? `por ${base} · ` : ''}você viu na prateleira
-          </Texto>
-        </View>
-        <Texto peso="extrabold" tamanho="xl">
-          {moeda(precoDigitado)}
-        </Texto>
-      </Cartao>
-
-      {/* painel de veredito ⭐ */}
-      <View style={[estilos.painel, { backgroundColor: painel.bg, borderColor: painel.borda }]}>
-        <VeredictoBadge
-          veredito={hibrido.veredito}
-          poucosDados={(hibrido.regional ?? hibrido.pessoal)?.poucosDados ?? false}
+      {/* busca com o scanner embutido à direita (padrão 3a) */}
+      <View style={[estilos.busca, { backgroundColor: c.superficie, borderColor: c.borda }]}>
+        <IconeBusca tamanho={18} cor={c.fraco} />
+        <TextInput
+          value={busca}
+          onChangeText={setBusca}
+          placeholder="Buscar produto…"
+          placeholderTextColor={c.fraco}
+          style={[estilos.buscaInput, { color: c.tinta }]}
         />
-        <Texto cor="suave" tamanho="sm" style={{ marginTop: espaco.md }}>
-          {subtitulo}
-        </Texto>
-
-        {!resultado.semDados && faixaDestaque ? (
-          <View style={{ marginTop: espaco.lg }}>
-            {(() => {
-              const r = referencias(faixaDestaque, precoDigitado);
-              return (
-                <BarraPreco
-                  preco={precoDigitado}
-                  min={r.min}
-                  max={r.max}
-                  tipico={r.tipico}
-                  veredito={hibrido.veredito}
-                  formatar={fmt}
-                />
-              );
-            })()}
-          </View>
-        ) : null}
+        <Pressable
+          onPress={() => navigation.navigate('EscanearBarras')}
+          accessibilityRole="button"
+          accessibilityLabel="Escanear código de barras"
+          style={[estilos.botaoScan, { backgroundColor: c.tinta }]}
+        >
+          <IconeBarras tamanho={17} cor={c.sobreTeal} />
+        </Pressable>
       </View>
 
-      {resultado.semDados ? (
-        <Cartao style={{ marginTop: espaco.lg }}>
-          <Texto peso="bold">Sem dados suficientes ainda</Texto>
-          <Texto cor="suave" tamanho="sm" style={{ marginTop: espaco.xs }}>
-            Assim que houver preços deste produto na sua região (ou no seu histórico), o veredito
-            aparece aqui. Tente novamente com sinal para buscar online.
+      {/* chips rápidos */}
+      {lista.length > 0 ? (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={estilos.chips}
+        >
+          {filtrados.map((p) => {
+            const ativo = selecionado?.chave === p.chave;
+            return (
+              <Pressable
+                key={p.chave}
+                onPress={() => escolher(p)}
+                accessibilityRole="button"
+                accessibilityState={ativo ? { selected: true } : {}}
+                style={[
+                  estilos.chip,
+                  {
+                    backgroundColor: ativo ? c.tinta : c.cartao,
+                    borderColor: ativo ? c.tinta : c.borda,
+                  },
+                ]}
+              >
+                <Texto
+                  tamanho="sm"
+                  peso={ativo ? 'bold' : 'semibold'}
+                  cor={ativo ? 'sobreTeal' : 'suave'}
+                >
+                  {p.nome}
+                </Texto>
+              </Pressable>
+            );
+          })}
+        </ScrollView>
+      ) : null}
+
+      {selecionado == null ? (
+        <Cartao style={estilos.vazio}>
+          <Texto cor="suave" tamanho="sm" centralizado>
+            {lista.length === 0
+              ? 'Escaneie cupons para montar seu histórico — ou use o código de barras na gôndola.'
+              : 'Escolha um produto acima (ou escaneie o código de barras) para comparar o preço.'}
           </Texto>
         </Cartao>
       ) : (
-        <Cartao semPadding style={{ marginTop: espaco.lg }}>
-          {hibrido.regional ? (
-            <AnguloLinha
-              titulo="Sua região"
-              angulo={hibrido.regional}
-              base={`${hibrido.regional.faixa.nObservacoes} ${hibrido.regional.faixa.nObservacoes === 1 ? 'observação' : 'observações'}`}
-              comBorda={!!hibrido.pessoal || !!hibrido.promocao}
-            />
-          ) : null}
-          {hibrido.pessoal ? (
-            <AnguloLinha
-              titulo="Seu histórico"
-              angulo={hibrido.pessoal}
-              base={
-                produto.minimo != null
-                  ? `menor já pago ${moeda(produto.minimo)}${sufixo(hibrido.pessoal.faixa.unidadeBase)}`
-                  : `${hibrido.pessoal.faixa.nObservacoes} ${hibrido.pessoal.faixa.nObservacoes === 1 ? 'compra' : 'compras'}`
-              }
-              comBorda={!!hibrido.promocao}
-            />
-          ) : null}
-          {hibrido.promocao ? (
-            <View style={[estilos.promoLinha, { backgroundColor: c.ambarBg }]}>
-              <View style={[estilos.pontoPromo, { backgroundColor: c.ambar }]} />
-              <Texto tamanho="sm" peso="bold" style={{ flex: 1, color: c.ambarTexto }}>
-                Menor visto (promoção)
-              </Texto>
-              <Texto peso="extrabold" style={{ color: c.ambarTexto }}>
-                {moeda(hibrido.promocao.menorVisto)}
-                {sufixo(hibrido.promocao.unidadeBase)}
-              </Texto>
+        <>
+          {/* card do veredito ⭐ — o preço grande é o próprio input */}
+          <View style={[estilos.painel, { backgroundColor: c.cartao, borderColor: c.cartaoBorda }]}>
+            <View style={estilos.painelTopo}>
+              <Eyebrow style={{ flex: 1 }}>
+                {[local?.municipio ?? local?.uf ?? null, base ? `por ${base}` : null, 'agora']
+                  .filter(Boolean)
+                  .join(' · ')}
+              </Eyebrow>
+              {/* Só dá para denunciar o que a base conhece: a denúncia é
+                  ancorada no produto canônico (C12.5). */}
+              {selecionado.produtoCanonicoId ? (
+                <Pressable
+                  onPress={() => setSheetDenuncia(true)}
+                  accessibilityRole="button"
+                  hitSlop={8}
+                  style={estilos.denunciar}
+                >
+                  <IconeBandeira tamanho={13} cor={c.fraco} larguraTraco={2} />
+                  <Texto cor="fraco" peso="semibold" style={estilos.denunciarTexto}>
+                    Denunciar
+                  </Texto>
+                </Pressable>
+              ) : null}
             </View>
-          ) : null}
-        </Cartao>
-      )}
 
-      <View style={estilos.rodape}>
-        {refinando ? (
-          <View style={estilos.refinando}>
-            <ActivityIndicator size="small" color={c.teal} />
-            <Texto cor="fraco" tamanho="sm">
-              Buscando preços da sua região…
+            <Texto peso="semibold" style={estilos.nomeProduto} numberOfLines={2}>
+              {selecionado.nome}
+            </Texto>
+
+            <View style={estilos.linhaPreco}>
+              <View style={estilos.campoPreco}>
+                <Texto peso="bold" cor="fraco" style={estilos.cifrao}>
+                  R$
+                </Texto>
+                <TextInput
+                  value={preco}
+                  onChangeText={setPreco}
+                  inputMode="decimal"
+                  keyboardType="decimal-pad"
+                  placeholder="0,00"
+                  placeholderTextColor={c.fraco}
+                  accessibilityLabel="Preço visto na prateleira"
+                  style={[estilos.precoInput, { color: c.tinta }]}
+                />
+              </View>
+              {hibrido ? (
+                <VeredictoBadge
+                  veredito={hibrido.veredito}
+                  poucosDados={destaque?.poucosDados ?? false}
+                />
+              ) : null}
+            </View>
+
+            <Texto cor="suave" style={estilos.mensagem}>
+              {mensagem ??
+                (resultado?.semDados
+                  ? 'Ainda sem base para opinar na sua região.'
+                  : 'Digite o preço da prateleira para comparar.')}
+            </Texto>
+
+            {faixaDestaque && valor != null ? (
+              <View style={{ marginTop: espaco.lg }}>
+                {(() => {
+                  const r = referencias(faixaDestaque, valor);
+                  return (
+                    <BarraPreco
+                      preco={valor}
+                      min={r.min}
+                      max={r.max}
+                      tipico={r.tipico}
+                      formatar={fmt}
+                    />
+                  );
+                })()}
+              </View>
+            ) : null}
+
+            {/* promoção nunca entra no veredito — linha à parte (decisão travada) */}
+            {hibrido?.promocao ? (
+              <View style={[estilos.promo, { backgroundColor: c.ambarBg }]}>
+                <View style={[estilos.pontoPromo, { backgroundColor: c.ambar }]} />
+                <Texto tamanho="sm" peso="bold" style={{ flex: 1, color: c.ambarTexto }}>
+                  Menor visto (promoção)
+                </Texto>
+                <Texto peso="bold" numerico style={{ color: c.ambarTexto }}>
+                  {moeda(hibrido.promocao.menorVisto)}
+                  {hibrido.promocao.unidadeBase ? `/${hibrido.promocao.unidadeBase}` : ''}
+                </Texto>
+              </View>
+            ) : null}
+
+            <Texto cor="fraco" numerico style={[estilos.rodape, { borderTopColor: c.cartaoBorda }]}>
+              {refinando
+                ? 'Buscando preços da sua região…'
+                : hibrido?.regional
+                  ? `${hibrido.regional.faixa.nObservacoes} ${
+                      hibrido.regional.faixa.nObservacoes === 1 ? 'cupom' : 'cupons'
+                    } na sua região`
+                  : hibrido?.pessoal
+                    ? 'Base do seu histórico — ainda sem preços da sua região'
+                    : 'Sem base regional ainda'}
             </Texto>
           </View>
-        ) : (
-          <Texto cor="fraco" tamanho="xs" centralizado>
-            {(() => {
-              const f = hibrido.regional?.faixa ?? hibrido.pessoal?.faixa;
-              return f ? `Última atualização: ${dataCurta(f.atualizadoEm)}` : '';
-            })()}
-          </Texto>
-        )}
-      </View>
 
-      <View style={{ flexDirection: 'row', gap: espaco.md, marginTop: espaco.lg }}>
-        {aoVerHistorico ? (
-          <Botao
-            titulo="Ver histórico"
-            variante="secundario"
-            onPress={aoVerHistorico}
-            style={{ flex: 1 }}
-          />
-        ) : null}
-        <Botao titulo="Verificar outro" onPress={aoVerOutro} style={{ flex: 1 }} />
-      </View>
-    </View>
-  );
-}
+          {selecionado.nObservacoes > 0 ? (
+            <Pressable
+              onPress={() =>
+                navigation.navigate('ProdutoDetalhe', {
+                  chave: selecionado.chave,
+                  nome: selecionado.nome,
+                })
+              }
+              accessibilityRole="button"
+              style={estilos.verHistorico}
+            >
+              <Texto peso="semibold" tamanho="sm" style={estilos.link}>
+                Ver histórico e onde comprar →
+              </Texto>
+            </Pressable>
+          ) : null}
 
-function AnguloLinha({
-  titulo,
-  angulo,
-  base,
-  comBorda,
-}: {
-  titulo: string;
-  angulo: AnguloVeredito;
-  base: string;
-  comBorda: boolean;
-}) {
-  const { c } = useTema();
-  const { faixa } = angulo;
-  const tipico =
-    faixa.mediana != null ? `${moeda(faixa.mediana)}${sufixo(faixa.unidadeBase)}` : '—';
-  const faixaTexto =
-    faixa.p25 != null && faixa.p75 != null
-      ? `${moeda(faixa.p25)} – ${moeda(faixa.p75)}${sufixo(faixa.unidadeBase)}`
-      : null;
+          {selecionado.produtoCanonicoId ? (
+            <Botao
+              titulo={alertaAtivo ? 'Avisar quando baixar · ativo' : 'Avisar quando baixar'}
+              variante={alertaAtivo ? 'secundario' : 'primario'}
+              bloco
+              icone={<IconeSino tamanho={17} cor={alertaAtivo ? c.tinta : c.sobreTeal} />}
+              onPress={() => void alternarAlerta()}
+              style={{ marginTop: espaco.md }}
+            />
+          ) : null}
+        </>
+      )}
 
-  return (
-    <View
-      style={[estilos.angulo, comBorda && { borderBottomWidth: 1, borderBottomColor: c.linha }]}
-    >
-      <View style={estilos.anguloTopo}>
-        <Texto peso="bold" tamanho="sm" cor="suave">
-          {titulo}
-        </Texto>
-        <VeredictoBadge veredito={angulo.veredito} poucosDados={angulo.poucosDados} pequeno />
-      </View>
-      <View style={estilos.anguloLinha}>
-        <Texto cor="suave">Típico</Texto>
-        <Texto peso="extrabold">{tipico}</Texto>
-      </View>
-      {faixaTexto ? (
-        <View style={estilos.anguloLinha}>
-          <Texto cor="suave" tamanho="sm">
-            Faixa normal
-          </Texto>
-          <Texto peso="semibold" tamanho="sm" cor="fraco">
-            {faixaTexto}
-          </Texto>
-        </View>
-      ) : null}
-      <Texto cor="fraco" tamanho="xs" style={{ marginTop: espaco.xs }}>
-        {base}
-      </Texto>
-    </View>
+      <FolhaDenuncia
+        visivel={sheetDenuncia}
+        produto={selecionado?.nome ?? ''}
+        aoFechar={() => setSheetDenuncia(false)}
+        aoEnviar={async (motivo) => {
+          const id = selecionado?.produtoCanonicoId;
+          if (!id) return;
+          const r = await clienteApi.denunciarPreco({
+            produtoCanonicoId: id,
+            motivo,
+            ...(local?.municipio ? { municipio: local.municipio } : {}),
+            ...(local?.uf ? { uf: local.uf } : {}),
+          });
+          setSheetDenuncia(false);
+          toast(r.jaRegistrada ? 'Você já tinha denunciado este preço' : 'Denúncia enviada');
+        }}
+      />
+    </Tela>
   );
 }
 
 const estilos = StyleSheet.create({
-  divisor: { flexDirection: 'row', alignItems: 'center', gap: espaco.md, marginBottom: espaco.lg },
-  divisorLinha: { flex: 1, height: 1 },
+  subtitulo: { fontSize: 13, marginTop: 4, marginBottom: 14 },
   busca: {
+    height: 50,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: espaco.sm,
+    gap: 10,
     borderWidth: 1,
     borderRadius: raio.md,
-    paddingHorizontal: espaco.md,
-    paddingVertical: espaco.sm,
+    paddingLeft: 14,
+    paddingRight: 7,
   },
-  buscaInput: { flex: 1, paddingVertical: 6, fontSize: 15 },
+  buscaInput: { flex: 1, paddingVertical: 0, fontSize: 13.5 },
+  botaoScan: {
+    width: 36,
+    height: 36,
+    borderRadius: 9,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   chips: { gap: espaco.sm, paddingVertical: espaco.md, paddingRight: espaco.md },
   chip: {
     paddingHorizontal: espaco.md,
     paddingVertical: espaco.sm,
     borderRadius: raio.pill,
     borderWidth: 1,
-  },
-  rotuloPreco: { marginTop: espaco.sm, marginBottom: espaco.sm },
-  precoCartao: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: espaco.xs,
-    borderWidth: 1,
-    borderRadius: raio.cartao,
-    paddingVertical: espaco.lg,
-    marginBottom: espaco.md,
-  },
-  precoInput: {
-    minWidth: 140,
-    maxWidth: 200,
-    textAlign: 'center',
-    fontSize: 52,
-    fontWeight: '800',
-    letterSpacing: -2,
-    padding: 0,
-  },
-  cabecalhoResultado: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: espaco.md,
-    marginBottom: espaco.lg,
-  },
-  tileProduto: {
-    width: 46,
-    height: 46,
-    borderRadius: raio.sm,
-    alignItems: 'center',
+    minHeight: 36,
     justifyContent: 'center',
   },
+  vazio: { marginTop: espaco.md },
   painel: {
-    borderRadius: raio.hero,
+    borderRadius: raio.cartao,
     borderWidth: 1,
-    padding: espaco.xl,
+    paddingHorizontal: 18,
+    paddingTop: 16,
+    paddingBottom: 14,
+    marginTop: espaco.xs,
   },
-  angulo: { paddingHorizontal: espaco.lg, paddingVertical: espaco.md },
-  anguloTopo: {
+  painelTopo: { flexDirection: 'row', alignItems: 'center', gap: espaco.sm },
+  denunciar: { flexDirection: 'row', alignItems: 'center', gap: 5, minHeight: 24 },
+  denunciarTexto: { fontSize: 11 },
+  nomeProduto: { fontSize: 15, marginTop: 10 },
+  linhaPreco: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: espaco.sm,
+    gap: 10,
+    marginTop: 2,
   },
-  anguloLinha: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 3,
+  campoPreco: { flexDirection: 'row', alignItems: 'baseline', gap: 4, flexShrink: 1 },
+  cifrao: { fontSize: 26, letterSpacing: -1 },
+  // "preço médio" do 3a: 36/700/-1.8, tabular
+  precoInput: {
+    minWidth: 110,
+    padding: 0,
+    fontSize: 36,
+    fontWeight: '700',
+    letterSpacing: -1.8,
+    fontVariant: ['tabular-nums'],
   },
-  promoLinha: {
+  mensagem: { fontSize: 12.5, marginTop: 2 },
+  promo: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: espaco.sm,
-    paddingHorizontal: espaco.lg,
-    paddingVertical: espaco.md,
-    borderBottomLeftRadius: raio.cartao,
-    borderBottomRightRadius: raio.cartao,
+    borderRadius: raio.md,
+    paddingHorizontal: espaco.md,
+    paddingVertical: espaco.sm,
+    marginTop: espaco.md,
   },
   pontoPromo: { width: 8, height: 8, borderRadius: 4 },
-  rodape: { marginTop: espaco.md, minHeight: 20 },
-  refinando: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: espaco.sm,
-  },
+  rodape: { fontSize: 10.5, borderTopWidth: 1, marginTop: espaco.md, paddingTop: 9 },
+  verHistorico: { minHeight: 44, justifyContent: 'center', marginTop: espaco.sm },
+  link: { textDecorationLine: 'underline' },
 });

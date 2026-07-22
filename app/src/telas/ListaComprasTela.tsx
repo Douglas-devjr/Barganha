@@ -18,7 +18,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import type { ComparacaoListaResponse } from '@barganha/shared';
 
 import { clienteApi } from '@/api';
-import { Botao, CabecalhoVoltar, Cartao, Tela, Texto } from '@/componentes';
+import { Botao, CabecalhoVoltar, Cartao, IconeTrofeu, Tela, Texto } from '@/componentes';
 import { lista } from '@/dados';
 import type { ItemLista } from '@/dados/repositorio-lista';
 import { moeda } from '@/nucleo/formato';
@@ -163,10 +163,13 @@ export function ListaComprasTela({ navigation }: Props) {
             <Cartao key={loja.lojaCnpj} style={{ marginBottom: espaco.sm }}>
               <View style={estilos.linhaLoja}>
                 <View style={{ flex: 1 }}>
-                  <Texto peso="bold" numberOfLines={1}>
-                    {idx === 0 ? '🏆 ' : ''}
-                    {loja.nome ?? 'Mercado'}
-                  </Texto>
+                  <View style={estilos.nomeLoja}>
+                    {/* 3a é só SVG stroke — o troféu do 1º lugar era emoji. */}
+                    {idx === 0 ? <IconeTrofeu tamanho={14} cor={c.tinta} larguraTraco={2} /> : null}
+                    <Texto peso="bold" numberOfLines={1} style={{ flexShrink: 1 }}>
+                      {loja.nome ?? 'Mercado'}
+                    </Texto>
+                  </View>
                   <Texto cor="fraco" tamanho="xs">
                     {loja.itensCobertos === comparacao.itensTotal
                       ? 'Lista completa'
@@ -174,10 +177,13 @@ export function ListaComprasTela({ navigation }: Props) {
                     {loja.municipio ? ` · ${loja.municipio}` : ''}
                   </Texto>
                 </View>
+                {/* a loja mais barata é destacada no verde do semáforo — no 3a a
+                    tinta não destaca nada, é a cor padrão do texto. */}
                 <Texto
-                  peso="extrabold"
+                  peso="bold"
                   tamanho="lg"
-                  style={idx === 0 ? { color: c.teal } : undefined}
+                  numerico
+                  style={idx === 0 ? { color: c.barato } : undefined}
                 >
                   {moeda(loja.total)}
                 </Texto>
@@ -226,6 +232,7 @@ const estilos = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  nomeLoja: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   linhaLoja: {
     flexDirection: 'row',
     alignItems: 'center',

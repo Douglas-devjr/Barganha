@@ -1,10 +1,11 @@
 /**
- * C6.1 + Redesign "2a" — Scanner de QR da NFC-e. Lê o QR com `expo-camera` e
+ * C6.1 + Redesign "3a" — Scanner de QR da NFC-e. Lê o QR com `expo-camera` e
  * grava o QR CRU localmente ANTES de qualquer rede (offline-first, decisão
  * travada): a captura funciona sem sinal; o upload e o parsing vêm depois (C6.2).
  * Após gravar, segue para a Nota fiscal, que acompanha o processamento.
  *
- * Tela sempre ESCURA (câmera): moldura com cantos menta, botão fechar (X).
+ * Tela sempre ESCURA (câmera, nos dois temas — daí o `TemaFixo`): moldura com
+ * cantos claros e linha de leitura, botão fechar (X).
  * Não fazemos parsing no app — só capturamos o conteúdo do QR (decisão travada).
  */
 
@@ -18,13 +19,14 @@ import { Botao, IconeFechar, IconeScan, MolduraCamera, Texto } from '@/component
 import { cupons } from '@/dados';
 import { useCameraAtiva } from '@/nucleo/camera';
 import { sincronizar } from '@/nucleo/sincronizador';
-import { espaco, raio } from '@/tema';
+import { TemaFixo, comAlfa, escuro as paletaEscura, espaco, raio } from '@/tema';
 import type { RootStackParamList } from '@/navegacao/tipos';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Scanner'>;
 
-const FUNDO = '#0B120F';
-const MENTA = '#5EEAD4';
+// O overlay da câmera é escuro nos dois temas — daí a paleta escura fixa.
+const FUNDO = paletaEscura.fundo;
+const ACENTO = paletaEscura.tinta;
 
 export function ScannerTela({ navigation }: Props) {
   const [permissao, pedirPermissao] = useCameraPermissions();
@@ -47,69 +49,71 @@ export function ScannerTela({ navigation }: Props) {
   }
 
   return (
-    <SafeAreaView style={estilos.raiz} edges={['top', 'bottom']}>
-      {permissao?.granted && cameraAtiva && erroCamera == null ? (
-        <CameraView
-          style={StyleSheet.absoluteFill}
-          facing="back"
-          barcodeScannerSettings={{ barcodeTypes: ['qr'] }}
-          onBarcodeScanned={({ data }) => void aoLer(data)}
-          onMountError={({ message }) => setErroCamera(message || 'erro desconhecido')}
-        />
-      ) : null}
-      <View style={estilos.veu} />
+    <TemaFixo modo="escuro">
+      <SafeAreaView style={estilos.raiz} edges={['top', 'bottom']}>
+        {permissao?.granted && cameraAtiva && erroCamera == null ? (
+          <CameraView
+            style={StyleSheet.absoluteFill}
+            facing="back"
+            barcodeScannerSettings={{ barcodeTypes: ['qr'] }}
+            onBarcodeScanned={({ data }) => void aoLer(data)}
+            onMountError={({ message }) => setErroCamera(message || 'erro desconhecido')}
+          />
+        ) : null}
+        <View style={estilos.veu} />
 
-      <View style={estilos.topo}>
-        <Pressable
-          onPress={() => navigation.goBack()}
-          accessibilityRole="button"
-          accessibilityLabel="Fechar"
-          style={estilos.fechar}
-        >
-          <IconeFechar tamanho={22} cor="#FFFFFF" />
-        </Pressable>
-        <Texto cor="branco" peso="bold" tamanho="lg">
-          Escanear cupom
-        </Texto>
-        <View style={estilos.fechar} />
-      </View>
-
-      <View style={estilos.centro}>
-        <MolduraCamera tamanho={250} corGlow={MENTA}>
-          {!permissao?.granted ? <IconeScan tamanho={56} cor={MENTA} /> : null}
-        </MolduraCamera>
-
-        {erroCamera != null ? (
-          <View style={estilos.permissao}>
-            <Texto cor="branco" centralizado style={estilos.dica}>
-              A câmera não abriu. Feche outros apps que estejam usando a câmera e tente de novo.
-            </Texto>
-            <Botao titulo="Tentar de novo" onPress={() => setErroCamera(null)} />
-          </View>
-        ) : permissao?.granted ? (
-          <Texto cor="branco" centralizado style={estilos.dica}>
-            Aponte para o QR Code da nota fiscal.
+        <View style={estilos.topo}>
+          <Pressable
+            onPress={() => navigation.goBack()}
+            accessibilityRole="button"
+            accessibilityLabel="Fechar"
+            style={estilos.fechar}
+          >
+            <IconeFechar tamanho={22} cor={ACENTO} />
+          </Pressable>
+          <Texto cor="tinta" peso="bold" tamanho="lg">
+            Escanear cupom
           </Texto>
-        ) : (
-          <View style={estilos.permissao}>
-            <Texto cor="branco" centralizado style={estilos.dica}>
-              Precisamos da câmera para ler o QR Code do cupom.
+          <View style={estilos.fechar} />
+        </View>
+
+        <View style={estilos.centro}>
+          <MolduraCamera tamanho={250} corGlow={ACENTO}>
+            {!permissao?.granted ? <IconeScan tamanho={56} cor={ACENTO} /> : null}
+          </MolduraCamera>
+
+          {erroCamera != null ? (
+            <View style={estilos.permissao}>
+              <Texto cor="tinta" centralizado style={estilos.dica}>
+                A câmera não abriu. Feche outros apps que estejam usando a câmera e tente de novo.
+              </Texto>
+              <Botao titulo="Tentar de novo" onPress={() => setErroCamera(null)} />
+            </View>
+          ) : permissao?.granted ? (
+            <Texto cor="tinta" centralizado style={estilos.dica}>
+              Aponte para o QR Code da nota fiscal.
             </Texto>
-            {permissao && !permissao.canAskAgain ? (
-              <Botao titulo="Abrir configurações" onPress={() => void Linking.openSettings()} />
-            ) : (
-              <Botao titulo="Permitir câmera" onPress={() => void pedirPermissao()} />
-            )}
-          </View>
-        )}
-      </View>
-    </SafeAreaView>
+          ) : (
+            <View style={estilos.permissao}>
+              <Texto cor="tinta" centralizado style={estilos.dica}>
+                Precisamos da câmera para ler o QR Code do cupom.
+              </Texto>
+              {permissao && !permissao.canAskAgain ? (
+                <Botao titulo="Abrir configurações" onPress={() => void Linking.openSettings()} />
+              ) : (
+                <Botao titulo="Permitir câmera" onPress={() => void pedirPermissao()} />
+              )}
+            </View>
+          )}
+        </View>
+      </SafeAreaView>
+    </TemaFixo>
   );
 }
 
 const estilos = StyleSheet.create({
   raiz: { flex: 1, backgroundColor: FUNDO },
-  veu: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(6,12,10,0.5)' },
+  veu: { ...StyleSheet.absoluteFillObject, backgroundColor: comAlfa(FUNDO, 0.5) },
   topo: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -123,7 +127,7 @@ const estilos = StyleSheet.create({
     borderRadius: raio.md,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.12)',
+    backgroundColor: comAlfa(ACENTO, 0.12),
   },
   centro: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: espaco.xl },
   dica: { marginTop: espaco.xl, maxWidth: 300 },

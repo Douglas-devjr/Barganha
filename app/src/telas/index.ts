@@ -8,4 +8,8 @@ export { ScannerTela } from './ScannerTela';
 export { EscanearBarrasTela } from './EscanearBarrasTela';
 export { NotaFiscalTela } from './NotaFiscalTela';
 export { ProdutoDetalheTela } from './ProdutoDetalheTela';
+export { NotificacoesTela } from './NotificacoesTela';
+export { ConquistasTela } from './ConquistasTela';
+export { DashboardTela } from './DashboardTela';
+export { EditarProdutoTela } from './EditarProdutoTela';
 export { OnboardingTela } from './OnboardingTela';

@@ -314,6 +314,43 @@ export async function economiaPorMes(limite = 12): Promise<EconomiaMensal[]> {
 }
 
 /**
+ * Onde a economia veio, por PRODUTO (tela de Resumo de economia). Soma o
+ * desconto por item, do maior para o menor.
+ *
+ * O handoff agrupa por CATEGORIA (Laticínios, Café…), mas categoria só existe
+ * no enriquecimento do backend (C11.5) e não desce para o catálogo local — não
+ * dá para agrupar assim offline sem inventar o rótulo. Produto é o agrupamento
+ * mais específico que o aparelho realmente tem, e responde a mesma pergunta.
+ *
+ * `mes` opcional ("AAAA-MM") recorta o período; sem ele, o histórico todo.
+ */
+export interface EconomiaPorProduto {
+  nome: string;
+  economia: number;
+}
+
+export async function economiaPorProduto(limite = 5, mes?: string): Promise<EconomiaPorProduto[]> {
+  const filtroMes = mes ? `AND strftime('%Y-%m', COALESCE(c.emitido_em, c.capturado_em)) = ?` : '';
+  const params: (string | number)[] = mes ? [mes, limite] : [limite];
+
+  const linhas = await getBd().getAllAsync<{ nome: string; economia: number }>(
+    `SELECT
+       i.descricao_original AS nome,
+       SUM(i.desconto)      AS economia
+     FROM item_cupom_local i
+     JOIN cupom_local c ON c.id = i.cupom_local_id
+     WHERE c.status = 'processado'
+       AND i.desconto > 0
+       ${filtroMes}
+     GROUP BY i.descricao_original
+     ORDER BY economia DESC
+     LIMIT ?`,
+    params,
+  );
+  return linhas.map((l) => ({ nome: l.nome, economia: l.economia }));
+}
+
+/**
  * C12.2 — Datas de captura de TODOS os cupons (qualquer status): escanear já é
  * contribuir, mesmo antes do parsing. Base da sequência de semanas e dos selos.
  */

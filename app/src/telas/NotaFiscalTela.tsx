@@ -1,5 +1,5 @@
 /**
- * C6.3 + Redesign "2a" — Nota fiscal. O cupom já foi salvo na captura (C6.1);
+ * C6.3 + Redesign "3a" — Nota fiscal. O cupom já foi salvo na captura (C6.1);
  * aqui acompanhamos o parsing assíncrono do backend e exibimos os itens quando
  * ficam prontos. Offline-first: sem sinal, mostramos "salvo, aguardando" (com
  * esqueleto) e seguimos tentando em background.
@@ -14,22 +14,28 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Modal, Pressable, StyleSheet, TextInput, View } from 'react-native';
 
 import { ErroApi } from '@/api';
+import type { Veredito } from '@barganha/shared';
 import {
   Botao,
-  CabecalhoVoltar,
   Cartao,
   ColetorNotaWeb,
   Esqueleto,
   Estado,
+  Eyebrow,
   IconeAlerta,
+  IconeTendenciaBaixo,
+  IconeTendenciaCima,
+  IconeVoltar,
   Tela,
   Texto,
+  useToast,
 } from '@/componentes';
 import type { ResultadoColeta } from '@/componentes';
 import { cupons } from '@/dados';
 import type { CupomLocal, ItemCupomLocal } from '@/dados';
 import { parseMoeda } from '@/nucleo/formato';
 import { enviarHtmlCupom, sincronizarCupom } from '@/nucleo/sincronizador';
+import { resolverVeredito } from '@/nucleo/veredito-local';
 import { espaco, raio, useTema } from '@/tema';
 import type { RootStackParamList } from '@/navegacao/tipos';
 
@@ -53,8 +59,27 @@ function dataCurta(iso?: string | null): string | null {
   return d.toLocaleDateString('pt-BR');
 }
 
+/** "COMPRA · HOJE 10:42" — o eyebrow do header no handoff. */
+function quandoFoi(iso?: string | null): string {
+  if (!iso) return 'COMPRA';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return 'COMPRA';
+  const hora = d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  const hoje = new Date();
+  const mesmoDia = d.toDateString() === hoje.toDateString();
+  const ontem = new Date(hoje);
+  ontem.setDate(hoje.getDate() - 1);
+  const quando = mesmoDia
+    ? 'HOJE'
+    : d.toDateString() === ontem.toDateString()
+      ? 'ONTEM'
+      : d.toLocaleDateString('pt-BR');
+  return `COMPRA · ${quando} ${hora}`;
+}
+
 export function NotaFiscalTela({ navigation, route }: Props) {
   const { c } = useTema();
+  const toast = useToast();
   const { cupomLocalId } = route.params;
   const [cupom, setCupom] = useState<CupomLocal | null>(null);
   const [itens, setItens] = useState<ItemCupomLocal[]>([]);
@@ -67,8 +92,12 @@ export function NotaFiscalTela({ navigation, route }: Props) {
   const [avisoTotais, setAvisoTotais] = useState<string | null>(null);
   const [editando, setEditando] = useState<ItemCupomLocal | null>(null);
   const [valorInput, setValorInput] = useState('');
+  /** Veredito por item (id → barato/na média/caro), do cache regional local. */
+  const [vereditos, setVereditos] = useState<Record<string, Veredito>>({});
   const ativo = useRef(true);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /** Trava do toast de "cupom lido" — só avisa na primeira vez. */
+  const avisouLido = useRef(false);
 
   const recarregarLocal = useCallback(async () => {
     const [c2, is] = await Promise.all([
@@ -128,6 +157,43 @@ export function NotaFiscalTela({ navigation, route }: Props) {
     };
   }, [cupomLocalId, recarregarLocal]);
 
+  // Toast do handoff ("Cupom lido · N itens adicionados"). Dispara UMA vez, na
+  // virada para processado — o protótipo mostrava logo após o scan, mas aqui o
+  // parsing é assíncrono: o número de itens só existe quando a nota volta.
+  useEffect(() => {
+    if (cupom?.status !== 'processado' || itens.length === 0) return;
+    if (avisouLido.current) return;
+    avisouLido.current = true;
+    toast(`Cupom lido · ${itens.length} ${itens.length === 1 ? 'item' : 'itens'} adicionados`);
+  }, [cupom?.status, itens.length, toast]);
+
+  // Veredito por item (handoff): compara o unitário pago com o típico da região.
+  // Tudo do cache local — sem rede, sem bloquear a lista; item sem base fica sem
+  // rótulo em vez de receber um palpite.
+  useEffect(() => {
+    if (itens.length === 0) return;
+    let vivo = true;
+    void (async () => {
+      const pares = await Promise.all(
+        itens.map(async (item) => {
+          if (!item.produtoCanonicoId) return null;
+          const r = await resolverVeredito({
+            precoPrateleira: item.valorUnitario,
+            produtoCanonicoId: item.produtoCanonicoId,
+            unidadeVenda: item.unidade,
+          });
+          if (r.semDados || !r.hibrido.regional) return null;
+          return [item.id, r.hibrido.veredito] as const;
+        }),
+      );
+      if (!vivo || !ativo.current) return;
+      setVereditos(Object.fromEntries(pares.filter((p): p is NonNullable<typeof p> => p != null)));
+    })();
+    return () => {
+      vivo = false;
+    };
+  }, [itens]);
+
   async function descartar() {
     ativo.current = false;
     if (timer.current) clearTimeout(timer.current);
@@ -175,29 +241,47 @@ export function NotaFiscalTela({ navigation, route }: Props) {
 
   return (
     <Tela>
-      <CabecalhoVoltar
-        titulo="Nota fiscal"
-        subtitulo={subtitulo}
-        aoVoltar={() => navigation.goBack()}
-      />
+      {/* header do handoff: voltar circular + eyebrow da compra + loja */}
+      <View style={estilos.header}>
+        <Pressable
+          onPress={() => navigation.goBack()}
+          accessibilityRole="button"
+          accessibilityLabel="Voltar"
+          style={[estilos.circulo, { backgroundColor: c.cartao, borderColor: c.cartaoBorda }]}
+        >
+          <IconeVoltar tamanho={19} cor={c.tinta} />
+        </Pressable>
+        <View style={{ flex: 1 }}>
+          <Eyebrow>{processado ? quandoFoi(cupom?.emitidoEm) : subtitulo}</Eyebrow>
+          <Texto peso="bold" style={estilos.headerNome} numberOfLines={1}>
+            {cupom?.lojaNome ?? 'Nota fiscal'}
+            {cupom?.uf ? ` · ${cupom.uf}` : ''}
+          </Texto>
+        </View>
+      </View>
 
       {processado ? (
         <>
-          {cupom?.lojaNome ? (
-            <Cartao style={{ marginBottom: espaco.lg }}>
-              <Texto peso="extrabold" tamanho="lg">
-                {cupom.lojaNome}
-              </Texto>
-              {cupom.uf ? (
-                <Texto cor="fraco" tamanho="sm" style={{ marginTop: espaco.xs }}>
-                  {cupom.uf}
+          {/* card do total (handoff): economia à direita, valor 34/700 */}
+          <View style={[estilos.total, { backgroundColor: c.cartao, borderColor: c.cartaoBorda }]}>
+            <View style={estilos.totalTopo}>
+              <Eyebrow style={{ flex: 1 }}>Total da compra</Eyebrow>
+              {temDesconto ? (
+                <Texto peso="bold" numerico style={[estilos.economia, { color: c.barato }]}>
+                  economia {moeda(descontoCupom)}
                 </Texto>
               ) : null}
-            </Cartao>
-          ) : null}
+            </View>
+            <Texto peso="bold" numerico style={estilos.totalValor}>
+              {moeda(valorPago)}
+            </Texto>
+            <Texto cor="fraco" style={estilos.totalLegenda}>
+              {itens.length} {itens.length === 1 ? 'item' : 'itens'} · NFC-e validada
+            </Texto>
+          </View>
 
-          <Texto peso="extrabold" tamanho="lg" style={{ marginBottom: espaco.sm }}>
-            {itens.length} {itens.length === 1 ? 'item' : 'itens'}
+          <Texto peso="bold" style={estilos.secao}>
+            Itens do cupom
           </Texto>
 
           {temDesconto && restanteMarcar > 0 ? (
@@ -229,7 +313,12 @@ export function NotaFiscalTela({ navigation, route }: Props) {
                       {temItemDesc ? `  · desconto ${moeda(item.desconto ?? 0)}` : ''}
                     </Texto>
                   </View>
-                  <Texto peso="bold">{moeda(item.valorTotal)}</Texto>
+                  <View style={estilos.itemDireita}>
+                    <Texto peso="bold" tamanho="sm" numerico>
+                      {moeda(item.valorTotal)}
+                    </Texto>
+                    <VeredictoItem veredito={vereditos[item.id]} />
+                  </View>
                 </View>
               );
               return temDesconto ? (
@@ -241,27 +330,27 @@ export function NotaFiscalTela({ navigation, route }: Props) {
               );
             })}
 
+            {/* O total já aparece no card acima; aqui só a quebra do desconto. */}
             {temDesconto ? (
               <>
                 <View style={[estilos.item, { borderTopWidth: 1, borderTopColor: c.linha }]}>
-                  <Texto cor="suave">Subtotal</Texto>
-                  <Texto>{moeda(total)}</Texto>
+                  <Texto cor="suave" tamanho="sm">
+                    Subtotal
+                  </Texto>
+                  <Texto tamanho="sm" numerico>
+                    {moeda(total)}
+                  </Texto>
                 </View>
                 <View style={estilos.item}>
-                  <Texto cor="suave">Desconto</Texto>
-                  <Texto style={{ color: c.barato }}>− {moeda(descontoCupom)}</Texto>
-                </View>
-                <View style={[estilos.item, { borderTopWidth: 1, borderTopColor: c.linha }]}>
-                  <Texto peso="extrabold">Valor pago</Texto>
-                  <Texto peso="extrabold">{moeda(valorPago)}</Texto>
+                  <Texto cor="suave" tamanho="sm">
+                    Desconto
+                  </Texto>
+                  <Texto tamanho="sm" numerico style={{ color: c.barato }}>
+                    − {moeda(descontoCupom)}
+                  </Texto>
                 </View>
               </>
-            ) : (
-              <View style={[estilos.item, { borderTopWidth: 1, borderTopColor: c.linha }]}>
-                <Texto peso="extrabold">Total</Texto>
-                <Texto peso="extrabold">{moeda(total)}</Texto>
-              </View>
-            )}
+            ) : null}
           </Cartao>
 
           {semTotais ? (
@@ -314,14 +403,34 @@ export function NotaFiscalTela({ navigation, route }: Props) {
           ) : null}
         </>
       ) : falhou ? (
-        <Cartao>
-          <Estado
-            tom="ambar"
-            icone={<IconeAlerta tamanho={30} cor={c.ambar} />}
-            titulo="Não foi possível ler este cupom"
-            texto="O QR pode ser de um estado ainda não suportado ou estar ilegível. Ele fica guardado para reprocessamento futuro."
+        /* estado de erro do handoff (screenshot 18), centralizado na tela */
+        <View style={estilos.centro}>
+          <View style={[estilos.circuloEstado, { backgroundColor: c.linha }]}>
+            <IconeAlerta tamanho={32} cor={c.caro} />
+          </View>
+          <Texto peso="bold" tamanho="xl" centralizado style={estilos.tituloEstado}>
+            Não deu pra ler o cupom
+          </Texto>
+          <Texto cor="suave" centralizado style={estilos.textoEstado}>
+            O QR pode estar borrado, ou a NFC-e ainda não foi encontrada na SEFAZ. Ele fica guardado
+            aqui e é reprocessado automaticamente.
+          </Texto>
+          <Botao
+            titulo="Escanear de novo"
+            bloco
+            onPress={() => navigation.replace('Scanner')}
+            style={estilos.acaoEstado}
           />
-        </Cartao>
+          <Pressable
+            onPress={() => navigation.goBack()}
+            accessibilityRole="button"
+            style={estilos.linkEstado}
+          >
+            <Texto cor="suave" peso="semibold" tamanho="sm">
+              Voltar ao início
+            </Texto>
+          </Pressable>
+        </View>
       ) : coletaMsg ? (
         <Cartao>
           <Estado
@@ -349,24 +458,33 @@ export function NotaFiscalTela({ navigation, route }: Props) {
           />
         </Cartao>
       ) : (
-        <Cartao>
-          <View style={estilos.processandoTopo}>
-            <ActivityIndicator color={c.teal} />
-            <Texto cor="suave" peso="semibold" style={{ marginLeft: espaco.sm }}>
-              {cupom?.cupomIdServidor ? 'Processando a nota…' : 'Salvo no aparelho. Enviando…'}
-            </Texto>
-          </View>
+        /*
+          "Lendo cupom…" do handoff (screenshot 19), mas como ESTADO DE TELA e
+          não overlay travado: o parsing é assíncrono de verdade, pode demorar e
+          continua em background — por isso o rodapé diz que dá para sair, e o
+          esqueleto sugere a lista que vai chegar.
+        */
+        <View style={estilos.centro}>
+          <ActivityIndicator size="large" color={c.tinta} />
+          <Texto peso="bold" tamanho="lg" centralizado style={estilos.tituloEstado}>
+            {cupom?.cupomIdServidor ? 'Lendo cupom…' : 'Salvo no aparelho. Enviando…'}
+          </Texto>
+          <Texto cor="suave" centralizado style={estilos.textoEstado}>
+            Anonimizando e comparando com a região
+          </Texto>
+
           <View style={estilos.esqueletos}>
             <Esqueleto largura="70%" />
             <Esqueleto largura="90%" />
             <Esqueleto largura="55%" />
           </View>
-          <Texto cor="fraco" tamanho="sm" style={{ marginTop: espaco.md }}>
+
+          <Texto cor="fraco" tamanho="sm" centralizado style={estilos.rodapeEstado}>
             {offline
               ? 'Não conseguimos falar com o servidor agora — o app continua tentando sozinho.'
               : 'Isto roda em segundo plano; você pode sair desta tela.'}
           </Texto>
-        </Cartao>
+        </View>
       )}
 
       <View style={{ marginTop: espaco.xl, gap: espaco.sm }}>
@@ -382,7 +500,10 @@ export function NotaFiscalTela({ navigation, route }: Props) {
         animationType="fade"
         onRequestClose={() => setEditando(null)}
       >
-        <Pressable style={estilos.modalFundo} onPress={() => setEditando(null)}>
+        <Pressable
+          style={[estilos.modalFundo, { backgroundColor: c.veu }]}
+          onPress={() => setEditando(null)}
+        >
           <Pressable
             style={[estilos.modalCartao, { backgroundColor: c.cartao }]}
             onPress={() => {}}
@@ -427,7 +548,82 @@ export function NotaFiscalTela({ navigation, route }: Props) {
   );
 }
 
+/**
+ * Veredito compacto na linha do item (handoff): seta + palavra, sem pílula.
+ * Item sem base regional não mostra nada — melhor silêncio que chute.
+ */
+function VeredictoItem({ veredito }: { veredito?: Veredito }) {
+  const { c } = useTema();
+  if (!veredito || veredito === 'sem_dados') return null;
+
+  if (veredito === 'na_media') {
+    return (
+      <Texto peso="semibold" style={[estilos.veredito, { color: c.medio }]}>
+        na média
+      </Texto>
+    );
+  }
+
+  const barato = veredito === 'barato';
+  const cor = barato ? c.barato : c.caro;
+  const Icone = barato ? IconeTendenciaBaixo : IconeTendenciaCima;
+
+  return (
+    <View style={estilos.veredictoLinha}>
+      <Icone tamanho={11} cor={cor} larguraTraco={3} />
+      <Texto peso="semibold" style={[estilos.veredito, { color: cor }]}>
+        {barato ? 'barato' : 'caro'}
+      </Texto>
+    </View>
+  );
+}
+
 const estilos = StyleSheet.create({
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: espaco.md,
+    paddingTop: espaco.sm,
+    marginBottom: espaco.lg,
+  },
+  circulo: {
+    width: 44,
+    height: 44,
+    borderRadius: raio.pill,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerNome: { fontSize: 17, letterSpacing: -0.4, marginTop: 1 },
+  total: {
+    borderRadius: raio.cartao,
+    borderWidth: 1,
+    paddingHorizontal: 18,
+    paddingVertical: 16,
+    marginBottom: espaco.lg,
+  },
+  totalTopo: { flexDirection: 'row', alignItems: 'center', gap: espaco.sm },
+  economia: { fontSize: 11.5 },
+  // "preço médio" do 3a: 34/700/-1.8
+  totalValor: { fontSize: 34, letterSpacing: -1.8, marginTop: 6 },
+  totalLegenda: { fontSize: 11.5, marginTop: 4 },
+  secao: { fontSize: 16, letterSpacing: -0.4, marginBottom: espaco.sm },
+  itemDireita: { alignItems: 'flex-end' },
+  centro: { alignItems: 'center', paddingTop: 64, paddingHorizontal: espaco.md },
+  circuloEstado: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  tituloEstado: { marginTop: espaco.lg, letterSpacing: -0.5 },
+  textoEstado: { fontSize: 13.5, lineHeight: 20, marginTop: espaco.sm, maxWidth: 300 },
+  acaoEstado: { marginTop: espaco.xl, alignSelf: 'stretch' },
+  linkEstado: { minHeight: 44, justifyContent: 'center', marginTop: espaco.xs },
+  rodapeEstado: { marginTop: espaco.xl, maxWidth: 320, lineHeight: 18 },
+  veredictoLinha: { flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 2 },
+  veredito: { fontSize: 11, marginTop: 2 },
   item: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -442,7 +638,6 @@ const estilos = StyleSheet.create({
   dicaDesconto: { marginBottom: espaco.md },
   modalFundo: {
     flex: 1,
-    backgroundColor: 'rgba(11,18,32,0.5)',
     justifyContent: 'center',
     padding: espaco.xl,
   },

@@ -1,7 +1,10 @@
 /**
- * Redesign "2a" — barra de abas com o FAB central de scan que flutua sobre a
+ * Redesign "3a" — barra de abas com o FAB central de scan que flutua sobre a
  * barra. 4 abas fixas (Início · Verificar · Produtos · Perfil); o FAB abre a tela
  * `Scanner` (QR) do stack raiz. Cores da paleta ativa (claro/escuro).
+ *
+ * 3a: zero cor de marca aqui — aba ativa na tinta, inativa em `fraco`. O FAB é
+ * um círculo chapado de tinta com o ícone em `sobreTeal` e anel `fundo` de 4px.
  */
 
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
@@ -18,7 +21,7 @@ import {
   Texto,
   type IconeProps,
 } from '@/componentes';
-import { espaco, raio, sombra, useTema } from '@/tema';
+import { espaco, raio, useTema } from '@/tema';
 
 import type { TabParamList } from './tipos';
 
@@ -50,7 +53,7 @@ export function BarraAbas({ state, navigation }: BottomTabBarProps) {
           const nome = route.name as keyof TabParamList;
           const meta = META[nome];
           const focada = state.index === idx;
-          const cor = focada ? c.teal : c.fraco;
+          const cor = focada ? c.tinta : c.fraco;
 
           const aoTocar = () => {
             const evento = navigation.emit({
@@ -75,7 +78,7 @@ export function BarraAbas({ state, navigation }: BottomTabBarProps) {
                 accessibilityState={focada ? { selected: true } : {}}
                 style={estilos.aba}
               >
-                <meta.Icone tamanho={24} cor={cor} />
+                <meta.Icone tamanho={22} cor={cor} />
                 <Texto peso="bold" style={[estilos.rotulo, { color: cor }]}>
                   {meta.rotulo}
                 </Texto>
@@ -89,9 +92,9 @@ export function BarraAbas({ state, navigation }: BottomTabBarProps) {
         onPress={() => navigation.getParent()?.navigate('Scanner')}
         accessibilityRole="button"
         accessibilityLabel="Escanear cupom"
-        style={[estilos.fab, { backgroundColor: c.teal, borderColor: c.fundo }]}
+        style={[estilos.fab, { backgroundColor: c.tinta, borderColor: c.fundo }]}
       >
-        <IconeScan tamanho={27} cor={c.branco} />
+        <IconeScan tamanho={27} cor={c.sobreTeal} />
       </Pressable>
     </View>
   );
@@ -106,18 +109,17 @@ const estilos = StyleSheet.create({
   linha: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' },
   celula: { flexDirection: 'row', alignItems: 'flex-start' },
   gap: { width: 60 },
-  aba: { alignItems: 'center', justifyContent: 'center', minWidth: 56 },
-  rotulo: { fontSize: 10.5, marginTop: 2, letterSpacing: 0.1 },
+  aba: { alignItems: 'center', justifyContent: 'center', minWidth: 56, minHeight: 44 },
+  rotulo: { fontSize: 10, marginTop: 3 },
   fab: {
     position: 'absolute',
-    top: -22,
+    top: -30, // metade do FAB sobreposta à barra (handoff 3a)
     alignSelf: 'center',
-    width: 60,
-    height: 60,
-    borderRadius: raio.cartao,
+    width: 56,
+    height: 56,
+    borderRadius: raio.pill, // 3a: circular
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 4,
-    ...sombra.flutuante,
   },
 });

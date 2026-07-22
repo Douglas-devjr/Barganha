@@ -25,6 +25,22 @@ export type RootStackParamList = {
   ProdutoDetalhe: { chave: string; nome?: string };
   /** Lista de compras comparada por loja (C12.1). */
   ListaCompras: undefined;
+  /** Feed local de avisos (alerta disparado, conquista, resumo do mês). */
+  Notificacoes: undefined;
+  /** Selos de contribuição (C12.2), derivados do histórico local. */
+  Conquistas: undefined;
+  /** Resumo de economia por mês (desconto honesto do cupom). */
+  Dashboard: undefined;
+  /**
+   * Alerta de preço + lista de compras de um produto do catálogo local. Ambas
+   * as preferências são indexadas pelo id canônico — daí ele ser o parâmetro
+   * que importa (e `null` significa "produto ainda não identificado na base").
+   */
+  EditarProduto: {
+    nome: string;
+    produtoCanonicoId: string | null;
+    unidadeBase?: string | null;
+  };
 };
 
 /**

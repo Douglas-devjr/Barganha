@@ -1,28 +1,33 @@
 /**
- * C4.3.1 — Recuperação de senha. Envia o email de reset (Supabase Auth) e mostra
- * uma confirmação neutra — não revelamos se o email existe ou não (boa prática
- * de segurança; evita enumeração de contas).
+ * C4.3.1 + Redesign "3a" — Recuperação de senha. Envia o email de reset
+ * (Supabase Auth) e volta ao login com um toast.
+ *
+ * O toast é neutro de propósito — não revela se o email existe ou não (evita
+ * enumeração de contas). Por isso ele aparece igual nos dois casos, e só erro de
+ * rede/limite vira mensagem no campo.
+ *
+ * Layout do handoff: botão voltar circular, título 27/700, apoio, um campo e o
+ * botão primário; "Voltar para o login" como link.
  */
 
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 import { useAuth } from '@/auth';
-import { Botao, CampoTexto, Tela } from '@/componentes';
-import { espaco } from '@/tema';
+import { Botao, CampoTexto, IconeVoltar, Tela, Texto, useToast } from '@/componentes';
+import { espaco, raio, useTema } from '@/tema';
 import type { AuthStackParamList } from '@/navegacao/tipos';
-
-import { CabecalhoAuth } from './CabecalhoAuth';
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'EsqueciSenha'>;
 
 export function EsqueciSenhaTela({ navigation }: Props) {
+  const { c } = useTema();
+  const toast = useToast();
   const { enviarResetSenha } = useAuth();
   const [email, setEmail] = useState('');
   const [erro, setErro] = useState<string>();
   const [carregando, setCarregando] = useState(false);
-  const [enviado, setEnviado] = useState(false);
 
   async function enviar() {
     if (!email.trim()) return setErro('Informe seu email.');
@@ -30,34 +35,34 @@ export function EsqueciSenhaTela({ navigation }: Props) {
     setCarregando(true);
     const r = await enviarResetSenha(email);
     setCarregando(false);
-    // Mostramos a mesma confirmação mesmo em erro de email inexistente
-    // (anti-enumeração); só erros de rede/limite viram mensagem.
+    // Só erro de rede/limite vira mensagem; "email inexistente" segue o caminho
+    // de sucesso para não confirmar a existência da conta.
     if (r.erro && !r.erro.toLowerCase().includes('email')) return setErro(r.erro);
-    setEnviado(true);
-  }
-
-  if (enviado) {
-    return (
-      <Tela>
-        <CabecalhoAuth
-          titulo="Verifique seu email"
-          apoio={`Se houver uma conta para ${email.trim()}, enviamos um link para redefinir a senha.`}
-        />
-        <Botao titulo="Voltar para o login" bloco onPress={() => navigation.navigate('Login')} />
-      </Tela>
-    );
+    toast('Link de redefinição enviado');
+    navigation.navigate('Login');
   }
 
   return (
     <Tela>
-      <CabecalhoAuth
-        titulo="Recuperar senha"
-        apoio="Informe seu email e enviaremos um link para criar uma nova senha."
-      />
+      <Pressable
+        onPress={() => navigation.goBack()}
+        accessibilityRole="button"
+        accessibilityLabel="Voltar"
+        style={[estilos.voltar, { backgroundColor: c.cartao, borderColor: c.cartaoBorda }]}
+      >
+        <IconeVoltar tamanho={19} cor={c.tinta} />
+      </Pressable>
+
+      <Texto peso="bold" style={estilos.titulo}>
+        Recuperar senha
+      </Texto>
+      <Texto cor="suave" style={estilos.apoio}>
+        Enviamos um link de redefinição para o seu e-mail cadastrado.
+      </Texto>
 
       <View style={estilos.form}>
         <CampoTexto
-          rotulo="Email"
+          rotulo="E-mail"
           value={email}
           onChangeText={setEmail}
           placeholder="voce@email.com"
@@ -68,19 +73,34 @@ export function EsqueciSenhaTela({ navigation }: Props) {
           editable={!carregando}
           erro={erro}
         />
-        <Botao titulo="Enviar link" bloco carregando={carregando} onPress={enviar} />
-        <Botao
-          titulo="Voltar"
-          variante="fantasma"
-          bloco
-          desabilitado={carregando}
-          onPress={() => navigation.goBack()}
-        />
+        <Botao titulo="Enviar link de redefinição" bloco carregando={carregando} onPress={enviar} />
+        <Pressable
+          onPress={() => navigation.navigate('Login')}
+          disabled={carregando}
+          accessibilityRole="button"
+          style={estilos.link}
+        >
+          <Texto cor="suave" peso="semibold" tamanho="sm">
+            Voltar para o login
+          </Texto>
+        </Pressable>
       </View>
     </Tela>
   );
 }
 
 const estilos = StyleSheet.create({
+  voltar: {
+    width: 44,
+    height: 44,
+    borderRadius: raio.pill,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: espaco.sm,
+  },
+  titulo: { fontSize: 27, letterSpacing: -0.8, marginTop: espaco.xl },
+  apoio: { fontSize: 13.5, lineHeight: 20, marginTop: espaco.xs, marginBottom: espaco.xl },
   form: { gap: espaco.lg },
+  link: { alignSelf: 'center', minHeight: 44, justifyContent: 'center' },
 });

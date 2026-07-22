@@ -1,12 +1,15 @@
 /**
- * C6.4 — Onboarding (3 passos) + consentimento LGPD. As duas primeiras telas
- * explicam o produto; a terceira pede o consentimento explícito e só então
- * libera o próximo gate — o LOGIN (C4.3.1) — e, depois dele, o app (decisão
- * travada: transparência sobre o que se coleta — preços anônimos — e o que nunca
- * se coleta — dados pessoais, docs/04).
+ * C6.4 + Redesign "3a" — Onboarding (3 slides) + consentimento LGPD.
  *
- * O consentimento é gravado localmente (meta_sync); o gate de App.tsx decide o
- * que renderizar a partir dele. Sem "Concordar", não há login nem captura.
+ * Visual do handoff: canvas `fundo`, ícone em quadrado de TINTA (raio 28) ao
+ * centro, título 25/700, apoio 14/1.55 em `suave`, dots de 8px (ativo opaco,
+ * inativos a 0.25) e o botão primário no rodapé. "Pular" no topo à direita.
+ *
+ * DIFERENÇA CONSCIENTE em relação ao handoff: os 3 slides do protótipo são só
+ * de produto, mas o consentimento é gate travado (decisão #3 / docs/04) — sem
+ * ele não há login nem captura. Em vez de inventar um 4º slide (o handoff pede
+ * 3 dots), o último slide traz a divulgação do que se coleta e o botão vira
+ * "Concordar e começar": a ação afirmativa e informada continua existindo.
  */
 
 import type { ReactElement } from 'react';
@@ -16,8 +19,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import {
   Botao,
-  IconePerfil,
   IconeScan,
+  IconeTrofeu,
   IconeVerificar,
   Texto,
   type IconeProps,
@@ -36,24 +39,22 @@ interface Passo {
   descricao: string;
 }
 
+/** Copy do handoff 3a (README, seção "Onboarding"). */
 const PASSOS: Passo[] = [
   {
     Icone: IconeScan,
-    titulo: 'Escaneie o cupom',
-    descricao:
-      'Aponte para o QR Code da nota fiscal. A gente lê os preços por você — funciona até sem internet.',
+    titulo: 'Escaneie seus cupons',
+    descricao: 'Cada cupom fiscal (NFC-e) vira dado de preço da sua região, de forma anônima.',
   },
   {
     Icone: IconeVerificar,
-    titulo: 'Saiba o preço justo',
-    descricao:
-      'Na gôndola, veja na hora se o produto está barato, na média ou caro — sempre por unidade comparável (kg, L, un).',
+    titulo: 'Veja se vale a barganha',
+    descricao: 'Compare o preço da gôndola com o típico da região antes de pôr no carrinho.',
   },
   {
-    Icone: IconePerfil,
-    titulo: 'Privacidade por design',
-    descricao:
-      'Os preços que você compartilha entram anônimos e soltos. Nunca guardamos nome, CPF ou qualquer ligação com você (LGPD).',
+    Icone: IconeTrofeu,
+    titulo: 'Economize todo mês',
+    descricao: 'Receba alertas quando um produto baixa e ganhe conquistas pela sua economia.',
   },
 ];
 
@@ -88,9 +89,10 @@ export function OnboardingTela({ aoConcordar }: OnboardingTelaProps) {
           <Pressable
             onPress={() => irPara(PASSOS.length - 1)}
             accessibilityRole="button"
+            hitSlop={8}
             style={estilos.pular}
           >
-            <Texto cor="fraco" peso="semibold">
+            <Texto cor="suave" peso="semibold" tamanho="sm">
               Pular
             </Texto>
           </Pressable>
@@ -107,15 +109,10 @@ export function OnboardingTela({ aoConcordar }: OnboardingTelaProps) {
         onMomentumScrollEnd={(e) => setIndice(Math.round(e.nativeEvent.contentOffset.x / width))}
         renderItem={({ item }) => (
           <View style={[estilos.pagina, { width }]}>
-            <View style={[estilos.circulo, { backgroundColor: c.tealWash2 }]}>
-              <item.Icone tamanho={64} cor={c.teal} larguraTraco={2} />
+            <View style={[estilos.quadrado, { backgroundColor: c.tinta }]}>
+              <item.Icone tamanho={44} cor={c.sobreTeal} larguraTraco={2} />
             </View>
-            <Texto
-              peso="extrabold"
-              tamanho="display"
-              centralizado
-              style={{ marginTop: espaco.xxl }}
-            >
+            <Texto peso="bold" centralizado style={estilos.titulo}>
               {item.titulo}
             </Texto>
             <Texto cor="suave" centralizado style={estilos.descricao}>
@@ -126,19 +123,27 @@ export function OnboardingTela({ aoConcordar }: OnboardingTelaProps) {
       />
 
       <View style={estilos.rodape}>
+        {/* Divulgação do consentimento: só no último passo, junto da ação. */}
+        {ultimo ? (
+          <Texto cor="fraco" tamanho="xs" centralizado style={estilos.consentimento}>
+            Ao começar, você concorda em compartilhar os preços dos seus cupons de forma anônima.
+            Nunca guardamos nome, CPF ou qualquer ligação com você (LGPD).
+          </Texto>
+        ) : null}
+
         <View style={estilos.pontos}>
           {PASSOS.map((_, i) => (
             <View
               key={i}
               style={[
                 estilos.ponto,
-                { backgroundColor: c.borda },
-                i === indice && [estilos.pontoAtivo, { backgroundColor: c.teal }],
+                { backgroundColor: c.tinta, opacity: i === indice ? 1 : 0.25 },
               ]}
             />
           ))}
         </View>
-        <Botao titulo={ultimo ? 'Concordar e começar' : 'Continuar'} bloco onPress={avancar} />
+
+        <Botao titulo={ultimo ? 'Concordar e começar' : 'Próximo'} bloco onPress={avancar} />
       </View>
     </SafeAreaView>
   );
@@ -146,12 +151,13 @@ export function OnboardingTela({ aoConcordar }: OnboardingTelaProps) {
 
 const estilos = StyleSheet.create({
   raiz: { flex: 1 },
-  topo: { height: 40, justifyContent: 'center', paddingHorizontal: espaco.xl },
+  topo: { height: 44, justifyContent: 'center', paddingHorizontal: espaco.tela },
   pular: {
     alignSelf: 'flex-end',
     minWidth: 44,
+    minHeight: 44,
     alignItems: 'flex-end',
-    paddingVertical: espaco.xs,
+    justifyContent: 'center',
   },
   pagina: {
     flex: 1,
@@ -159,20 +165,18 @@ const estilos = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: espaco.xxl,
   },
-  circulo: {
-    width: 132,
-    height: 132,
-    borderRadius: raio.pill,
+  // quadrado `chip` do handoff: 96px, raio 28
+  quadrado: {
+    width: 96,
+    height: 96,
+    borderRadius: 28,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  descricao: { marginTop: espaco.md, maxWidth: 320, lineHeight: 22 },
-  rodape: { paddingHorizontal: espaco.xl, paddingBottom: espaco.lg, gap: espaco.lg },
+  titulo: { fontSize: 25, letterSpacing: -0.5, marginTop: espaco.xxl },
+  descricao: { fontSize: 14, lineHeight: 22, marginTop: espaco.md, maxWidth: 300 },
+  rodape: { paddingHorizontal: espaco.tela, paddingBottom: espaco.lg, gap: espaco.lg },
+  consentimento: { lineHeight: 16, maxWidth: 320, alignSelf: 'center' },
   pontos: { flexDirection: 'row', justifyContent: 'center', gap: espaco.sm },
-  ponto: {
-    width: 8,
-    height: 8,
-    borderRadius: raio.pill,
-  },
-  pontoAtivo: { width: 22 },
+  ponto: { width: 8, height: 8, borderRadius: raio.pill },
 });
