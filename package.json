@@ -12,6 +12,8 @@
     "node": ">=20"
   },
   "scripts": {
+    "start": "npm run -w @barganha/app start --",
+    "backend": "npm run -w @barganha/backend dev",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
