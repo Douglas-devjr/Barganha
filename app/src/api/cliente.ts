@@ -18,6 +18,8 @@ import type {
   CupomResponse,
   DeltaSyncRequest,
   DeltaSyncResponse,
+  DenunciaPrecoRequest,
+  DenunciaPrecoResponse,
   IngestaoHtmlRequest,
   IngestaoQrRequest,
   IngestaoQrResponse,
@@ -138,6 +140,18 @@ export class ClienteApi {
    */
   compararLista(req: ComparacaoListaRequest): Promise<ComparacaoListaResponse> {
     return this.requisitar<ComparacaoListaResponse>('POST', '/consulta/lista', req);
+  }
+
+  /**
+   * `POST /denuncia` (C12.5) — PRIVADO (exige sessão). Reporta que o típico
+   * mostrado para um produto na região está errado.
+   *
+   * O alvo é PRODUTO + GEO, nunca uma observação do pool: não existe ponteiro do
+   * usuário para linha anônima (decisão travada #3). Denunciar não publica nada;
+   * é sinal para a curadoria.
+   */
+  denunciarPreco(req: DenunciaPrecoRequest): Promise<DenunciaPrecoResponse> {
+    return this.requisitar<DenunciaPrecoResponse>('POST', '/denuncia', req);
   }
 
   /** `POST /sync/estatisticas` (C4.2) — ANÔNIMO. Delta desde o cursor. */

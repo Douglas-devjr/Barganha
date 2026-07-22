@@ -341,3 +341,13 @@ export function IconeOlhoFechado(p: IconeProps) {
     </Base>
   );
 }
+
+/** bandeira — denunciar preço incorreto. */
+export function IconeBandeira(p: IconeProps) {
+  return (
+    <Base {...p}>
+      <Path d="M5 21V4" />
+      <Path d="M5 4.5h10.5l-1.6 3.5 1.6 3.5H5" />
+    </Base>
+  );
+}

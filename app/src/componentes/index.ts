@@ -35,6 +35,8 @@ export type { ColetorNotaWebProps, ResultadoColeta } from './ColetorNotaWeb';
 export { ProvedorToast, useToast } from './Toast';
 export { FolhaInferior, LinhaFolha } from './FolhaInferior';
 export type { FolhaInferiorProps } from './FolhaInferior';
+export { FolhaDenuncia } from './FolhaDenuncia';
+export type { FolhaDenunciaProps } from './FolhaDenuncia';
 export { Dialogo } from './Dialogo';
 export type { DialogoProps } from './Dialogo';
 export { DURACAO, useDuracao, useReduzirMovimento } from './movimento';
