@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous">
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:ital,wght@0,400;0,500;0,600;0,700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#DDDCD7;font-family:"Instrument Sans",system-ui,sans-serif}
+a{color:#1B1B19}a:hover{color:#000}
+@keyframes scrIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+@keyframes ovIn{from{opacity:0}to{opacity:1}}
+@keyframes scan{0%{top:14px}100%{top:220px}}
+@keyframes shimmer{0%{background-position:-200px 0}100%{background-position:200px 0}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes sheetUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+@keyframes toastIn{from{opacity:0;transform:translate(-50%,12px)}to{opacity:1;transform:translate(-50%,0)}}
+@keyframes popIn{from{opacity:0;transform:scale(.92)}to{opacity:1;transform:scale(1)}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important}}
+</style>
+</helmet>
+<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:36px 20px;box-sizing:border-box">
+<div style="{{ themeVars }};width:390px;height:844px;border-radius:38px;overflow:hidden;position:relative;background:var(--bg);color:var(--ink);box-shadow:0 40px 80px -30px rgba(0,0,0,.45);border:1px solid rgba(0,0,0,.12);display:flex;flex-direction:column">
+
+<div style="display:flex;justify-content:space-between;align-items:center;padding:14px 26px 4px;flex:none">
+<span style="font:700 13px 'Instrument Sans';color:var(--ink)">9:41</span>
+<div style="display:flex;gap:5px;align-items:center"><div style="width:16px;height:9px;border-radius:2px;background:var(--ink);opacity:.75"></div><div style="width:20px;height:10px;border:1.5px solid var(--ink);border-radius:3px;opacity:.6;position:relative"><div style="position:absolute;inset:2px;right:6px;background:var(--ink);border-radius:1px"></div></div></div>
+</div>
+
+<div style="flex:1;overflow-y:auto;overflow-x:hidden">
+
+<sc-if value="{{ isInicio }}" hint-placeholder-val="{{ true }}">
+<div style="animation:scrIn .28s ease;padding-bottom:16px">
+<div style="padding:14px 20px 0;display:flex;justify-content:space-between;align-items:center">
+<div><div style="font:600 10.5px 'Instrument Sans';letter-spacing:1.3px;color:var(--faint)">SEG · 21 JUL · RIO DE JANEIRO</div><div style="font:700 26px 'Instrument Sans';color:var(--ink);letter-spacing:-.8px;margin-top:3px">Olá, Douglas</div></div>
+<div style="display:flex;align-items:center;gap:10px">
+<div onClick="{{ goNotificacoes }}" style="width:44px;height:44px;border-radius:999px;border:1px solid var(--line);background:var(--card);display:flex;align-items:center;justify-content:center;cursor:pointer;position:relative"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--ink)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9a6 6 0 0 1 12 0c0 5 2 6 2 6H4s2-1 2-6"></path><path d="M10 20a2 2 0 0 0 4 0"></path></svg><span style="position:absolute;top:9px;right:10px;width:8px;height:8px;border-radius:999px;background:var(--up);border:2px solid var(--card);box-sizing:border-box;opacity:{{ notifDot }}"></span></div>
+<div onClick="{{ goPerfil }}" style="width:44px;height:44px;border-radius:999px;border:1px solid var(--line);background:var(--card);display:flex;align-items:center;justify-content:center;font:700 16px 'Instrument Sans';color:var(--ink);cursor:pointer">D</div>
+</div>
+</div>
+<div onClick="{{ goDashboard }}" style="margin:16px 20px 0;background:var(--card);border-radius:16px;border:1px solid var(--line);padding:16px 18px 14px;cursor:pointer">
+<div style="display:flex;justify-content:space-between;align-items:center"><span style="font:600 10.5px 'Instrument Sans';letter-spacing:1.3px;color:var(--faint)">ECONOMIA · JULHO</span><span style="font:600 11.5px 'Instrument Sans';color:var(--ink)">Ver resumo →</span></div>
+<div style="font:700 40px 'Instrument Sans';color:var(--ink);letter-spacing:-2px;margin-top:6px;font-variant-numeric:tabular-nums">R$ 132,40</div>
+<div style="font:500 12.5px 'Instrument Sans';color:var(--sub);margin-top:2px">economizado em promoções este mês</div>
+<div style="border-top:1px solid var(--line);margin-top:12px;padding-top:10px;display:flex;justify-content:space-between">
+<span style="font:500 11px 'Instrument Sans';color:var(--sub);font-variant-numeric:tabular-nums">23 produtos</span><span style="font:500 11px 'Instrument Sans';color:var(--sub);font-variant-numeric:tabular-nums">4 mercados</span><span style="font:500 11px 'Instrument Sans';color:var(--sub);font-variant-numeric:tabular-nums">31 cupons</span>
+</div>
+</div>
+<div onClick="{{ goConquistas }}" style="margin:14px 20px 0;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:12px 14px;display:flex;align-items:center;gap:12px;cursor:pointer">
+<div style="width:38px;height:38px;border-radius:10px;background:var(--line2);display:flex;align-items:center;justify-content:center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--ink)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="5"></circle><path d="M8.5 12.5L7 21l5-3 5 3-1.5-8.5"></path></svg></div>
+<div style="flex:1"><div style="font:600 13px 'Instrument Sans';color:var(--ink)">Nova conquista: Caçador de Café</div><div style="font:400 11.5px 'Instrument Sans';color:var(--faint)">Você já economizou R$ 132 este mês</div></div>
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--faint)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"></path></svg>
+</div>
+<div style="margin:18px 20px 6px;display:flex;justify-content:space-between;align-items:baseline"><span style="font:700 16px 'Instrument Sans';color:var(--ink);letter-spacing:-.4px">Últimas compras</span><span onClick="{{ goProdutos }}" style="font:600 12px 'Instrument Sans';color:var(--sub);text-decoration:underline;text-underline-offset:3px;cursor:pointer">Ver tudo</span></div>
+<div style="margin:0 20px;background:var(--card);border-radius:16px;border:1px solid var(--line);padding:4px 14px">
+<div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--line2);cursor:pointer" onClick="{{ goCompra }}"><div style="width:38px;height:38px;border-radius:10px;background:var(--line2);display:flex;align-items:center;justify-content:center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--ink)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9l1.4-5h13.2L20 9"></path><path d="M5 9v11h14V9"></path><path d="M9 20v-6h6v6"></path></svg></div><div style="flex:1"><div style="font:600 13px 'Instrument Sans';color:var(--ink)">Guanabara</div><div style="font:400 11.5px 'Instrument Sans';color:var(--faint)">Hoje · 12 itens</div></div><div style="text-align:right"><div style="font:700 13px 'Instrument Sans';color:var(--ink);font-variant-numeric:tabular-nums">R$ 187,32</div><div style="font:500 10.5px 'Instrument Sans';color:var(--sub);font-variant-numeric:tabular-nums">economia R$ 14,20</div></div></div>
+<div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--line2);cursor:pointer" onClick="{{ goCompra }}"><div style="width:38px;height:38px;border-radius:10px;background:var(--line2);display:flex;align-items:center;justify-content:center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--ink)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9l1.4-5h13.2L20 9"></path><path d="M5 9v11h14V9"></path><path d="M9 20v-6h6v6"></path></svg></div><div style="flex:1"><div style="font:600 13px 'Instrument Sans';color:var(--ink)">Assaí Atacadista</div><div style="font:400 11.5px 'Instrument Sans';color:var(--faint)">Ontem · 26 itens</div></div><div style="text-align:right"><div style="font:700 13px 'Instrument Sans';color:var(--ink);font-variant-numeric:tabular-nums">R$ 412,08</div><div style="font:500 10.5px 'Instrument Sans';color:var(--sub);font-variant-numeric:tabular-nums">economia R$ 31,55</div></div></div>
+<div style="display:flex;align-items:center;gap:12px;padding:12px 0;cursor:pointer" onClick="{{ goCompra }}"><div style="width:38px;height:38px;border-radius:10px;background:var(--line2);display:flex;align-items:center;justify-content:center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--ink)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9l1.4-5h13.2L20 9"></path><path d="M5 9v11h14V9"></path><path d="M9 20v-6h6v6"></path></svg></div><div style="flex:1"><div style="font:600 13px 'Instrument Sans';color:var(--ink)">Zona Sul</div><div style="font:400 11.5px 'Instrument Sans';color:var(--faint)">Quinta · 8 itens</div></div><div style="text-align:right"><div style="font:700 13px 'Instrument Sans';color:var(--ink);font-variant-numeric:tabular-nums">R$ 96,44</div><div style="font:500 10.5px 'Instrument Sans';color:var(--faint)">—</div></div></div>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isVerificar }}" hint-placeholder-val="{{ false }}">
+<div style="animation:scrIn .28s ease;padding-bottom:16px">
+<div style="padding:14px 20px 0"><div style="font:700 26px 'Instrument Sans';color:var(--ink);letter-spacing:-.8px">Verificar preço</div><div style="font:400 13px 'Instrument Sans';color:var(--sub);margin-top:4px">Compare com o típico da sua região antes de levar.</div></div>
+<div style="margin:14px 20px 0;height:50px;border:1px solid var(--line);border-radius:12px;display:flex;align-items:center;gap:10px;padding:0 8px 0 14px;background:var(--fld)">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--faint)" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg>
+<input value="{{ query }}" onInput="{{ onSearch }}" placeholder="Buscar produto…" style="flex:1;border:none;outline:none;background:transparent;font:500 13.5px 'Instrument Sans';color:var(--ink);min-width:0"></input>
+<div onClick="{{ goEscanear }}" style="width:36px;height:36px;border-radius:9px;background:var(--chip);display:flex;align-items:center;justify-content:center;cursor:pointer"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--chipink)" stroke-width="2" stroke-linecap="round"><path d="M4 7v10"></path><path d="M8 7v10"></path><path d="M11 7v10"></path><path d="M15 7v10"></path><path d="M20 7v10"></path></svg></div>
+</div>
+<div style="margin:10px 20px 0;display:flex;gap:8px;flex-wrap:wrap">
+<span onClick="{{ setLeite }}" style="height:30px;padding:0 12px;border-radius:999px;background:var(--chip);color:var(--chipink);font:600 11.5px 'Instrument Sans';display:inline-flex;align-items:center;cursor:pointer">Leite Italac</span>
+<span onClick="{{ setCafe }}" style="height:30px;padding:0 12px;border-radius:999px;border:1px solid var(--line);color:var(--sub);font:600 11.5px 'Instrument Sans';display:inline-flex;align-items:center;box-sizing:border-box;background:var(--card);cursor:pointer">Café Pilão</span>
+<span onClick="{{ setArroz }}" style="height:30px;padding:0 12px;border-radius:999px;border:1px solid var(--line);color:var(--sub);font:600 11.5px 'Instrument Sans';display:inline-flex;align-items:center;box-sizing:border-box;background:var(--card);cursor:pointer">Arroz 5 kg</span>
+</div>
+<sc-if value="{{ hasResult }}" hint-placeholder-val="{{ true }}">
+<div style="animation:scrIn .25s ease">
+<div style="margin:16px 20px 0;background:var(--card);border-radius:16px;border:1px solid var(--line);padding:18px 18px 14px">
+<div style="display:flex;justify-content:space-between;align-items:center"><div style="font:600 10.5px 'Instrument Sans';letter-spacing:1.3px;color:var(--faint)">{{ rLoja }}</div><div onClick="{{ openDenunciar }}" style="font:600 10.5px 'Instrument Sans';color:var(--faint);display:inline-flex;align-items:center;gap:4px;cursor:pointer"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21V4h13l-2 4 2 4H4"></path></svg>Denunciar</div></div>
+<div style="font:600 15px 'Instrument Sans';color:var(--ink);margin-top:8px">{{ rNome }}</div>
+<div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px;gap:10px">
+<div style="font:700 36px 'Instrument Sans';color:var(--ink);letter-spacing:-1.8px;white-space:nowrap;font-variant-numeric:tabular-nums">{{ rPreco }}</div>
+<span style="height:32px;padding:0 14px;border-radius:999px;background:{{ pillBg }};border:1.5px solid var(--ink);color:{{ pillInk }};font:700 13px 'Instrument Sans';display:inline-flex;align-items:center;box-sizing:border-box">{{ rVerdict }}</span>
+</div>
+<div style="font:500 12.5px 'Instrument Sans';color:var(--sub);margin-top:2px">{{ rMsg }}</div>
+<div style="margin:16px 2px 0;position:relative">
+<div style="height:3px;border-radius:999px;background:var(--line)"></div>
+<div style="position:absolute;top:-5.5px;left:{{ rPct }};width:14px;height:14px;border-radius:999px;background:var(--ink);border:3px solid var(--card);box-sizing:border-box;outline:1px solid var(--ink);transition:left .5s cubic-bezier(.3,1.2,.4,1)"></div>
+<div style="position:absolute;top:-3.5px;left:46%;width:1.5px;height:10px;background:var(--faint)"></div>
+</div>
+<div style="display:flex;justify-content:space-between;margin-top:10px">
+<span style="font:500 10.5px 'Instrument Sans';color:var(--faint);font-variant-numeric:tabular-nums">menor {{ rMenor }}</span><span style="font:600 10.5px 'Instrument Sans';color:var(--ink);font-variant-numeric:tabular-nums">típico {{ rTipico }}</span><span style="font:500 10.5px 'Instrument Sans';color:var(--faint);font-variant-numeric:tabular-nums">maior {{ rMaior }}</span>
+</div>
+<div style="border-top:1px solid var(--line);margin-top:12px;padding-top:9px;font:400 10.5px 'Instrument Sans';color:var(--faint)">{{ rCupons }} cupons na sua região · últimos 30 dias</div>
+</div>
+<div onClick="{{ goDetalhe }}" style="margin:12px 20px 0;font:600 12.5px 'Instrument Sans';color:var(--ink);text-decoration:underline;text-underline-offset:3px;cursor:pointer">Ver histórico e onde comprar →</div>
+<div onClick="{{ toggleAlerta }}" style="margin:14px 20px 0;height:50px;border-radius:12px;background:var(--chip);color:var(--chipink);font:700 14px 'Instrument Sans';display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--chipink)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9a6 6 0 0 1 12 0c0 5 2 6 2 6H4s2-1 2-6"></path><path d="M10 20a2 2 0 0 0 4 0"></path></svg>{{ alertaLabel }}</div>
+</div>
+</sc-if>
+<sc-if value="{{ noResult }}" hint-placeholder-val="{{ false }}">
+<div style="margin:40px 20px;text-align:center;font:500 13px 'Instrument Sans';color:var(--faint)">Digite ou escaneie um produto para ver se o preço vale a barganha.</div>
+</sc-if>
+</div>
+</sc-if>
+
+<sc-if value="{{ isProdutos }}" hint-placeholder-val="{{ false }}">
+<div style="animation:scrIn .28s ease;padding-bottom:16px">
+<div style="padding:14px 20px 0;display:flex;justify-content:space-between;align-items:center"><div style="font:700 26px 'Instrument Sans';color:var(--ink);letter-spacing:-.8px">Produtos</div><span style="font:500 11px 'Instrument Sans';color:var(--faint);font-variant-numeric:tabular-nums">23 monitorados</span></div>
+<div style="margin:14px 20px 0;display:flex;gap:10px">
+<div style="flex:1;height:46px;border:1px solid var(--line);border-radius:12px;display:flex;align-items:center;gap:10px;padding:0 14px;background:var(--fld)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--faint)" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg><input value="{{ prodQuery }}" onInput="{{ onProdSearch }}" placeholder="Buscar nos seus produtos" style="flex:1;border:none;outline:none;background:transparent;font:500 13.5px 'Instrument Sans';color:var(--ink);min-width:0"></input></div>
+<div onClick="{{ openFiltros }}" style="width:46px;height:46px;border:1px solid var(--line);border-radius:12px;background:var(--card);display:flex;align-items:center;justify-content:center;cursor:pointer;position:relative"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="var(--ink)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h18"></path><path d="M6 12h12"></path><path d="M10 19h4"></path></svg><span style="position:absolute;top:-5px;right:-5px;min-width:16px;height:16px;padding:0 3px;border-radius:999px;background:var(--ink);color:var(--bg);font:700 9px 'Instrument Sans';display:{{ filtroBadge }};align-items:center;justify-content:center;box-sizing:border-box">{{ filtroCount }}</span></div>
+</div>
+
+<sc-if value="{{ loading }}" hint-placeholder-val="{{ false }}">
+<div style="margin:14px 20px 0;background:var(--card);border-radius:16px;border:1px solid var(--line);padding:6px 14px">
+<sc-for list="{{ skeletons }}" as="s" hint-placeholder-count="5">
+<div style="display:flex;align-items:center;gap:12px;padding:14px 0;border-bottom:1px solid var(--line2)">
+<div style="flex:1"><div style="height:12px;width:62%;border-radius:6px;background:linear-gradient(90deg,var(--line2) 25%,var(--line) 50%,var(--line2) 75%);background-size:200px 100%;animation:shimmer 1.2s linear infinite"></div><div style="height:9px;width:40%;border-radius:6px;margin-top:8px;background:linear-gradient(90deg,var(--line2) 25%,var(--line) 50%,var(--line2) 75%);background-size:200px 100%;animation:shimmer 1.2s linear infinite"></div></div>
+<div style="height:16px;width:56px;border-radius:6px;background:linear-gradient(90deg,var(--line2) 25%,var(--line) 50%,var(--line2) 75%);background-size:200px 100%;animation:shimmer 1.2s linear infinite"></div>
+</div>
+</sc-for>
+</div>
+</sc-if>
+
+<sc-if value="{{ showList }}" hint-placeholder-val="{{ true }}">
+<div style="margin:14px 20px 0;background:var(--card);border-radius:16px;border:1px solid var(--line);padding:4px 14px">
+<sc-for list="{{ produtos }}" as="p" hint-placeholder-count="5">
+<div style="display:flex;align-items:center;gap:8px;padding:11px 0;border-bottom:1px solid var(--line2)">
+<div onClick="{{ p.openDet }}" style="flex:1;cursor:pointer"><div style="font:600 13.5px 'Instrument Sans';color:var(--ink)">{{ p.nome }}</div><div style="font:400 11px 'Instrument Sans';color:var(--faint);margin-top:2px;font-variant-numeric:tabular-nums">{{ p.sub }}</div></div>
+<div style="text-align:right"><div style="font:700 15px 'Instrument Sans';color:var(--ink);font-variant-numeric:tabular-nums">{{ p.preco }}</div>
+<sc-if value="{{ p.showMid }}" hint-placeholder-val="{{ false }}"><div style="font:700 10.5px 'Instrument Sans';color:var(--mid)">na média</div></sc-if>
+<sc-if value="{{ p.showDown }}" hint-placeholder-val="{{ false }}"><div style="display:inline-flex;align-items:center;gap:3px;font:700 10.5px 'Instrument Sans';color:var(--down);font-variant-numeric:tabular-nums"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"></path><path d="M6 13l6 6 6-6"></path></svg>{{ p.pctLabel }}</div></sc-if>
+<sc-if value="{{ p.showUp }}" hint-placeholder-val="{{ false }}"><div style="display:inline-flex;align-items:center;gap:3px;font:700 10.5px 'Instrument Sans';color:var(--up);font-variant-numeric:tabular-nums"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5"></path><path d="M6 11l6-6 6 6"></path></svg>{{ p.pctLabel }}</div></sc-if>
+</div>
+<div onClick="{{ p.open }}" style="width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;cursor:pointer"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--faint)" stroke-width="2.4" stroke-linecap="round"><circle cx="12" cy="5" r="1"></circle><circle cx="12" cy="12" r="1"></circle><circle cx="12" cy="19" r="1"></circle></svg></div>
+</div>
+</sc-for>
+</div>
+</sc-if>
+<sc-if value="{{ prodEmpty }}" hint-placeholder-val="{{ false }}">
+<div style="margin:40px 20px;text-align:center"><div style="font:600 14px 'Instrument Sans';color:var(--ink)">Nada encontrado</div><div style="font:400 12.5px 'Instrument Sans';color:var(--faint);margin-top:4px">Tente outro termo ou limpe os filtros.</div><div onClick="{{ limparBusca }}" style="margin-top:14px;display:inline-flex;height:38px;padding:0 16px;border-radius:10px;border:1px solid var(--line);align-items:center;font:600 12.5px 'Instrument Sans';color:var(--ink);cursor:pointer">Limpar busca</div></div>
+</sc-if>
+</div>
+</sc-if>
+
+<sc-if value="{{ isNotificacoes }}" hint-placeholder-val="{{ false }}">
+<div style="animation:scrIn .28s ease;padding-bottom:16px">
+<div style="display:flex;align-items:center;gap:12px;padding:12px 20px 0"><div onClick="{{ back }}" style="width:40px;height:40px;border-radius:999px;background:var(--card);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;box-sizing:border-box;cursor:pointer"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--ink)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"></path></svg></div><div style="flex:1;font:700 20px 'Instrument Sans';color:var(--ink);letter-spacing:-.5px">Notificações</div><span onClick="{{ marcarLidas }}" style="font:600 11.5px 'Instrument Sans';color:var(--ink);text-decoration:underline;text-underline-offset:3px;cursor:pointer">Marcar lidas</span></div>
+<div style="margin:16px 20px 0;font:600 10.5px 'Instrument Sans';letter-spacing:1.3px;color:var(--faint)">HOJE</div>
+<div style="margin:8px 20px 0;background:var(--card);border-radius:16px;border:1px solid var(--line);padding:4px 14px">
+<div style="display:flex;align-items:flex-start;gap:12px;padding:13px 0;border-bottom:1px solid var(--line2)"><div style="width:36px;height:36px;border-radius:10px;background:var(--line2);display:flex;align-items:center;justify-content:center;flex:none"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--down)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"></path><path d="M6 13l6 6 6-6"></path></svg></div><div style="flex:1"><div style="font:600 13px 'Instrument Sans';color:var(--ink)">Café Pilão baixou 24%</div><div style="font:400 11.5px 'Instrument Sans';color:var(--faint);margin-top:1px">Agora R$ 18,90 no Guanabara · há 2 h</div></div><span style="width:8px;height:8px;border-radius:999px;background:var(--up);margin-top:5px;opacity:{{ notifDot }}"></span></div>
+<div style="display:flex;align-items:flex-start;gap:12px;padding:13px 0;border-bottom:1px solid var(--line2)"><div style="width:36px;height:36px;border-radius:10px;background:var(--line2);display:flex;align-items:center;justify-content:center;flex:none"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--ink)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="5"></circle><path d="M8.5 12.5L7 21l5-3 5 3-1.5-8.5"></path></svg></div><div style="flex:1"><div style="font:600 13px 'Instrument Sans';color:var(--ink)">Conquista desbloqueada</div><div style="font:400 11.5px 'Instrument Sans';color:var(--faint);margin-top:1px">Caçador de Café · você economizou em 5 compras de café</div></div><span style="width:8px;height:8px;border-radius:999px;background:var(--up);margin-top:5px;opacity:{{ notifDot }}"></span></div>
+<div style="display:flex;align-items:flex-start;gap:12px;padding:13px 0"><div style="width:36px;height:36px;border-radius:10px;background:var(--line2);display:flex;align-items:center;justify-content:center;flex:none"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--ink)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6-7-11a7 7 0 0 1 14 0c0 5-7 11-7 11z"></path><circle cx="12" cy="10" r="2.5"></circle></svg></div><div style="flex:1"><div style="font:600 13px 'Instrument Sans';color:var(--ink)">Leite Italac perto de você</div><div style="font:400 11.5px 'Instrument Sans';color:var(--faint);margin-top:1px">R$ 4,59 no Assaí Maracanã · 2,1 km</div></div></div>
+</div>
+<div style="margin:18px 20px 0;font:600 10.5px 'Instrument Sans';letter-spacing:1.3px;color:var(--faint)">ESTA SEMANA</div>
+<div style="margin:8px 20px 0;background:var(--card);border-radius:16px;border:1px solid var(--line);padding:4px 14px">
+<div style="display:flex;align-items:flex-start;gap:12px;padding:13px 0"><div style="width:36px;height:36px;border-radius:10px;background:var(--line2);display:flex;align-items:center;justify-content:center;flex:none"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--ink)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"></path><path d="M7 15l4-4 3 3 5-6"></path></svg></div><div style="flex:1"><div style="font:600 13px 'Instrument Sans';color:var(--ink)">Seu resumo de julho está pronto</div><div style="font:400 11.5px 'Instrument Sans';color:var(--faint);margin-top:1px">Você economizou R$ 132,40 · toque para ver</div></div></div>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isConquistas }}" hint-placeholder-val="{{ false }}">
+<div style="animation:scrIn .28s ease;padding-bottom:16px">
+<div style="display:flex;align-items:center;gap:12px;padding:12px 20px 0"><div onClick="{{ back }}" style="width:40px;height:40px;border-radius:999px;background:var(--card);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;box-sizing:border-box;cursor:pointer"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--ink)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"></path></svg></div><div style="font:700 20px 'Instrument Sans';color:var(--ink);letter-spacing:-.5px">Conquistas e prêmios</div></div>
+<div style="margin:14px 20px 0;background:var(--card);border-radius:16px;border:1px solid var(--line);padding:16px 18px">
+<div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font:600 10.5px 'Instrument Sans';letter-spacing:1.3px;color:var(--faint)">NÍVEL 3 · CAÇADOR DE OFERTAS</span><span style="font:700 12px 'Instrument Sans';color:var(--ink)">4/6</span></div>
+<div style="margin-top:10px;height:8px;border-radius:999px;background:var(--line2)"><div style="width:66%;height:8px;border-radius:999px;background:var(--ink)"></div></div>
+<div style="font:400 11.5px 'Instrument Sans';color:var(--faint);margin-top:8px">Faltam 2 conquistas para o nível 4 e um cupom de R$ 10.</div>
+</div>
+<div style="margin:14px 20px 0;display:grid;grid-template-columns:1fr 1fr;gap:12px">
+<div style="background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px;text-align:center"><div style="width:48px;height:48px;border-radius:999px;background:var(--chip);display:flex;align-items:center;justify-content:center;margin:0 auto"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--chipink)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"></path></svg></div><div style="font:700 12.5px 'Instrument Sans';color:var(--ink);margin-top:10px">Primeira barganha</div><div style="font:400 10.5px 'Instrument Sans';color:var(--faint);margin-top:2px">Escaneou o 1º cupom</div></div>
+<div style="background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px;text-align:center"><div style="width:48px;height:48px;border-radius:999px;background:var(--chip);display:flex;align-items:center;justify-content:center;margin:0 auto;font:800 18px 'Instrument Sans';color:var(--chipink)">R$</div><div style="font:700 12.5px 'Instrument Sans';color:var(--ink);margin-top:10px">R$ 100 salvos</div><div style="font:400 10.5px 'Instrument Sans';color:var(--faint);margin-top:2px">Economizou R$ 100</div></div>
+<div style="background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px;text-align:center"><div style="width:48px;height:48px;border-radius:999px;background:var(--chip);display:flex;align-items:center;justify-content:center;margin:0 auto"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--chipink)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h13a3 3 0 0 1 0 6h-1"></path><path d="M4 8v9a2 2 0 0 0 2 2h7a2 2 0 0 0 2-2V8z"></path></svg></div><div style="font:700 12.5px 'Instrument Sans';color:var(--ink);margin-top:10px">Caçador de café</div><div style="font:400 10.5px 'Instrument Sans';color:var(--faint);margin-top:2px">5 compras de café</div></div>
+<div style="background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px;text-align:center"><div style="width:48px;height:48px;border-radius:999px;background:var(--chip);display:flex;align-items:center;justify-content:center;margin:0 auto"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--chipink)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"></rect><path d="M8 2v4"></path><path d="M16 2v4"></path><path d="M3 10h18"></path></svg></div><div style="font:700 12.5px 'Instrument Sans';color:var(--ink);margin-top:10px">10 cupons</div><div style="font:400 10.5px 'Instrument Sans';color:var(--faint);margin-top:2px">Enviou 10 cupons</div></div>
+<div style="background:var(--card);border:1px dashed var(--line);border-radius:16px;padding:14px;text-align:center;opacity:.55"><div style="width:48px;height:48px;border-radius:999px;background:var(--line2);display:flex;align-items:center;justify-content:center;margin:0 auto"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--faint)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"></rect><path d="M8 11V7a4 4 0 0 1 8 0v4"></path></svg></div><div style="font:700 12.5px 'Instrument Sans';color:var(--ink);margin-top:10px">R$ 500 salvos</div><div style="font:400 10.5px 'Instrument Sans';color:var(--faint);margin-top:2px">R$ 368 restantes</div></div>
+<div style="background:var(--card);border:1px dashed var(--line);border-radius:16px;padding:14px;text-align:center;opacity:.55"><div style="width:48px;height:48px;border-radius:999px;background:var(--line2);display:flex;align-items:center;justify-content:center;margin:0 auto"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--faint)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"></rect><path d="M8 11V7a4 4 0 0 1 8 0v4"></path></svg></div><div style="font:700 12.5px 'Instrument Sans';color:var(--ink);margin-top:10px">30 dias seguidos</div><div style="font:400 10.5px 'Instrument Sans';color:var(--faint);margin-top:2px">18/30 dias</div></div>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isErro }}" hint-placeholder-val="{{ false }}">
+<div style="animation:scrIn .28s ease;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:0 40px">
+<div style="width:76px;height:76px;border-radius:999px;background:var(--line2);display:flex;align-items:center;justify-content:center"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="var(--up)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"></path><path d="M12 9v4"></path><circle cx="12" cy="17" r=".5" fill="var(--up)"></circle></svg></div>
+<div style="font:700 20px 'Instrument Sans';color:var(--ink);letter-spacing:-.4px;margin-top:20px">Não deu pra ler o cupom</div>
+<div style="font:400 13.5px/1.55 'Instrument Sans';color:var(--sub);margin-top:8px">O QR Code pode estar borrado ou a NFC-e não foi encontrada na SEFAZ. Verifique a conexão e tente de novo.</div>
+<div onClick="{{ retry }}" style="margin-top:24px;height:50px;width:100%;max-width:240px;border-radius:12px;background:var(--chip);color:var(--chipink);font:700 14px 'Instrument Sans';display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--chipink)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7"></path><path d="M21 3v5h-5"></path></svg>Tentar de novo</div>
+<div onClick="{{ goInicio }}" style="margin-top:10px;font:600 12.5px 'Instrument Sans';color:var(--sub);text-decoration:underline;text-underline-offset:3px;cursor:pointer">Voltar ao início</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isCompra }}" hint-placeholder-val="{{ false }}">
+<div style="animation:scrIn .28s ease;padding-bottom:16px">
+<div style="display:flex;align-items:center;gap:12px;padding:12px 20px 0">
+<div onClick="{{ back }}" style="width:40px;height:40px;border-radius:999px;background:var(--card);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;box-sizing:border-box;cursor:pointer"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--ink)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"></path></svg></div>
+<div><div style="font:600 10.5px 'Instrument Sans';letter-spacing:1.3px;color:var(--faint)">COMPRA · HOJE 10:42</div><div style="font:700 18px 'Instrument Sans';color:var(--ink);letter-spacing:-.4px">Guanabara · Tijuca</div></div>
+</div>
+<div style="margin:16px 20px 0;background:var(--card);border-radius:16px;border:1px solid var(--line);padding:16px 18px">
+<div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font:600 10.5px 'Instrument Sans';letter-spacing:1.3px;color:var(--faint)">TOTAL DA COMPRA</span><span style="font:600 11px 'Instrument Sans';color:var(--down)">economia R$ 14,20</span></div>
+<div style="font:700 34px 'Instrument Sans';color:var(--ink);letter-spacing:-1.6px;margin-top:4px;font-variant-numeric:tabular-nums">R$ 187,32</div>
+<div style="font:400 12px 'Instrument Sans';color:var(--sub);margin-top:2px">12 itens · pago no crédito · NFC-e validada</div>
+</div>
+<div style="margin:18px 20px 6px;font:700 15px 'Instrument Sans';color:var(--ink);letter-spacing:-.3px">Itens do cupom</div>
+<div style="margin:0 20px;background:var(--card);border-radius:16px;border:1px solid var(--line);padding:4px 14px">
+<div style="display:flex;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid var(--line2)"><div style="flex:1"><div style="font:600 13px 'Instrument Sans';color:var(--ink)">Leite integral Italac 1 L</div><div style="font:400 11px 'Instrument Sans';color:var(--faint)">2 un · R$ 4,79</div></div><div style="text-align:right"><div style="font:700 13px 'Instrument Sans';color:var(--ink);font-variant-numeric:tabular-nums">R$ 9,58</div><div style="display:inline-flex;align-items:center;gap:3px;font:700 10px 'Instrument Sans';color:var(--down)"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"></path><path d="M6 13l6 6 6-6"></path></svg>barato</div></div></div>
+<div style="display:flex;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid var(--line2)"><div style="flex:1"><div style="font:600 13px 'Instrument Sans';color:var(--ink)">Pão de forma Pullman</div><div style="font:400 11px 'Instrument Sans';color:var(--faint)">1 un · R$ 8,90</div></div><div style="text-align:right"><div style="font:700 13px 'Instrument Sans';color:var(--ink);font-variant-numeric:tabular-nums">R$ 8,90</div><div style="font:700 10px 'Instrument Sans';color:var(--mid)">na média</div></div></div>
+<div style="display:flex;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid var(--line2)"><div style="flex:1"><div style="font:600 13px 'Instrument Sans';color:var(--ink)">Café Pilão 500 g</div><div style="font:400 11px 'Instrument Sans';color:var(--faint)">1 un · R$ 24,90</div></div><div style="text-align:right"><div style="font:700 13px 'Instrument Sans';color:var(--ink);font-variant-numeric:tabular-nums">R$ 24,90</div><div style="display:inline-flex;align-items:center;gap:3px;font:700 10px 'Instrument Sans';color:var(--up)"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5"></path><path d="M6 11l6-6 6 6"></path></svg>caro</div></div></div>
+<div style="display:flex;align-items:center;gap:10px;padding:12px 0"><div style="flex:1"><div style="font:600 13px 'Instrument Sans';color:var(--ink)">Detergente Ypê 500 ml</div><div style="font:400 11px 'Instrument Sans';color:var(--faint)">3 un · R$ 2,49</div></div><div style="text-align:right"><div style="font:700 13px 'Instrument Sans';color:var(--ink);font-variant-numeric:tabular-nums">R$ 7,47</div><div style="display:inline-flex;align-items:center;gap:3px;font:700 10px 'Instrument Sans';color:var(--down)"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"></path><path d="M6 13l6 6 6-6"></path></svg>barato</div></div></div>
+</div>
+<div style="margin:12px 20px 0;text-align:center;font:500 11.5px 'Instrument Sans';color:var(--faint)">+ 8 outros itens neste cupom</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isDetalhe }}" hint-placeholder-val="{{ false }}">
+<div style="animation:scrIn .28s ease;padding-bottom:16px">
+<div style="display:flex;align-items:center;gap:12px;padding:12px 20px 0">
+<div onClick="{{ back }}" style="width:40px;height:40px;border-radius:999px;background:var(--card);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;box-sizing:border-box;cursor:pointer"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--ink)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"></path></svg></div>
+<div style="flex:1"><div style="font:600 10.5px 'Instrument Sans';letter-spacing:1.3px;color:var(--faint)">LATICÍNIOS</div><div style="font:700 18px 'Instrument Sans';color:var(--ink);letter-spacing:-.4px">Leite integral Italac 1 L</div></div>
+<div onClick="{{ openAcoesLeite }}" style="width:40px;height:40px;border-radius:999px;background:var(--card);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;box-sizing:border-box;cursor:pointer"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--ink)" stroke-width="2.4" stroke-linecap="round"><circle cx="12" cy="5" r="1"></circle><circle cx="12" cy="12" r="1"></circle><circle cx="12" cy="19" r="1"></circle></svg></div>
+</div>
+<div style="margin:16px 20px 0;background:var(--card);border-radius:16px;border:1px solid var(--line);padding:16px 18px">
+<div style="display:flex;justify-content:space-between;align-items:flex-start">
+<div><div style="font:600 10.5px 'Instrument Sans';letter-spacing:1.3px;color:var(--faint)">TÍPICO NA SUA REGIÃO</div><div style="font:700 36px 'Instrument Sans';color:var(--ink);letter-spacing:-1.8px;margin-top:4px;font-variant-numeric:tabular-nums">R$ 5,49</div></div>
+<span style="height:24px;padding:0 10px;border-radius:999px;border:1px solid var(--ink);color:var(--ink);font:600 11px 'Instrument Sans';display:inline-flex;align-items:center;gap:5px"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"></path><path d="M6 13l6 6 6-6"></path></svg>em queda</span>
+</div>
+<svg width="100%" height="88" viewBox="0 0 316 88" preserveAspectRatio="none" style="margin-top:10px"><path d="M0 30 L52 36 L105 28 L158 46 L211 42 L263 58 L316 64 L316 88 L0 88 Z" fill="rgba(120,120,110,.14)"></path><path d="M0 30 L52 36 L105 28 L158 46 L211 42 L263 58 L316 64" fill="none" stroke="var(--ink)" stroke-width="2" stroke-linejoin="round"></path><circle cx="316" cy="64" r="4" fill="var(--card)" stroke="var(--ink)" stroke-width="2.5"></circle></svg>
+<div style="display:flex;justify-content:space-between;margin-top:4px"><span style="font:500 10px 'Instrument Sans';color:var(--faint)">fev</span><span style="font:500 10px 'Instrument Sans';color:var(--faint)">mar</span><span style="font:500 10px 'Instrument Sans';color:var(--faint)">abr</span><span style="font:500 10px 'Instrument Sans';color:var(--faint)">mai</span><span style="font:500 10px 'Instrument Sans';color:var(--faint)">jun</span><span style="font:700 10px 'Instrument Sans';color:var(--ink)">jul</span></div>
+<div style="border-top:1px solid var(--line);margin-top:12px;padding-top:10px;display:flex;justify-content:space-between"><span style="font:500 10.5px 'Instrument Sans';color:var(--faint);font-variant-numeric:tabular-nums">menor 4,59</span><span style="font:600 10.5px 'Instrument Sans';color:var(--down)">-8% em 6 meses</span><span style="font:500 10.5px 'Instrument Sans';color:var(--faint);font-variant-numeric:tabular-nums">maior 6,29</span></div>
+</div>
+<div style="margin:18px 20px 6px;font:700 15px 'Instrument Sans';color:var(--ink);letter-spacing:-.3px">Onde comprar hoje</div>
+<div style="margin:0 20px;background:var(--card);border-radius:16px;border:1px solid var(--line);padding:4px 14px">
+<div style="display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid var(--line2)"><div style="flex:1"><div style="font:600 12.5px 'Instrument Sans';color:var(--ink)">Assaí Atacadista</div><div style="font:400 11px 'Instrument Sans';color:var(--faint)">Maracanã · ontem</div></div><span style="height:20px;padding:0 8px;border-radius:999px;border:1px solid var(--ink);color:var(--ink);font:700 9.5px 'Instrument Sans';display:inline-flex;align-items:center;letter-spacing:.5px">MENOR</span><span style="font:700 13px 'Instrument Sans';color:var(--ink);font-variant-numeric:tabular-nums">R$ 4,59</span></div>
+<div style="display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid var(--line2)"><div style="flex:1"><div style="font:600 12.5px 'Instrument Sans';color:var(--ink)">Guanabara</div><div style="font:400 11px 'Instrument Sans';color:var(--faint)">Tijuca · hoje</div></div><span style="font:700 13px 'Instrument Sans';color:var(--ink);font-variant-numeric:tabular-nums">R$ 4,79</span></div>
+<div style="display:flex;align-items:center;gap:10px;padding:11px 0"><div style="flex:1"><div style="font:600 12.5px 'Instrument Sans';color:var(--ink)">Zona Sul</div><div style="font:400 11px 'Instrument Sans';color:var(--faint)">Botafogo · há 5 dias</div></div><span style="font:700 13px 'Instrument Sans';color:var(--faint);font-variant-numeric:tabular-nums">R$ 5,49</span></div>
+</div>
+<div onClick="{{ toggleAlerta }}" style="margin:14px 20px 0;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:12px 14px;display:flex;align-items:center;gap:12px;cursor:pointer">
+<div style="flex:1"><div style="font:600 13px 'Instrument Sans';color:var(--ink)">Alerta de preço</div><div style="font:400 11.5px 'Instrument Sans';color:var(--faint)">Avisar abaixo de R$ 4,70</div></div>
+<div style="width:46px;height:28px;border-radius:999px;background:{{ alertaTrackBg }};position:relative;transition:background .2s"><div style="position:absolute;top:3px;left:{{ alertaKnob }};width:22px;height:22px;border-radius:999px;background:#fff;transition:left .2s"></div></div>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isDashboard }}" hint-placeholder-val="{{ false }}">
+<div style="animation:scrIn .28s ease;padding-bottom:16px">
+<div style="display:flex;align-items:center;gap:12px;padding:12px 20px 0"><div onClick="{{ back }}" style="width:40px;height:40px;border-radius:999px;background:var(--card);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;box-sizing:border-box;cursor:pointer"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--ink)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"></path></svg></div><div style="font:700 20px 'Instrument Sans';color:var(--ink);letter-spacing:-.5px">Resumo de economia</div></div>
+<div style="margin:14px 20px 0;display:flex;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:4px;box-sizing:border-box">
+<span style="flex:1;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;font:500 12px 'Instrument Sans';color:var(--sub)">Maio</span><span style="flex:1;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;font:500 12px 'Instrument Sans';color:var(--sub)">Junho</span><span style="flex:1;height:34px;border-radius:9px;background:var(--chip);color:var(--chipink);display:flex;align-items:center;justify-content:center;font:600 12px 'Instrument Sans'">Julho</span>
+</div>
+<div style="margin:14px 20px 0;background:var(--card);border-radius:16px;border:1px solid var(--line);padding:16px 18px 14px">
+<span style="font:600 10.5px 'Instrument Sans';letter-spacing:1.3px;color:var(--faint)">VOCÊ ECONOMIZOU</span>
+<div style="font:700 40px 'Instrument Sans';color:var(--ink);letter-spacing:-2px;margin-top:6px;font-variant-numeric:tabular-nums">R$ 132,40</div>
+<div style="display:flex;align-items:flex-end;gap:10px;height:96px;margin-top:14px;padding:0 4px">
+<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px"><div style="width:100%;height:34px;border-radius:5px 5px 0 0;background:var(--line)"></div><span style="font:500 9px 'Instrument Sans';color:var(--faint)">fev</span></div>
+<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px"><div style="width:100%;height:45px;border-radius:5px 5px 0 0;background:var(--line)"></div><span style="font:500 9px 'Instrument Sans';color:var(--faint)">mar</span></div>
+<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px"><div style="width:100%;height:40px;border-radius:5px 5px 0 0;background:var(--line)"></div><span style="font:500 9px 'Instrument Sans';color:var(--faint)">abr</span></div>
+<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px"><div style="width:100%;height:56px;border-radius:5px 5px 0 0;background:var(--faint)"></div><span style="font:500 9px 'Instrument Sans';color:var(--faint)">mai</span></div>
+<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px"><div style="width:100%;height:64px;border-radius:5px 5px 0 0;background:var(--faint)"></div><span style="font:500 9px 'Instrument Sans';color:var(--faint)">jun</span></div>
+<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px"><div style="width:100%;height:84px;border-radius:5px 5px 0 0;background:var(--ink)"></div><span style="font:700 9px 'Instrument Sans';color:var(--ink)">jul</span></div>
+</div>
+</div>
+<div style="margin:18px 20px 6px;font:700 15px 'Instrument Sans';color:var(--ink);letter-spacing:-.3px">Onde você mais economizou</div>
+<div style="margin:0 20px;background:var(--card);border-radius:16px;border:1px solid var(--line);padding:12px 14px;display:flex;flex-direction:column;gap:11px">
+<div><div style="display:flex;justify-content:space-between"><span style="font:600 12.5px 'Instrument Sans';color:var(--ink)">Laticínios</span><span style="font:700 12px 'Instrument Sans';color:var(--ink);font-variant-numeric:tabular-nums">R$ 38,20</span></div><div style="height:6px;border-radius:999px;background:var(--line2);margin-top:5px"><div style="width:76%;height:6px;border-radius:999px;background:var(--ink)"></div></div></div>
+<div><div style="display:flex;justify-content:space-between"><span style="font:600 12.5px 'Instrument Sans';color:var(--ink)">Café</span><span style="font:700 12px 'Instrument Sans';color:var(--ink);font-variant-numeric:tabular-nums">R$ 29,10</span></div><div style="height:6px;border-radius:999px;background:var(--line2);margin-top:5px"><div style="width:58%;height:6px;border-radius:999px;background:var(--ink)"></div></div></div>
+<div><div style="display:flex;justify-content:space-between"><span style="font:600 12.5px 'Instrument Sans';color:var(--ink)">Grãos e cereais</span><span style="font:700 12px 'Instrument Sans';color:var(--ink);font-variant-numeric:tabular-nums">R$ 21,40</span></div><div style="height:6px;border-radius:999px;background:var(--line2);margin-top:5px"><div style="width:42%;height:6px;border-radius:999px;background:var(--ink)"></div></div></div>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isPerfil }}" hint-placeholder-val="{{ false }}">
+<div style="animation:scrIn .28s ease;padding-bottom:16px">
+<div style="padding:20px 20px 0;display:flex;align-items:center;gap:14px">
+<div style="width:64px;height:64px;border-radius:999px;background:var(--chip);display:flex;align-items:center;justify-content:center;font:700 24px 'Instrument Sans';color:var(--chipink)">D</div>
+<div style="flex:1"><div style="font:700 20px 'Instrument Sans';color:var(--ink);letter-spacing:-.5px">Douglas Santana</div><div style="font:400 12.5px 'Instrument Sans';color:var(--faint)">douglas.santana@gmail.com</div></div>
+</div>
+<div style="margin:16px 20px 0;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:12px 14px;display:flex;align-items:center;gap:12px">
+<div style="width:38px;height:38px;border-radius:10px;background:var(--line2);display:flex;align-items:center;justify-content:center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--ink)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6-7-11a7 7 0 0 1 14 0c0 5-7 11-7 11z"></path><circle cx="12" cy="10" r="2.5"></circle></svg></div>
+<div style="flex:1"><div style="font:600 13px 'Instrument Sans';color:var(--ink)">Rio de Janeiro · Tijuca</div><div style="font:400 11.5px 'Instrument Sans';color:var(--faint)">Região usada nas comparações</div></div>
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--faint)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"></path></svg>
+</div>
+<div style="margin:14px 20px 0;background:var(--card);border-radius:16px;border:1px solid var(--line);padding:4px 14px">
+<div onClick="{{ goConquistas }}" style="display:flex;align-items:center;gap:12px;padding:13px 0;border-bottom:1px solid var(--line2);cursor:pointer"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--sub)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="5"></circle><path d="M8.5 12.5L7 21l5-3 5 3-1.5-8.5"></path></svg><span style="flex:1;font:500 13px 'Instrument Sans';color:var(--ink)">Conquistas e prêmios</span><span style="font:700 11px 'Instrument Sans';color:var(--faint)">4/6</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--faint)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"></path></svg></div>
+<div onClick="{{ goNotificacoes }}" style="display:flex;align-items:center;gap:12px;padding:13px 0;border-bottom:1px solid var(--line2);cursor:pointer"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--sub)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9a6 6 0 0 1 12 0c0 5 2 6 2 6H4s2-1 2-6"></path><path d="M10 20a2 2 0 0 0 4 0"></path></svg><span style="flex:1;font:500 13px 'Instrument Sans';color:var(--ink)">Notificações</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--faint)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"></path></svg></div>
+<div onClick="{{ toggleAlerta }}" style="display:flex;align-items:center;gap:12px;padding:13px 0;border-bottom:1px solid var(--line2);cursor:pointer">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--sub)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9a6 6 0 0 1 12 0c0 5 2 6 2 6H4s2-1 2-6"></path><path d="M10 20a2 2 0 0 0 4 0"></path></svg>
+<span style="flex:1;font:500 13px 'Instrument Sans';color:var(--ink)">Alertas de preço</span>
+<div style="width:46px;height:28px;border-radius:999px;background:{{ alertaTrackBg }};position:relative;transition:background .2s"><div style="position:absolute;top:3px;left:{{ alertaKnob }};width:22px;height:22px;border-radius:999px;background:#fff;transition:left .2s"></div></div>
+</div>
+<div style="display:flex;align-items:center;gap:12px;padding:13px 0;border-bottom:1px solid var(--line2)">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--sub)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2"></path><path d="M12 20v2"></path><path d="M4.9 4.9l1.4 1.4"></path><path d="M17.7 17.7l1.4 1.4"></path><path d="M2 12h2"></path><path d="M20 12h2"></path><path d="M4.9 19.1l1.4-1.4"></path><path d="M17.7 6.3l1.4-1.4"></path></svg>
+<span style="flex:1;font:500 13px 'Instrument Sans';color:var(--ink)">Tema</span>
+<div style="display:flex;background:var(--line2);border-radius:9px;padding:3px">
+<span onClick="{{ setClaro }}" style="height:26px;padding:0 12px;border-radius:7px;background:{{ segClaroBg }};font:600 11px 'Instrument Sans';color:{{ segClaroInk }};display:inline-flex;align-items:center;cursor:pointer">Claro</span>
+<span onClick="{{ setEscuro }}" style="height:26px;padding:0 12px;border-radius:7px;background:{{ segEscuroBg }};font:600 11px 'Instrument Sans';color:{{ segEscuroInk }};display:inline-flex;align-items:center;cursor:pointer">Escuro</span>
+</div>
+</div>
+<div style="display:flex;align-items:center;gap:12px;padding:13px 0"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--sub)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="11" rx="2"></rect><path d="M8 10V7a4 4 0 0 1 8 0v3"></path></svg><span style="flex:1;font:500 13px 'Instrument Sans';color:var(--ink)">Privacidade dos dados</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--faint)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"></path></svg></div>
+</div>
+<div onClick="{{ askExcluirConta }}" style="margin:14px 20px 0;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px;display:flex;align-items:center;justify-content:center;gap:8px;box-sizing:border-box;cursor:pointer"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--up)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"></path><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"></path><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path></svg><span style="font:600 13.5px 'Instrument Sans';color:var(--up)">Excluir conta</span></div>
+<div style="margin:12px 0 0;text-align:center;font:500 10.5px 'Instrument Sans';color:var(--faint);letter-spacing:1px">BARGANHA V2.0.1 · BASE COLABORATIVA</div>
+</div>
+</sc-if>
+
+</div>
+
+<div style="flex:none;background:var(--card);border-top:1px solid var(--line);display:flex;align-items:flex-end;justify-content:space-around;padding:8px 8px 20px;position:relative;z-index:2">
+<div onClick="{{ goInicio }}" style="display:flex;flex-direction:column;align-items:center;gap:3px;width:64px;cursor:pointer"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="{{ navInicio }}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5L12 4l9 6.5"></path><path d="M5 9.5V20h14V9.5"></path></svg><span style="font:700 10px 'Instrument Sans';color:{{ navInicio }}">Início</span></div>
+<div onClick="{{ goVerificar }}" style="display:flex;flex-direction:column;align-items:center;gap:3px;width:64px;cursor:pointer"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="{{ navVerificar }}" stroke-width="2.2" stroke-linecap="round"><path d="M4 6v12"></path><path d="M8 6v12"></path><path d="M12 6v12"></path><path d="M17 6v12"></path><path d="M20 6v12"></path></svg><span style="font:700 10px 'Instrument Sans';color:{{ navVerificar }}">Verificar</span></div>
+<div style="width:64px;display:flex;justify-content:center"><div onClick="{{ goEscanear }}" style="width:56px;height:56px;border-radius:999px;background:var(--ink);display:flex;align-items:center;justify-content:center;margin-top:-30px;border:4px solid var(--bg);cursor:pointer"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--bg)" stroke-width="2.2" stroke-linecap="round"><path d="M4 8V5a1 1 0 0 1 1-1h3"></path><path d="M16 4h3a1 1 0 0 1 1 1v3"></path><path d="M20 16v3a1 1 0 0 1-1 1h-3"></path><path d="M8 20H5a1 1 0 0 1-1-1v-3"></path><path d="M4 12h16"></path></svg></div></div>
+<div onClick="{{ goProdutos }}" style="display:flex;flex-direction:column;align-items:center;gap:3px;width:64px;cursor:pointer"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="{{ navProdutos }}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12l9-9h9v9l-9 9z"></path><circle cx="16.5" cy="7.5" r="1.6"></circle></svg><span style="font:700 10px 'Instrument Sans';color:{{ navProdutos }}">Produtos</span></div>
+<div onClick="{{ goPerfil }}" style="display:flex;flex-direction:column;align-items:center;gap:3px;width:64px;cursor:pointer"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="{{ navPerfil }}" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="8" r="4"></circle><path d="M4 21c1.6-4 5.5-5 8-5s6.4 1 8 5"></path></svg><span style="font:700 10px 'Instrument Sans';color:{{ navPerfil }}">Perfil</span></div>
+</div>
+
+<sc-if value="{{ isOnboarding }}" hint-placeholder-val="{{ true }}">
+<div style="position:absolute;inset:0;z-index:8;background:var(--bg);display:flex;flex-direction:column;animation:ovIn .25s ease">
+<div style="display:flex;justify-content:space-between;align-items:center;padding:14px 26px 4px"><span style="font:700 13px 'Instrument Sans';color:var(--ink)">9:41</span><span onClick="{{ onbSkip }}" style="font:600 12.5px 'Instrument Sans';color:var(--sub);cursor:pointer">Pular</span></div>
+<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:0 40px">
+<div style="width:96px;height:96px;border-radius:28px;background:var(--chip);display:flex;align-items:center;justify-content:center">
+<sc-if value="{{ isOnb0 }}" hint-placeholder-val="{{ true }}"><svg width="46" height="46" viewBox="0 0 24 24" fill="none" stroke="var(--chipink)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8V5a1 1 0 0 1 1-1h3"></path><path d="M16 4h3a1 1 0 0 1 1 1v3"></path><path d="M20 16v3a1 1 0 0 1-1 1h-3"></path><path d="M8 20H5a1 1 0 0 1-1-1v-3"></path><path d="M4 12h16"></path></svg></sc-if>
+<sc-if value="{{ isOnb1 }}" hint-placeholder-val="{{ false }}"><svg width="46" height="46" viewBox="0 0 24 24" fill="none" stroke="var(--chipink)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="8" width="18" height="8" rx="2"></rect><path d="M7 8v3"></path><path d="M11 8v4"></path><path d="M15 8v3"></path></svg></sc-if>
+<sc-if value="{{ isOnb2 }}" hint-placeholder-val="{{ false }}"><svg width="46" height="46" viewBox="0 0 24 24" fill="none" stroke="var(--chipink)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="5"></circle><path d="M8.5 12.5L7 21l5-3 5 3-1.5-8.5"></path></svg></sc-if>
+</div>
+<div style="font:700 25px 'Instrument Sans';color:var(--ink);letter-spacing:-.6px;margin-top:28px">{{ onbTitle }}</div>
+<div style="font:400 14px/1.55 'Instrument Sans';color:var(--sub);margin-top:10px">{{ onbText }}</div>
+</div>
+<div style="padding:0 28px 34px">
+<div style="display:flex;justify-content:center;gap:7px;margin-bottom:22px"><span style="width:8px;height:8px;border-radius:999px;background:var(--ink);opacity:{{ onbD0 }}"></span><span style="width:8px;height:8px;border-radius:999px;background:var(--ink);opacity:{{ onbD1 }}"></span><span style="width:8px;height:8px;border-radius:999px;background:var(--ink);opacity:{{ onbD2 }}"></span></div>
+<div onClick="{{ onbNext }}" style="height:52px;border-radius:12px;background:var(--chip);color:var(--chipink);font:700 15px 'Instrument Sans';display:flex;align-items:center;justify-content:center;cursor:pointer">{{ onbCta }}</div>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isRecuperar }}" hint-placeholder-val="{{ false }}">
+<div style="position:absolute;inset:0;z-index:7;background:var(--bg);display:flex;flex-direction:column;animation:ovIn .25s ease">
+<div style="display:flex;justify-content:space-between;align-items:center;padding:14px 26px 4px"><span style="font:700 13px 'Instrument Sans';color:var(--ink)">9:41</span><div style="display:flex;gap:5px;align-items:center"><div style="width:16px;height:9px;border-radius:2px;background:var(--ink);opacity:.75"></div><div style="width:20px;height:10px;border:1.5px solid var(--ink);border-radius:3px;opacity:.6;position:relative"><div style="position:absolute;inset:2px;right:6px;background:var(--ink);border-radius:1px"></div></div></div></div>
+<div style="padding:8px 28px 0"><div onClick="{{ goLogin }}" style="width:40px;height:40px;border-radius:999px;background:var(--card);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;box-sizing:border-box;cursor:pointer"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--ink)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"></path></svg></div></div>
+<div style="padding:26px 28px 0">
+<div style="font:700 27px 'Instrument Sans';color:var(--ink);letter-spacing:-.8px">Recuperar senha</div>
+<div style="font:400 14px/1.55 'Instrument Sans';color:var(--sub);margin-top:8px">Enviamos um link de redefinição para o seu e-mail cadastrado.</div>
+<div style="font:600 12px 'Instrument Sans';color:var(--sub);margin:26px 0 6px">E-mail</div>
+<div style="height:50px;border:1.5px solid var(--ink);border-radius:12px;background:var(--card);display:flex;align-items:center;padding:0 14px;font:500 14px 'Instrument Sans';color:var(--ink)">douglas.santana@gmail.com</div>
+<div onClick="{{ enviarLink }}" style="height:52px;border-radius:12px;background:var(--chip);color:var(--chipink);font:700 15px 'Instrument Sans';display:flex;align-items:center;justify-content:center;margin-top:22px;cursor:pointer">Enviar link de redefinição</div>
+<div onClick="{{ goLogin }}" style="margin-top:14px;text-align:center;font:600 13px 'Instrument Sans';color:var(--sub);cursor:pointer">Voltar para o login</div>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isEditar }}" hint-placeholder-val="{{ false }}">
+<div style="position:absolute;inset:0;z-index:7;background:var(--bg);display:flex;flex-direction:column;animation:ovIn .25s ease">
+<div style="display:flex;justify-content:space-between;align-items:center;padding:14px 26px 4px"><span style="font:700 13px 'Instrument Sans';color:var(--ink)">9:41</span><div style="display:flex;gap:5px;align-items:center"><div style="width:16px;height:9px;border-radius:2px;background:var(--ink);opacity:.75"></div><div style="width:20px;height:10px;border:1.5px solid var(--ink);border-radius:3px;opacity:.6;position:relative"><div style="position:absolute;inset:2px;right:6px;background:var(--ink);border-radius:1px"></div></div></div></div>
+<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 20px 0"><span onClick="{{ back }}" style="font:600 14px 'Instrument Sans';color:var(--sub);cursor:pointer">Cancelar</span><span style="font:700 16px 'Instrument Sans';color:var(--ink)">Editar produto</span><span onClick="{{ salvarEdicao }}" style="font:700 14px 'Instrument Sans';color:var(--ink);cursor:pointer">Salvar</span></div>
+<div style="padding:22px 20px 0">
+<div style="font:600 12px 'Instrument Sans';color:var(--sub);margin-bottom:6px">Nome do produto</div>
+<div style="height:50px;border:1px solid var(--line);border-radius:12px;background:var(--card);display:flex;align-items:center;padding:0 14px;font:500 14px 'Instrument Sans';color:var(--ink)">{{ selNome }}</div>
+<div style="font:600 12px 'Instrument Sans';color:var(--sub);margin:16px 0 6px">Categoria</div>
+<div style="display:flex;gap:8px;flex-wrap:wrap">
+<span style="height:34px;padding:0 14px;border-radius:999px;background:var(--chip);color:var(--chipink);font:600 12px 'Instrument Sans';display:inline-flex;align-items:center">Laticínios</span>
+<span style="height:34px;padding:0 14px;border-radius:999px;border:1px solid var(--line);color:var(--sub);font:600 12px 'Instrument Sans';display:inline-flex;align-items:center;box-sizing:border-box;background:var(--card)">Café</span>
+<span style="height:34px;padding:0 14px;border-radius:999px;border:1px solid var(--line);color:var(--sub);font:600 12px 'Instrument Sans';display:inline-flex;align-items:center;box-sizing:border-box;background:var(--card)">Grãos</span>
+</div>
+<div style="font:600 12px 'Instrument Sans';color:var(--sub);margin:16px 0 6px">Avisar abaixo de</div>
+<div style="height:50px;border:1px solid var(--line);border-radius:12px;background:var(--card);display:flex;align-items:center;padding:0 14px;font:600 14px 'Instrument Sans';color:var(--ink);font-variant-numeric:tabular-nums">R$ 4,70</div>
+<div style="margin-top:16px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;display:flex;align-items:center;gap:12px">
+<div style="flex:1"><div style="font:600 13px 'Instrument Sans';color:var(--ink)">Monitorar este produto</div><div style="font:400 11.5px 'Instrument Sans';color:var(--faint)">Aparece na sua lista e no resumo</div></div>
+<div style="width:46px;height:28px;border-radius:999px;background:var(--chip);position:relative"><div style="position:absolute;top:3px;left:21px;width:22px;height:22px;border-radius:999px;background:#fff"></div></div>
+</div>
+<div onClick="{{ askExcluir }}" style="margin-top:18px;height:48px;border-radius:12px;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;gap:8px;font:600 13.5px 'Instrument Sans';color:var(--up);cursor:pointer"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--up)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"></path><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"></path><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path></svg>Excluir da lista</div>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isLogin }}" hint-placeholder-val="{{ false }}">
+<div style="position:absolute;inset:0;z-index:7;background:var(--ink);display:flex;flex-direction:column;animation:ovIn .25s ease">
+<div style="position:absolute;top:-60px;right:-60px;width:220px;height:220px;border-radius:999px;background:radial-gradient(circle,rgba(255,255,255,.09),rgba(255,255,255,0) 70%)"></div>
+<div style="display:flex;justify-content:space-between;align-items:center;padding:14px 26px 4px;position:relative"><span style="font:700 13px 'Instrument Sans';color:var(--bg)">9:41</span><div style="display:flex;gap:5px;align-items:center"><div style="width:16px;height:9px;border-radius:2px;background:var(--bg);opacity:.75"></div><div style="width:20px;height:10px;border:1.5px solid var(--bg);border-radius:3px;opacity:.6;position:relative"><div style="position:absolute;inset:2px;right:6px;background:var(--bg);border-radius:1px"></div></div></div></div>
+<div style="padding:56px 28px 0;position:relative">
+<div style="width:60px;height:60px;border-radius:16px;background:var(--bg);display:flex;align-items:center;justify-content:center;font:800 28px 'Instrument Sans';color:var(--ink)">B</div>
+<div style="font:700 36px/1.12 'Instrument Sans';color:var(--bg);letter-spacing:-1.4px;margin-top:22px">Saiba se o preço<br>vale a barganha.</div>
+</div>
+<div style="margin-top:36px;background:var(--bg);border-radius:28px 28px 0 0;flex:1;padding:28px 28px 0;display:flex;flex-direction:column">
+<div style="font:600 12px 'Instrument Sans';color:var(--sub);margin-bottom:6px">E-mail</div>
+<div style="height:50px;border:1px solid var(--line);border-radius:12px;background:var(--card);display:flex;align-items:center;padding:0 14px;font:500 14px 'Instrument Sans';color:var(--ink)">douglas.santana@gmail.com</div>
+<div style="font:600 12px 'Instrument Sans';color:var(--sub);margin:14px 0 6px">Senha</div>
+<div style="height:50px;border:1.5px solid var(--ink);border-radius:12px;background:var(--card);display:flex;align-items:center;justify-content:space-between;padding:0 14px"><span style="font:700 16px 'Instrument Sans';color:var(--ink);letter-spacing:3px">••••••••</span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--faint)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"></path><circle cx="12" cy="12" r="3"></circle></svg></div>
+<div style="font:600 12.5px 'Instrument Sans';color:var(--ink);margin-top:10px;align-self:flex-end;text-decoration:underline;text-underline-offset:3px;cursor:pointer" onClick="{{ goRecuperar }}">Esqueci a senha</div>
+<div onClick="{{ goEntrar }}" style="height:52px;border-radius:12px;background:var(--chip);color:var(--chipink);font:700 15px 'Instrument Sans';display:flex;align-items:center;justify-content:center;margin-top:20px;cursor:pointer">Entrar</div>
+<div style="display:flex;align-items:center;gap:10px;margin:16px 0"><div style="flex:1;border-top:1px solid var(--line)"></div><span style="font:600 11px 'Instrument Sans';color:var(--faint)">OU</span><div style="flex:1;border-top:1px solid var(--line)"></div></div>
+<div onClick="{{ goEntrar }}" style="height:52px;border-radius:12px;background:var(--card);border:1px solid var(--line);color:var(--ink);font:600 14px 'Instrument Sans';display:flex;align-items:center;justify-content:center;gap:10px;box-sizing:border-box;cursor:pointer"><span style="width:20px;height:20px;border-radius:999px;border:1px solid var(--line);display:inline-flex;align-items:center;justify-content:center;font:800 11px 'Instrument Sans';color:var(--ink)">G</span>Continuar com Google</div>
+<div onClick="{{ goEntrar }}" style="margin-top:auto;padding:16px 0 26px;text-align:center;font:500 13px 'Instrument Sans';color:var(--sub);cursor:pointer">Primeira vez aqui? <span style="font-weight:700;color:var(--ink);text-decoration:underline;text-underline-offset:3px">Criar conta grátis</span></div>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isEscanear }}" hint-placeholder-val="{{ false }}">
+<div style="position:absolute;inset:0;z-index:5;background:#111110;display:flex;flex-direction:column;animation:ovIn .25s ease">
+<div style="display:flex;justify-content:space-between;align-items:center;padding:14px 26px 4px"><span style="font:700 13px 'Instrument Sans';color:#fff">9:41</span><div style="display:flex;gap:5px;align-items:center"><div style="width:16px;height:9px;border-radius:2px;background:#fff;opacity:.75"></div><div style="width:20px;height:10px;border:1.5px solid #fff;border-radius:3px;opacity:.6;position:relative"><div style="position:absolute;inset:2px;right:6px;background:#fff;border-radius:1px"></div></div></div></div>
+<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 20px 0"><div onClick="{{ back }}" style="width:40px;height:40px;border-radius:999px;background:rgba(255,255,255,.1);display:flex;align-items:center;justify-content:center;cursor:pointer"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12"></path><path d="M18 6L6 18"></path></svg></div><span style="font:700 16px 'Instrument Sans';color:#fff">Escanear cupom</span><div style="width:40px;height:40px;border-radius:999px;background:rgba(255,255,255,.1);display:flex;align-items:center;justify-content:center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L4 14h6l-1 8 9-12h-6z"></path></svg></div></div>
+<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative">
+<div style="position:absolute;inset:0;background:radial-gradient(ellipse at 50% 42%,rgba(255,255,255,.06),rgba(0,0,0,.4))"></div>
+<div style="width:250px;height:250px;position:relative">
+<div style="position:absolute;top:0;left:0;width:44px;height:44px;border-top:3px solid #fff;border-left:3px solid #fff;border-top-left-radius:12px"></div>
+<div style="position:absolute;top:0;right:0;width:44px;height:44px;border-top:3px solid #fff;border-right:3px solid #fff;border-top-right-radius:12px"></div>
+<div style="position:absolute;bottom:0;left:0;width:44px;height:44px;border-bottom:3px solid #fff;border-left:3px solid #fff;border-bottom-left-radius:12px"></div>
+<div style="position:absolute;bottom:0;right:0;width:44px;height:44px;border-bottom:3px solid #fff;border-right:3px solid #fff;border-bottom-right-radius:12px"></div>
+<div style="position:absolute;left:14px;right:14px;height:2px;background:linear-gradient(90deg,transparent,#fff,transparent);border-radius:2px;animation:scan 1.8s ease-in-out infinite alternate;top:14px"></div>
+<div style="position:absolute;inset:26px;border-radius:10px;background:rgba(255,255,255,.05);display:flex;align-items:center;justify-content:center"><svg width="72" height="72" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.25)" stroke-width="1.4"><rect x="3" y="3" width="7" height="7" rx="1"></rect><rect x="14" y="3" width="7" height="7" rx="1"></rect><rect x="3" y="14" width="7" height="7" rx="1"></rect><path d="M14 14h3v3h-3z"></path><path d="M18 18h3v3h-3z"></path></svg></div>
+</div>
+<div style="margin-top:26px;font:600 15px 'Instrument Sans';color:#fff;position:relative">Aponte para o QR Code do cupom</div>
+<div style="margin-top:6px;font:400 12.5px 'Instrument Sans';color:rgba(255,255,255,.55);position:relative">O código fica no rodapé da NFC-e</div>
+</div>
+<div style="padding:0 20px 30px;display:flex;flex-direction:column;gap:10px">
+<div onClick="{{ scanOk }}" style="height:50px;border-radius:12px;background:#fff;color:#111110;font:700 13.5px 'Instrument Sans';display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer">Simular leitura do cupom</div>
+<div onClick="{{ scanErro }}" style="height:46px;border-radius:12px;background:transparent;border:1px solid rgba(255,255,255,.24);color:rgba(255,255,255,.85);font:600 12.5px 'Instrument Sans';display:flex;align-items:center;justify-content:center;gap:8px;box-sizing:border-box;cursor:pointer">Simular cupom inválido</div>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isProcessando }}" hint-placeholder-val="{{ false }}">
+<div style="position:absolute;inset:0;z-index:6;background:#111110;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;animation:ovIn .2s ease">
+<div style="width:54px;height:54px;border-radius:999px;border:4px solid rgba(255,255,255,.18);border-top-color:#fff;animation:spin .8s linear infinite"></div>
+<div style="font:600 15px 'Instrument Sans';color:#fff">Lendo cupom…</div>
+<div style="font:400 12.5px 'Instrument Sans';color:rgba(255,255,255,.5)">Anonimizando e comparando com a região</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ sheetOpen }}" hint-placeholder-val="{{ false }}">
+<div onClick="{{ closeSheet }}" style="position:absolute;inset:0;z-index:8;background:rgba(0,0,0,.45);animation:ovIn .2s ease"></div>
+<div style="position:absolute;left:0;right:0;bottom:0;z-index:9;background:var(--card);border-radius:22px 22px 0 0;padding:8px 20px 26px;animation:sheetUp .28s cubic-bezier(.2,.9,.3,1);box-shadow:0 -20px 50px -20px rgba(0,0,0,.4)">
+<div style="width:40px;height:4px;border-radius:999px;background:var(--line);margin:6px auto 14px"></div>
+
+<sc-if value="{{ sheetAcoes }}" hint-placeholder-val="{{ true }}">
+<div>
+<div style="font:700 16px 'Instrument Sans';color:var(--ink);letter-spacing:-.3px">{{ selNome }}</div>
+<div style="font:400 12px 'Instrument Sans';color:var(--faint);margin-top:2px">Escolha uma ação</div>
+<div style="margin-top:14px;display:flex;flex-direction:column;gap:2px">
+<div onClick="{{ editar }}" style="display:flex;align-items:center;gap:14px;padding:14px 4px;cursor:pointer"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--ink)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"></path></svg><span style="font:600 14px 'Instrument Sans';color:var(--ink)">Editar produto</span></div>
+<div onClick="{{ openDenunciar }}" style="display:flex;align-items:center;gap:14px;padding:14px 4px;border-top:1px solid var(--line2);cursor:pointer"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--ink)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21V4h13l-2 4 2 4H4"></path></svg><span style="font:600 14px 'Instrument Sans';color:var(--ink)">Denunciar preço incorreto</span></div>
+<div onClick="{{ askExcluir }}" style="display:flex;align-items:center;gap:14px;padding:14px 4px;border-top:1px solid var(--line2);cursor:pointer"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--up)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"></path><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"></path><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path></svg><span style="font:600 14px 'Instrument Sans';color:var(--up)">Excluir da lista</span></div>
+</div>
+<div onClick="{{ closeSheet }}" style="margin-top:12px;height:50px;border-radius:12px;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font:700 14px 'Instrument Sans';color:var(--ink);cursor:pointer">Cancelar</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ sheetFiltros }}" hint-placeholder-val="{{ false }}">
+<div>
+<div style="display:flex;justify-content:space-between;align-items:baseline"><div style="font:700 16px 'Instrument Sans';color:var(--ink);letter-spacing:-.3px">Filtrar e ordenar</div><span onClick="{{ limparFiltros }}" style="font:600 12px 'Instrument Sans';color:var(--sub);text-decoration:underline;text-underline-offset:3px;cursor:pointer">Limpar</span></div>
+<div style="font:600 10.5px 'Instrument Sans';letter-spacing:1.3px;color:var(--faint);margin:16px 0 8px">CATEGORIA</div>
+<div style="display:flex;flex-wrap:wrap;gap:8px">
+<sc-for list="{{ categorias }}" as="c" hint-placeholder-count="6"><span onClick="{{ c.on }}" style="height:34px;padding:0 14px;border-radius:999px;background:{{ c.bg }};border:1px solid var(--line);color:{{ c.ink }};font:600 12px 'Instrument Sans';display:inline-flex;align-items:center;box-sizing:border-box;cursor:pointer">{{ c.label }}</span></sc-for>
+</div>
+<div style="font:600 10.5px 'Instrument Sans';letter-spacing:1.3px;color:var(--faint);margin:18px 0 8px">ORDENAR POR</div>
+<div style="display:flex;flex-direction:column;gap:2px">
+<sc-for list="{{ ordens }}" as="o" hint-placeholder-count="4"><div onClick="{{ o.on }}" style="display:flex;align-items:center;justify-content:space-between;padding:12px 2px;border-top:1px solid var(--line2);cursor:pointer"><span style="font:500 13.5px 'Instrument Sans';color:var(--ink)">{{ o.label }}</span><span style="width:18px;height:18px;display:flex;align-items:center;justify-content:center;opacity:{{ o.check }}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--ink)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"></path></svg></span></div></sc-for>
+</div>
+<div onClick="{{ aplicarFiltros }}" style="margin-top:16px;height:52px;border-radius:12px;background:var(--chip);color:var(--chipink);display:flex;align-items:center;justify-content:center;font:700 14px 'Instrument Sans';cursor:pointer">Ver resultados</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ sheetDenunciar }}" hint-placeholder-val="{{ false }}">
+<div>
+<div style="font:700 16px 'Instrument Sans';color:var(--ink);letter-spacing:-.3px">Denunciar preço</div>
+<div style="font:400 12px 'Instrument Sans';color:var(--faint);margin-top:2px">O que está errado com este preço?</div>
+<div style="margin-top:14px;display:flex;flex-direction:column;gap:2px">
+<sc-for list="{{ motivos }}" as="m" hint-placeholder-count="4"><div onClick="{{ m.on }}" style="display:flex;align-items:center;justify-content:space-between;padding:13px 2px;border-top:1px solid var(--line2);cursor:pointer"><span style="font:500 13.5px 'Instrument Sans';color:var(--ink)">{{ m.label }}</span><span style="width:20px;height:20px;border-radius:999px;border:2px solid {{ m.ring }};display:flex;align-items:center;justify-content:center"><span style="width:10px;height:10px;border-radius:999px;background:var(--ink);opacity:{{ m.dot }}"></span></span></div></sc-for>
+</div>
+<div onClick="{{ enviarDenuncia }}" style="margin-top:16px;height:52px;border-radius:12px;background:var(--chip);color:var(--chipink);display:flex;align-items:center;justify-content:center;font:700 14px 'Instrument Sans';cursor:pointer">Enviar denúncia</div>
+<div onClick="{{ closeSheet }}" style="margin-top:8px;height:44px;display:flex;align-items:center;justify-content:center;font:600 13px 'Instrument Sans';color:var(--sub);cursor:pointer">Cancelar</div>
+</div>
+</sc-if>
+
+</div>
+</sc-if>
+
+<sc-if value="{{ dialogOpen }}" hint-placeholder-val="{{ false }}">
+<div onClick="{{ cancelDialog }}" style="position:absolute;inset:0;z-index:10;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;padding:32px;animation:ovIn .2s ease">
+<div style="width:100%;background:var(--card);border-radius:20px;padding:22px 20px;animation:popIn .22s cubic-bezier(.2,1.2,.4,1)">
+<div style="width:48px;height:48px;border-radius:999px;background:var(--line2);display:flex;align-items:center;justify-content:center;margin:0 auto"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--up)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"></path><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"></path><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path></svg></div>
+<div style="font:700 17px 'Instrument Sans';color:var(--ink);text-align:center;margin-top:14px;letter-spacing:-.3px">{{ dialogTitle }}</div>
+<div style="font:400 12.5px/1.5 'Instrument Sans';color:var(--sub);text-align:center;margin-top:6px">{{ dialogMsg }}</div>
+<div style="display:flex;gap:10px;margin-top:20px">
+<div onClick="{{ cancelDialog }}" style="flex:1;height:48px;border-radius:12px;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font:700 13.5px 'Instrument Sans';color:var(--ink);cursor:pointer">Cancelar</div>
+<div onClick="{{ confirmDialog }}" style="flex:1;height:48px;border-radius:12px;background:var(--up);display:flex;align-items:center;justify-content:center;font:700 13.5px 'Instrument Sans';color:#fff;cursor:pointer">{{ dialogOk }}</div>
+</div>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ hasToast }}" hint-placeholder-val="{{ false }}">
+<div style="position:absolute;left:50%;bottom:104px;z-index:20;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:11px 18px;border-radius:999px;font:600 12.5px 'Instrument Sans';box-shadow:0 12px 30px -10px rgba(0,0,0,.5);animation:toastIn .25s ease;white-space:nowrap;max-width:340px;overflow:hidden;text-overflow:ellipsis">{{ toastMsg }}</div>
+</sc-if>
+
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:430,&quot;height&quot;:916},&quot;theme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;escuro&quot;,&quot;options&quot;:[&quot;claro&quot;,&quot;escuro&quot;],&quot;tsType&quot;:&quot;'claro'|'escuro'&quot;,&quot;section&quot;:&quot;Aparência&quot;}}">
+class Component extends DCLogic {
+  state = {
+    route:'onboarding', theme:(this.props.theme||'claro'), query:'leite italac', alerta:true, prev:'inicio',
+    prodQuery:'', cat:'Todos', sort:'Padrão', sheet:null, dialog:null, loading:false, toast:null, sel:'', motivo:0, notifLidas:false, onb:0
+  };
+
+  db(){ return [
+    { keys:['leite','italac'], nome:'Leite integral Italac 1 L', loja:'GUANABARA · TIJUCA · AGORA', preco:'R$ 4,79', valor:4.79, tipico:5.49, menor:4.59, maior:6.29, cupons:214 },
+    { keys:['café','cafe','pilão','pilao'], nome:'Café Pilão 500 g', loja:'ASSAÍ · MARACANÃ · AGORA', preco:'R$ 24,90', valor:24.90, tipico:20.90, menor:18.90, maior:25.50, cupons:187 },
+    { keys:['arroz','tio joão','tio joao'], nome:'Arroz Tio João 5 kg', loja:'MUNDIAL · VILA ISABEL · AGORA', preco:'R$ 27,90', valor:27.90, tipico:27.50, menor:24.90, maior:31.90, cupons:96 },
+  ]; }
+  match(){ const q=(this.state.query||'').toLowerCase().trim(); if(!q) return null; return this.db().find(p=>p.keys.some(k=>q.includes(k)))||null; }
+  fmt(v){ return v.toFixed(2).replace('.',','); }
+
+  allProdutos(){ return [
+    {nome:'Leite integral Italac 1 L', cat:'Laticínios', sub:'típico R$ 5,49 · 214 cupons', preco:'R$ 4,79', dir:'down', pct:'13%', valor:4.79},
+    {nome:'Café Pilão 500 g', cat:'Café', sub:'típico R$ 20,90 · 187 cupons', preco:'R$ 24,90', dir:'up', pct:'19%', valor:24.90},
+    {nome:'Arroz Tio João 5 kg', cat:'Grãos', sub:'típico R$ 27,50 · 96 cupons', preco:'R$ 27,90', dir:'mid', pct:'', valor:27.90},
+    {nome:'Azeite Gallo 500 ml', cat:'Mercearia', sub:'típico R$ 33,50 · 54 cupons', preco:'R$ 39,90', dir:'up', pct:'19%', valor:39.90},
+    {nome:'Sabão Omo 1,6 kg', cat:'Limpeza', sub:'típico R$ 22,90 · 71 cupons', preco:'R$ 19,90', dir:'down', pct:'13%', valor:19.90},
+  ]; }
+  produtosView(){
+    let a=this.allProdutos();
+    const q=this.state.prodQuery.toLowerCase().trim();
+    if(q) a=a.filter(p=>p.nome.toLowerCase().includes(q));
+    if(this.state.cat!=='Todos') a=a.filter(p=>p.cat===this.state.cat);
+    const s=this.state.sort;
+    if(s==='Menor preço') a=[...a].sort((x,y)=>x.valor-y.valor);
+    else if(s==='Maior preço') a=[...a].sort((x,y)=>y.valor-x.valor);
+    else if(s==='A–Z') a=[...a].sort((x,y)=>x.nome.localeCompare(y.nome));
+    return a;
+  }
+
+  go(r){ this.setState(s=>({ prev:(['detalhe','dashboard','escanear','notificacoes','conquistas','erro','processando','editar','compra'].includes(r))?s.route:s.prev, route:r, sheet:null, dialog:null })); }
+  toast(msg){ this.setState({toast:msg}); clearTimeout(this._t); this._t=setTimeout(()=>this.setState({toast:null}),2400); }
+
+  renderVals(){
+    const r=this.state.route, dark=this.state.theme==='escuro';
+    const p=this.match();
+    const v=p?(p.valor-p.tipico)/p.tipico:0;
+    let verdict='Na média',kind='mid',msg='Dentro da faixa típica da sua região';
+    if(p&&v<=-0.05){verdict='Barato';kind='down';msg=Math.round(-v*100)+'% abaixo do típico da sua região';}
+    else if(p&&v>=0.05){verdict='Caro';kind='up';msg=Math.round(v*100)+'% acima do típico da sua região';}
+    let pct=50; if(p) pct=Math.max(6,Math.min(94,(p.valor-p.menor)/(p.maior-p.menor)*100));
+    const nav=t=>(r===t?'var(--ink)':'var(--faint)');
+    const view=this.produtosView();
+    const produtos=view.map(pr=>({
+      nome:pr.nome, sub:pr.sub, preco:pr.preco, pctLabel:pr.pct,
+      showDown:pr.dir==='down', showUp:pr.dir==='up', showMid:pr.dir==='mid',
+      openDet:()=> pr.nome.indexOf('Leite')===0 ? this.go('detalhe') : this.openAcoes(pr.nome),
+      open:()=>this.openAcoes(pr.nome),
+    }));
+    const cats=['Todos','Laticínios','Café','Grãos','Mercearia','Limpeza'].map(c=>({label:c,active:c===this.state.cat,bg:c===this.state.cat?'var(--chip)':'var(--card)',ink:c===this.state.cat?'var(--chipink)':'var(--sub)',on:()=>this.setState({cat:c})}));
+    const ords=['Padrão','Menor preço','Maior preço','A–Z'].map(o=>({label:o,check:o===this.state.sort?1:0,on:()=>this.setState({sort:o})}));
+    const motivosArr=['Preço maior que o real','Produto errado','Mercado errado','Cupom duplicado'].map((m,i)=>({label:m,ring:i===this.state.motivo?'var(--ink)':'var(--line)',dot:i===this.state.motivo?1:0,on:()=>this.setState({motivo:i})}));
+    const nFiltros=(this.state.cat!=='Todos'?1:0)+(this.state.sort!=='Padrão'?1:0);
+    const contaDialog=this.state.dialog==='conta';
+    return {
+      themeVars: dark
+        ? '--bg:#111110;--card:#191918;--ink:#F0F0EE;--sub:#8F8F8A;--faint:#8F8F8A;--line:rgba(255,255,255,.12);--line2:rgba(255,255,255,.08);--chip:#F0F0EE;--chipink:#111110;--fld:#191918;--up:#F87171;--down:#4ADE80;--mid:#E8A33C'
+        : '--bg:#F7F7F5;--card:#ffffff;--ink:#1B1B19;--sub:#6B6B66;--faint:#A3A39D;--line:#E7E7E3;--line2:#F0F0EC;--chip:#1B1B19;--chipink:#ffffff;--fld:#ffffff;--up:#DC2626;--down:#16A34A;--mid:#D97706',
+      isInicio:r==='inicio', isVerificar:r==='verificar', isProdutos:r==='produtos', isDetalhe:r==='detalhe',
+      isDashboard:r==='dashboard', isPerfil:r==='perfil', isEscanear:r==='escanear', isProcessando:r==='processando',
+      isNotificacoes:r==='notificacoes', isConquistas:r==='conquistas', isErro:r==='erro', isLogin:r==='login',
+      isOnboarding:r==='onboarding', isRecuperar:r==='recuperar', isEditar:r==='editar', isCompra:r==='compra',
+      isOnb0:this.state.onb===0, isOnb1:this.state.onb===1, isOnb2:this.state.onb===2,
+      onbD0:this.state.onb===0?1:0.25, onbD1:this.state.onb===1?1:0.25, onbD2:this.state.onb===2?1:0.25,
+      onbTitle:['Escaneie seus cupons','Veja se vale a barganha','Economize todo mês'][this.state.onb],
+      onbText:['Cada cupom fiscal (NFC-e) vira dado de preço da sua região, de forma anônima.','Compare o preço da gôndola com o típico da região antes de pôr no carrinho.','Receba alertas quando um produto baixa e ganhe conquistas pela sua economia.'][this.state.onb],
+      onbCta:this.state.onb<2?'Próximo':'Começar',
+      navInicio:nav('inicio'), navVerificar:nav('verificar'), navProdutos:nav('produtos'), navPerfil:nav('perfil'),
+      notifDot: this.state.notifLidas?0:1,
+      query:this.state.query, hasResult:!!p, noResult:!p,
+      rNome:p?p.nome:'', rLoja:p?p.loja:'', rPreco:p?p.preco:'',
+      rMenor:p?this.fmt(p.menor):'', rTipico:p?this.fmt(p.tipico):'', rMaior:p?this.fmt(p.maior):'',
+      rCupons:p?p.cupons:'', rVerdict:verdict, rMsg:msg, rPct:pct+'%',
+      pillBg:kind==='down'?'var(--ink)':'transparent', pillInk:kind==='down'?'var(--card)':'var(--ink)',
+      alertaLabel:this.state.alerta?'Alerta de preço ativado ✓':'Avisar quando baixar',
+      alertaTrackBg:this.state.alerta?'var(--chip)':'var(--faint)', alertaKnob:this.state.alerta?'21px':'3px',
+      segClaroBg:!dark?'var(--card)':'transparent', segClaroInk:!dark?'var(--ink)':'var(--faint)',
+      segEscuroBg:dark?'#000':'transparent', segEscuroInk:dark?'#fff':'var(--faint)',
+      prodQuery:this.state.prodQuery, produtos, skeletons:[1,2,3,4,5],
+      loading:this.state.loading, showList:!this.state.loading && view.length>0, prodEmpty:!this.state.loading && view.length===0,
+      filtroCount:nFiltros, filtroBadge:nFiltros>0?'flex':'none',
+      categorias:cats, ordens:ords, motivos:motivosArr,
+      sheetOpen:!!this.state.sheet, sheetAcoes:this.state.sheet==='acoes', sheetFiltros:this.state.sheet==='filtros', sheetDenunciar:this.state.sheet==='denunciar',
+      selNome:this.state.sel,
+      dialogOpen:!!this.state.dialog,
+      dialogTitle: contaDialog?'Excluir sua conta?':('Remover da lista?'),
+      dialogMsg: contaDialog?'Isso apaga seus cupons e histórico permanentemente. Não dá pra desfazer.':('“'+this.state.sel+'” sai dos seus produtos monitorados.'),
+      dialogOk: contaDialog?'Excluir conta':'Excluir',
+      hasToast:!!this.state.toast, toastMsg:this.state.toast||'',
+      goInicio:()=>this.go('inicio'), goVerificar:()=>this.go('verificar'), goProdutos:()=>this.go('produtos'),
+      goPerfil:()=>this.go('perfil'), goEscanear:()=>this.go('escanear'), goDetalhe:()=>this.go('detalhe'),
+      goDashboard:()=>this.go('dashboard'), goNotificacoes:()=>{this.setState({notifLidas:false});this.go('notificacoes');}, goConquistas:()=>this.go('conquistas'),
+      back:()=>this.setState(s=>({route:s.prev, sheet:null, dialog:null})),
+      onSearch:(e)=>this.setState({query:e.target.value}),
+      onProdSearch:(e)=>this.setState({prodQuery:e.target.value}),
+      setLeite:()=>this.setState({query:'leite italac'}), setCafe:()=>this.setState({query:'café pilão'}), setArroz:()=>this.setState({query:'arroz tio joão'}),
+      limparBusca:()=>this.setState({prodQuery:'',cat:'Todos',sort:'Padrão'}),
+      toggleAlerta:()=>{const n=!this.state.alerta;this.setState({alerta:n});this.toast(n?'Alerta ativado':'Alerta desativado');},
+      setClaro:()=>this.setState({theme:'claro'}), setEscuro:()=>this.setState({theme:'escuro'}),
+      openFiltros:()=>this.setState({sheet:'filtros'}),
+      limparFiltros:()=>this.setState({cat:'Todos',sort:'Padrão'}),
+      aplicarFiltros:()=>this.setState({sheet:null}),
+      openAcoesLeite:()=>this.openAcoes('Leite integral Italac 1 L'),
+      closeSheet:()=>this.setState({sheet:null}),
+      editar:()=>this.go('editar'),
+      salvarEdicao:()=>{this.setState(s=>({route:s.prev}));this.toast('Alterações salvas');},
+      onbNext:()=>{if(this.state.onb<2)this.setState(s=>({onb:s.onb+1}));else this.setState({route:'login'});},
+      onbSkip:()=>this.setState({route:'login'}),
+      goRecuperar:()=>this.setState({route:'recuperar'}),
+      goLogin:()=>this.setState({route:'login'}),
+      enviarLink:()=>{this.setState({route:'login'});this.toast('Link de redefinição enviado');},
+      goCompra:()=>this.go('compra'),
+      openDenunciar:()=>this.setState({sheet:'denunciar', sel:this.state.sel||'este preço'}),
+      enviarDenuncia:()=>{this.setState({sheet:null});this.toast('Preço denunciado. Obrigado!');},
+      askExcluir:()=>this.setState({sheet:null, dialog:'produto'}),
+      askExcluirConta:()=>this.setState({dialog:'conta'}),
+      cancelDialog:()=>this.setState({dialog:null}),
+      confirmDialog:()=>{const c=this.state.dialog==='conta';const n=this.state.sel;this.setState({dialog:null});this.toast(c?'Conta excluída':('“'+n+'” removido da lista'));},
+      scanOk:()=>{this.go('processando');clearTimeout(this._s);this._s=setTimeout(()=>{this.setState({route:'produtos',loading:true});this.toast('Cupom lido · 12 itens adicionados');clearTimeout(this._l);this._l=setTimeout(()=>this.setState({loading:false}),1200);},1700);},
+      scanErro:()=>{this.go('processando');clearTimeout(this._s);this._s=setTimeout(()=>this.setState({route:'erro'}),1700);},
+      marcarLidas:()=>{this.setState({notifLidas:true});this.toast('Notificações marcadas como lidas');},
+      retry:()=>this.go('escanear'),
+      goEntrar:()=>this.setState({route:'inicio', prev:'inicio'}),
+    };
+  }
+  openAcoes(nome){ this.setState({sheet:'acoes', sel:nome}); }
+}
+</script>
+</body>
+</html>
