@@ -107,4 +107,33 @@ export const MIGRACOES: string[] = [
     criado_em           TEXT NOT NULL
   );
   `,
+  // v5 — feed de notificações (redesign 3a). Os avisos hoje são recalculados a
+  // cada foco do Início e somem; aqui viram EVENTOS persistidos com estado de
+  // leitura, que é o que a tela de Notificações precisa.
+  //
+  // Privado por natureza (docs/04): vive só neste aparelho, como o alerta que o
+  // origina — nada viaja para o servidor e nada encosta em `observacao_preco`.
+  //
+  // `chave_dedupe` é o que impede o feed de inundar: a checagem de alertas roda
+  // toda vez que o app foca, então o mesmo evento reaparece direto. A chave
+  // carrega o bucket de tempo do evento (dia p/ preço, mês p/ resumo, único p/
+  // selo), e o INSERT é idempotente por ela.
+  `
+  CREATE TABLE notificacao (
+    id                  TEXT PRIMARY KEY NOT NULL,
+    tipo                TEXT NOT NULL,
+    chave_dedupe        TEXT NOT NULL,
+    titulo              TEXT NOT NULL,
+    subtitulo           TEXT,
+    -- alvo de navegação ao tocar no item (quando o evento é de um produto)
+    produto_canonico_id TEXT,
+    criado_em           TEXT NOT NULL,
+    -- NULL = não lida (o ponto do handoff 3a)
+    lida_em             TEXT
+  );
+
+  CREATE UNIQUE INDEX notificacao_dedupe_uniq ON notificacao (chave_dedupe);
+  CREATE INDEX notificacao_criado_idx ON notificacao (criado_em DESC);
+  CREATE INDEX notificacao_nao_lida_idx ON notificacao (lida_em) WHERE lida_em IS NULL;
+  `,
 ];

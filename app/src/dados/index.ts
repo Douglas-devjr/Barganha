@@ -9,3 +9,4 @@ export * as fila from './repositorio-fila';
 export * as meta from './repositorio-meta';
 export * as lista from './repositorio-lista';
 export * as alertas from './repositorio-alertas';
+export * as notificacoes from './repositorio-notificacoes';

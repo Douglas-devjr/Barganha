@@ -9,7 +9,7 @@
  * `alertas-regras.ts`, testáveis sem React Native.
  */
 
-import { alertas, cache } from '@/dados';
+import { alertas, cache, meta } from '@/dados';
 
 import { avaliarAlerta, escolherEstatisticaRegional, type AlertaDisparado } from './alertas-regras';
 import { resolverLocalizacao } from './localizacao';
@@ -19,6 +19,9 @@ export type { AlertaDisparado } from './alertas-regras';
 /** Checa todos os alertas contra o cache regional. Silencioso em erro (é aviso). */
 export async function verificarAlertas(): Promise<AlertaDisparado[]> {
   try {
+    // Chave-mestra do Perfil: desligada, nada dispara (os alvos ficam salvos).
+    if (!(await meta.alertasAtivos())) return [];
+
     const [todos, local] = await Promise.all([alertas.listar(), resolverLocalizacao()]);
     if (todos.length === 0 || !local) return [];
 

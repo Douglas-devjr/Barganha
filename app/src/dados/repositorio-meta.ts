@@ -13,6 +13,7 @@ const CHAVE_CURSOR = 'cursor_delta';
 export const CHAVE_CONSENTIMENTO = 'consentimento_em';
 const CHAVE_LOCAL_UF = 'local_uf';
 const CHAVE_LOCAL_MUNICIPIO = 'local_municipio';
+const CHAVE_ALERTAS = 'alertas_ativos';
 
 export async function obterMeta(chave: string): Promise<string | null> {
   const linha = await getBd().getFirstAsync<{ valor: string | null }>(
@@ -41,6 +42,15 @@ export const definirCursorDelta = (cursor: string): Promise<void> =>
 export const obterConsentimentoEm = (): Promise<string | null> => obterMeta(CHAVE_CONSENTIMENTO);
 export const registrarConsentimento = (): Promise<void> =>
   definirMeta(CHAVE_CONSENTIMENTO, new Date().toISOString());
+
+/**
+ * Chave-mestra dos alertas de preço (linha "Alertas de preço" do Perfil).
+ * Desligada, `verificarAlertas()` não dispara nada — os alvos por produto ficam
+ * guardados, só param de avisar. Ausente = ligado (o padrão).
+ */
+export const alertasAtivos = async (): Promise<boolean> => (await obterMeta(CHAVE_ALERTAS)) !== '0';
+export const definirAlertasAtivos = (ativos: boolean): Promise<void> =>
+  definirMeta(CHAVE_ALERTAS, ativos ? '1' : '0');
 
 /**
  * Localização ESCOLHIDA manualmente pelo usuário (cidade/UF) — o recorte

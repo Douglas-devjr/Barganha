@@ -1,7 +1,8 @@
 /**
  * C8.2 / C4.3.1 — Limpeza local do aparelho, chamada ao SAIR (encerra a sessão)
  * e ao APAGAR a conta. Apaga TODO o estado local: histórico privado (cupons +
- * itens), fila de upload, cache de estatísticas e o cursor de sync.
+ * itens), fila de upload, cache de estatísticas, preferências do usuário (lista
+ * de compras, alertas de preço), o feed de notificações e o cursor de sync.
  *
  * PRESERVA o consentimento LGPD (`consentimento_em`): ele registra que ESTE
  * aparelho já aceitou a política de privacidade (gate de onboarding), não é dado
@@ -28,6 +29,11 @@ export async function redefinirAppLocal(): Promise<void> {
       DELETE FROM fila_upload;
       DELETE FROM cupom_local;
       DELETE FROM cache_estatistica;
+      -- Preferências e derivados do usuário: sem isto a próxima conta neste
+      -- aparelho herdaria a lista, os alertas e os avisos da anterior.
+      DELETE FROM lista_compras;
+      DELETE FROM alerta_preco;
+      DELETE FROM notificacao;
     `);
     // meta_sync: limpa tudo (cursor de sync, sessão de auth) MENOS o consentimento.
     await db.runAsync(`DELETE FROM meta_sync WHERE chave <> ?`, [meta.CHAVE_CONSENTIMENTO]);
