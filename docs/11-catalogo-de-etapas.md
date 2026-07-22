@@ -160,6 +160,7 @@ Alertas de preço e economia acumulada já estão em **C8.4**.
 | C12.2 | Gamificação da contribuição (sequências, selos, contador de cupons enviados) |
 | C12.3 | Recortes de combustíveis e farmácia (curadoria de categoria + UI) |
 | C12.4 | Ofertas anunciadas (fontes externas): tabela `oferta_anunciada` + coleta via adaptador VTEX + exibição SEPARADA no app — **nunca no pool/mediana** (regra travada; o cliente VTEX do C11.5 já lê o preço). Mesmo encaixe recebe, na Fase 2, o **feed de parceria** dos mercados (ver `docs/18-ofertas-e-monetizacao.md`) |
+| C12.5 | Denúncia de preço incorreto: tabela `denuncia_preco` (PRIVADA) + `POST /denuncia` + fila de curadoria. O alvo é **produto + recorte geo**, nunca uma `observacao_preco` — não existe ponteiro de usuário para linha do pool (decisão travada nº3). Denunciar **não publica nada**: é sinal para a curadoria corrigir casamento/unidade com as ferramentas do C11 |
 *Responsáveis:* product-manager, data-scientist, mobile-engineer, ux-designer
 
 ---

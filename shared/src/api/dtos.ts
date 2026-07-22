@@ -6,7 +6,7 @@
 
 import type { UnidadeBase } from '../core';
 import type { PrecoEstatistica } from '../dominio/entidades';
-import type { EscopoGeo, StatusCupom, StatusModeracao } from '../dominio/enums';
+import type { EscopoGeo, MotivoDenuncia, StatusCupom, StatusModeracao } from '../dominio/enums';
 
 // ─────────────────────────── Ingestão (C2.1) ───────────────────────────
 
@@ -290,4 +290,43 @@ export interface DeltaSyncResponse {
   estatisticas: PrecoEstatistica[];
   /** Novo cursor para a próxima sincronização. */
   cursor: string;
+}
+
+// ───────────────────── Denúncia de preço (C12.5) ───────────────────────
+
+/**
+ * Denúncia de preço incorreto. O alvo é o PRODUTO + o recorte geográfico — o
+ * que a tela mostra —, nunca uma `observacao_preco`: assim não há ponteiro de
+ * usuário para linha do pool anônimo (decisão travada #3, docs/04). O autor vai
+ * no header de auth e fica só no registro privado, para anti-abuso.
+ */
+export interface DenunciaPrecoRequest {
+  produtoCanonicoId: string;
+  motivo: MotivoDenuncia;
+  /** Recorte geográfico em que o preço foi visto (o mesmo da consulta). */
+  municipio?: string;
+  uf?: string;
+  /** Texto livre opcional (motivo "outro"). A UI não pede dado pessoal. */
+  comentario?: string;
+}
+
+export interface DenunciaPrecoResponse {
+  id: string;
+  status: StatusModeracao;
+  /** `true` quando já havia uma denúncia aberta desta pessoa para o produto. */
+  jaRegistrada: boolean;
+}
+
+/** Denúncia vista pela CURADORIA — sem `usuarioId` (anti-abuso fica no banco). */
+export interface DenunciaCuradoria {
+  id: string;
+  produtoCanonicoId: string;
+  motivo: MotivoDenuncia;
+  municipio?: string;
+  uf?: string;
+  comentario?: string;
+  status: StatusModeracao;
+  criadoEm: string;
+  /** Quantas denúncias abertas o mesmo produto acumula (prioriza a fila). */
+  abertasNoProduto: number;
 }

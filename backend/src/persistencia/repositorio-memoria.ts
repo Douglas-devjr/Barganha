@@ -8,8 +8,10 @@
 import { randomUUID } from 'node:crypto';
 
 import {
+  type DenunciaCuradoria,
   garantirSemDadoPessoal,
   type Loja,
+  type MotivoDenuncia,
   type ObservacaoAnonima,
   type PrecoEstatistica,
   type ProdutoResumo,
@@ -49,6 +51,11 @@ import type {
   LojaModeracao,
   RepositorioModeracao,
 } from '../moderacao/tipos';
+import type {
+  DenunciaNova,
+  DenunciaRegistrada,
+  RepositorioDenuncia,
+} from '../moderacao/tipos-denuncia';
 import type { FiltroDeltaSync, FonteDeltaSync } from '../sync/tipos';
 import type {
   CupomComItens,
@@ -73,6 +80,22 @@ interface CupomInterno extends CupomRegistro {
 interface ItemCupomArmazenado extends ItemCupomNovo {
   id: string;
   cupomId: string;
+}
+
+/** Denúncia guardada em memória (espelha `denuncia_preco`). C12.5. */
+interface DenunciaInterna {
+  id: string;
+  /** PRIVADO — anti-abuso. Nunca sai na visão de curadoria. */
+  usuarioId: string;
+  produtoCanonicoId: string;
+  motivo: MotivoDenuncia;
+  municipio?: string;
+  uf?: string;
+  comentario?: string;
+  status: StatusModeracao;
+  criadoEm: string;
+  decididoEm?: string;
+  resolucao?: string;
 }
 
 interface ProdutoCanonicoInterno {
@@ -109,6 +132,7 @@ export class RepositorioMemoria
     FonteDeltaSync,
     FonteCandidatosTexto,
     RepositorioModeracao,
+    RepositorioDenuncia,
     RepositorioCuradoria
 {
   // Lado PRIVADO.
@@ -117,6 +141,8 @@ export class RepositorioMemoria
   private readonly itensCupom: ItemCupomArmazenado[] = [];
   // Moderação de lançamento manual (PRIVADO — tem usuario_id). C11.3.
   private readonly lancamentos = new Map<string, LancamentoModeracaoInterno>();
+  // Denúncias de preço (PRIVADO — tem usuario_id). C12.5.
+  private readonly denuncias = new Map<string, DenunciaInterna>();
   // Lado COMPARTILHADO (anônimo).
   private readonly lojas = new Map<string, Loja>();
   private readonly produtosPorEan = new Map<string, ProdutoCanonicoInterno>();
@@ -470,6 +496,76 @@ export class RepositorioMemoria
         descricaoNormalizada: p.descricaoNormalizada,
       }));
     return Promise.resolve(r);
+  }
+
+  // ───────────────────────── RepositorioDenuncia (C12.5) ──────────────
+
+  existeProduto(produtoCanonicoId: string): Promise<boolean> {
+    const achou = [...this.produtosPorEan.values(), ...this.produtosPorDescricao.values()].some(
+      (p) => p.id === produtoCanonicoId,
+    );
+    return Promise.resolve(achou);
+  }
+
+  criarDenuncia(dados: DenunciaNova): Promise<DenunciaRegistrada> {
+    // Espelha o índice único parcial: uma denúncia ABERTA por (usuário, produto).
+    const aberta = [...this.denuncias.values()].find(
+      (d) =>
+        d.status === 'pendente' &&
+        d.usuarioId === dados.usuarioId &&
+        d.produtoCanonicoId === dados.produtoCanonicoId,
+    );
+    if (aberta) return Promise.resolve({ id: aberta.id, jaRegistrada: true });
+
+    const id = randomUUID();
+    this.denuncias.set(id, {
+      ...dados,
+      id,
+      status: 'pendente',
+      criadoEm: new Date().toISOString(),
+    });
+    return Promise.resolve({ id, jaRegistrada: false });
+  }
+
+  listarDenunciasPendentes(limite?: number): Promise<DenunciaCuradoria[]> {
+    const pendentes = [...this.denuncias.values()].filter((d) => d.status === 'pendente');
+    // Volume por produto: o sinal forte para priorizar a fila.
+    const abertasPorProduto = new Map<string, number>();
+    for (const d of pendentes) {
+      abertasPorProduto.set(
+        d.produtoCanonicoId,
+        (abertasPorProduto.get(d.produtoCanonicoId) ?? 0) + 1,
+      );
+    }
+
+    const fila = pendentes
+      .sort((a, b) => a.criadoEm.localeCompare(b.criadoEm))
+      .map((d) => this.denunciaParaCuradoria(d, abertasPorProduto.get(d.produtoCanonicoId) ?? 1));
+    return Promise.resolve(limite ? fila.slice(0, limite) : fila);
+  }
+
+  decidirDenuncia(id: string, procedente: boolean, resolucao?: string): Promise<boolean> {
+    const d = this.denuncias.get(id);
+    if (!d || d.status !== 'pendente') return Promise.resolve(false);
+    d.status = procedente ? 'aprovado' : 'rejeitado';
+    d.resolucao = resolucao;
+    d.decididoEm = new Date().toISOString();
+    return Promise.resolve(true);
+  }
+
+  /** Visão de curadoria: TUDO menos `usuarioId` (docs/04). */
+  private denunciaParaCuradoria(d: DenunciaInterna, abertasNoProduto: number): DenunciaCuradoria {
+    return {
+      id: d.id,
+      produtoCanonicoId: d.produtoCanonicoId,
+      motivo: d.motivo,
+      ...(d.municipio ? { municipio: d.municipio } : {}),
+      ...(d.uf ? { uf: d.uf } : {}),
+      ...(d.comentario ? { comentario: d.comentario } : {}),
+      status: d.status,
+      criadoEm: d.criadoEm,
+      abertasNoProduto,
+    };
   }
 
   // ───────────────────────── RepositorioModeracao (C11.3) ─────────────

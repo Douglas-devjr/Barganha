@@ -18,6 +18,7 @@ import { MatcherTexto } from './estatistica/casamento-texto';
 import { PipelineEstatistica } from './estatistica/pipeline';
 import { FilaMemoria } from './fila/fila-memoria';
 import { ServicoIngestao } from './ingestao/servico-ingestao';
+import { ServicoDenuncia } from './moderacao/servico-denuncia';
 import { ServicoModeracao } from './moderacao/servico-moderacao';
 import type { FonteMetricas, Telemetria } from './observabilidade/telemetria';
 import { TelemetriaPersistente } from './observabilidade/telemetria-persistente';
@@ -57,6 +58,8 @@ export interface Backend {
   telemetria: Telemetria & FonteMetricas;
   /** Lançamento manual de gôndola + moderação (C11.3). */
   servicoModeracao: ServicoModeracao;
+  /** Denúncia de preço + fila da curadoria (C12.5). */
+  servicoDenuncia: ServicoDenuncia;
   /** Enriquecimento de produto pela curadoria (C11.5). */
   servicoCuradoria: ServicoCuradoria;
   /** Autorização dos endpoints de curadoria (C11) — token estático do ambiente. */
@@ -124,6 +127,8 @@ export function montarBackend(config: ConfigBackend): Backend {
   // (publica no pool pelo MESMO gate do cupom) e enriquecimento de produto. Os
   // endpoints são privilegiados; o gate de autorização usa tokens do ambiente.
   const servicoModeracao = new ServicoModeracao(repo, repo);
+  // C12.5 — denúncia: só enfileira sinal; não tem caminho de escrita no pool.
+  const servicoDenuncia = new ServicoDenuncia(repo);
   const servicoCuradoria = new ServicoCuradoria(repo);
   const guardaCuradoria = new GuardaCuradoria(config.curadoriaTokens);
 
@@ -141,6 +146,7 @@ export function montarBackend(config: ConfigBackend): Backend {
     rollout,
     telemetria,
     servicoModeracao,
+    servicoDenuncia,
     servicoCuradoria,
     guardaCuradoria,
   };

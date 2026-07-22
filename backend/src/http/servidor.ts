@@ -18,16 +18,18 @@
  * memória (sem Supabase nem rede).
  */
 
-import type {
-  CasamentoSugestoesRequest,
-  ComparacaoListaRequest,
-  ConsultaPrecoRequest,
-  DecisaoModeracaoRequest,
-  DeltaSyncRequest,
-  EnriquecimentoProdutoRequest,
-  IngestaoHtmlRequest,
-  IngestaoQrRequest,
-  LancamentoManualRequest,
+import {
+  type CasamentoSugestoesRequest,
+  type ComparacaoListaRequest,
+  type ConsultaPrecoRequest,
+  type DecisaoModeracaoRequest,
+  type DeltaSyncRequest,
+  type DenunciaPrecoRequest,
+  type EnriquecimentoProdutoRequest,
+  type IngestaoHtmlRequest,
+  type IngestaoQrRequest,
+  type LancamentoManualRequest,
+  MOTIVOS_DENUNCIA,
 } from '@barganha/shared';
 import { UNIDADES_BASE } from '@barganha/shared';
 import Fastify, { type FastifyError, type FastifyInstance } from 'fastify';
@@ -48,6 +50,7 @@ import {
 } from '../erros';
 import type { MatcherTexto } from '../estatistica/casamento-texto';
 import type { ServicoIngestao } from '../ingestao/servico-ingestao';
+import type { ServicoDenuncia } from '../moderacao/servico-denuncia';
 import type { ServicoModeracao } from '../moderacao/servico-moderacao';
 import { registrarHtmlDebug } from '../observabilidade/debug-html';
 import type { FonteMetricas } from '../observabilidade/telemetria';
@@ -95,6 +98,8 @@ export interface DependenciasHttp {
   gerenciadorConta?: GerenciadorConta;
   /** Lançamento manual de gôndola + moderação (C11.3). Omitido → rotas não sobem. */
   servicoModeracao?: ServicoModeracao;
+  /** Denúncia de preço + fila da curadoria (C12.5). Omitido → rotas não sobem. */
+  servicoDenuncia?: ServicoDenuncia;
   /** Enriquecimento de produto pela curadoria (C11.5). Omitido → rota não sobe. */
   servicoCuradoria?: ServicoCuradoria;
   /** Sugestões de casamento por texto p/ a curadoria (C3.5). Omitido → rota não sobe. */
@@ -216,6 +221,35 @@ const SCHEMA_LANCAMENTO = {
       municipio: { type: 'string', minLength: 1 },
       uf: { type: 'string', minLength: 2, maxLength: 2 },
       emPromocao: { type: 'boolean' },
+    },
+  },
+} as const;
+
+// Denúncia de preço (C12.5) — sinal de curadoria; NÃO publica nada no pool.
+const SCHEMA_DENUNCIA = {
+  body: {
+    type: 'object',
+    required: ['produtoCanonicoId', 'motivo'],
+    additionalProperties: false,
+    properties: {
+      produtoCanonicoId: { type: 'string', minLength: 1 },
+      motivo: { type: 'string', enum: [...MOTIVOS_DENUNCIA] },
+      municipio: { type: 'string', minLength: 1 },
+      uf: { type: 'string', minLength: 2, maxLength: 2 },
+      comentario: { type: 'string', maxLength: 500 },
+    },
+  },
+} as const;
+
+// Decisão da curadoria sobre uma denúncia (C12.5).
+const SCHEMA_DECISAO_DENUNCIA = {
+  body: {
+    type: 'object',
+    required: ['procedente'],
+    additionalProperties: false,
+    properties: {
+      procedente: { type: 'boolean' },
+      resolucao: { type: 'string', maxLength: 500 },
     },
   },
 } as const;
@@ -412,8 +446,14 @@ export function construirServidor(deps: DependenciasHttp): FastifyInstance {
   // A geo é pela LOJA (CNPJ); o usuarioId fica só no registro de moderação
   // (anti-abuso), nunca no pool (docs/04). Reaproveita o teto por conta da
   // ingestão (anti-spam de fila).
-  const { servicoModeracao, servicoCuradoria, autorizacaoCuradoria, reprocessador, matcherTexto } =
-    deps;
+  const {
+    servicoModeracao,
+    servicoDenuncia,
+    servicoCuradoria,
+    autorizacaoCuradoria,
+    reprocessador,
+    matcherTexto,
+  } = deps;
   if (servicoModeracao) {
     app.post<{ Body: LancamentoManualRequest }>(
       '/lancamento-manual',
@@ -424,6 +464,26 @@ export function construirServidor(deps: DependenciasHttp): FastifyInstance {
           return reply.code(401).send({ erro: 'Usuário não identificado.' });
         }
         const resposta = await servicoModeracao.lancar(usuarioId, req.body);
+        return reply.code(202).send(resposta);
+      },
+    );
+  }
+
+  // ── Denúncia de preço (C12.5) — PRIVADO (exige conta) ───────────────
+  // O alvo é PRODUTO + GEO, nunca uma `observacao_preco`: não existe ponteiro de
+  // usuário para linha do pool anônimo (decisão travada #3, docs/04). A rota não
+  // tem caminho de escrita no pool — denunciar só enfileira sinal p/ a curadoria.
+  // Reaproveita o teto por conta da ingestão (anti-spam de fila).
+  if (servicoDenuncia) {
+    app.post<{ Body: DenunciaPrecoRequest }>(
+      '/denuncia',
+      { schema: SCHEMA_DENUNCIA, onRequest: guardaIngestao },
+      async (req, reply) => {
+        const usuarioId = await deps.autenticacao.resolver(req.headers);
+        if (!usuarioId) {
+          return reply.code(401).send({ erro: 'Usuário não identificado.' });
+        }
+        const resposta = await servicoDenuncia.denunciar(usuarioId, req.body);
         return reply.code(202).send(resposta);
       },
     );
@@ -453,6 +513,35 @@ export function construirServidor(deps: DependenciasHttp): FastifyInstance {
         const resposta = await servicoModeracao.decidir(req.params.id, req.body);
         if (!resposta) return reply.code(404).send({ erro: 'Lançamento não encontrado.' });
         return reply.send(resposta);
+      },
+    );
+  }
+
+  if (servicoDenuncia && autorizacaoCuradoria) {
+    // Fila de denúncias (C12.5) — pendentes, mais antigas primeiro.
+    // NÃO expõe `usuarioId`: a curadoria decide pelo conteúdo (docs/04).
+    app.get('/denuncia/fila', async (req, reply) => {
+      if (!exigeCuradoria(req))
+        return reply.code(403).send({ erro: 'Acesso restrito à curadoria.' });
+      return reply.send({ denuncias: await servicoDenuncia.listarFila() });
+    });
+
+    // Decisão da curadoria (C12.5). Fecha o sinal; a correção do dado, quando
+    // procedente, é feita pelas rotas de curadoria que já existem.
+    app.post<{ Params: { id: string }; Body: { procedente: boolean; resolucao?: string } }>(
+      '/denuncia/:id/decisao',
+      { schema: SCHEMA_DECISAO_DENUNCIA },
+      async (req, reply) => {
+        if (!exigeCuradoria(req)) {
+          return reply.code(403).send({ erro: 'Acesso restrito à curadoria.' });
+        }
+        const ok = await servicoDenuncia.decidir(
+          req.params.id,
+          req.body.procedente,
+          req.body.resolucao,
+        );
+        if (!ok) return reply.code(404).send({ erro: 'Denúncia não encontrada ou já decidida.' });
+        return reply.send({ id: req.params.id, decidida: true });
       },
     );
   }

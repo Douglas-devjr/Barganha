@@ -21,3 +21,16 @@ export type EscopoGeo = (typeof ESCOPO_GEO)[number];
  */
 export const STATUS_MODERACAO = ['pendente', 'aprovado', 'rejeitado'] as const;
 export type StatusModeracao = (typeof STATUS_MODERACAO)[number];
+
+/**
+ * Motivos de uma DENÚNCIA de preço (C12.5 — espelha o enum `motivo_denuncia`).
+ * A pessoa contesta o TÍPICO mostrado para um produto na região; a denúncia é
+ * sinal de curadoria e nunca escreve no pool (docs/04).
+ */
+export const MOTIVOS_DENUNCIA = [
+  'preco_divergente',
+  'produto_errado',
+  'unidade_errada',
+  'outro',
+] as const;
+export type MotivoDenuncia = (typeof MOTIVOS_DENUNCIA)[number];

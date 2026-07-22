@@ -13,10 +13,13 @@
  */
 
 import {
+  type DenunciaCuradoria,
   garantirSemDadoPessoal,
+  type MotivoDenuncia,
   type ObservacaoAnonima,
   type PrecoEstatistica,
   type ProdutoResumo,
+  type StatusModeracao,
   type TotaisNota,
 } from '@barganha/shared';
 import type { PostgrestError, SupabaseClient } from '@supabase/supabase-js';
@@ -51,6 +54,11 @@ import type {
   LojaModeracao,
   RepositorioModeracao,
 } from '../moderacao/tipos';
+import type {
+  DenunciaNova,
+  DenunciaRegistrada,
+  RepositorioDenuncia,
+} from '../moderacao/tipos-denuncia';
 import type { FiltroDeltaSync, FonteDeltaSync } from '../sync/tipos';
 import type {
   CupomComItens,
@@ -83,6 +91,7 @@ export class RepositorioSupabase
     FonteDeltaSync,
     FonteCandidatosTexto,
     RepositorioModeracao,
+    RepositorioDenuncia,
     RepositorioCuradoria
 {
   constructor(private readonly db: SupabaseClient) {}
@@ -735,5 +744,97 @@ export class RepositorioSupabase
     const r = await consulta.select('id').maybeSingle();
     if (r.error) falhar('enriquecimento de produto', r.error);
     return r.data?.id;
+  }
+
+  // ───────────────────────── RepositorioDenuncia (C12.5) ──────────────
+
+  async existeProduto(produtoCanonicoId: string): Promise<boolean> {
+    const r = await this.db
+      .from('produto_canonico')
+      .select('id')
+      .eq('id', produtoCanonicoId)
+      .maybeSingle();
+    if (r.error) falhar('checagem de produto para denúncia', r.error);
+    return r.data != null;
+  }
+
+  async criarDenuncia(dados: DenunciaNova): Promise<DenunciaRegistrada> {
+    const r = await this.db
+      .from('denuncia_preco')
+      .insert({
+        usuario_id: dados.usuarioId,
+        produto_canonico_id: dados.produtoCanonicoId,
+        motivo: dados.motivo,
+        municipio: dados.municipio ?? null,
+        uf: dados.uf ?? null,
+        comentario: dados.comentario ?? null,
+      })
+      .select('id')
+      .single();
+
+    // 23505 = índice único parcial (usuário, produto) com uma denúncia ABERTA.
+    // Não é erro para quem usa o app: já estava registrado. Devolvemos a aberta.
+    if (r.error?.code === COD_UNIQUE_VIOLATION) {
+      const aberta = await this.db
+        .from('denuncia_preco')
+        .select('id')
+        .eq('usuario_id', dados.usuarioId)
+        .eq('produto_canonico_id', dados.produtoCanonicoId)
+        .eq('status', 'pendente')
+        .maybeSingle();
+      if (aberta.error) falhar('carga de denúncia já aberta', aberta.error);
+      if (aberta.data) return { id: aberta.data.id as string, jaRegistrada: true };
+    }
+    if (r.error) falhar('registro de denúncia de preço', r.error);
+    return { id: r.data.id as string, jaRegistrada: false };
+  }
+
+  async listarDenunciasPendentes(limite?: number): Promise<DenunciaCuradoria[]> {
+    // NOTA: o select NÃO inclui `usuario_id` — a curadoria decide pelo conteúdo,
+    // e o autor não pode vazar para fora do lado privado (docs/04).
+    let consulta = this.db
+      .from('denuncia_preco')
+      .select('id, produto_canonico_id, motivo, municipio, uf, comentario, status, criado_em')
+      .eq('status', 'pendente')
+      .order('criado_em', { ascending: true });
+    if (limite !== undefined) consulta = consulta.limit(limite);
+    const r = await consulta;
+    if (r.error) falhar('listagem da fila de denúncias', r.error);
+
+    const linhas = r.data ?? [];
+    // Volume por produto: o sinal forte para priorizar a fila.
+    const abertas = new Map<string, number>();
+    for (const d of linhas) {
+      const pid = d.produto_canonico_id as string;
+      abertas.set(pid, (abertas.get(pid) ?? 0) + 1);
+    }
+
+    return linhas.map((d) => ({
+      id: d.id as string,
+      produtoCanonicoId: d.produto_canonico_id as string,
+      motivo: d.motivo as MotivoDenuncia,
+      ...(d.municipio ? { municipio: d.municipio as string } : {}),
+      ...(d.uf ? { uf: d.uf as string } : {}),
+      ...(d.comentario ? { comentario: d.comentario as string } : {}),
+      status: d.status as StatusModeracao,
+      criadoEm: d.criado_em as string,
+      abertasNoProduto: abertas.get(d.produto_canonico_id as string) ?? 1,
+    }));
+  }
+
+  async decidirDenuncia(id: string, procedente: boolean, resolucao?: string): Promise<boolean> {
+    const r = await this.db
+      .from('denuncia_preco')
+      .update({
+        status: procedente ? 'aprovado' : 'rejeitado',
+        resolucao: resolucao ?? null,
+        decidido_em: new Date().toISOString(),
+      })
+      .eq('id', id)
+      .eq('status', 'pendente')
+      .select('id')
+      .maybeSingle();
+    if (r.error) falhar('decisão de denúncia', r.error);
+    return r.data != null;
   }
 }

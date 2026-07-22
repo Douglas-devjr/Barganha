@@ -20,6 +20,7 @@ export async function main(): Promise<void> {
     gerenciadorConta,
     telemetria,
     servicoModeracao,
+    servicoDenuncia,
     servicoCuradoria,
     guardaCuradoria,
     reprocessador,
@@ -36,6 +37,7 @@ export async function main(): Promise<void> {
     // C11 — expansão: lançamento manual + moderação + enriquecimento + reprocesso
     // + sugestões de casamento por texto (C3.5) para a curadoria.
     servicoModeracao,
+    servicoDenuncia,
     servicoCuradoria,
     autorizacaoCuradoria: guardaCuradoria,
     reprocessador,
