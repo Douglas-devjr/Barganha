@@ -69,7 +69,8 @@ describe('FilaMemoria (C2.1)', () => {
       vistos.push(t.cupomId);
       return Promise.resolve();
     });
-    const fila = new FilaMemoria(worker, { dormir: semEspera });
+    // Concorrência 1 = a ordem de INÍCIO é também a de conclusão.
+    const fila = new FilaMemoria(worker, { dormir: semEspera, concorrencia: 1 });
 
     await fila.enfileirar({ cupomId: 'a' });
     await fila.enfileirar({ cupomId: 'b' });
@@ -77,5 +78,53 @@ describe('FilaMemoria (C2.1)', () => {
     await fila.ociosa();
 
     expect(vistos).toEqual(['a', 'b', 'c']);
+  });
+
+  it('processa em PARALELO até o teto de concorrência', async () => {
+    // O trabalho é espera de rede (portal da SEFAZ). Drenando de um em um, o
+    // processo ficava ocioso e a vazão era ~1 cupom por resposta do portal.
+    let emVoo = 0;
+    let picoEmVoo = 0;
+    let abrirPortao!: () => void;
+    const portao = new Promise<void>((r) => {
+      abrirPortao = r;
+    });
+    const fila = new FilaMemoria(
+      async () => {
+        emVoo++;
+        picoEmVoo = Math.max(picoEmVoo, emVoo);
+        await portao;
+        emVoo--;
+      },
+      { dormir: semEspera, concorrencia: 3 },
+    );
+
+    for (const cupomId of ['a', 'b', 'c', 'd', 'e']) {
+      await fila.enfileirar({ cupomId });
+    }
+    // Os 3 consumidores já pegaram tarefa e estão presos no portão.
+    expect(picoEmVoo).toBe(3);
+
+    abrirPortao();
+    await fila.ociosa();
+    expect(emVoo).toBe(0);
+  });
+
+  it('nenhuma tarefa é processada duas vezes com concorrência', async () => {
+    const vistos: string[] = [];
+    const fila = new FilaMemoria(
+      async (t: { cupomId: string }) => {
+        await Promise.resolve();
+        vistos.push(t.cupomId);
+      },
+      { dormir: semEspera, concorrencia: 4 },
+    );
+
+    const ids = Array.from({ length: 20 }, (_, i) => `c${i}`);
+    for (const cupomId of ids) await fila.enfileirar({ cupomId });
+    await fila.ociosa();
+
+    expect(vistos).toHaveLength(20);
+    expect(new Set(vistos).size).toBe(20);
   });
 });

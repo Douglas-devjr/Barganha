@@ -26,11 +26,22 @@ export interface OpcoesFila {
   dormir?: (ms: number) => Promise<void>;
   /** Telemetria: chamada quando a tarefa falha em todas as tentativas. */
   aoEsgotar?: (tarefa: TarefaProcessamento, erro: unknown) => void;
+  /**
+   * Tarefas processadas em paralelo. O trabalho é dominado por ESPERA de rede
+   * (consulta ao portal da SEFAZ), então drenar uma a uma deixava o processo
+   * ocioso a maior parte do tempo e limitava a vazão a ~1 cupom por resposta do
+   * portal. Moderado de propósito: é o portal do estado do outro lado, não o
+   * nosso banco — não é para martelá-lo (docs/03).
+   */
+  concorrencia?: number;
 }
 
 type Worker = (tarefa: TarefaProcessamento) => Promise<void>;
 
 const dormirReal = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
+
+/** Tarefas em paralelo por padrão — ver `OpcoesFila.concorrencia`. */
+export const CONCORRENCIA_PADRAO = 4;
 
 export class FilaMemoria implements FilaProcessamento {
   private readonly tentativasMax: number;
@@ -38,10 +49,11 @@ export class FilaMemoria implements FilaProcessamento {
   private readonly maxBackoffMs: number;
   private readonly dormir: (ms: number) => Promise<void>;
   private readonly aoEsgotar?: (tarefa: TarefaProcessamento, erro: unknown) => void;
+  private readonly concorrencia: number;
 
   private readonly pendentes: TarefaProcessamento[] = [];
-  private bombeando = false;
-  private cicloAtual: Promise<void> = Promise.resolve();
+  /** Consumidores vivos agora (≤ `concorrencia`). */
+  private readonly emCurso = new Set<Promise<void>>();
 
   constructor(
     private readonly worker: Worker,
@@ -52,6 +64,7 @@ export class FilaMemoria implements FilaProcessamento {
     this.maxBackoffMs = opcoes.maxBackoffMs ?? 30_000;
     this.dormir = opcoes.dormir ?? dormirReal;
     this.aoEsgotar = opcoes.aoEsgotar;
+    this.concorrencia = Math.max(1, opcoes.concorrencia ?? CONCORRENCIA_PADRAO);
   }
 
   enfileirar(tarefa: TarefaProcessamento): Promise<void> {
@@ -62,23 +75,35 @@ export class FilaMemoria implements FilaProcessamento {
 
   /** Resolve quando a fila esvazia e nada está em processamento (testes). */
   async ociosa(): Promise<void> {
-    // Laço: uma tarefa enfileirada enquanto o ciclo terminava reativa a bomba.
-    while (this.bombeando || this.pendentes.length > 0) {
-      await this.cicloAtual;
+    // Laço: uma tarefa enfileirada enquanto os consumidores terminavam precisa
+    // reativar a bomba antes de darmos a fila por ociosa.
+    while (this.emCurso.size > 0 || this.pendentes.length > 0) {
+      await Promise.all([...this.emCurso]);
+      this.bombear();
     }
   }
 
+  /**
+   * Garante consumidores suficientes para o que está pendente, até o teto de
+   * `concorrencia`. Chamado a cada `enfileirar`: sem isso, os consumidores
+   * criados junto com a primeira tarefa achariam a lista vazia, morreriam, e o
+   * resto da leva seria drenado por um único sobrevivente — de volta ao serial.
+   */
   private bombear(): void {
-    if (this.bombeando) return;
-    this.bombeando = true;
-    this.cicloAtual = this.drenar().finally(() => {
-      this.bombeando = false;
-      // Algo chegou na janela entre o último shift e este reset: re-bombeia.
-      if (this.pendentes.length > 0) this.bombear();
-    });
+    while (this.emCurso.size < this.concorrencia && this.pendentes.length > 0) {
+      const consumidor: Promise<void> = this.consumir().finally(() => {
+        this.emCurso.delete(consumidor);
+      });
+      this.emCurso.add(consumidor);
+    }
   }
 
-  private async drenar(): Promise<void> {
+  /**
+   * Um consumidor: puxa da lista compartilhada até secar. Como `shift` é
+   * síncrono e não há `await` entre testar e retirar, dois consumidores nunca
+   * pegam a mesma tarefa.
+   */
+  private async consumir(): Promise<void> {
     let tarefa = this.pendentes.shift();
     while (tarefa) {
       await this.executarComRetry(tarefa);
