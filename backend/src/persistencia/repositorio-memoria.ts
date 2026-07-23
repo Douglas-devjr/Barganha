@@ -56,7 +56,7 @@ import type {
   DenunciaRegistrada,
   RepositorioDenuncia,
 } from '../moderacao/tipos-denuncia';
-import type { FiltroDeltaSync, FonteDeltaSync } from '../sync/tipos';
+import type { FiltroDeltaSync, FonteDeltaSync, LinhaDelta } from '../sync/tipos';
 import type {
   CupomComItens,
   CupomRegistro,
@@ -154,6 +154,9 @@ export class RepositorioMemoria
   /** C9.2.1 — hashes de chave já publicados no pool (espelha `chave_publicada`). */
   private readonly chavesPublicadas = new Set<string>();
   private readonly estatisticas = new Map<string, PrecoEstatistica>();
+  /** Desempate do cursor keyset (espelha `preco_estatistica.seq`). */
+  private readonly seqEstatistica = new Map<string, number>();
+  private proximoSeq = 1;
 
   // ───────────────────────── RepositorioUsuario (C4.3) ────────────────
 
@@ -425,6 +428,10 @@ export class RepositorioMemoria
   upsertEstatisticas(linhas: readonly LinhaEstatistica[]): Promise<void> {
     for (const l of linhas) {
       const chave = `${l.produtoCanonicoId}|${l.escopo}|${l.escopoId}|${l.unidadeBase}`;
+      // Espelha a coluna `seq` (identity) do banco: nasce com a linha e não
+      // muda no update — é só o desempate do cursor keyset do delta sync.
+      const seq = this.seqEstatistica.get(chave) ?? this.proximoSeq++;
+      this.seqEstatistica.set(chave, seq);
       this.estatisticas.set(chave, {
         produtoCanonicoId: l.produtoCanonicoId,
         escopo: l.escopo,
@@ -479,14 +486,25 @@ export class RepositorioMemoria
 
   // ───────────────────────── FonteDeltaSync (C4.2) ────────────────────
 
-  deltaEstatisticas(filtro: FiltroDeltaSync): Promise<PrecoEstatistica[]> {
+  deltaEstatisticas(filtro: FiltroDeltaSync): Promise<LinhaDelta[]> {
     const escopos = filtro.escopoIds ? new Set(filtro.escopoIds) : undefined;
     const produtos = filtro.produtoCanonicoIds ? new Set(filtro.produtoCanonicoIds) : undefined;
-    const r = [...this.estatisticas.values()]
-      .filter((e) => (filtro.desde ? e.atualizadoEm > filtro.desde : true))
-      .filter((e) => (escopos ? escopos.has(e.escopoId) : true))
-      .filter((e) => (produtos ? produtos.has(e.produtoCanonicoId) : true))
-      .sort((a, b) => a.atualizadoEm.localeCompare(b.atualizadoEm))
+    const desde = filtro.desde;
+    const r = [...this.estatisticas.entries()]
+      .map(([chave, estatistica]) => ({ seq: this.seqEstatistica.get(chave) ?? 0, estatistica }))
+      // Mesmo predicado keyset do adaptador real: depois de (atualizadoEm, seq).
+      .filter(({ estatistica: e, seq }) =>
+        desde
+          ? e.atualizadoEm > desde.atualizadoEm ||
+            (e.atualizadoEm === desde.atualizadoEm && seq > desde.seq)
+          : true,
+      )
+      .filter(({ estatistica: e }) => (escopos ? escopos.has(e.escopoId) : true))
+      .filter(({ estatistica: e }) => (produtos ? produtos.has(e.produtoCanonicoId) : true))
+      .sort(
+        (a, b) =>
+          a.estatistica.atualizadoEm.localeCompare(b.estatistica.atualizadoEm) || a.seq - b.seq,
+      )
       .slice(0, filtro.limite);
     return Promise.resolve(r);
   }

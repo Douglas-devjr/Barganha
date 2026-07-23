@@ -59,7 +59,7 @@ import type {
   DenunciaRegistrada,
   RepositorioDenuncia,
 } from '../moderacao/tipos-denuncia';
-import type { FiltroDeltaSync, FonteDeltaSync } from '../sync/tipos';
+import type { FiltroDeltaSync, FonteDeltaSync, LinhaDelta } from '../sync/tipos';
 import type {
   CupomComItens,
   CupomRegistro,
@@ -672,30 +672,47 @@ export class RepositorioSupabase
 
   // ───────────────────────── FonteDeltaSync (C4.2) ────────────────────
 
-  async deltaEstatisticas(filtro: FiltroDeltaSync): Promise<PrecoEstatistica[]> {
+  async deltaEstatisticas(filtro: FiltroDeltaSync): Promise<LinhaDelta[]> {
     let consulta = this.db.from('preco_estatistica').select('*');
-    if (filtro.desde) consulta = consulta.gt('atualizado_em', filtro.desde);
+    if (filtro.desde) {
+      // Keyset: (atualizado_em, seq) > (cursor.atualizadoEm, cursor.seq).
+      // O `or` do PostgREST vira exatamente esse predicado — e é o que impede o
+      // corte no limite de pular o resto de um lote com timestamp idêntico.
+      const { atualizadoEm, seq } = filtro.desde;
+      // Timestamp entre aspas: o valor é interpolado numa expressão PostgREST,
+      // e aspas evitam que qualquer caractere dele seja lido como sintaxe.
+      const ts = `"${atualizadoEm.replace(/"/g, '')}"`;
+      consulta = consulta.or(
+        `atualizado_em.gt.${ts},and(atualizado_em.eq.${ts},seq.gt.${Number(seq)})`,
+      );
+    }
     if (filtro.escopoIds && filtro.escopoIds.length > 0) {
       consulta = consulta.in('escopo_id', filtro.escopoIds);
     }
     if (filtro.produtoCanonicoIds && filtro.produtoCanonicoIds.length > 0) {
       consulta = consulta.in('produto_canonico_id', filtro.produtoCanonicoIds);
     }
-    const r = await consulta.order('atualizado_em', { ascending: true }).limit(filtro.limite);
+    const r = await consulta
+      .order('atualizado_em', { ascending: true })
+      .order('seq', { ascending: true })
+      .limit(filtro.limite);
     if (r.error) falhar('leitura do delta de estatísticas', r.error);
     return (r.data ?? []).map((e) => ({
-      produtoCanonicoId: e.produto_canonico_id,
-      escopo: e.escopo,
-      escopoId: e.escopo_id,
-      unidadeBase: e.unidade_base,
-      mediana: num(e.mediana),
-      p25: num(e.p25),
-      p75: num(e.p75),
-      minimo: num(e.minimo),
-      maximo: num(e.maximo),
-      menorPromocional: num(e.menor_promocional),
-      nObservacoes: Number(e.n_observacoes),
-      atualizadoEm: e.atualizado_em,
+      seq: Number(e.seq),
+      estatistica: {
+        produtoCanonicoId: e.produto_canonico_id,
+        escopo: e.escopo,
+        escopoId: e.escopo_id,
+        unidadeBase: e.unidade_base,
+        mediana: num(e.mediana),
+        p25: num(e.p25),
+        p75: num(e.p75),
+        minimo: num(e.minimo),
+        maximo: num(e.maximo),
+        menorPromocional: num(e.menor_promocional),
+        nObservacoes: Number(e.n_observacoes),
+        atualizadoEm: e.atualizado_em,
+      },
     }));
   }
 
