@@ -27,6 +27,8 @@ import type { Anonimizador } from '../anonimizacao/anonimizador';
 import { Anonimizador as AnonimizadorReal } from '../anonimizacao/anonimizador';
 import { type ConfigBackend, lerConfig } from '../config/env';
 import { PipelineEstatistica } from '../estatistica/pipeline';
+import { logDeJob } from '../observabilidade/log';
+import { sanitizarErro } from '../observabilidade/sanitizar';
 import { RepositorioSupabase } from '../persistencia/repositorio-supabase';
 import { hashChavePool } from '../persistencia/tipos';
 import { criarClienteSupabase } from '../persistencia/supabase';
@@ -146,10 +148,15 @@ export async function rodarJobRepublicacao(
 
   const inicio = Date.now();
   const resumo = await republicarPool(repo, anonimizador, (id) => pipeline.recalcularProduto(id));
-  console.log(
-    `[republicar-pool] cupons=${resumo.cuponsRepublicados}/${resumo.cuponsExaminados} ` +
-      `observacoes=${resumo.observacoesPublicadas} produtos=${resumo.produtosRecalculados} ` +
-      `duracao_ms=${Date.now() - inicio}`,
+  logDeJob('republicar-pool').info(
+    {
+      cuponsRepublicados: resumo.cuponsRepublicados,
+      cuponsExaminados: resumo.cuponsExaminados,
+      observacoesPublicadas: resumo.observacoesPublicadas,
+      produtosRecalculados: resumo.produtosRecalculados,
+      duracaoMs: Date.now() - inicio,
+    },
+    'Republicação do pool concluída',
   );
   return resumo;
 }
@@ -158,7 +165,7 @@ export async function rodarJobRepublicacao(
 // de saída para o operador detectar falha.
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   rodarJobRepublicacao().catch((erro) => {
-    console.error('[republicar-pool] falhou:', erro);
+    logDeJob('republicar-pool').error({ erro: sanitizarErro(erro) }, 'Job falhou');
     process.exitCode = 1;
   });
 }

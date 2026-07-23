@@ -15,6 +15,8 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { parseHtml, type HTMLElement } from '../parsers/html';
+import { log } from './log';
+import { sanitizarErro } from './sanitizar';
 
 const DESLIGADO = process.env.BARGANHA_DEBUG_HTML === '0';
 const AMBIENTE = process.env.NODE_ENV;
@@ -69,8 +71,13 @@ export function registrarHtmlDebug(html: string, rotulo: string): void {
       `# Esqueleto do HTML recebido em ${new Date().toISOString()} ` +
       `(só estrutura — sem texto/PII).\n# tamanho do html: ${html.length} bytes\n\n`;
     writeFileSync(arquivo, cabecalho + esqueletoDe(html), 'utf8');
-    console.log(`[debug-html] esqueleto salvo: ${arquivo}`);
-  } catch (e) {
-    console.warn('[debug-html] falha ao salvar:', e instanceof Error ? e.message : e);
+    log.debug({ action: 'debug_html.salvo', arquivo }, 'Esqueleto do HTML salvo');
+  } catch (erro) {
+    // `warn`: é ferramenta de dev, nunca roda em produção — e o comentário acima
+    // vale, depuração não pode derrubar a ingestão.
+    log.warn(
+      { action: 'debug_html.falhou', erro: sanitizarErro(erro) },
+      'Falha ao salvar esqueleto',
+    );
   }
 }

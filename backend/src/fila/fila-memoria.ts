@@ -13,6 +13,8 @@
  * lógica de retry/backoff, com `dormir` injetável para testes determinísticos.
  */
 
+import { logDeCupom } from '../observabilidade/log';
+import { sanitizarErro } from '../observabilidade/sanitizar';
 import type { FilaProcessamento, TarefaProcessamento } from './tipos';
 
 export interface OpcoesFila {
@@ -112,9 +114,18 @@ export class FilaMemoria implements FilaProcessamento {
   }
 
   private async executarComRetry(tarefa: TarefaProcessamento): Promise<void> {
+    const registro = logDeCupom(tarefa.cupomId, tarefa.uf);
     for (let tentativa = 1; tentativa <= this.tentativasMax; tentativa++) {
       try {
         await this.worker(tarefa);
+        // Só vale contar a recuperação: o caminho feliz de primeira é o normal e
+        // não precisa de linha de log (seria uma por cupom, sem informação).
+        if (tentativa > 1) {
+          registro.info(
+            { action: 'fila.recuperado', tentativa },
+            'Tarefa concluiu após retentativa',
+          );
+        }
         return;
       } catch (erro) {
         if (tentativa >= this.tentativasMax) {
@@ -122,6 +133,21 @@ export class FilaMemoria implements FilaProcessamento {
           return;
         }
         const espera = Math.min(this.baseBackoffMs * 2 ** (tentativa - 1), this.maxBackoffMs);
+        // ACHADO (a): sem esta linha, um portal da SEFAZ oscilando e falhando 4
+        // de 5 tentativas parecia PERFEITAMENTE saudável — a degradação só
+        // aparecia quando virava falha total. `warn` porque há recuperação
+        // automática; a razão de `fila.retentativa`/`fila.recuperado` é o sinal
+        // precoce de que um portal está indo embora.
+        registro.warn(
+          {
+            action: 'fila.retentativa',
+            tentativa,
+            de: this.tentativasMax,
+            esperaMs: espera,
+            erro: sanitizarErro(erro),
+          },
+          'Tarefa falhou — repetindo com backoff',
+        );
         await this.dormir(espera);
       }
     }

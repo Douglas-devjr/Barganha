@@ -21,6 +21,8 @@ import { fileURLToPath } from 'node:url';
 
 import { montarBackend } from '../composicao';
 import { type ConfigBackend, lerConfig } from '../config/env';
+import { logDeJob } from '../observabilidade/log';
+import { sanitizarErro } from '../observabilidade/sanitizar';
 
 /** Porta mínima do pipeline usada pelo job — recalcula tudo (ou só o recente). */
 export interface PipelineRecalculavel {
@@ -68,10 +70,13 @@ export async function rodarJobRecalculo(
   const resumo = await executarRecalculoEmLote(pipelineEstatistica, {
     lookbackMinutos: config.recalculoLookbackMinutos,
   });
-  const janela = resumo.desde ? `desde=${resumo.desde}` : 'completo';
-  console.log(
-    `[recalculo-estatistica] ${janela} linhas=${resumo.linhasRecalculadas} ` +
-      `duracao_ms=${Date.now() - inicio}`,
+  logDeJob('recalculo-estatistica').info(
+    {
+      janela: resumo.desde ?? 'completo',
+      linhasRecalculadas: resumo.linhasRecalculadas,
+      duracaoMs: Date.now() - inicio,
+    },
+    'Recálculo em lote concluído',
   );
   return resumo;
 }
@@ -80,7 +85,9 @@ export async function rodarJobRecalculo(
 // de saída para o scheduler detectar falha.
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   rodarJobRecalculo().catch((erro) => {
-    console.error('[recalculo-estatistica] falhou:', erro);
+    // `fatal`: o job é a rede de segurança do recálculo best-effort da ingestão.
+    // Ele falhar significa que a mediana do veredito para de ser atualizada.
+    logDeJob('recalculo-estatistica').fatal({ erro: sanitizarErro(erro) }, 'Job falhou');
     process.exitCode = 1;
   });
 }

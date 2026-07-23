@@ -21,6 +21,8 @@ import { FilaMemoria } from './fila/fila-memoria';
 import { ServicoIngestao } from './ingestao/servico-ingestao';
 import { ServicoDenuncia } from './moderacao/servico-denuncia';
 import { ServicoModeracao } from './moderacao/servico-moderacao';
+import { log, logDeCupom } from './observabilidade/log';
+import { sanitizarErro } from './observabilidade/sanitizar';
 import type { FonteMetricas, Telemetria } from './observabilidade/telemetria';
 import { TelemetriaPersistente } from './observabilidade/telemetria-persistente';
 import { ParserMg } from './parsers/mg';
@@ -96,8 +98,13 @@ export function montarBackend(config: ConfigBackend): Backend {
   const agendadorRecalculo = new AgendadorRecalculo(pipelineEstatistica, {
     aoFalhar: (produtoCanonicoId, erro) => {
       // Não é perda: a trigger do pool já deixou o produto em
-      // `produto_recalculo_pendente` e o job em lote (C3.1/C10) refaz.
-      console.error(`Recálculo de ${produtoCanonicoId} falhou (o job em lote refaz):`, erro);
+      // `produto_recalculo_pendente` e o job em lote (C3.1/C10) refaz. `warn`
+      // porque a recuperação é automática — vira `error` só se o job em lote
+      // também falhar, e é ELE quem alerta.
+      log.warn(
+        { action: 'estatistica.recalculo_falhou', produtoCanonicoId, erro: sanitizarErro(erro) },
+        'Recálculo de produto falhou — o job em lote refaz',
+      );
     },
   });
 
@@ -116,7 +123,12 @@ export function montarBackend(config: ConfigBackend): Backend {
     aoEsgotar: (tarefa, erro) => {
       // C10.2 — conta o esgotamento por estado e registra para investigação.
       telemetria.registrarParsing(tarefa.uf, 'transitorio_esgotado');
-      console.error(`Falha persistente ao processar cupom ${tarefa.cupomId}:`, erro);
+      // `error`: acabaram as tentativas, o cupom do usuário ficou represado e
+      // só o reprocessamento retroativo (C2.5) o recupera. Exige ação humana.
+      logDeCupom(tarefa.cupomId, tarefa.uf).error(
+        { action: 'fila.esgotada', erro: sanitizarErro(erro) },
+        'Tentativas esgotadas — cupom represado para reprocessamento retroativo',
+      );
     },
   });
 

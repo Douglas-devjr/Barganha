@@ -13,6 +13,9 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 
+import { log } from '../observabilidade/log';
+import { sanitizarErro } from '../observabilidade/sanitizar';
+
 export interface VerificadorToken {
   /**
    * Valida o access token e devolve o id do usuário (`auth.users.id`), ou
@@ -34,10 +37,22 @@ export class VerificadorTokenSupabase implements VerificadorToken {
   async verificar(token: string): Promise<string | undefined> {
     try {
       const { data, error } = await this.db.auth.getUser(token);
-      if (error || !data.user) return undefined;
+      // Token inválido/expirado é caminho ESPERADO (o app com sessão vencida cai
+      // aqui o tempo todo): `debug`, nunca `warn` — senão a linha vira ruído.
+      if (error || !data.user) {
+        log.debug({ action: 'auth.token_recusado' }, 'Token recusado pelo GoTrue');
+        return undefined;
+      }
       return data.user.id;
-    } catch {
-      // Falha de rede / Auth API fora → trata como não autenticado (401), não 500.
+    } catch (erro) {
+      // ACHADO (b): responder 401 aqui está certo, mas ficar CALADO não. Uma
+      // indisponibilidade do Supabase Auth era indistinguível de token inválido
+      // — a operação via "ninguém consegue entrar" sem nenhuma pista. `error`:
+      // não há recuperação automática e todo login está caindo.
+      log.error(
+        { action: 'auth.indisponivel', erro: sanitizarErro(erro) },
+        'Falha ao verificar token no GoTrue — tratando como não autenticado',
+      );
       return undefined;
     }
   }

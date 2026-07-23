@@ -15,14 +15,17 @@ import { RepositorioSupabase } from '../persistencia/repositorio-supabase';
 import { criarClienteSupabase } from '../persistencia/supabase';
 
 import { parseRedesVtex } from '../fontes/redes';
+import { logDeJob } from '../observabilidade/log';
+import { sanitizarErro } from '../observabilidade/sanitizar';
 import { ServicoEnriquecimentoCatalogo } from '../fontes/servico-enriquecimento-catalogo';
 import { ClienteVtex } from '../fontes/vtex/cliente-vtex';
 
 export async function rodarJobEnriquecimento(): Promise<void> {
+  const registro = logDeJob('enriquecer-catalogo');
   const config = lerConfig();
   const redes = parseRedesVtex(process.env.REDES_VTEX);
   if (redes.length === 0) {
-    console.log('[enriquecer-catalogo] REDES_VTEX vazio — nada a fazer.');
+    registro.info({ motivo: 'REDES_VTEX vazio' }, 'Nada a fazer');
     return;
   }
 
@@ -33,10 +36,16 @@ export async function rodarJobEnriquecimento(): Promise<void> {
 
   const inicio = Date.now();
   const r = await servico.executar();
-  console.log(
-    `[enriquecer-catalogo] redes=${redes.map((x) => x.id).join(',')} ` +
-      `examinados=${r.examinados} enriquecidos=${r.enriquecidos} ` +
-      `sem_catalogo=${r.semCatalogo} falhas=${r.falhas} duracao_ms=${Date.now() - inicio}`,
+  registro.info(
+    {
+      redes: redes.map((x) => x.id),
+      examinados: r.examinados,
+      enriquecidos: r.enriquecidos,
+      semCatalogo: r.semCatalogo,
+      falhas: r.falhas,
+      duracaoMs: Date.now() - inicio,
+    },
+    'Enriquecimento de catálogo concluído',
   );
 }
 
@@ -44,7 +53,9 @@ export async function rodarJobEnriquecimento(): Promise<void> {
 // de saída para o scheduler detectar falha.
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   rodarJobEnriquecimento().catch((erro) => {
-    console.error('[enriquecer-catalogo] falhou:', erro);
+    // `error` e não `fatal`: o catálogo enriquecido é melhoria de exibição — o
+    // veredito (que é o produto) continua funcionando sem ele.
+    logDeJob('enriquecer-catalogo').error({ erro: sanitizarErro(erro) }, 'Job falhou');
     process.exitCode = 1;
   });
 }

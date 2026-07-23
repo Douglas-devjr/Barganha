@@ -6,6 +6,7 @@
  * Vazio/ausente/inválido → [] (a coleta simplesmente não roda — feature off).
  */
 
+import { log } from '../observabilidade/log';
 import type { RedeVtex } from './vtex/tipos';
 
 export function parseRedesVtex(bruto: string | undefined): RedeVtex[] {
@@ -23,7 +24,12 @@ export function parseRedesVtex(bruto: string | undefined): RedeVtex[] {
         (r as RedeVtex).dominio.length > 0,
     );
   } catch {
-    console.error('[redes] REDES_VTEX inválido (esperado JSON array) — nenhuma rede habilitada.');
+    // `error`: erro de configuração — o job de enriquecimento vai rodar achando
+    // que não há redes, em silêncio, se ninguém vir esta linha.
+    log.error(
+      { action: 'config.redes_vtex_invalida' },
+      'REDES_VTEX inválido (esperado JSON array) — nenhuma rede habilitada',
+    );
     return [];
   }
 }
