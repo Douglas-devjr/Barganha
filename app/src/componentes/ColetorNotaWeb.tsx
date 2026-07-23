@@ -23,6 +23,9 @@ import { ActivityIndicator, Modal, Pressable, StyleSheet, View } from 'react-nat
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { WebViewMessageEvent } from 'react-native-webview';
 
+import { redigirTexto, urlConsultaSegura } from '@barganha/shared';
+
+import { log } from '@/nucleo/log';
 import { claro as paletaClara, espaco, raio, useTema } from '@/tema';
 
 import { Texto } from './Texto';
@@ -78,6 +81,12 @@ const ATRASO_RECARGA_MS = 1500;
 // minutos depois. Cada recarga da consulta gera um token novo — vale re-tentar
 // algumas vezes antes de devolver o cupom (que segue pendente, nunca `falha`).
 const MAX_RECARGAS_PORTAL = 4;
+// O portal do RJ está atrás de TLS mas gera URL ABSOLUTA em `http://` nos seus
+// próprios redirects (JSF sem enxergar o `X-Forwarded-Proto`). Como a porta 80
+// está fechada, cada uma dessas navegações morre em `ERR_CONNECTION_REFUSED`.
+// Reescrevemos para https — com teto, porque se o portal insistir em devolver
+// http a cada volta isto viraria um ping-pong sem fim.
+const MAX_UPGRADES_HTTPS = 6;
 // UA de Chrome mobile REAL (sem o marcador "; wv" do WebView). O reCAPTCHA v3 do
 // portal do RJ penaliza User-Agent de WebView e trava no desafio (`grecaptcha-error`);
 // apresentar-se como Chrome comum melhora a pontuação e a chance de render a nota.
@@ -86,17 +95,45 @@ const UA_CHROME_MOBILE =
 
 export function ColetorNotaWeb({ url, enviarHtml, aoProcessar, aoDesistir }: ColetorNotaWebProps) {
   const { c } = useTema();
+  // O QR do cupom vem com `http://` e o portal do RJ fechou a porta 80 — carregar
+  // o payload cru dá `ERR_CONNECTION_REFUSED` na primeira tentativa. Ver
+  // `urlConsultaSegura`. O `qrPayload` guardado segue cru.
+  const urlSegura = urlConsultaSegura(url);
   const webRef = useRef<WebViewInstancia>(null);
   const enviando = useRef(false);
   const concluido = useRef(false);
   const errosBackend = useRef(0);
   const errosRede = useRef(0);
   const recargasPortal = useRef(0);
+  const upgradesHttps = useRef(0);
   // Entre disparar a recarga e a página nova carregar, o timer ainda colheria a
   // MESMA página de erro e contaria recargas a mais — silencia até o onLoadEnd.
   const aguardandoRecarga = useRef(false);
   const [lendoNota, setLendoNota] = useState(false);
   const [avisoPortal, setAvisoPortal] = useState<string | null>(null);
+  // Página EXIBIDA no WebView. Começa na consulta do QR, mas muda sempre que
+  // precisamos refazer em https uma navegação que o portal mandou em http.
+  const [uri, setUri] = useState(urlSegura);
+
+  useEffect(() => {
+    setUri(urlConsultaSegura(url));
+  }, [url]);
+
+  /**
+   * Se `alvo` estiver em http, refaz a MESMA navegação em https e devolve
+   * `true` (quem chamou deve abortar a original). Trocar a `uri` — em vez de
+   * `reload()` — é o que garante sair do endereço errado: o `reload` repetiria
+   * exatamente a URL que acabou de ser recusada.
+   */
+  const forcarHttps = useCallback((alvo: string): boolean => {
+    const seguro = urlConsultaSegura(alvo);
+    if (seguro === alvo) return false;
+    if (upgradesHttps.current >= MAX_UPGRADES_HTTPS) return false;
+    upgradesHttps.current += 1;
+    aguardandoRecarga.current = true;
+    setUri(seguro);
+    return true;
+  }, []);
 
   const coletar = useCallback(() => {
     if (concluido.current) return;
@@ -168,7 +205,9 @@ export function ColetorNotaWeb({ url, enviarHtml, aoProcessar, aoDesistir }: Col
           setAvisoPortal(
             `A SEFAZ recusou a verificação (tentativa ${recargasPortal.current} de ${MAX_RECARGAS_PORTAL}). Recarregando — toque em “Consultar” quando a página voltar.`,
           );
-          webRef.current?.injectJavaScript(`window.location.replace(${JSON.stringify(url)});true;`);
+          webRef.current?.injectJavaScript(
+            `window.location.replace(${JSON.stringify(urlSegura)});true;`,
+          );
           return;
         }
         // 'erro' = falha real do backend (não 422). Tolera alguns e só então
@@ -183,7 +222,7 @@ export function ColetorNotaWeb({ url, enviarHtml, aoProcessar, aoDesistir }: Col
         enviando.current = false;
       }
     },
-    [enviarHtml, aoProcessar, aoDesistir, encerrar, url],
+    [enviarHtml, aoProcessar, aoDesistir, encerrar, urlSegura],
   );
 
   if (!WebViewNativo) return null; // o pai mostra a mensagem via aoDesistir.
@@ -223,7 +262,10 @@ export function ColetorNotaWeb({ url, enviarHtml, aoProcessar, aoDesistir }: Col
         <View style={[estilos.molduraWeb, { borderColor: c.borda }]}>
           <WebViewNativo
             ref={webRef}
-            source={{ uri: url }}
+            source={{ uri }}
+            // Barra a navegação em http ANTES de ela sair: é o portal que
+            // aponta para si mesmo em texto puro, e a porta 80 está fechada.
+            onShouldStartLoadWithRequest={(req) => !forcarHttps(req.url)}
             originWhitelist={['*']}
             userAgent={UA_CHROME_MOBILE}
             javaScriptEnabled
@@ -239,7 +281,24 @@ export function ColetorNotaWeb({ url, enviarHtml, aoProcessar, aoDesistir }: Col
             onError={(e) => {
               if (concluido.current) return;
               const { code, description, url: falhaUrl } = e.nativeEvent;
-              console.warn('[ColetorNotaWeb] onError', code, description, falhaUrl);
+              // Rede de segurança: no Android o `onShouldStartLoadWithRequest`
+              // nem sempre é consultado num redirect do SERVIDOR. Se a que
+              // falhou era http, refaz em https — isto não é falha de rede do
+              // usuário, então não gasta o orçamento de `errosRede`.
+              if (falhaUrl && forcarHttps(falhaUrl)) return;
+              // A URL vai REDIGIDA: a consulta da SEFAZ carrega a chave de
+              // acesso (44 díg.) no query string — dado do mundo privado que não
+              // pode ir para o log (docs/04).
+              log.warn(
+                {
+                  action: 'coletor.erro_webview',
+                  code,
+                  description,
+                  url: redigirTexto(falhaUrl ?? ''),
+                  tentativa: errosRede.current + 1,
+                },
+                'WebView falhou ao carregar a página da SEFAZ',
+              );
               errosRede.current += 1;
               // Reset/instabilidade do portal é transitório: recarrega e tenta de
               // novo. Só desiste (com o motivo real) após esgotar as recargas.
