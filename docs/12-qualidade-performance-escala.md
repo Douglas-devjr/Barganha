@@ -69,5 +69,37 @@ O dado de preço é **minúsculo** e a carga é de leitura. A ordem de evoluçã
 
 ---
 
+## C9.5 — Log estruturado e sanitização (C10.2)
+
+**Uma pilha só: Pino.** O Fastify já usa Pino internamente — adotar Winston significaria manter duas bibliotecas no mesmo processo e misturar duas gramáticas no stdout. `fatal` também é nível nativo do Pino (o Winston não o tem por padrão). Custo: zero dependência nova.
+
+- **Backend:** `backend/src/observabilidade/log.ts`. `log` (aplicação) e `opcoesLogFastify` (HTTP) compartilham a MESMA configuração e a mesma máscara.
+- **App:** `app/src/nucleo/log.ts` — módulo próprio (o React Native não tem as streams do Node). Mesmos níveis, mesmos campos, **silencioso em release**.
+
+### Níveis — a política que evita alerta-ruído
+| Nível | Quando | Exemplo |
+|---|---|---|
+| `info` | Marco de negócio | cupom processado, job concluído, boot |
+| `warn` | Degradação **com** recuperação automática | retentativa da fila, portal recusando |
+| `error` | Exige ação humana; usuário afetado | falha permanente de parser, telemetria não persistindo |
+| `fatal` | Processo inutilizável | config ausente, `listen` falhou |
+
+> Erro **transitório que a fila vai reprocessar é `warn`, não `error`.** Se toda oscilação de portal da SEFAZ virasse `error`, o alerta seria desligado na primeira semana — e um alerta desligado não protege nada.
+
+### Sanitização — duas camadas, porque nenhuma basta sozinha
+1. **`redact` do Pino** — campos *nomeados* (`req.headers.authorization`, `*.token`, `*.cpf`, `*.chaveAcesso`, `*.html`). A sintaxe de `paths` **falha em silêncio** se estiver errada, por isso é testada em `backend/src/observabilidade/log.test.ts`.
+2. **`sanitizarErro` / `redigirTexto`** (`@barganha/shared`, usado por app e backend) — dado pessoal embutido em **texto livre**, que o `redact` não enxerga. Testado em `shared/src/observabilidade/redacao.test.ts`.
+
+**Regras invioláveis:**
+- Nenhum erro vai ao log cru — sempre `sanitizarErro(erro)`. Vale também para texto **persistido**: `marcarFalha(cupomId, motivo)` grava no banco, então o `motivo` passa pela redação antes.
+- **Nunca interpolar texto raspado do portal** numa mensagem de erro. Esses erros disparam justamente quando um seletor *derrapou* — e o elemento errado pode ser o bloco do consumidor, com CPF. Descreva a **forma** (`len=`, tem dígitos), não o conteúdo. Para inspecionar layout existe o esqueleto de `debug-html.ts`.
+- **Proibido logar `usuarioId` no caminho do POOL** (`observacao_preco`). Os dois lados juntos reconstruiriam por log o vínculo usuário↔compra que a decisão travada nº3 proíbe no banco. No lado privado (ingestão, conta) o vínculo já existe e pode ser logado.
+- **CNPJ da loja NÃO é redigido** — é dado de empresa, já persistido por projeto (geo pela loja, decisão travada nº4), e é o que permite diagnosticar divergência nota × chave.
+
+### Correlação
+`cupomId` é a chave que atravessa ingestão → fila → parsing → pool, três fronteiras assíncronas onde o `reqId` do Fastify já morreu. Use `logDeCupom(cupomId, uf)`; no HTTP, a rota entra como `action` (com template, nunca a URL concreta — id vira cardinalidade infinita).
+
+---
+
 ## C9.4 — Política de privacidade
 Publicada em `docs/politica-de-privacidade.md` (texto ao usuário, derivado de `04`). O fluxo de consentimento no onboarding é C6.4.
