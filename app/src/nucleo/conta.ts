@@ -50,11 +50,11 @@ export async function enviarPendentesAntesDeSair(): Promise<number> {
 
 export async function redefinirAppLocal(): Promise<void> {
   const db = getBd();
-  await db.withTransactionAsync(async () => {
+  await db.withExclusiveTransactionAsync(async (txn) => {
     // item_cupom_local e fila_upload sairiam em cascata com cupom_local, mas
     // limpamos explicitamente — independe do PRAGMA foreign_keys e deixa claro
     // o que é removido.
-    await db.execAsync(`
+    await txn.execAsync(`
       DELETE FROM item_cupom_local;
       DELETE FROM fila_upload;
       DELETE FROM cupom_local;
@@ -66,6 +66,6 @@ export async function redefinirAppLocal(): Promise<void> {
       DELETE FROM notificacao;
     `);
     // meta_sync: limpa tudo (cursor de sync, sessão de auth) MENOS o consentimento.
-    await db.runAsync(`DELETE FROM meta_sync WHERE chave <> ?`, [meta.CHAVE_CONSENTIMENTO]);
+    await txn.runAsync(`DELETE FROM meta_sync WHERE chave <> ?`, [meta.CHAVE_CONSENTIMENTO]);
   });
 }

@@ -45,9 +45,10 @@ function mapear(l: LinhaCache): CacheEstatistica {
 export async function salvarEstatisticas(estatisticas: PrecoEstatistica[]): Promise<void> {
   if (estatisticas.length === 0) return;
   const db = getBd();
-  await db.withTransactionAsync(async () => {
+  // Exclusiva: o delta sync grava página a página enquanto a UI lê o cache.
+  await db.withExclusiveTransactionAsync(async (txn) => {
     for (const e of estatisticas) {
-      await db.runAsync(
+      await txn.runAsync(
         `INSERT OR REPLACE INTO cache_estatistica
            (produto_canonico_id, escopo, escopo_id, unidade_base, mediana, p25, p75,
             minimo, maximo, menor_promocional, n_observacoes, atualizado_em)

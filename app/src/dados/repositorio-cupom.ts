@@ -64,14 +64,15 @@ export async function registrarCaptura(captura: NovaCaptura): Promise<CupomLocal
   const agora = agoraIso();
   const capturadoEm = captura.capturadoEm ?? agora;
 
-  await db.withTransactionAsync(async () => {
-    await db.runAsync(
+  // Exclusiva, não `withTransactionAsync`: ver nota em `aplicarProcessamento`.
+  await db.withExclusiveTransactionAsync(async (txn) => {
+    await txn.runAsync(
       `INSERT INTO cupom_local
          (id, qr_payload, chave_acesso, capturado_em, status, criado_em, atualizado_em)
        VALUES (?, ?, ?, ?, 'qr_capturado', ?, ?)`,
       [id, captura.qrPayload, captura.chaveAcesso ?? null, capturadoEm, agora, agora],
     );
-    await db.runAsync(`INSERT INTO fila_upload (cupom_local_id, criado_em) VALUES (?, ?)`, [
+    await txn.runAsync(`INSERT INTO fila_upload (cupom_local_id, criado_em) VALUES (?, ?)`, [
       id,
       agora,
     ]);
@@ -178,10 +179,16 @@ export async function aplicarProcessamento(
   const db = getBd();
   const agora = agoraIso();
 
-  await db.withTransactionAsync(async () => {
+  // `withExclusiveTransactionAsync`, NUNCA `withTransactionAsync`: a versão não
+  // exclusiva do expo-sqlite compartilha a conexão, então dois BEGIN/COMMIT
+  // podem se intercalar. Isto aqui roda tanto na rodada de sync de fundo quanto
+  // no polling da tela Nota fiscal — quando as duas se cruzavam, uma commitava a
+  // transação da outra e o rollback órfão estourava "cannot rollback - no
+  // transaction is active", perdendo a gravação dos itens.
+  await db.withExclusiveTransactionAsync(async (txn) => {
     // `COALESCE(?, coluna)` nos totais: uma re-sincronização sem os totais (ex.:
     // via GET, que não os carrega) não apaga os já gravados na captura (C2.6).
-    await db.runAsync(
+    await txn.runAsync(
       `UPDATE cupom_local
           SET cupom_id_servidor = ?, status = ?, chave_acesso = COALESCE(?, chave_acesso),
               loja_cnpj = ?, loja_nome = ?, emitido_em = ?, uf = ?,
@@ -202,9 +209,9 @@ export async function aplicarProcessamento(
         cupomLocalId,
       ],
     );
-    await db.runAsync(`DELETE FROM item_cupom_local WHERE cupom_local_id = ?`, [cupomLocalId]);
+    await txn.runAsync(`DELETE FROM item_cupom_local WHERE cupom_local_id = ?`, [cupomLocalId]);
     for (const item of r.itens) {
-      await db.runAsync(
+      await txn.runAsync(
         `INSERT INTO item_cupom_local
            (id, cupom_local_id, produto_canonico_id, descricao_original, ean,
             quantidade, unidade, valor_unitario, valor_total, desconto)

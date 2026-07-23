@@ -36,8 +36,8 @@ async function migrar(db: SQLite.SQLiteDatabase): Promise<void> {
 
   for (let i = versao; i < MIGRACOES.length; i++) {
     const sql = MIGRACOES[i]!;
-    await db.withTransactionAsync(async () => {
-      await db.execAsync(sql);
+    await db.withExclusiveTransactionAsync(async (txn) => {
+      await txn.execAsync(sql);
     });
     versao = i + 1;
     // PRAGMA não aceita bind param; interpolar um inteiro derivado do índice é seguro.
