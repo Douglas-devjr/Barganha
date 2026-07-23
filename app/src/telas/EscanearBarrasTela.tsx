@@ -5,14 +5,14 @@
  * identificamos o produto a consultar. Tela sempre escura (câmera).
  */
 
-import { CameraView, useCameraPermissions } from 'expo-camera';
+import { CameraView } from 'expo-camera';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useRef, useState } from 'react';
+import { useRef } from 'react';
 import { Linking, Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Botao, IconeBarras, IconeFechar, MolduraCamera, Texto } from '@/componentes';
-import { useCameraAtiva } from '@/nucleo/camera';
+import { useCameraPronta } from '@/nucleo/camera';
 import { depositarEanEscaneado } from '@/nucleo/scan-pendente';
 import { TemaFixo, comAlfa, escuro as paletaEscura, espaco, raio } from '@/tema';
 import type { RootStackParamList } from '@/navegacao/tipos';
@@ -27,10 +27,9 @@ const ACENTO = paletaEscura.tinta;
 const FORMATOS_EAN = ['ean13', 'ean8', 'upc_a', 'upc_e'] as const;
 
 export function EscanearBarrasTela({ navigation }: Props) {
-  const [permissao, pedirPermissao] = useCameraPermissions();
-  // Desmonta a câmera fora de foco/primeiro plano — senão o preview volta PRETO.
-  const cameraAtiva = useCameraAtiva();
-  const [erroCamera, setErroCamera] = useState<string | null>(null);
+  // Pede a permissão sozinho e desmonta a câmera fora de foco/primeiro plano
+  // (senão o preview volta PRETO no Android).
+  const { estado, erro, aoFalhar, tentarDeNovo, pedirPermissao } = useCameraPronta();
   const lido = useRef(false);
 
   function aoLer(ean: string) {
@@ -43,15 +42,15 @@ export function EscanearBarrasTela({ navigation }: Props) {
   return (
     <TemaFixo modo="escuro">
       <SafeAreaView style={estilos.raiz} edges={['top', 'bottom']}>
-        {permissao?.granted && cameraAtiva && erroCamera == null ? (
+        {estado === 'pronta' ? (
           <CameraView
             style={StyleSheet.absoluteFill}
             facing="back"
-            // Autofoco ligado: o EAN-13 (barras finas 1D) exige foco nítido.
+            // Autofoco: iOS-only nesta versão, mas inofensivo no Android.
             autofocus="on"
             barcodeScannerSettings={{ barcodeTypes: [...FORMATOS_EAN] }}
             onBarcodeScanned={({ data }) => aoLer(data)}
-            onMountError={({ message }) => setErroCamera(message || 'erro desconhecido')}
+            onMountError={({ message }) => aoFalhar(message)}
           />
         ) : null}
         <View style={estilos.veu} />
@@ -73,32 +72,39 @@ export function EscanearBarrasTela({ navigation }: Props) {
 
         <View style={estilos.centro}>
           <MolduraCamera largura={270} altura={190} corGlow={ACENTO}>
-            {!permissao?.granted ? <IconeBarras tamanho={56} cor={ACENTO} /> : null}
+            {estado !== 'pronta' ? <IconeBarras tamanho={56} cor={ACENTO} /> : null}
           </MolduraCamera>
 
-          {erroCamera != null ? (
+          {estado === 'erro' ? (
             <View style={estilos.permissao}>
               <Texto cor="tinta" centralizado style={estilos.dica}>
-                A câmera não abriu. Feche outros apps que estejam usando a câmera e tente de novo.
+                A câmera não abriu. Feche outros apps que a estejam usando e tente de novo.
               </Texto>
-              <Botao titulo="Tentar de novo" onPress={() => setErroCamera(null)} />
+              {/* mostra a causa real em vez de escondê-la atrás do texto genérico */}
+              <Texto cor="suave" tamanho="xs" centralizado>
+                {erro}
+              </Texto>
+              <Botao titulo="Tentar de novo" onPress={tentarDeNovo} />
             </View>
-          ) : permissao?.granted ? (
-            <Texto cor="tinta" centralizado style={estilos.dica}>
-              Aponte para o código de barras do produto.
-            </Texto>
-          ) : (
+          ) : estado === 'bloqueada' ? (
+            <View style={estilos.permissao}>
+              <Texto cor="tinta" centralizado style={estilos.dica}>
+                A permissão da câmera está negada. Libere em Ajustes para ler o código de barras.
+              </Texto>
+              <Botao titulo="Abrir configurações" onPress={() => void Linking.openSettings()} />
+            </View>
+          ) : estado === 'sem_permissao' ? (
             <View style={estilos.permissao}>
               <Texto cor="tinta" centralizado style={estilos.dica}>
                 Precisamos da câmera para ler o código de barras.
               </Texto>
-              {permissao && !permissao.canAskAgain ? (
-                <Botao titulo="Abrir configurações" onPress={() => void Linking.openSettings()} />
-              ) : (
-                <Botao titulo="Permitir câmera" onPress={() => void pedirPermissao()} />
-              )}
+              <Botao titulo="Permitir câmera" onPress={pedirPermissao} />
             </View>
-          )}
+          ) : estado === 'pronta' ? (
+            <Texto cor="tinta" centralizado style={estilos.dica}>
+              Aponte para o código de barras do produto.
+            </Texto>
+          ) : null}
         </View>
       </SafeAreaView>
     </TemaFixo>
