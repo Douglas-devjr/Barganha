@@ -21,6 +21,7 @@
  */
 
 import { getBd } from '@/dados';
+import { log } from '@/nucleo/log';
 
 const PREFIXO = 'auth:';
 
@@ -52,8 +53,17 @@ async function secureStore(): Promise<ModuloSecureStore | null> {
   return moduloSecureStore;
 }
 
+/**
+ * Chave equivalente no cofre. O SecureStore só aceita `[A-Za-z0-9._-]` e LANÇA
+ * em qualquer outra coisa — o `:` do PREFIXO derrubava toda leitura e escrita,
+ * jogando a sessão no fallback do SQLite sem ninguém perceber. Prefixo próprio
+ * (o do SQLite continua `auth:`, que já está gravado em disco) e o resto do
+ * nome saneado, para a chave sobreviver ao que o supabase-js resolver usar.
+ */
+const chaveCofre = (chave: string): string => `auth_${chave.replace(/[^A-Za-z0-9._-]/g, '_')}`;
+
 /** Chave do enésimo pedaço de um valor fatiado. */
-const chavePedaco = (chave: string, i: number): string => `${chave}__${i}`;
+const chavePedaco = (chave: string, i: number): string => `${chaveCofre(chave)}__${i}`;
 
 // ── Fallback: a tabela chave/valor do SQLite (comportamento anterior) ──────
 
@@ -65,7 +75,10 @@ const sqlite: ArmazenamentoChaveValor = {
         [PREFIXO + chave],
       );
       return linha?.valor ?? null;
-    } catch {
+    } catch (erro) {
+      // Silêncio aqui significa o usuário sendo deslogado sem explicação —
+      // "sem sessão" e "não consegui ler a sessão" são coisas MUITO diferentes.
+      log.falha('warn', { action: 'sessao.leitura_sqlite' }, erro, 'Falha ao ler sessão do SQLite');
       return null;
     }
   },
@@ -75,15 +88,16 @@ const sqlite: ArmazenamentoChaveValor = {
         PREFIXO + chave,
         valor,
       ]);
-    } catch {
+    } catch (erro) {
       // Banco ainda não pronto — supabase-js re-tenta na próxima operação.
+      log.falha('warn', { action: 'sessao.escrita_sqlite' }, erro, 'Falha ao gravar sessão');
     }
   },
   async removeItem(chave) {
     try {
       await getBd().runAsync(`DELETE FROM meta_sync WHERE chave = ?`, [PREFIXO + chave]);
-    } catch {
-      // ignora
+    } catch (erro) {
+      log.falha('warn', { action: 'sessao.remocao_sqlite' }, erro, 'Falha ao remover sessão');
     }
   },
 };
@@ -92,7 +106,7 @@ const sqlite: ArmazenamentoChaveValor = {
 
 /** Nº de pedaços gravados para a chave (0 = nada aqui). */
 async function lerContagem(mod: ModuloSecureStore, chave: string): Promise<number> {
-  const bruto = await mod.getItemAsync(PREFIXO + chave);
+  const bruto = await mod.getItemAsync(chaveCofre(chave));
   const n = bruto == null ? 0 : Number(bruto);
   return Number.isFinite(n) && n > 0 ? n : 0;
 }
@@ -100,9 +114,9 @@ async function lerContagem(mod: ModuloSecureStore, chave: string): Promise<numbe
 async function apagarSeguro(mod: ModuloSecureStore, chave: string): Promise<void> {
   const total = await lerContagem(mod, chave);
   for (let i = 0; i < total; i++) {
-    await mod.deleteItemAsync(PREFIXO + chavePedaco(chave, i));
+    await mod.deleteItemAsync(chavePedaco(chave, i));
   }
-  await mod.deleteItemAsync(PREFIXO + chave);
+  await mod.deleteItemAsync(chaveCofre(chave));
 }
 
 /**
@@ -123,7 +137,7 @@ export const armazenamentoSessao: ArmazenamentoChaveValor = {
       if (total > 0) {
         const partes: string[] = [];
         for (let i = 0; i < total; i++) {
-          const parte = await mod.getItemAsync(PREFIXO + chavePedaco(chave, i));
+          const parte = await mod.getItemAsync(chavePedaco(chave, i));
           // Pedaço faltando = valor corrompido; melhor "sem sessão" (o usuário
           // refaz o login) do que devolver um JSON truncado ao supabase-js.
           if (parte == null) {
@@ -141,7 +155,10 @@ export const armazenamentoSessao: ArmazenamentoChaveValor = {
       await armazenamentoSessao.setItem(chave, legado);
       await sqlite.removeItem(chave);
       return legado;
-    } catch {
+    } catch (erro) {
+      // Cofre ilegível = usuário deslogado do nada. É a causa mais provável de
+      // um "sumiu minha sessão" e antes não deixava nenhum rastro.
+      log.falha('error', { action: 'sessao.leitura_cofre' }, erro, 'Falha ao ler sessão do cofre');
       return null;
     }
   },
@@ -159,13 +176,21 @@ export const armazenamentoSessao: ArmazenamentoChaveValor = {
         pedacos.push(valor.slice(i, i + TAM_PEDACO));
       }
       for (let i = 0; i < pedacos.length; i++) {
-        await mod.setItemAsync(PREFIXO + chavePedaco(chave, i), pedacos[i]!);
+        await mod.setItemAsync(chavePedaco(chave, i), pedacos[i]!);
       }
       // A contagem por ÚLTIMO: até ela existir, a leitura vê "nada gravado" em
       // vez de um valor pela metade.
-      await mod.setItemAsync(PREFIXO + chave, String(pedacos.length));
-    } catch {
+      await mod.setItemAsync(chaveCofre(chave), String(pedacos.length));
+    } catch (erro) {
       // Cofre indisponível — não deixa o usuário sem sessão por causa disso.
+      // Mas o fallback é para o SQLite, ou seja, o refresh token deixa de ficar
+      // no armazenamento seguro: é degradação de SEGURANÇA e precisa aparecer.
+      log.falha(
+        'error',
+        { action: 'sessao.cofre_indisponivel' },
+        erro,
+        'Cofre indisponível — sessão caiu para o SQLite (sem proteção do Keystore)',
+      );
       await sqlite.setItem(chave, valor);
     }
   },
@@ -177,8 +202,15 @@ export const armazenamentoSessao: ArmazenamentoChaveValor = {
     if (mod) {
       try {
         await apagarSeguro(mod, chave);
-      } catch {
-        // ignora
+      } catch (erro) {
+        // Falhar aqui deixa credencial no cofre depois de um logout. O SQLite
+        // ainda é limpo abaixo, mas isto não pode passar despercebido.
+        log.falha(
+          'error',
+          { action: 'sessao.remocao_cofre' },
+          erro,
+          'Falha ao apagar sessão do cofre no logout',
+        );
       }
     }
     await sqlite.removeItem(chave);
