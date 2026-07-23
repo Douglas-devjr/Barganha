@@ -58,8 +58,15 @@ describe('deSelos', () => {
       titulo: 'Primeira nota',
       descricao: 'Escaneou o primeiro',
       conquistado: true,
+      icone: 'check',
     },
-    { id: 'cacador', titulo: 'Caçador de preços', descricao: '10 cupons', conquistado: false },
+    {
+      id: 'cacador',
+      titulo: 'Caçador de preços',
+      descricao: '10 cupons',
+      conquistado: false,
+      icone: 'recibo',
+    },
   ];
 
   it('só vira evento o selo já conquistado', () => {

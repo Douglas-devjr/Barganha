@@ -31,6 +31,7 @@ import {
   IconeCheck,
   IconeFiltro,
   IconeKebab,
+  IconeLixeira,
   IconeProdutos,
   IconeTendenciaBaixo,
   IconeTendenciaCima,
@@ -294,6 +295,7 @@ export function ProdutosTela({ navigation }: Props) {
         titulo="Excluir da lista?"
         mensagem={`"${confirmando?.nome ?? ''}" sai da sua lista de compras. O histórico de preços continua intacto.`}
         rotuloConfirmar="Excluir"
+        icone={<IconeLixeira tamanho={24} cor={c.caro} />}
         aoConfirmar={() => confirmando && void removerDaLista(confirmando)}
         aoCancelar={() => setConfirmando(null)}
       />

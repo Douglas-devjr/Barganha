@@ -6,7 +6,7 @@
  * apagar conta): o Alert do sistema não acompanha o tema nem a tipografia.
  */
 
-import { useEffect, useRef } from 'react';
+import { type ReactNode, useEffect, useRef } from 'react';
 import { Animated, Modal, Pressable, StyleSheet, View } from 'react-native';
 
 import { espaco, raio, useTema } from '@/tema';
@@ -28,6 +28,11 @@ export interface DialogoProps {
   /** `false` deixa a ação com a cor padrão (confirmação não destrutiva). */
   destrutivo?: boolean;
   ocupado?: boolean;
+  /**
+   * Ícone do topo. O handoff usa o ícone CONTEXTUAL da ação (lixeira ao
+   * excluir); o alerta genérico é só o padrão de quem não informa.
+   */
+  icone?: ReactNode;
 }
 
 export function Dialogo({
@@ -40,6 +45,7 @@ export function Dialogo({
   aoCancelar,
   destrutivo = true,
   ocupado = false,
+  icone,
 }: DialogoProps) {
   const { c } = useTema();
   const duracao = useDuracao(DURACAO.dialogo);
@@ -81,7 +87,7 @@ export function Dialogo({
           ]}
         >
           <View style={[estilos.circulo, { backgroundColor: destrutivo ? c.caroBg : c.tealWash }]}>
-            <IconeAlerta tamanho={24} cor={corAcao} />
+            {icone ?? <IconeAlerta tamanho={24} cor={corAcao} />}
           </View>
 
           <Texto peso="bold" tamanho="lg" centralizado style={{ marginTop: espaco.md }}>

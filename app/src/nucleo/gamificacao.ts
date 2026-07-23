@@ -10,11 +10,20 @@
  * sem cupom NÃO quebra a sequência (está em andamento).
  */
 
+/**
+ * Ícone do selo — identificador SEMÂNTICO, não o componente. Este módulo é puro
+ * (roda sem React Native, nos testes); quem desenha é a tela, que mapeia cada
+ * chave para o SVG correspondente.
+ */
+export type IconeSelo = 'check' | 'recibo' | 'trofeu' | 'coroa' | 'chama' | 'calendario';
+
 export interface Selo {
   id: string;
   titulo: string;
   descricao: string;
   conquistado: boolean;
+  /** Cada conquista tem seu próprio ícone (handoff 3a, screenshot 06). */
+  icone: IconeSelo;
 }
 
 export interface Contribuicao {
@@ -57,19 +66,31 @@ export function calcularContribuicao(datasCaptura: string[], agora = new Date())
 
   const totalCupons = datas.length;
   const selos: Selo[] = [
-    selo('primeira-nota', 'Primeira nota', 'Escaneou o primeiro cupom', totalCupons >= 1),
-    selo('cacador', 'Caçador de preços', '10 cupons escaneados', totalCupons >= 10),
-    selo('veterano', 'Veterano da gôndola', '50 cupons escaneados', totalCupons >= 50),
-    selo('lenda', 'Lenda do mercado', '100 cupons escaneados', totalCupons >= 100),
-    selo('ritmo', 'No ritmo', '4 semanas seguidas contribuindo', sequenciaSemanas >= 4),
-    selo('semana-cheia', 'Semana cheia', '3 cupons na mesma semana', temSemanaCheia(datas)),
+    selo('primeira-nota', 'Primeira nota', 'Escaneou o primeiro cupom', totalCupons >= 1, 'check'),
+    selo('cacador', 'Caçador de preços', '10 cupons escaneados', totalCupons >= 10, 'recibo'),
+    selo('veterano', 'Veterano da gôndola', '50 cupons escaneados', totalCupons >= 50, 'trofeu'),
+    selo('lenda', 'Lenda do mercado', '100 cupons escaneados', totalCupons >= 100, 'coroa'),
+    selo('ritmo', 'No ritmo', '4 semanas seguidas contribuindo', sequenciaSemanas >= 4, 'chama'),
+    selo(
+      'semana-cheia',
+      'Semana cheia',
+      '3 cupons na mesma semana',
+      temSemanaCheia(datas),
+      'calendario',
+    ),
   ];
 
   return { totalCupons, cuponsNaSemana, sequenciaSemanas, selos };
 }
 
-function selo(id: string, titulo: string, descricao: string, conquistado: boolean): Selo {
-  return { id, titulo, descricao, conquistado };
+function selo(
+  id: string,
+  titulo: string,
+  descricao: string,
+  conquistado: boolean,
+  icone: IconeSelo,
+): Selo {
+  return { id, titulo, descricao, conquistado, icone };
 }
 
 function temSemanaCheia(datas: Date[]): boolean {

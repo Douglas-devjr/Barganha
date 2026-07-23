@@ -246,6 +246,7 @@ export function EditarProdutoTela({ navigation, route }: Props) {
         titulo="Excluir da lista?"
         mensagem={`"${nome}" sai da sua lista de compras. O histórico de preços continua intacto.`}
         rotuloConfirmar="Excluir"
+        icone={<IconeLixeira tamanho={24} cor={c.caro} />}
         aoConfirmar={() => void excluirDaLista()}
         aoCancelar={() => setConfirmando(false)}
       />

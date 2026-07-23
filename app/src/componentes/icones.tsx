@@ -351,3 +351,33 @@ export function IconeBandeira(p: IconeProps) {
     </Base>
   );
 }
+
+/** coroa — selo de topo ("lenda do mercado"). */
+export function IconeCoroa(p: IconeProps) {
+  return (
+    <Base {...p}>
+      <Path d="M4 8.5l3.2 3L12 5l4.8 6.5L20 8.5l-1.6 9.5H5.6L4 8.5Z" />
+      <Path d="M5.6 20.5h12.8" />
+    </Base>
+  );
+}
+
+/** chama — sequência de semanas contribuindo ("no ritmo"). */
+export function IconeChama(p: IconeProps) {
+  return (
+    <Base {...p}>
+      <Path d="M12 3.5s5.5 4.2 5.5 9a5.5 5.5 0 0 1-11 0c0-2 1-3.6 2-4.8.4 1.3 1.3 2.1 2.2 2.3-.6-2.4.2-4.9 1.3-6.5Z" />
+    </Base>
+  );
+}
+
+/** calendário — marcos por período ("semana cheia"). */
+export function IconeCalendario(p: IconeProps) {
+  return (
+    <Base {...p}>
+      <Rect x={3.5} y={5} width={17} height={15.5} rx={2.5} />
+      <Path d="M3.5 9.5h17" />
+      <Path d="M8 3.5v3M16 3.5v3" />
+    </Base>
+  );
+}

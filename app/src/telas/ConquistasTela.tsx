@@ -10,12 +10,30 @@
 
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useCallback, useState } from 'react';
+import { type ReactElement, useCallback, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
-import { CabecalhoVoltar, Cartao, IconeCadeado, IconeTrofeu, Tela, Texto } from '@/componentes';
+import {
+  CabecalhoVoltar,
+  Cartao,
+  IconeCadeado,
+  IconeCalendario,
+  IconeChama,
+  IconeCheck,
+  IconeCoroa,
+  IconeRecibo,
+  IconeTrofeu,
+  Tela,
+  Texto,
+  type IconeProps,
+} from '@/componentes';
 import { cupons } from '@/dados';
-import { calcularContribuicao, type Contribuicao, type Selo } from '@/nucleo/gamificacao';
+import {
+  calcularContribuicao,
+  type Contribuicao,
+  type IconeSelo,
+  type Selo,
+} from '@/nucleo/gamificacao';
 import { espaco, raio, useTema } from '@/tema';
 import type { RootStackParamList } from '@/navegacao/tipos';
 
@@ -106,9 +124,20 @@ export function ConquistasTela({ navigation }: Props) {
   );
 }
 
+/** Cada conquista tem seu ícone (handoff 3a): o mapa mora aqui, na camada de UI. */
+const ICONES: Record<IconeSelo, (p: IconeProps) => ReactElement> = {
+  check: IconeCheck,
+  recibo: IconeRecibo,
+  trofeu: IconeTrofeu,
+  coroa: IconeCoroa,
+  chama: IconeChama,
+  calendario: IconeCalendario,
+};
+
 function Badge({ selo }: { selo: Selo }) {
   const { c } = useTema();
   const conquistado = selo.conquistado;
+  const Icone = ICONES[selo.icone];
 
   return (
     <View style={[estilos.badge, !conquistado && estilos.badgeBloqueado]}>
@@ -120,7 +149,7 @@ function Badge({ selo }: { selo: Selo }) {
             : { borderWidth: 1.5, borderColor: c.borda, borderStyle: 'dashed' },
         ]}
       >
-        <IconeTrofeu tamanho={22} cor={conquistado ? c.sobreTeal : c.fraco} />
+        <Icone tamanho={22} cor={conquistado ? c.sobreTeal : c.fraco} />
       </View>
       <Texto peso="semibold" tamanho="sm" centralizado style={{ marginTop: espaco.sm }}>
         {selo.titulo}

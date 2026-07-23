@@ -27,6 +27,7 @@ import {
   FolhaInferior,
   GraficoLinha,
   IconeKebab,
+  IconeLixeira,
   IconeLoja,
   IconeTendenciaBaixo,
   IconeTendenciaCima,
@@ -426,6 +427,7 @@ export function ProdutoDetalheTela({ navigation, route }: Props) {
         titulo="Tirar da lista?"
         mensagem={`"${produto?.nome ?? ''}" sai da sua lista de compras. O histórico de preços continua intacto.`}
         rotuloConfirmar="Tirar da lista"
+        icone={<IconeLixeira tamanho={24} cor={c.caro} />}
         aoConfirmar={() => void alternarLista()}
         aoCancelar={() => setConfirmando(false)}
       />
