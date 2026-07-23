@@ -15,3 +15,4 @@ export * from './api/dtos';
 export * from './estatistica/veredito';
 export * from './estatistica/normalizacao';
 export * from './estatistica/faixa';
+export * from './observabilidade/redacao';
