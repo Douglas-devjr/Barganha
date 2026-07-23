@@ -3,7 +3,7 @@
  * grava no Postgres; e uma falha do banco NUNCA derruba quem registrou.
  */
 
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
 import { TelemetriaPersistente, type ClienteRpcTelemetria } from './telemetria-persistente';
 
@@ -37,8 +37,17 @@ describe('TelemetriaPersistente (C10.2)', () => {
     ]);
   });
 
-  it('falha do banco vira log — não lança e a memória segue contando', async () => {
-    const erroLog = vi.spyOn(console, 'error').mockImplementation(() => {});
+  it('snapshot saudável não acusa falha de persistência', async () => {
+    const { db } = clienteQueGrava();
+    const telemetria = new TelemetriaPersistente(db);
+
+    telemetria.registrarParsing('RJ', 'processado');
+    await new Promise((r) => setTimeout(r, 0));
+
+    expect(telemetria.snapshot().saude).toEqual({ falhasPersistencia: 0 });
+  });
+
+  it('falha do banco não lança, a memória segue contando E o /metricas denuncia', async () => {
     const db: ClienteRpcTelemetria = {
       rpc: () => Promise.reject(new Error('banco fora')),
     };
@@ -48,12 +57,15 @@ describe('TelemetriaPersistente (C10.2)', () => {
     await new Promise((r) => setTimeout(r, 0)); // dá vez ao catch assíncrono
 
     expect(telemetria.snapshot().totais.processado).toBe(1);
-    expect(erroLog).toHaveBeenCalled();
-    erroLog.mockRestore();
+    // O ponto do achado (f): antes a falha só ia para o console e o `/metricas`
+    // seguia com cara de saudável. Agora o instrumento avisa que está cego.
+    const saude = telemetria.snapshot().saude;
+    expect(saude?.falhasPersistencia).toBe(1);
+    expect(saude?.ultimaFalhaEm).toBeTruthy();
+    expect(saude?.ultimaFalhaMotivo).toContain('banco fora');
   });
 
-  it('erro retornado pelo PostgREST (sem exceção) também só vira log', async () => {
-    const erroLog = vi.spyOn(console, 'error').mockImplementation(() => {});
+  it('erro retornado pelo PostgREST (sem exceção) também conta na saúde', async () => {
     const db: ClienteRpcTelemetria = {
       rpc: () => Promise.resolve({ error: { message: 'permission denied' } }),
     };
@@ -63,7 +75,27 @@ describe('TelemetriaPersistente (C10.2)', () => {
     await new Promise((r) => setTimeout(r, 0));
 
     expect(telemetria.snapshot().porUf.SP).toEqual({ falha_permanente: 1 });
-    expect(erroLog).toHaveBeenCalledWith(expect.stringContaining('SP/falha_permanente'));
-    erroLog.mockRestore();
+    expect(telemetria.snapshot().saude?.falhasPersistencia).toBe(1);
+    expect(telemetria.snapshot().saude?.ultimaFalhaMotivo).toContain('permission denied');
+  });
+
+  it('o motivo da falha é SANITIZADO antes de virar estado exposto', async () => {
+    // O `/metricas` é lido por humanos da curadoria; o motivo vem de uma
+    // mensagem de erro do driver, que pode carregar trecho de query — e query
+    // aqui encosta em `chave_acesso` (docs/04).
+    const db: ClienteRpcTelemetria = {
+      rpc: () =>
+        Promise.resolve({
+          error: { message: 'falha na chave 33260612345678000199650010000000011000000016' },
+        }),
+    };
+    const telemetria = new TelemetriaPersistente(db);
+
+    telemetria.registrarParsing('RJ', 'processado');
+    await new Promise((r) => setTimeout(r, 0));
+
+    const motivo = telemetria.snapshot().saude?.ultimaFalhaMotivo ?? '';
+    expect(motivo).not.toContain('33260612345678000199650010000000011000000016');
+    expect(motivo).toContain('[REDIGIDO]');
   });
 });

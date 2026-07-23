@@ -22,12 +22,29 @@ export interface Telemetria {
   registrarParsing(uf: string | undefined, evento: EventoParsing): void;
 }
 
+/**
+ * Saúde da PRÓPRIA telemetria. Sem isto, se a gravação em `telemetria_parsing`
+ * quebrasse, o `/metricas` seguiria mostrando os números da memória — com cara
+ * de perfeitamente saudável — enquanto o histórico durável não gravava nada. O
+ * instrumento precisa dizer quando ELE está quebrado.
+ */
+export interface SaudeTelemetria {
+  /** Gravações no Postgres que falharam desde que o processo subiu. */
+  falhasPersistencia: number;
+  /** ISO da última falha, ausente se nunca falhou. */
+  ultimaFalhaEm?: string;
+  /** Motivo da última falha, já sanitizado. */
+  ultimaFalhaMotivo?: string;
+}
+
 export interface SnapshotTelemetria {
   geradoEm: string;
   /** Soma de cada evento somando todas as UFs. */
   totais: Partial<Record<EventoParsing, number>>;
   /** Contadores por UF: `{ RJ: { processado: 10, falha_permanente: 1 } }`. */
   porUf: Record<string, Partial<Record<EventoParsing, number>>>;
+  /** Ausente no coletor puramente em memória (não há o que persistir). */
+  saude?: SaudeTelemetria;
 }
 
 export interface FonteMetricas {

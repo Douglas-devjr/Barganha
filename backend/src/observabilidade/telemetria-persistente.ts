@@ -9,7 +9,15 @@
  * atrasar a ingestão. Falha vira log; o contador em memória segue valendo.
  */
 
-import type { EventoParsing, FonteMetricas, SnapshotTelemetria, Telemetria } from './telemetria';
+import { log } from './log';
+import { sanitizarErro } from './sanitizar';
+import type {
+  EventoParsing,
+  FonteMetricas,
+  SaudeTelemetria,
+  SnapshotTelemetria,
+  Telemetria,
+} from './telemetria';
 import { TelemetriaMemoria } from './telemetria-memoria';
 
 /**
@@ -28,6 +36,11 @@ const UF_DESCONHECIDA = 'desconhecida';
 export class TelemetriaPersistente implements Telemetria, FonteMetricas {
   private readonly memoria = new TelemetriaMemoria();
 
+  /** Contador da própria saúde — ver `SaudeTelemetria`. */
+  private falhasPersistencia = 0;
+  private ultimaFalhaEm?: string;
+  private ultimaFalhaMotivo?: string;
+
   constructor(private readonly db: ClienteRpcTelemetria) {}
 
   registrarParsing(uf: string | undefined, evento: EventoParsing): void {
@@ -38,16 +51,40 @@ export class TelemetriaPersistente implements Telemetria, FonteMetricas {
       this.db.rpc('incrementar_telemetria_parsing', { p_uf: chave, p_evento: evento }),
     )
       .then((r) => {
-        if (r.error) {
-          console.error(`[telemetria] falha ao persistir ${chave}/${evento}: ${r.error.message}`);
-        }
+        if (r.error) this.registrarFalha(chave, evento, new Error(r.error.message));
       })
       .catch((erro: unknown) => {
-        console.error(`[telemetria] falha ao persistir ${chave}/${evento}:`, erro);
+        this.registrarFalha(chave, evento, erro);
       });
   }
 
+  /**
+   * ACHADO (f): a falha ia só para o console. Agora ela também vira ESTADO
+   * exposto no `/metricas` — quem olha o painel enxerga que o instrumento está
+   * cego, em vez de confiar em números da memória que somem no próximo restart.
+   */
+  private registrarFalha(chave: string, evento: EventoParsing, erro: unknown): void {
+    const { mensagem } = sanitizarErro(erro);
+    this.falhasPersistencia += 1;
+    this.ultimaFalhaEm = new Date().toISOString();
+    this.ultimaFalhaMotivo = mensagem;
+    // `error`: exige ação humana. Perder o histórico durável no free tier (onde a
+    // instância dorme e a memória zera) é perder a série temporal de vez.
+    log.error(
+      { action: 'telemetria.persistencia_falhou', uf: chave, evento, erro: { mensagem } },
+      'Falha ao persistir telemetria — o contador em memória segue valendo',
+    );
+  }
+
   snapshot(): SnapshotTelemetria {
-    return this.memoria.snapshot();
+    return { ...this.memoria.snapshot(), saude: this.saude() };
+  }
+
+  private saude(): SaudeTelemetria {
+    return {
+      falhasPersistencia: this.falhasPersistencia,
+      ...(this.ultimaFalhaEm ? { ultimaFalhaEm: this.ultimaFalhaEm } : {}),
+      ...(this.ultimaFalhaMotivo ? { ultimaFalhaMotivo: this.ultimaFalhaMotivo } : {}),
+    };
   }
 }
