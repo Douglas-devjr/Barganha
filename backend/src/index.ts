@@ -8,6 +8,8 @@
 import { montarBackend } from './composicao';
 import { lerConfig } from './config/env';
 import { construirServidor } from './http/servidor';
+import { log } from './observabilidade/log';
+import { sanitizarErro } from './observabilidade/sanitizar';
 
 export async function main(): Promise<void> {
   const config = lerConfig();
@@ -46,6 +48,15 @@ export async function main(): Promise<void> {
     logger: true,
   });
   await app.listen({ port: config.porta, host: '0.0.0.0' });
+  log.info(
+    {
+      action: 'boot.pronto',
+      porta: config.porta,
+      ambiente: config.nodeEnv,
+      ufsHabilitadas: config.ufsHabilitadas,
+    },
+    'Backend no ar',
+  );
 
   // Recuperação de boot: a fila é in-process, então um restart (deploy, ou a
   // instância acordando no free tier) deixaria cupons presos em `qr_capturado`
@@ -54,12 +65,21 @@ export async function main(): Promise<void> {
   void reprocessador
     .recuperarPendentes({ limite: LIMITE_RECUPERACAO_BOOT })
     .then((n) => {
-      if (n > 0) console.log(`[boot] ${n} cupom(ns) pendente(s) re-enfileirado(s).`);
+      if (n > 0) {
+        log.info(
+          { action: 'boot.recuperacao', cupons: n },
+          'Cupons pendentes re-enfileirados após o restart',
+        );
+      }
     })
     .catch((erro) => {
       // Não impede o servidor de atender; o gatilho manual de reprocessamento
-      // (C11.1) e a próxima subida tentam de novo.
-      console.error('[boot] falha ao recuperar cupons pendentes:', erro);
+      // (C11.1) e a próxima subida tentam de novo. `warn`, não `error`: o
+      // servidor está de pé e há dois caminhos de recuperação.
+      log.warn(
+        { action: 'boot.recuperacao_falhou', erro: sanitizarErro(erro) },
+        'Falha ao recuperar cupons pendentes — servidor segue atendendo',
+      );
     });
 }
 
@@ -67,6 +87,8 @@ export async function main(): Promise<void> {
 const LIMITE_RECUPERACAO_BOOT = 200;
 
 main().catch((erro) => {
-  console.error('Falha ao iniciar o backend:', erro);
+  // `fatal`: o único nível acima de `error`. O processo não sobe — config
+  // ausente ou porta ocupada. Nada aqui é recuperável em execução.
+  log.fatal({ action: 'boot.falhou', erro: sanitizarErro(erro) }, 'Falha ao iniciar o backend');
   process.exitCode = 1;
 });

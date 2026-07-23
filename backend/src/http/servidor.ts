@@ -58,10 +58,19 @@ import type { ServicoIngestao } from '../ingestao/servico-ingestao';
 import type { ServicoDenuncia } from '../moderacao/servico-denuncia';
 import type { ServicoModeracao } from '../moderacao/servico-moderacao';
 import { registrarHtmlDebug } from '../observabilidade/debug-html';
+import { opcoesLogFastify } from '../observabilidade/log';
+import { sanitizarErro } from '../observabilidade/sanitizar';
 import type { FonteMetricas } from '../observabilidade/telemetria';
 import type { ReprocessadorRetroativo } from '../processamento/reprocessamento';
 import type { ServicoSync } from '../sync/servico-sync';
 import { barrarPorConta, guardaDeTaxa, LimitadorJanelaFixa, type OpcoesLimite } from './rate-limit';
+
+declare module 'fastify' {
+  interface FastifyRequest {
+    /** Conta autenticada (C4.3.1). Só nas rotas PRIVADAS; anônimas não o têm. */
+    usuarioId?: string;
+  }
+}
 
 /** Tetos de taxa por janela (C9.3.2). Sobrescrevíveis (testes/infra). */
 export interface LimitesTaxa {
@@ -323,9 +332,28 @@ const SCHEMA_REPROCESSAR = {
 } as const;
 
 export function construirServidor(deps: DependenciasHttp): FastifyInstance {
-  const app = Fastify({ logger: deps.logger ?? false, trustProxy: deps.trustProxy ?? false });
+  const app = Fastify({
+    // Ligado → Pino com a MESMA máscara do logger de aplicação (`log.ts`), para
+    // os dois lados do stdout falarem a mesma língua. O Fastify já carimba um
+    // `reqId` por requisição — é ele que correlaciona as linhas de um request.
+    logger: deps.logger ? opcoesLogFastify : false,
+    trustProxy: deps.trustProxy ?? false,
+  });
   const limites = deps.limites ?? LIMITES_PADRAO;
   const metricas = deps.metricas ?? SEM_METRICAS;
+
+  // `usuarioId` no request para o log do erro saber QUEM foi afetado. Só existe
+  // do lado PRIVADO — as rotas anônimas (consulta/sync) nunca o preenchem, e é
+  // assim que tem que ser (docs/04).
+  app.decorateRequest('usuarioId', undefined);
+
+  // Carimba a rota como `action` em toda linha daquela requisição. Usa a rota
+  // COM template (`/ingestao/cupom/:id`), nunca a URL concreta — agrupa no
+  // painel e evita que um id vire cardinalidade infinita de métrica.
+  app.addHook('onRequest', (req, _reply, done) => {
+    req.log = req.log.child({ action: `http:${req.method} ${req.routeOptions?.url ?? req.url}` });
+    done();
+  });
 
   // Limitadores de taxa (C9.3.2). Consulta e sync compartilham o MESMO
   // limitador: um teto único de "leitura pública" por IP.
@@ -350,6 +378,10 @@ export function construirServidor(deps: DependenciasHttp): FastifyInstance {
       await reply.code(401).send({ erro: 'Usuário não identificado.' });
       return undefined;
     }
+    // Contexto para o resto da requisição: quem é, em toda linha daqui pra
+    // frente. Lado privado apenas — ver `decorateRequest` acima.
+    req.usuarioId = usuarioId;
+    req.log = req.log.child({ usuarioId });
     if (!(await barrarPorConta(limitadorConta, usuarioId, reply))) return undefined;
     return usuarioId;
   };
@@ -653,9 +685,23 @@ export function construirServidor(deps: DependenciasHttp): FastifyInstance {
     // 422 (transitório, cupom intacto), mas o app deve RECARREGAR a consulta
     // (token novo) em vez de seguir esperando nesta página, que é terminal.
     if (erro instanceof HtmlErroPortalError) {
+      // O portal recusou a verificação. É transitório e o app re-tenta sozinho,
+      // mas um PICO disto significa que o reCAPTCHA endureceu — sinal de
+      // operação que antes não deixava rastro nenhum no log.
+      req.log.warn(
+        { action: 'portal.recusou', codigo: 'erro_portal' },
+        'Portal recusou a verificação',
+      );
       return reply.code(422).send({ erro: erro.message, codigo: 'erro_portal' });
     }
-    req.log.error(erro);
+    // Só chega aqui o que NÃO é erro de domínio previsto: bug, banco fora,
+    // exceção não mapeada. `error` — o usuário levou 500 e alguém precisa olhar.
+    // Sanitizado: um erro do driver do Postgres pode trazer trecho de query, e
+    // query aqui carrega `chave_acesso`.
+    req.log.error(
+      { action: 'http.erro_nao_tratado', erro: sanitizarErro(erro) },
+      'Erro não tratado — respondendo 500',
+    );
     return reply.code(500).send({ erro: 'Erro interno.' });
   });
 
