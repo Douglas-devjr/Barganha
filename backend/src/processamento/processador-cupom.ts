@@ -24,6 +24,8 @@ import {
   PayloadQrInvalidoError,
 } from '../erros';
 import type { Anonimizador } from '../anonimizacao/anonimizador';
+import { logDeCupom } from '../observabilidade/log';
+import { sanitizarErro } from '../observabilidade/sanitizar';
 import type { Telemetria } from '../observabilidade/telemetria';
 import { telemetriaNula } from '../observabilidade/telemetria';
 import { pareceDefesaAntiBot, pareceErroPortal } from '../parsers/html';
@@ -229,7 +231,18 @@ export class ProcessadorCupom {
       try {
         await this.aoPublicarPool(produtoIds);
       } catch (erro) {
-        console.error(`Falha ao recalcular estatística após cupom ${cupom.id}:`, erro);
+        // Caminho do POOL: loga `cupomId` e a QUANTIDADE de produtos, jamais o
+        // `usuarioId` nem a lista de produtos. Os dois lados juntos
+        // reconstruiriam por log o vínculo usuário↔compra que o banco se recusa
+        // a guardar (decisão travada nº3, docs/04).
+        logDeCupom(cupom.id, uf).error(
+          {
+            action: 'pool.recalculo_falhou',
+            produtosAfetados: produtoIds.length,
+            erro: sanitizarErro(erro),
+          },
+          'Pool publicado, mas o recálculo da estatística falhou',
+        );
       }
     }
   }
@@ -255,6 +268,13 @@ export class ProcessadorCupom {
       if (nota.total) await this.repo.atualizarTotais(cupom.id, nota.total);
     } catch (erro) {
       if (erro instanceof HtmlDesafioError) throw erro;
+      // O erro original MORRE aqui (vira 422 para o app não regredir o cupom a
+      // `falha`). Sem este log, um parser quebrado deixaria o app em laço
+      // "aguardando" para sempre e ninguém saberia por quê.
+      logDeCupom(cupom.id, cupom.uf).warn(
+        { action: 'backfill_totais.falha', erro: sanitizarErro(erro) },
+        'Não foi possível ler os totais da nota — cupom segue processado',
+      );
       throw new HtmlDesafioError('Não foi possível ler os totais desta nota ainda.');
     }
   }
@@ -263,13 +283,26 @@ export class ProcessadorCupom {
   private async tratarErro(cupomId: string, uf: string | undefined, erro: unknown): Promise<void> {
     if (ehErroPermanente(erro)) {
       this.telemetria.registrarParsing(uf, 'falha_permanente');
-      const motivo = erro instanceof Error ? erro.message : String(erro);
-      // Observabilidade: o motivo não é persistido no cupom; sem este log a
-      // falha permanente fica invisível para diagnóstico (C10.2).
-      console.error(`Falha permanente ao processar cupom ${cupomId} (${uf ?? '??'}): ${motivo}`);
-      await this.repo.marcarFalha(cupomId, motivo);
+      // SANITIZADO antes de qualquer uso: este texto vai para o log E é
+      // PERSISTIDO como `motivo` no cupom. Sem a redação, um seletor que
+      // derrapou para o bloco do consumidor gravaria CPF nos dois lugares
+      // (docs/04, decisão travada nº3).
+      const { tipo, mensagem } = sanitizarErro(erro);
+      // `error`: exige ação humana (corrigir o parser) e o usuário perdeu o cupom.
+      logDeCupom(cupomId, uf).error(
+        { action: 'parsing.falha_permanente', erro: { tipo, mensagem } },
+        'Falha permanente ao processar cupom',
+      );
+      await this.repo.marcarFalha(cupomId, mensagem);
       return;
     }
-    throw erro; // transitório → a fila dá retry com backoff
+    // Transitório → a fila dá retry com backoff. `warn`, não `error`: há
+    // recuperação automática, e portal da SEFAZ oscila o tempo todo — se isto
+    // fosse `error`, o alerta viraria ruído e seria desligado.
+    logDeCupom(cupomId, uf).warn(
+      { action: 'parsing.transitorio', erro: sanitizarErro(erro) },
+      'Falha transitória ao processar cupom — a fila vai repetir',
+    );
+    throw erro;
   }
 }
