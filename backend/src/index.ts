@@ -46,7 +46,25 @@ export async function main(): Promise<void> {
     logger: true,
   });
   await app.listen({ port: config.porta, host: '0.0.0.0' });
+
+  // Recuperação de boot: a fila é in-process, então um restart (deploy, ou a
+  // instância acordando no free tier) deixaria cupons presos em `qr_capturado`
+  // sem ninguém para processá-los. Depois do `listen` e sem `await` no caminho
+  // de subida — o servidor já atende enquanto isto drena.
+  void reprocessador
+    .recuperarPendentes({ limite: LIMITE_RECUPERACAO_BOOT })
+    .then((n) => {
+      if (n > 0) console.log(`[boot] ${n} cupom(ns) pendente(s) re-enfileirado(s).`);
+    })
+    .catch((erro) => {
+      // Não impede o servidor de atender; o gatilho manual de reprocessamento
+      // (C11.1) e a próxima subida tentam de novo.
+      console.error('[boot] falha ao recuperar cupons pendentes:', erro);
+    });
 }
+
+/** Teto de cupons re-enfileirados por UF no boot — não afogar o portal da SEFAZ. */
+const LIMITE_RECUPERACAO_BOOT = 200;
 
 main().catch((erro) => {
   console.error('Falha ao iniciar o backend:', erro);

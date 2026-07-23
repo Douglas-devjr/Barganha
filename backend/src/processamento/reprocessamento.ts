@@ -51,4 +51,34 @@ export class ReprocessadorRetroativo {
     }
     return total;
   }
+
+  /**
+   * Recuperação de BOOT: re-enfileira o que ficou preso em `qr_capturado`.
+   *
+   * A fila de processamento vive na memória do processo (docs/01 — durabilidade
+   * é decisão de infra, C10). Um restart — deploy, ou a instância do free tier
+   * acordando depois de dormir — evapora o que estava pendente, e o cupom fica
+   * parado em `qr_capturado` para sempre: o app o exibe como "processando" e
+   * ninguém nunca mais o toca. Rodar isto no boot fecha o buraco sem trocar a
+   * infra da fila.
+   *
+   * Só `qr_capturado`, nunca `falha`: cupom marcado como falha tem motivo
+   * permanente (QR inválido), e re-enfileirá-lo a cada boot seria um laço. Para
+   * esses existe o reprocessamento explícito por UF (parser novo entrou).
+   */
+  async recuperarPendentes(opcoes: OpcoesReprocessamento = {}): Promise<number> {
+    let total = 0;
+    for (const uf of this.registro.ufsSuportadas()) {
+      const ids = await this.repo.listarParaReprocessar({
+        uf,
+        status: ['qr_capturado'],
+        ...(opcoes.limite !== undefined ? { limite: opcoes.limite } : {}),
+      });
+      for (const cupomId of ids) {
+        await this.fila.enfileirar({ cupomId, uf });
+      }
+      total += ids.length;
+    }
+    return total;
+  }
 }
