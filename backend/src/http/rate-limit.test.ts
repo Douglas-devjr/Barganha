@@ -72,3 +72,86 @@ describe('Rate-limit no servidor (C9.3.2)', () => {
     }
   });
 });
+
+/** App com teto BAIXO nos endpoints privados, para exercitar o limite por conta. */
+function montarAppPrivado(limiteIngestao: number) {
+  const repo = new RepositorioMemoria();
+  const fila = new FilaMemoria(() => Promise.resolve(), { dormir: () => Promise.resolve() });
+  const app = construirServidor({
+    servicoIngestao: new ServicoIngestao(repo, fila),
+    servicoConsulta: new ServicoConsulta(repo, repo),
+    servicoSync: new ServicoSync(repo),
+    servicoConta: new ServicoConta(repo),
+    autenticacao: new Autenticador(repo),
+    limites: {
+      ...LIMITES_PADRAO,
+      ingestao: { janelaMs: 60_000, maximo: limiteIngestao },
+    },
+  });
+  return { app, repo };
+}
+
+const QR =
+  'https://www.fazenda.rj.gov.br/nfce/qrcode?p=33260612345678000199650010000000011000000016|2|1';
+
+const ingerir = (app: ReturnType<typeof construirServidor>, token: string) =>
+  app.inject({
+    method: 'POST',
+    url: '/ingestao/qr',
+    headers: { authorization: `Bearer ${token}` },
+    payload: { qrPayload: QR, capturadoEm: new Date().toISOString() },
+  });
+
+describe('Rate-limit dos endpoints privados — por CONTA autenticada', () => {
+  it('conta o teto por usuário, e o excedente vira 429', async () => {
+    const { app, repo } = montarAppPrivado(2);
+    await app.ready();
+    try {
+      const usuarioId = await repo.criarAnonimo();
+      expect((await ingerir(app, usuarioId)).statusCode).toBe(202);
+      expect((await ingerir(app, usuarioId)).statusCode).toBe(202);
+      expect((await ingerir(app, usuarioId)).statusCode).toBe(429);
+    } finally {
+      await app.close();
+    }
+  });
+
+  it('REGRESSÃO: trocar o Bearer a cada chamada NÃO ganha janela nova', async () => {
+    // O bug: o limitador rodava no `onRequest`, ANTES da autenticação, e
+    // chaveava pelo token CRU. Bastava mandar um Bearer diferente por
+    // requisição para nunca estourar o teto — e ainda inchava o mapa com um JWT
+    // inteiro por chave. Agora a chave é o usuarioId já verificado, então um
+    // token inventado morre no 401 e nunca alcança o orçamento de ninguém.
+    const { app, repo } = montarAppPrivado(2);
+    await app.ready();
+    try {
+      const usuarioId = await repo.criarAnonimo();
+
+      // Tokens inventados: barrados por autenticação, não consomem o teto.
+      for (let i = 0; i < 20; i++) {
+        expect((await ingerir(app, `token-forjado-${i}`)).statusCode).toBe(401);
+      }
+
+      // A conta real continua com o orçamento intacto — e ele é respeitado.
+      expect((await ingerir(app, usuarioId)).statusCode).toBe(202);
+      expect((await ingerir(app, usuarioId)).statusCode).toBe(202);
+      expect((await ingerir(app, usuarioId)).statusCode).toBe(429);
+    } finally {
+      await app.close();
+    }
+  });
+
+  it('contas diferentes têm orçamentos independentes', async () => {
+    const { app, repo } = montarAppPrivado(1);
+    await app.ready();
+    try {
+      const a = await repo.criarAnonimo();
+      const b = await repo.criarAnonimo();
+      expect((await ingerir(app, a)).statusCode).toBe(202);
+      expect((await ingerir(app, a)).statusCode).toBe(429);
+      expect((await ingerir(app, b)).statusCode).toBe(202);
+    } finally {
+      await app.close();
+    }
+  });
+});

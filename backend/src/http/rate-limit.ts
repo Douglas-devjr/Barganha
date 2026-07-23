@@ -86,9 +86,24 @@ export function guardaDeTaxa(limitador: LimitadorJanelaFixa, opcoes: OpcoesGuard
   };
 }
 
-/** Chave por CONTA (o Bearer é o usuarioId, C4.3) com fallback no IP. */
-export function chavePorConta(req: FastifyRequest): string {
-  const auth = req.headers.authorization;
-  if (auth?.startsWith('Bearer ')) return `conta:${auth.slice(7)}`;
-  return `ip:${req.ip}`;
+/**
+ * Barra por CONTA já autenticada. Devolve `true` quando passou; ao estourar,
+ * responde 429 e devolve `false` (o handler deve parar).
+ *
+ * Existe como função, e não como hook `onRequest`, por um motivo de segurança:
+ * o hook roda ANTES da autenticação, então a única chave disponível ali seria o
+ * Bearer CRU, não verificado. Chavear por ele tornava o teto inútil — bastava
+ * variar o header a cada requisição para ganhar uma janela nova (e ainda fazia
+ * o mapa crescer com um JWT inteiro por chave). Agora a chave é o `usuarioId`
+ * que o verificador devolveu: um atacante teria de possuir contas reais.
+ */
+export async function barrarPorConta(
+  limitador: LimitadorJanelaFixa,
+  usuarioId: string,
+  reply: FastifyReply,
+  mensagem = 'Muitas requisições. Tente novamente em instantes.',
+): Promise<boolean> {
+  if (limitador.permitir(`conta:${usuarioId}`)) return true;
+  await reply.code(429).send({ erro: mensagem });
+  return false;
 }

@@ -32,7 +32,12 @@ import {
   MOTIVOS_DENUNCIA,
 } from '@barganha/shared';
 import { UNIDADES_BASE } from '@barganha/shared';
-import Fastify, { type FastifyError, type FastifyInstance } from 'fastify';
+import Fastify, {
+  type FastifyError,
+  type FastifyInstance,
+  type FastifyReply,
+  type FastifyRequest,
+} from 'fastify';
 
 import type { Autenticacao } from '../auth/autenticador';
 import type { AutorizacaoCuradoria } from '../auth/curadoria';
@@ -56,7 +61,7 @@ import { registrarHtmlDebug } from '../observabilidade/debug-html';
 import type { FonteMetricas } from '../observabilidade/telemetria';
 import type { ReprocessadorRetroativo } from '../processamento/reprocessamento';
 import type { ServicoSync } from '../sync/servico-sync';
-import { chavePorConta, guardaDeTaxa, LimitadorJanelaFixa, type OpcoesLimite } from './rate-limit';
+import { barrarPorConta, guardaDeTaxa, LimitadorJanelaFixa, type OpcoesLimite } from './rate-limit';
 
 /** Tetos de taxa por janela (C9.3.2). Sobrescrevíveis (testes/infra). */
 export interface LimitesTaxa {
@@ -64,8 +69,14 @@ export interface LimitesTaxa {
   conta: OpcoesLimite;
   /** Leitura pública (consulta + sync somados) — por IP (anti scraping). */
   leituraPublica: OpcoesLimite;
-  /** Ingestão de QR — por conta (Bearer), com fallback no IP. */
+  /** Endpoints privados — por CONTA autenticada (anti-spam de fila). */
   ingestao: OpcoesLimite;
+  /**
+   * Endpoints privados — por IP, aplicado ANTES da autenticação. Segura o
+   * flood de quem nem tem conta (cada tentativa custa uma verificação de token).
+   * Folgado de propósito: uma operadora/NAT põe muitos usuários no mesmo IP.
+   */
+  privadoIp: OpcoesLimite;
 }
 
 const MINUTO = 60_000;
@@ -75,6 +86,7 @@ export const LIMITES_PADRAO: LimitesTaxa = {
   conta: { janelaMs: HORA, maximo: 20 },
   leituraPublica: { janelaMs: MINUTO, maximo: 120 },
   ingestao: { janelaMs: MINUTO, maximo: 60 },
+  privadoIp: { janelaMs: MINUTO, maximo: 300 },
 };
 
 export interface DependenciasHttp {
@@ -319,16 +331,46 @@ export function construirServidor(deps: DependenciasHttp): FastifyInstance {
   // limitador: um teto único de "leitura pública" por IP.
   const guardaConta = guardaDeTaxa(new LimitadorJanelaFixa(limites.conta));
   const guardaLeitura = guardaDeTaxa(new LimitadorJanelaFixa(limites.leituraPublica));
-  const guardaIngestao = guardaDeTaxa(new LimitadorJanelaFixa(limites.ingestao), {
-    chave: chavePorConta,
-  });
+  // Endpoints privados têm DOIS tetos, em ordem: por IP antes de autenticar
+  // (barato, segura flood anônimo) e por CONTA depois (o teto que de fato vale).
+  const guardaPrivadoIp = guardaDeTaxa(new LimitadorJanelaFixa(limites.privadoIp));
+  const limitadorConta = new LimitadorJanelaFixa(limites.ingestao);
 
+  /**
+   * Porta única dos endpoints privados: autentica e SÓ ENTÃO aplica o teto por
+   * conta. Responde 401/429 por conta própria; devolve `undefined` quando já
+   * respondeu — o handler deve retornar sem fazer mais nada.
+   */
+  const contaDoRequest = async (
+    req: FastifyRequest,
+    reply: FastifyReply,
+  ): Promise<string | undefined> => {
+    const usuarioId = await deps.autenticacao.resolver(req.headers);
+    if (!usuarioId) {
+      await reply.code(401).send({ erro: 'Usuário não identificado.' });
+      return undefined;
+    }
+    if (!(await barrarPorConta(limitadorConta, usuarioId, reply))) return undefined;
+    return usuarioId;
+  };
+
+  // Sonda de liveness do balanceador/plataforma — a única rota sem gate algum.
   app.get('/saude', () => ({ ok: true }));
 
   // ── Métricas de parsing por estado (C10.2) — operação/observabilidade ──
-  // Anônima e agregada (contadores por UF, sem dado de cupom). Em produção,
-  // restringir a rede interna/scraper de métricas via proxy.
-  app.get('/metricas', () => metricas.snapshot());
+  // Agregadas (contadores por UF, sem dado de cupom), mas NÃO públicas: expõem
+  // volume por estado e a taxa de falha dos portais — inteligência operacional
+  // que não precisa estar aberta. Reusa o token da curadoria; sem ele
+  // configurado a rota nem sobe (nega fechado, como o resto de C11).
+  if (deps.autorizacaoCuradoria) {
+    const autorizacao = deps.autorizacaoCuradoria;
+    app.get('/metricas', (req, reply) => {
+      if (!autorizacao.autorizado(req.headers as never)) {
+        return reply.code(403).send({ erro: 'Acesso restrito à curadoria.' });
+      }
+      return reply.send(metricas.snapshot());
+    });
+  }
 
   // ── Conta anônima (C4.3) — afordância de teste/legado ──────────────
   // Em produção (login obrigatório, Supabase Auth) `servicoConta` não é
@@ -347,11 +389,9 @@ export function construirServidor(deps: DependenciasHttp): FastifyInstance {
   // Rate-limit por conta (mesmo teto da ingestão): evita que um token vazado
   // martele o `auth.admin.deleteUser` do Supabase (C9.3.2).
   if (gerenciadorConta) {
-    app.delete('/conta', { onRequest: guardaIngestao }, async (req, reply) => {
-      const usuarioId = await deps.autenticacao.resolver(req.headers);
-      if (!usuarioId) {
-        return reply.code(401).send({ erro: 'Usuário não identificado.' });
-      }
+    app.delete('/conta', { onRequest: guardaPrivadoIp }, async (req, reply) => {
+      const usuarioId = await contaDoRequest(req, reply);
+      if (!usuarioId) return reply;
       await gerenciadorConta.apagar(usuarioId);
       return reply.code(204).send();
     });
@@ -360,12 +400,10 @@ export function construirServidor(deps: DependenciasHttp): FastifyInstance {
   // ── Ingestão de QR (C2.1) — privada ────────────────────────────────
   app.post<{ Body: IngestaoQrRequest }>(
     '/ingestao/qr',
-    { schema: SCHEMA_INGESTAO, onRequest: guardaIngestao },
+    { schema: SCHEMA_INGESTAO, onRequest: guardaPrivadoIp },
     async (req, reply) => {
-      const usuarioId = await deps.autenticacao.resolver(req.headers);
-      if (!usuarioId) {
-        return reply.code(401).send({ erro: 'Usuário não identificado.' });
-      }
+      const usuarioId = await contaDoRequest(req, reply);
+      if (!usuarioId) return reply;
       const resposta = await deps.servicoIngestao.ingerir(usuarioId, req.body);
       return reply.code(202).send(resposta);
     },
@@ -377,12 +415,10 @@ export function construirServidor(deps: DependenciasHttp): FastifyInstance {
   // cupom já processado. Escopo do dono; 404 não vaza cupom de outro usuário.
   app.post<{ Params: { id: string }; Body: IngestaoHtmlRequest }>(
     '/ingestao/cupom/:id/html',
-    { ...SCHEMA_INGESTAO_HTML, onRequest: guardaIngestao },
+    { ...SCHEMA_INGESTAO_HTML, onRequest: guardaPrivadoIp },
     async (req, reply) => {
-      const usuarioId = await deps.autenticacao.resolver(req.headers);
-      if (!usuarioId) {
-        return reply.code(401).send({ erro: 'Usuário não identificado.' });
-      }
+      const usuarioId = await contaDoRequest(req, reply);
+      if (!usuarioId) return reply;
       // Depuração (dev): salva o ESQUELETO do HTML recebido (sem PII) para ajustar
       // os seletores do parser ao layout real do portal. No-op fora de dev.
       registrarHtmlDebug(req.body.html, `cupom-${req.params.id}`);
@@ -395,18 +431,20 @@ export function construirServidor(deps: DependenciasHttp): FastifyInstance {
   );
 
   // ── Cupom do usuário (C6.3) — privado ──────────────────────────────
-  app.get<{ Params: { id: string } }>('/ingestao/cupom/:id', async (req, reply) => {
-    const usuarioId = await deps.autenticacao.resolver(req.headers);
-    if (!usuarioId) {
-      return reply.code(401).send({ erro: 'Usuário não identificado.' });
-    }
-    const cupom = await deps.servicoIngestao.obterCupom(usuarioId, req.params.id);
-    if (!cupom) {
-      // 404 também para cupom de outro dono — não vaza existência (docs/04).
-      return reply.code(404).send({ erro: 'Cupom não encontrado.' });
-    }
-    return reply.send(cupom);
-  });
+  app.get<{ Params: { id: string } }>(
+    '/ingestao/cupom/:id',
+    { onRequest: guardaPrivadoIp },
+    async (req, reply) => {
+      const usuarioId = await contaDoRequest(req, reply);
+      if (!usuarioId) return reply;
+      const cupom = await deps.servicoIngestao.obterCupom(usuarioId, req.params.id);
+      if (!cupom) {
+        // 404 também para cupom de outro dono — não vaza existência (docs/04).
+        return reply.code(404).send({ erro: 'Cupom não encontrado.' });
+      }
+      return reply.send(cupom);
+    },
+  );
 
   // ── Consulta de preço (C4.1) — anônima ─────────────────────────────
   app.post<{ Body: ConsultaPrecoRequest }>(
@@ -457,12 +495,10 @@ export function construirServidor(deps: DependenciasHttp): FastifyInstance {
   if (servicoModeracao) {
     app.post<{ Body: LancamentoManualRequest }>(
       '/lancamento-manual',
-      { schema: SCHEMA_LANCAMENTO, onRequest: guardaIngestao },
+      { schema: SCHEMA_LANCAMENTO, onRequest: guardaPrivadoIp },
       async (req, reply) => {
-        const usuarioId = await deps.autenticacao.resolver(req.headers);
-        if (!usuarioId) {
-          return reply.code(401).send({ erro: 'Usuário não identificado.' });
-        }
+        const usuarioId = await contaDoRequest(req, reply);
+        if (!usuarioId) return reply;
         const resposta = await servicoModeracao.lancar(usuarioId, req.body);
         return reply.code(202).send(resposta);
       },
@@ -477,12 +513,10 @@ export function construirServidor(deps: DependenciasHttp): FastifyInstance {
   if (servicoDenuncia) {
     app.post<{ Body: DenunciaPrecoRequest }>(
       '/denuncia',
-      { schema: SCHEMA_DENUNCIA, onRequest: guardaIngestao },
+      { schema: SCHEMA_DENUNCIA, onRequest: guardaPrivadoIp },
       async (req, reply) => {
-        const usuarioId = await deps.autenticacao.resolver(req.headers);
-        if (!usuarioId) {
-          return reply.code(401).send({ erro: 'Usuário não identificado.' });
-        }
+        const usuarioId = await contaDoRequest(req, reply);
+        if (!usuarioId) return reply;
         const resposta = await servicoDenuncia.denunciar(usuarioId, req.body);
         return reply.code(202).send(resposta);
       },

@@ -5,6 +5,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { Anonimizador } from '../anonimizacao/anonimizador';
 import { Autenticador } from '../auth/autenticador';
+import { GuardaCuradoria } from '../auth/curadoria';
 import { ServicoConta } from '../auth/servico-conta';
 import { ServicoConsulta } from '../consulta/servico-consulta';
 import { FilaMemoria } from '../fila/fila-memoria';
@@ -47,9 +48,14 @@ function montarApp() {
     servicoConta: new ServicoConta(repo),
     autenticacao: new Autenticador(repo),
     metricas: telemetria,
+    // `/metricas` deixou de ser público: expõe volume por UF e taxa de falha
+    // dos portais. Reusa o gate da curadoria (ver servidor.ts).
+    autorizacaoCuradoria: new GuardaCuradoria([TOKEN_CURADORIA]),
   });
   return { app, repo, fila, telemetria };
 }
+
+const TOKEN_CURADORIA = 'token-curadoria-de-teste';
 
 const { app, repo, fila, telemetria } = montarApp();
 let usuarioId: string;
@@ -244,13 +250,24 @@ describe('Servidor HTTP', () => {
   describe('Métricas (C10.2) — observabilidade', () => {
     it('GET /metricas reflete os contadores de parsing por estado', async () => {
       // Os testes de ingestão acima já processaram cupons do RJ.
-      const r = await app.inject({ method: 'GET', url: '/metricas' });
+      const r = await app.inject({
+        method: 'GET',
+        url: '/metricas',
+        headers: { authorization: `Bearer ${TOKEN_CURADORIA}` },
+      });
       expect(r.statusCode).toBe(200);
       const corpo = r.json();
       expect(corpo.geradoEm).toBeTruthy();
       expect(corpo.porUf.RJ.processado).toBeGreaterThanOrEqual(1);
       // O endpoint espelha a fonte de telemetria injetada.
       expect(corpo.totais.processado).toBe(telemetria.snapshot().totais.processado);
+    });
+
+    it('GET /metricas nega sem o token de curadoria', async () => {
+      // Volume por UF e taxa de falha dos portais são inteligência operacional
+      // — agregada, mas não pública.
+      const r = await app.inject({ method: 'GET', url: '/metricas' });
+      expect(r.statusCode).toBe(403);
     });
   });
 });
