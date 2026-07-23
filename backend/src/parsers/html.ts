@@ -60,13 +60,13 @@ export function textoDe(raiz: HTMLElement, seletor: string): string {
 export function numeroBr(texto: string | undefined | null): number {
   const limpo = textoLimpo(texto).replace(/[^\d.,-]/g, '');
   if (!limpo || !/\d/.test(limpo)) {
-    throw new FalhaParserSefazError(`Valor numérico ausente ou ilegível: "${texto ?? ''}".`);
+    throw new FalhaParserSefazError(`Valor numérico ausente ou ilegível ${formaDe(texto)}.`);
   }
   // Remove separador de milhar (.) e troca a vírgula decimal por ponto.
   const normalizado = limpo.replace(/\./g, '').replace(',', '.');
   const valor = Number(normalizado);
   if (Number.isNaN(valor)) {
-    throw new FalhaParserSefazError(`Valor numérico inválido: "${texto ?? ''}".`);
+    throw new FalhaParserSefazError(`Valor numérico inválido ${formaDe(texto)}.`);
   }
   return valor;
 }
@@ -86,14 +86,34 @@ export function exigir<T>(valor: T | undefined | null, oQue: string): T {
 export function dataHoraBrParaIso(texto: string | undefined | null): string {
   const m = textoLimpo(texto).match(/(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}):(\d{2})(?::(\d{2}))?/);
   if (!m) {
-    throw new FalhaParserSefazError(`Data/hora de emissão ilegível: "${texto ?? ''}".`);
+    throw new FalhaParserSefazError(`Data/hora de emissão ilegível ${formaDe(texto)}.`);
   }
   const [, dd, mm, aaaa, hh, mi, ss] = m;
   const data = new Date(`${aaaa}-${mm}-${dd}T${hh}:${mi}:${ss ?? '00'}-03:00`);
   if (Number.isNaN(data.getTime())) {
-    throw new FalhaParserSefazError(`Data/hora de emissão inválida: "${texto ?? ''}".`);
+    throw new FalhaParserSefazError(`Data/hora de emissão inválida ${formaDe(texto)}.`);
   }
   return data.toISOString();
+}
+
+/**
+ * Descreve a FORMA do texto que o seletor pegou, sem reproduzir o conteúdo.
+ *
+ * LGPD (docs/04): estes erros disparam exatamente quando um seletor DERRAPOU —
+ * ou seja, quando ele pegou o elemento errado da página. Na NFC-e o elemento
+ * errado pode ser o bloco do consumidor, com CPF. Como a mensagem vai para o log
+ * E é persistida como `motivo` da falha do cupom, reproduzir o texto criaria dois
+ * caminhos de dado pessoal de uma vez.
+ *
+ * O tamanho e a presença de dígitos são o que de fato ajudam a decidir "o
+ * seletor pegou nada, pegou outro campo ou pegou a página toda". Para inspecionar
+ * o layout de verdade existe o esqueleto de `debug-html.ts`.
+ */
+function formaDe(texto: string | undefined | null): string {
+  if (texto == null) return '(ausente)';
+  const limpo = textoLimpo(texto);
+  if (limpo === '') return '(vazio)';
+  return `(len=${limpo.length}, dígitos=${/\d/.test(limpo) ? 'sim' : 'não'})`;
 }
 
 /**

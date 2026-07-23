@@ -10,7 +10,8 @@ import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
 
-import { pareceDefesaAntiBot, pareceErroPortal } from './html';
+import { FalhaParserSefazError } from '../erros';
+import { dataHoraBrParaIso, numeroBr, pareceDefesaAntiBot, pareceErroPortal } from './html';
 
 const NOTA_RJ = readFileSync(
   fileURLToPath(new URL('./__fixtures__/rj-nota-1.html', import.meta.url)),
@@ -68,5 +69,53 @@ describe('pareceDefesaAntiBot', () => {
 
   it('não acusa a nota real', () => {
     expect(pareceDefesaAntiBot(NOTA_RJ)).toBe(false);
+  });
+});
+
+/**
+ * LGPD (docs/04) — regressão do achado crítico da revisão de observabilidade.
+ *
+ * `numeroBr`/`dataHoraBrParaIso` disparam exatamente quando um seletor DERRAPOU,
+ * ou seja, quando ele capturou o elemento errado da página. Na NFC-e o elemento
+ * errado pode ser o bloco do consumidor, com CPF. Como a mensagem vai para o log
+ * E é persistida como `motivo` da falha do cupom, reproduzir o texto criava dois
+ * caminhos de dado pessoal de uma vez.
+ */
+describe('mensagens de erro do parser não reproduzem o texto capturado', () => {
+  const BLOCO_CONSUMIDOR = 'CONSUMIDOR CPF: 123.456.789-00 NOME: FULANO DE TAL';
+
+  it('numeroBr descreve a forma, não o conteúdo', () => {
+    expect(() => numeroBr(BLOCO_CONSUMIDOR)).toThrow(FalhaParserSefazError);
+    try {
+      numeroBr(BLOCO_CONSUMIDOR);
+    } catch (e) {
+      const msg = (e as Error).message;
+      expect(msg).not.toContain('123.456.789-00');
+      expect(msg).not.toContain('FULANO');
+      expect(msg).toContain('len=');
+    }
+  });
+
+  it('dataHoraBrParaIso descreve a forma, não o conteúdo', () => {
+    try {
+      dataHoraBrParaIso(BLOCO_CONSUMIDOR);
+    } catch (e) {
+      const msg = (e as Error).message;
+      expect(msg).not.toContain('123.456.789-00');
+      expect(msg).not.toContain('FULANO');
+    }
+  });
+
+  it('distingue ausente de vazio (o que o dev precisa saber)', () => {
+    try {
+      numeroBr(null);
+    } catch (e) {
+      expect((e as Error).message).toContain('(ausente)');
+    }
+    try {
+      numeroBr('   ');
+    } catch (e) {
+      expect((e as Error).message).toContain('(vazio)');
+    }
   });
 });
