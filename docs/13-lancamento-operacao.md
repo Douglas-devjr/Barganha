@@ -84,7 +84,7 @@ sem passar pela revisão da loja. **Backend continua sendo a fonte da verdade**
    `app/eas.json` pela URL do Render (os domínios `api.barganha.app` de hoje são
    placeholders até existir domínio próprio).
 5. **Smoke test:** `GET /saude` → `{ ok: true }`; escanear um cupom com um build
-   apontando para produção; conferir `GET /metricas`.
+   apontando para produção; conferir `GET /metricas` (com o Bearer da curadoria).
 6. *(Opcional, R$ 0)* **Keep-warm:** cron-job.org pingando `GET /saude` a cada
    10 min nos horários de pico — as 750 h/mês do free cobrem 24/7.
 
@@ -112,8 +112,14 @@ conta, **por UF**, o desfecho de cada cupom (`backend/src/observabilidade/`):
 | `erro_portal` | portal recusou a verificação (reCAPTCHA, C2.6) | intermitente; taxa alta e sustentada no RJ → reavaliar estratégia de captura |
 
 - **Endpoint:** `GET /metricas` — snapshot agregado (`porUf`, `totais`, `geradoEm`)
-  **desde o último restart do processo**. Anônimo e sem dado de cupom. Em produção,
-  restringir a métricas/rede interna.
+  **desde o último restart do processo**. Sem dado de cupom, mas **não é público**:
+  exige o mesmo Bearer da curadoria (`CURADORIA_TOKENS`), porque volume por estado
+  e taxa de falha dos portais são inteligência operacional. Sem `CURADORIA_TOKENS`
+  configurado a rota **nem sobe** (nega fechado, como o resto de C11).
+
+  ```sh
+  curl -H "Authorization: Bearer $CURADORIA_TOKEN" https://SEU-BACKEND/metricas
+  ```
 - **Coletor:** `TelemetriaPersistente` — conta em memória (fonte do `/metricas`) e
   incrementa em best-effort a tabela **`telemetria_parsing`** (dia × UF × evento),
   o histórico durável consultável no Studio: essencial no free tier, onde a
@@ -152,7 +158,8 @@ para o `ControleRollout` (`backend/src/rollout/`).
 2. Acrescente a UF em `UFS_HABILITADAS` (ex.: `RJ,SP,MG`) e faça o deploy.
 3. Rode o **reprocessamento retroativo** (C2.5) da UF para liberar os cupons
    represados (`reprocessador.reprocessarUf('MG')`).
-4. Acompanhe `GET /metricas` daquele estado (parsing/falhas) nas primeiras horas.
+4. Acompanhe `GET /metricas` daquele estado (parsing/falhas) nas primeiras horas
+   — autenticado com o token da curadoria.
 
 ### Atrás de proxy
 Em produção o backend fica atrás de proxy/LB. Ligue **`TRUST_PROXY=true`** para o
