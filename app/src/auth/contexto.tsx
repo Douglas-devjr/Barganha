@@ -21,7 +21,7 @@ import { Alert, Linking } from 'react-native';
 
 import type { Session, User } from '@supabase/supabase-js';
 
-import { redefinirAppLocal } from '@/nucleo/conta';
+import { enviarPendentesAntesDeSair, redefinirAppLocal } from '@/nucleo/conta';
 
 import { supabase } from './supabase';
 
@@ -212,6 +212,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       },
 
       async sair() {
+        // ANTES de limpar: tenta subir o que ainda está na fila de upload. A
+        // limpeza apaga `fila_upload`, então sem esta tentativa uma compra
+        // registrada offline sumia sem aviso ao sair (a tela avisa quando
+        // sobra algo — ver PerfilTela).
+        await enviarPendentesAntesDeSair();
         await supabase.auth.signOut();
         // LGPD (docs/04): apaga o lado PRIVADO local deste aparelho. O pool
         // anônimo já enviado não é "seu" e permanece (sem vínculo com você).

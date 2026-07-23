@@ -16,7 +16,37 @@
  * sem chave de acesso) — não são "suas" nem reidentificáveis; nada a apagar lá.
  */
 
-import { getBd, meta } from '@/dados';
+import { fila, getBd, meta } from '@/dados';
+
+import { processarFilaUpload } from './sincronizador';
+
+/**
+ * Última tentativa de subir os cupons ainda na fila, ANTES de a limpeza do
+ * logout apagá-los. Devolve quantos NÃO conseguiram subir (0 = nada se perdeu).
+ *
+ * Existe porque `redefinirAppLocal` limpa `fila_upload` junto com o resto — o
+ * que é correto para privacidade (o QR cru é do usuário que escaneou), mas
+ * silenciosamente jogava fora compras registradas offline se o logout viesse
+ * antes do próximo sync. Agora o app tenta enviá-las e, se não der (sem sinal),
+ * a tela avisa quantas serão perdidas e deixa a decisão com o usuário.
+ *
+ * Best-effort: sem rede, `processarFilaUpload` só reagenda e a contagem volta
+ * diferente de zero — nada aqui lança.
+ */
+export async function enviarPendentesAntesDeSair(): Promise<number> {
+  try {
+    if ((await fila.contarPendentes()) === 0) return 0;
+    await processarFilaUpload();
+    return await fila.contarPendentes();
+  } catch {
+    // Offline/erro: reporta o que ainda está lá, sem quebrar o logout.
+    try {
+      return await fila.contarPendentes();
+    } catch {
+      return 0;
+    }
+  }
+}
 
 export async function redefinirAppLocal(): Promise<void> {
   const db = getBd();

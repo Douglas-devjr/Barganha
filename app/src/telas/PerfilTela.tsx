@@ -34,7 +34,7 @@ import {
   Texto,
   useToast,
 } from '@/componentes';
-import { cache, cupons, meta, produtos } from '@/dados';
+import { cache, cupons, fila, meta, produtos } from '@/dados';
 import type { LocalEscolhido } from '@/dados/repositorio-meta';
 import type { MercadoFrequente } from '@/dados/repositorio-cupom';
 import type { RootStackParamList } from '@/navegacao/tipos';
@@ -95,6 +95,11 @@ export function PerfilTela() {
 
   /** Diálogo de confirmação aberto (handoff 3a: `sair` | `conta`). */
   const [dialogo, setDialogo] = useState<'sair' | 'conta' | null>(null);
+  /**
+   * Cupons ainda na fila de upload quando o usuário pede para sair. Sair limpa
+   * o aparelho, então eles se perdem — o diálogo precisa dizer isso ANTES.
+   */
+  const [pendentesAoSair, setPendentesAoSair] = useState(0);
   const [editando, setEditando] = useState(false);
   const [ufSel, setUfSel] = useState<string | null>(null);
   const [municipioInput, setMunicipioInput] = useState('');
@@ -305,7 +310,15 @@ export function PerfilTela() {
         variante="secundario"
         bloco
         desabilitado={ocupado}
-        onPress={() => setDialogo('sair')}
+        onPress={() => {
+          // Consulta a fila antes de abrir: o texto do diálogo muda se houver
+          // cupom que ainda não subiu.
+          void fila
+            .contarPendentes()
+            .then(setPendentesAoSair)
+            .catch(() => setPendentesAoSair(0));
+          setDialogo('sair');
+        }}
         style={{ marginTop: espaco.md }}
       />
 
@@ -418,6 +431,10 @@ export function PerfilTela() {
         visivel={dialogo === 'sair'}
         titulo="Sair da conta?"
         mensagem={
+          (pendentesAoSair > 0
+            ? `${pendentesAoSair} cupom(ns) ainda não foram enviados. Vamos tentar enviá-los ` +
+              'agora; o que não subir será perdido. Conecte-se à internet antes, se puder. '
+            : '') +
           'Você precisará entrar de novo para registrar cupons. O histórico deste aparelho é ' +
           'limpo; os preços já compartilhados são anônimos e continuam na base.'
         }
@@ -438,6 +455,7 @@ export function PerfilTela() {
           'a comunidade, sem ligação com você (LGPD).'
         }
         rotuloConfirmar="Apagar conta"
+        icone={<IconeLixeira tamanho={24} cor={c.caro} />}
         ocupado={ocupado}
         aoConfirmar={() => void apagarConta()}
         aoCancelar={() => setDialogo(null)}
