@@ -398,10 +398,15 @@ export class RepositorioMemoria
     return Promise.resolve([...ids]);
   }
 
-  observacoesDoProduto(produtoCanonicoId: string): Promise<ObservacaoParaAgregacao[]> {
+  observacoesDoProduto(
+    produtoCanonicoId: string,
+    desdeObservadoEm?: string,
+  ): Promise<ObservacaoParaAgregacao[]> {
     const r = this.poolEntradas
       .map((e) => e.obs)
       .filter((o) => o.produtoCanonicoId === produtoCanonicoId)
+      // Espelha o recorte que o adaptador real faz no SQL (janela do decaimento).
+      .filter((o) => (desdeObservadoEm ? o.observadoEm >= desdeObservadoEm : true))
       .map((o) => ({
         produtoCanonicoId: o.produtoCanonicoId,
         unidadeBase: o.unidadeBase,

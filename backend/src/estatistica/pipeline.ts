@@ -11,7 +11,7 @@
  * (C10) — é decidido fora daqui; o pipeline só recalcula e persiste.
  */
 
-import { agregar, type OpcoesAgregacao } from './agregacao';
+import { agregar, DECAIMENTO, type OpcoesAgregacao } from './agregacao';
 import { derivarEscopos, type ResolvedorRegiao } from './escopos';
 import type {
   FonteObservacoes,
@@ -29,6 +29,8 @@ export interface OpcoesPipeline {
   agregacao?: Omit<OpcoesAgregacao, 'referencia'>;
 }
 
+const DIA_MS = 86_400_000;
+
 interface Balde {
   escopo: LinhaEstatistica['escopo'];
   escopoId: string;
@@ -45,7 +47,10 @@ export class PipelineEstatistica {
 
   /** Recalcula e grava todos os escopos de um produto. Retorna nº de linhas. */
   async recalcularProduto(produtoCanonicoId: string): Promise<number> {
-    const observacoes = await this.fonte.observacoesDoProduto(produtoCanonicoId);
+    const observacoes = await this.fonte.observacoesDoProduto(
+      produtoCanonicoId,
+      this.inicioDaJanela(),
+    );
     const linhas = this.calcularLinhas(produtoCanonicoId, observacoes);
     if (linhas.length > 0) await this.repo.upsertEstatisticas(linhas);
     return linhas.length;
@@ -55,8 +60,27 @@ export class PipelineEstatistica {
   async recalcularTodos(desde?: string): Promise<number> {
     const ids = await this.fonte.listarProdutosComObservacoes(desde);
     let total = 0;
-    for (const id of ids) total += await this.recalcularProduto(id);
+    const feitos: string[] = [];
+    for (const id of ids) {
+      total += await this.recalcularProduto(id);
+      feitos.push(id);
+    }
+    // Só desmarca o que de fato recalculou: se o laço morrer no meio, o que
+    // sobrou continua pendente e a próxima rodada pega.
+    await this.fonte.limparPendenciaRecalculo?.(feitos);
     return total;
+  }
+
+  /**
+   * Início da janela do decaimento (ISO) — o mesmo `maxIdadeDias` que `agregar()`
+   * usa para descartar observação velha, só que aplicado JÁ na consulta. Sem
+   * isto, um produto popular traz o histórico inteiro do banco para a memória e
+   * esbarra no teto de linhas do PostgREST antes de chegar aqui.
+   */
+  private inicioDaJanela(): string {
+    const maxIdadeDias = this.opcoes.agregacao?.maxIdadeDias ?? DECAIMENTO.maxIdadeDias;
+    const referencia = this.opcoes.referencia ?? new Date();
+    return new Date(referencia.getTime() - maxIdadeDias * DIA_MS).toISOString();
   }
 
   /** Agrupa as observações por (unidade-base × escopo) e agrega cada balde. */

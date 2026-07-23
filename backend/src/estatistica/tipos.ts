@@ -27,12 +27,32 @@ export interface ObservacaoParaAgregacao {
 export interface FonteObservacoes {
   /**
    * Ids de produtos com observação. Com `desde`, só os que receberam observação
-   * NOVA desde então — recorte por INSERÇÃO (`criado_em`), não por emissão: um
-   * cupom antigo enviado hoje (offline-first) precisa entrar no recálculo (F1).
+   * NOVA desde então — recorte por INSERÇÃO, não por emissão: um cupom antigo
+   * enviado hoje (offline-first) precisa entrar no recálculo (F1).
+   *
+   * O sinal de "novo" vive na fila `produto_recalculo_pendente` (alimentada por
+   * trigger em toda inserção no pool), NÃO em `observacao_preco.criado_em` — que
+   * é granular ao dia justamente para não permitir remontar a cesta (docs/04).
    */
   listarProdutosComObservacoes(desde?: string): Promise<string[]>;
-  /** Todas as observações de um produto (todos os escopos, dentro do que existe). */
-  observacoesDoProduto(produtoCanonicoId: string): Promise<ObservacaoParaAgregacao[]>;
+  /**
+   * Observações de um produto para agregar. `desdeObservadoEm` (ISO) recorta a
+   * JANELA do decaimento no BANCO — sem ele, produtos populares estouram o teto
+   * de linhas do PostgREST e a mediana passa a ser calculada sobre uma fatia
+   * arbitrária. A leitura é paginada e ordenada por `observado_em` DESC, então
+   * um eventual corte descarta sempre a cauda de MENOR peso temporal.
+   */
+  observacoesDoProduto(
+    produtoCanonicoId: string,
+    desdeObservadoEm?: string,
+  ): Promise<ObservacaoParaAgregacao[]>;
+  /**
+   * Tira os produtos da fila de pendências após o recálculo. Opcional: o
+   * adaptador em memória não tem fila. Best-effort — a fila é uma DICA de
+   * trabalho, e reprocessar um produto já recalculado é inofensivo (o upsert é
+   * idempotente); perder a dica só adia o recálculo até a próxima varredura.
+   */
+  limparPendenciaRecalculo?(produtoCanonicoIds: readonly string[]): Promise<void>;
 }
 
 /** Linha de `preco_estatistica` calculada pelo pipeline (sem `atualizadoEm`). */

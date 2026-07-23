@@ -9,11 +9,12 @@ import type { Autenticacao } from './auth/autenticador';
 import { AutenticadorSupabase } from './auth/autenticador-supabase';
 import { GuardaCuradoria } from './auth/curadoria';
 import { GerenciadorContaSupabase } from './auth/gerenciador-conta';
-import { VerificadorTokenSupabase } from './auth/verificador-token';
+import { VerificadorTokenCache, VerificadorTokenSupabase } from './auth/verificador-token';
 import type { ConfigBackend } from './config/env';
 import { ServicoComparacaoLista } from './consulta/servico-comparacao-lista';
 import { ServicoConsulta } from './consulta/servico-consulta';
 import { ServicoCuradoria } from './curadoria/servico-curadoria';
+import { AgendadorRecalculo } from './estatistica/agendador-recalculo';
 import { MatcherTexto } from './estatistica/casamento-texto';
 import { PipelineEstatistica } from './estatistica/pipeline';
 import { FilaMemoria } from './fila/fila-memoria';
@@ -40,6 +41,8 @@ export interface Backend {
   registro: RegistroParsers;
   /** Motor estatístico (C3): recalcula `preco_estatistica` a partir do pool. */
   pipelineEstatistica: PipelineEstatistica;
+  /** Recálculo pós-ingestão em segundo plano, com coalescência por produto. */
+  agendadorRecalculo: AgendadorRecalculo;
   /** Casamento por texto (C3.5) p/ itens sem EAN. */
   matcherTexto: MatcherTexto;
   /** API de consulta de preço com fallback geo (C4.1). */
@@ -88,14 +91,25 @@ export function montarBackend(config: ConfigBackend): Backend {
   // mediana/faixa do veredito nunca é construída).
   const pipelineEstatistica = new PipelineEstatistica(repo, repo);
 
+  // Recálculo pós-ingestão fora do caminho crítico: o worker marca e segue; o
+  // agendador coalesce (mesmo produto em vários cupons = um recálculo só).
+  const agendadorRecalculo = new AgendadorRecalculo(pipelineEstatistica, {
+    aoFalhar: (produtoCanonicoId, erro) => {
+      // Não é perda: a trigger do pool já deixou o produto em
+      // `produto_recalculo_pendente` e o job em lote (C3.1/C10) refaz.
+      console.error(`Recálculo de ${produtoCanonicoId} falhou (o job em lote refaz):`, erro);
+    },
+  });
+
   const anonimizador = new Anonimizador(repo);
   const processador = new ProcessadorCupom(repo, registro, anonimizador, {
     rollout,
     telemetria,
     // Recalcula a estatística dos produtos que entraram no pool assim que o cupom
     // é processado — é o que faz o veredito na gôndola (C4.1) ter dados.
-    aoPublicarPool: async (ids) => {
-      for (const id of ids) await pipelineEstatistica.recalcularProduto(id);
+    aoPublicarPool: (ids) => {
+      agendadorRecalculo.marcar(ids);
+      return Promise.resolve();
     },
   });
   const fila = new FilaMemoria((t) => processador.processar(t.cupomId), {
@@ -120,7 +134,12 @@ export function montarBackend(config: ConfigBackend): Backend {
   const servicoConsulta = new ServicoConsulta(repo, repo);
   const servicoComparacaoLista = new ServicoComparacaoLista(repo);
   const servicoSync = new ServicoSync(repo);
-  const autenticacao = new AutenticadorSupabase(new VerificadorTokenSupabase(db));
+  // O cache evita uma ida ao GoTrue por request privado (o polling da tela da
+  // nota revalidava o mesmo token dezenas de vezes/min). Só memoriza sucesso, e
+  // por no máximo 60s — a revogação continua valendo, com esse atraso.
+  const autenticacao = new AutenticadorSupabase(
+    new VerificadorTokenCache(new VerificadorTokenSupabase(db)),
+  );
   const gerenciadorConta = new GerenciadorContaSupabase(db);
 
   // C11 — expansão (pós-lançamento): lançamento manual de gôndola + moderação
@@ -137,6 +156,7 @@ export function montarBackend(config: ConfigBackend): Backend {
     reprocessador,
     registro,
     pipelineEstatistica,
+    agendadorRecalculo,
     matcherTexto,
     servicoConsulta,
     servicoComparacaoLista,

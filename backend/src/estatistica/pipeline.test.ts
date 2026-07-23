@@ -31,7 +31,9 @@ function obs(
 function fonteCom(observacoes: ObservacaoParaAgregacao[]): FonteObservacoes {
   return {
     listarProdutosComObservacoes: () => Promise.resolve(['p-leite']),
-    observacoesDoProduto: () => Promise.resolve(observacoes),
+    // Honra a janela como o adaptador real faz (recorte no SQL).
+    observacoesDoProduto: (_id, desde) =>
+      Promise.resolve(desde ? observacoes.filter((o) => o.observadoEm >= desde) : observacoes),
   };
 }
 
@@ -131,5 +133,68 @@ describe('FonteObservacoes incremental por inserção (F1)', () => {
     // Cursor em junho: por emissão (jan) o produto seria pulado; por inserção, não.
     const ids = await repo.listarProdutosComObservacoes('2026-06-01T00:00:00.000Z');
     expect(ids).toContain('p-leite');
+  });
+});
+
+describe('PipelineEstatistica — janela aplicada NA CONSULTA (correção de truncagem)', () => {
+  it('pede à fonte só o que está dentro da janela do decaimento', async () => {
+    // O bug: `observacoesDoProduto` trazia o histórico INTEIRO do produto. O
+    // PostgREST tem teto de linhas (`max_rows`, 1000) e o aplica em silêncio,
+    // então num produto popular a mediana passava a ser calculada sobre uma
+    // fatia arbitrária — enviesada para as observações mais ANTIGAS (ordem do
+    // heap), justamente as que o decaimento descartaria. Agora o recorte de
+    // 180 dias vai no SQL, e a leitura vem ordenada por observado_em DESC.
+    let janelaPedida: string | undefined;
+    const fonte: FonteObservacoes = {
+      listarProdutosComObservacoes: () => Promise.resolve(['p-leite']),
+      observacoesDoProduto: (_id, desde) => {
+        janelaPedida = desde;
+        return Promise.resolve([obs(6, LOJA_A)]);
+      },
+    };
+
+    await new PipelineEstatistica(fonte, new RepositorioMemoria(), {
+      referencia: REF,
+    }).recalcularProduto('p-leite');
+
+    expect(janelaPedida).toBeDefined();
+    const esperado = new Date(REF.getTime() - 180 * 86_400_000).toISOString();
+    expect(janelaPedida).toBe(esperado);
+  });
+
+  it('respeita um maxIdadeDias customizado', async () => {
+    let janelaPedida: string | undefined;
+    const fonte: FonteObservacoes = {
+      listarProdutosComObservacoes: () => Promise.resolve(['p-leite']),
+      observacoesDoProduto: (_id, desde) => {
+        janelaPedida = desde;
+        return Promise.resolve([obs(6, LOJA_A)]);
+      },
+    };
+
+    await new PipelineEstatistica(fonte, new RepositorioMemoria(), {
+      referencia: REF,
+      agregacao: { maxIdadeDias: 30 },
+    }).recalcularProduto('p-leite');
+
+    expect(janelaPedida).toBe(new Date(REF.getTime() - 30 * 86_400_000).toISOString());
+  });
+
+  it('desmarca a pendência só dos produtos que recalculou', async () => {
+    const limpos: string[] = [];
+    const fonte: FonteObservacoes = {
+      listarProdutosComObservacoes: () => Promise.resolve(['p-leite', 'p-arroz']),
+      observacoesDoProduto: () => Promise.resolve([obs(6, LOJA_A)]),
+      limparPendenciaRecalculo: (ids) => {
+        limpos.push(...ids);
+        return Promise.resolve();
+      },
+    };
+
+    await new PipelineEstatistica(fonte, new RepositorioMemoria(), {
+      referencia: REF,
+    }).recalcularTodos('2026-06-01T00:00:00.000Z');
+
+    expect(limpos).toEqual(['p-leite', 'p-arroz']);
   });
 });

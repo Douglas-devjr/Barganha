@@ -79,6 +79,70 @@ function falhar(contexto: string, erro: PostgrestError): never {
 
 const num = (v: unknown): number | undefined => (v == null ? undefined : Number(v));
 
+/**
+ * Tamanho da página das varreduras. O PostgREST tem um teto de linhas por
+ * resposta (`max_rows`) e o aplica em SILÊNCIO: uma consulta sem `range`
+ * devolve menos dados, sem erro nenhum. Toda leitura que pode crescer sem
+ * limite passa por `paginar`.
+ *
+ * ATENÇÃO: este valor está AMARRADO ao `max_rows` do PostgREST
+ * (`supabase/config.toml` → `[api] max_rows`, e a mesma opção em API Settings no
+ * projeto de nuvem). `paginar` encerra ao receber uma página incompleta, então
+ * um `max_rows` MENOR que isto seria lido como "acabaram os dados" e voltaria a
+ * truncar em silêncio. Mudou lá, mude aqui.
+ */
+const PAGINA = 1000;
+
+/**
+ * Teto de segurança da carga de observações de UM produto na agregação. Um
+ * produto muito popular numa janela de 180 dias pode ter centenas de milhares
+ * de linhas; carregá-las todas na memória do Node é o que quebraria antes.
+ * Como a leitura vem ordenada por `observado_em` DESC, o corte descarta a cauda
+ * de menor peso temporal — truncar aqui é uma aproximação principiada, não uma
+ * amostra arbitrária. Ver `observacoesDoProduto`.
+ */
+export const MAX_OBSERVACOES_AGREGACAO = 50_000;
+
+interface RespostaPagina<T> {
+  data: T[] | null;
+  error: PostgrestError | null;
+}
+
+/** Projeção crua de `observacao_preco` usada pela agregação. */
+interface LinhaObservacaoBruta {
+  produto_canonico_id: string;
+  unidade_base: ObservacaoParaAgregacao['unidadeBase'];
+  loja_cnpj: string;
+  municipio: string | null;
+  uf: string | null;
+  preco_normalizado: unknown;
+  em_promocao: boolean;
+  observado_em: string;
+}
+
+/**
+ * Varre uma consulta em páginas de `PAGINA` linhas até esgotar (ou bater
+ * `maximo`). Existe porque o teto do PostgREST trunca sem avisar — ver `PAGINA`.
+ */
+async function paginar<T>(
+  contexto: string,
+  pagina: (de: number, ate: number) => PromiseLike<RespostaPagina<T>>,
+  maximo = Number.POSITIVE_INFINITY,
+): Promise<T[]> {
+  const acumulado: T[] = [];
+  for (let de = 0; de < maximo; de += PAGINA) {
+    const ate = Math.min(de + PAGINA, maximo) - 1;
+    const r = await pagina(de, ate);
+    if (r.error) falhar(contexto, r.error);
+    const lote = r.data ?? [];
+    acumulado.push(...lote);
+    // Página incompleta = acabou. (Uma página cheia pode ser a última; a próxima
+    // volta vazia e encerra — uma ida a mais é mais barata que perder dados.)
+    if (lote.length < ate - de + 1) break;
+  }
+  return acumulado;
+}
+
 export class RepositorioSupabase
   implements
     RepositorioCupom,
@@ -431,33 +495,82 @@ export class RepositorioSupabase
 
   // ───────────────────────── FonteObservacoes (C3) ────────────────────
 
+  /**
+   * Produtos a recalcular. Sem `desde` → varre o catálogo inteiro (recálculo
+   * completo, paginado). Com `desde` → drena a FILA `produto_recalculo_pendente`,
+   * alimentada por trigger a cada inserção no pool.
+   *
+   * Por que a fila e não `observacao_preco.criado_em`: `criado_em` é granular ao
+   * DIA (anti-remontagem de cesta, docs/04), logo não serve a uma janela de
+   * minutos; e varrer o pool por timestamp custa caro conforme ele cresce.
+   */
   async listarProdutosComObservacoes(desde?: string): Promise<string[]> {
-    let consulta = this.db.from('observacao_preco').select('produto_canonico_id');
-    // Sinal de "novo" = INSERÇÃO (criado_em), não emissão (observado_em): um
-    // cupom antigo enviado hoje (offline-first) precisa disparar recálculo (F1).
-    if (desde) consulta = consulta.gte('criado_em', desde);
-    const r = await consulta;
-    if (r.error) falhar('listagem de produtos com observação', r.error);
-    return [...new Set((r.data ?? []).map((o) => o.produto_canonico_id as string))];
+    if (desde) {
+      const pendentes = await paginar<{ produto_canonico_id: string }>(
+        'fila de recálculo pendente',
+        (de, ate) =>
+          this.db
+            .from('produto_recalculo_pendente')
+            .select('produto_canonico_id')
+            .gte('marcado_em', desde)
+            .order('marcado_em', { ascending: true })
+            .range(de, ate),
+      );
+      return [...new Set(pendentes.map((p) => p.produto_canonico_id))];
+    }
+
+    // Recálculo COMPLETO: varre o CATÁLOGO, não o pool. São os mesmos produtos
+    // (o pool tem FK para `produto_canonico`), mas o catálogo tem uma linha por
+    // produto em vez de uma por observação — ler milhões de ids só para
+    // deduplicá-los na memória do Node era o caminho caro. Produto sem
+    // observação custa uma consulta vazia e produz zero linhas.
+    const todos = await paginar<{ id: string }>('listagem de produtos do catálogo', (de, ate) =>
+      this.db.from('produto_canonico').select('id').order('id', { ascending: true }).range(de, ate),
+    );
+    return todos.map((p) => p.id);
   }
 
-  async observacoesDoProduto(produtoCanonicoId: string): Promise<ObservacaoParaAgregacao[]> {
+  /** Marca os produtos como recalculados (remove da fila). Best-effort. */
+  async limparPendenciaRecalculo(produtoCanonicoIds: readonly string[]): Promise<void> {
+    if (produtoCanonicoIds.length === 0) return;
     const r = await this.db
-      .from('observacao_preco')
-      .select(
-        'produto_canonico_id, unidade_base, loja_cnpj, municipio, uf, preco_normalizado, em_promocao, observado_em',
-      )
-      .eq('produto_canonico_id', produtoCanonicoId);
-    if (r.error) falhar('carga de observações do produto', r.error);
-    return (r.data ?? []).map((o) => ({
-      produtoCanonicoId: o.produto_canonico_id,
-      unidadeBase: o.unidade_base,
-      lojaCnpj: o.loja_cnpj,
-      ...(o.municipio ? { municipio: o.municipio } : {}),
-      ...(o.uf ? { uf: o.uf } : {}),
-      precoNormalizado: Number(o.preco_normalizado),
-      emPromocao: o.em_promocao,
-      observadoEm: o.observado_em,
+      .from('produto_recalculo_pendente')
+      .delete()
+      .in('produto_canonico_id', [...produtoCanonicoIds]);
+    if (r.error) falhar('limpeza da fila de recálculo', r.error);
+  }
+
+  async observacoesDoProduto(
+    produtoCanonicoId: string,
+    desdeObservadoEm?: string,
+  ): Promise<ObservacaoParaAgregacao[]> {
+    const linhas = await paginar<LinhaObservacaoBruta>(
+      'carga de observações do produto',
+      (de, ate) => {
+        let q = this.db
+          .from('observacao_preco')
+          .select(
+            'produto_canonico_id, unidade_base, loja_cnpj, municipio, uf, preco_normalizado, em_promocao, observado_em',
+          )
+          .eq('produto_canonico_id', produtoCanonicoId);
+        // A janela do decaimento aplicada NO BANCO: o que está fora dela seria
+        // descartado por `agregar()` de qualquer forma — trazer é desperdício e,
+        // pior, empurra o que importa para fora do teto de linhas.
+        if (desdeObservadoEm) q = q.gte('observado_em', desdeObservadoEm);
+        // DESC: se o teto de segurança cortar, corta o MAIS ANTIGO (menor peso).
+        return q.order('observado_em', { ascending: false }).range(de, ate);
+      },
+      MAX_OBSERVACOES_AGREGACAO,
+    );
+    return linhas.map((l) => ({
+      produtoCanonicoId: l.produto_canonico_id,
+      unidadeBase: l.unidade_base,
+      lojaCnpj: l.loja_cnpj,
+      ...(l.municipio ? { municipio: l.municipio } : {}),
+      ...(l.uf ? { uf: l.uf } : {}),
+      precoNormalizado: Number(l.preco_normalizado),
+      emPromocao: l.em_promocao,
+      observadoEm: l.observado_em,
     }));
   }
 
