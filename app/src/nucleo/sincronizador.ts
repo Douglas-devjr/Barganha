@@ -25,6 +25,13 @@ import { escoposSync, resolverLocalizacao } from '@/nucleo/localizacao';
 const BACKOFF_BASE_S = 15;
 const BACKOFF_MAX_S = 60 * 60;
 
+/**
+ * Teto de páginas do delta por rodada. O cursor é persistido a cada página, então
+ * parar aqui não perde nada — a próxima rodada continua. Existe só para uma
+ * resposta anômala do servidor não prender o app num laço.
+ */
+const MAX_PAGINAS_DELTA = 50;
+
 function emSegundos(segundos: number): string {
   return new Date(Date.now() + segundos * 1000).toISOString();
 }
@@ -152,7 +159,7 @@ export async function atualizarProcessamentos(): Promise<void> {
  * sinal. Best-effort e idempotente (cursor por `atualizado_em`).
  */
 export async function sincronizarEstatisticas(): Promise<void> {
-  const [produtoCanonicoIds, local, cursor] = await Promise.all([
+  const [produtoCanonicoIds, local, cursorInicial] = await Promise.all([
     produtos.listarProdutoCanonicoIds(),
     resolverLocalizacao(),
     meta.obterCursorDelta(),
@@ -161,13 +168,25 @@ export async function sincronizarEstatisticas(): Promise<void> {
   if (produtoCanonicoIds.length === 0 && !local) return;
 
   const municipios = local ? escoposSync(local) : [];
-  const resp = await clienteApi.sincronizar({
-    ...(cursor ? { cursor } : {}),
-    ...(municipios.length > 0 ? { municipios } : {}),
-    ...(produtoCanonicoIds.length > 0 ? { produtoCanonicoIds } : {}),
-  });
-  await cache.salvarEstatisticas(resp.estatisticas);
-  await meta.definirCursorDelta(resp.cursor);
+  let cursor = cursorInicial;
+
+  // O servidor tem teto de linhas por resposta e sinaliza `temMais` quando a
+  // página encheu. Repaginar AQUI é o que garante que uma janela grande (região
+  // nova, primeiro sync, longo tempo offline) entre no cache de uma vez — antes,
+  // o excedente ficava para as próximas rodadas, sem ninguém saber.
+  for (let pagina = 0; pagina < MAX_PAGINAS_DELTA; pagina++) {
+    const resp = await clienteApi.sincronizar({
+      ...(cursor ? { cursor } : {}),
+      ...(municipios.length > 0 ? { municipios } : {}),
+      ...(produtoCanonicoIds.length > 0 ? { produtoCanonicoIds } : {}),
+    });
+    await cache.salvarEstatisticas(resp.estatisticas);
+    // Grava o cursor a cada página: se a próxima falhar (sinal caiu), a rodada
+    // seguinte retoma daqui em vez de refazer tudo.
+    await meta.definirCursorDelta(resp.cursor);
+    cursor = resp.cursor;
+    if (!resp.temMais || resp.estatisticas.length === 0) return;
+  }
 }
 
 /**

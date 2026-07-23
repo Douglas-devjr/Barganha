@@ -272,7 +272,11 @@ export interface DecisaoModeracaoResponse {
 
 /** Baixa só o que mudou desde o cursor, no escopo da região/produtos. */
 export interface DeltaSyncRequest {
-  /** Cursor = maior `atualizado_em` recebido (ISO 8601); ausente = sync inicial. */
+  /**
+   * Cursor OPACO devolvido pela chamada anterior; ausente = sync inicial. Não
+   * interprete o conteúdo: por dentro é a posição keyset da última linha
+   * entregue (`atualizado_em` + desempate), e o formato pode mudar.
+   */
   cursor?: string;
   /**
    * Chaves de `escopo_id` do recorte geográfico do usuário. Apesar do nome,
@@ -288,8 +292,14 @@ export interface DeltaSyncRequest {
 
 export interface DeltaSyncResponse {
   estatisticas: PrecoEstatistica[];
-  /** Novo cursor para a próxima sincronização. */
+  /** Novo cursor (opaco) para a próxima sincronização. */
   cursor: string;
+  /**
+   * A página encheu o teto do servidor: ainda há delta. O cliente deve chamar
+   * de novo com o `cursor` recebido, em vez de esperar a próxima rodada — sem
+   * isto, uma janela grande demorava ciclos para entrar no cache, calada.
+   */
+  temMais?: boolean;
 }
 
 // ───────────────────── Denúncia de preço (C12.5) ───────────────────────
