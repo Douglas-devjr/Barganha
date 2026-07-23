@@ -13,6 +13,8 @@
 
 import Constants from 'expo-constants';
 
+import { log } from '@/nucleo/log';
+
 const PORTA = process.env.EXPO_PUBLIC_API_PORT || '3000';
 const PADRAO = `http://localhost:${PORTA}`;
 
@@ -80,10 +82,11 @@ function avisarSeInalcancavel(url: string): void {
   avisou = true;
 
   const host = url.replace(/^https?:\/\//, '').split(':')[0] ?? '';
-  console.log(`[api] backend em ${url}`);
+  log.info({ action: 'api.base_url', url }, 'Backend configurado');
   if (inalcancavelDoDevice(host)) {
-    console.warn(
-      `[api] "${host}" aponta para o PRÓPRIO aparelho (ou um túnel sem backend) — ` +
+    log.warn(
+      { action: 'api.base_url_inalcancavel', host },
+      `"${host}" aponta para o PRÓPRIO aparelho (ou um túnel sem backend) — ` +
         'num device físico isso vira "Network request failed". Suba o Metro na LAN ' +
         '(sem --tunnel/--localhost) ou defina EXPO_PUBLIC_API_URL=http://SEU_IP:3000 em app/.env.',
     );
