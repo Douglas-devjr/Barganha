@@ -20,6 +20,7 @@ import { clienteApi, ErroApi } from '@/api';
 import { cache, cupons, fila, meta, produtos } from '@/dados';
 import type { CupomLocal, ItemFilaUpload } from '@/dados';
 import { escoposSync, resolverLocalizacao } from '@/nucleo/localizacao';
+import { contarFalha, limparFalhas, log } from '@/nucleo/log';
 
 /** Backoff: 15s, 30s, 1min… até o teto de 1h. */
 const BACKOFF_BASE_S = 15;
@@ -145,8 +146,12 @@ export async function atualizarProcessamentos(): Promise<void> {
   for (const cupom of aguardando) {
     try {
       await buscarProcessamento(cupom);
-    } catch {
-      // Offline/servidor fora — tenta de novo na próxima rodada.
+      limparFalhas('sync.processamento');
+    } catch (erro) {
+      // Antes era um `catch {}` mudo: um bug PERMANENTE (contrato quebrado, 400
+      // do servidor) ficava indistinguível de "está offline", para sempre. O
+      // contador separa os dois — offline passa, bug se acumula.
+      contarFalha('sync.processamento', erro);
     }
   }
 }
@@ -197,17 +202,24 @@ export async function sincronizarEstatisticas(): Promise<void> {
 export async function sincronizar(): Promise<void> {
   if (rodando) return;
   rodando = true;
+  const inicio = Date.now();
   try {
     await processarFilaUpload();
     await atualizarProcessamentos();
     // Estatísticas num passo isolado: uma falha aqui não desfaz o upload/parsing.
     try {
       await sincronizarEstatisticas();
-    } catch {
-      // Offline/servidor fora — retoma do cursor na próxima rodada.
+      limparFalhas('sync.estatisticas');
+    } catch (erro) {
+      contarFalha('sync.estatisticas', erro);
     }
-  } catch {
-    // Best-effort: a próxima rodada retoma de onde parou (estado está no SQLite).
+    limparFalhas('sync.rodada');
+    log.info({ action: 'sync.rodada', duracaoMs: Date.now() - inicio }, 'Rodada de sync concluída');
+  } catch (erro) {
+    // Best-effort: a próxima rodada retoma de onde parou (estado está no
+    // SQLite). Mas agora deixa rastro — este era o `catch {}` que fazia o app
+    // parecer normal enquanto o upload nunca acontecia.
+    contarFalha('sync.rodada', erro);
   } finally {
     rodando = false;
   }
