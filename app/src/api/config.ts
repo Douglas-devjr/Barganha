@@ -30,7 +30,37 @@ function hostDoMetro(): string | undefined {
   return host && host.length > 0 ? host : undefined;
 }
 
+/** Hosts que NÃO funcionam a partir de um device físico. */
+function inalcancavelDoDevice(host: string): boolean {
+  return host === 'localhost' || host === '127.0.0.1' || host.endsWith('.exp.direct');
+}
+
 export function obterBaseUrl(): string {
+  const url = exigirHttpsEmProducao(resolverBaseUrl());
+  avisarSeInalcancavel(url);
+  return url;
+}
+
+/**
+ * Em build de produção, texto puro é inaceitável: TODA chamada privada leva o
+ * JWT da sessão no header `Authorization`. Um `EXPO_PUBLIC_API_URL` com
+ * `http://` — ou o fallback de dev vazando para um release — mandaria a
+ * credencial em claro para quem estiver na mesma rede, sem sinal nenhum de que
+ * isso está acontecendo.
+ *
+ * Falha ALTO, e não com um aviso: é erro de configuração de release, e o certo
+ * é o app não subir com ele. Em `__DEV__` o http segue liberado — o backend
+ * roda na LAN da máquina de desenvolvimento, sem TLS.
+ */
+function exigirHttpsEmProducao(url: string): string {
+  if (__DEV__ || url.startsWith('https://')) return url;
+  throw new Error(
+    `[api] backend em texto puro (${url}) num build de produção. Defina ` +
+      'EXPO_PUBLIC_API_URL com https:// — o token de sessão trafega nesse canal.',
+  );
+}
+
+function resolverBaseUrl(): string {
   const env = process.env.EXPO_PUBLIC_API_URL;
   if (env && env.length > 0) return env;
 
@@ -41,4 +71,21 @@ export function obterBaseUrl(): string {
   if (extra?.apiBaseUrl) return extra.apiBaseUrl;
 
   return PADRAO;
+}
+
+/** Avisa UMA vez, em dev, quando a URL derivada não vai funcionar no aparelho. */
+let avisou = false;
+function avisarSeInalcancavel(url: string): void {
+  if (!__DEV__ || avisou) return;
+  avisou = true;
+
+  const host = url.replace(/^https?:\/\//, '').split(':')[0] ?? '';
+  console.log(`[api] backend em ${url}`);
+  if (inalcancavelDoDevice(host)) {
+    console.warn(
+      `[api] "${host}" aponta para o PRÓPRIO aparelho (ou um túnel sem backend) — ` +
+        'num device físico isso vira "Network request failed". Suba o Metro na LAN ' +
+        '(sem --tunnel/--localhost) ou defina EXPO_PUBLIC_API_URL=http://SEU_IP:3000 em app/.env.',
+    );
+  }
 }
