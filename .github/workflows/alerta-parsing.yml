@@ -1,0 +1,53 @@
+name: Alerta de parsing degradado
+
+# C10.2 — Vigilância da saúde do parsing por UF. Quando um portal da SEFAZ muda
+# de layout, o parser daquele estado passa a falhar em ~100% dos cupons — e sem
+# isto a primeira notícia seria um usuário reclamando. Lê a telemetria persistida
+# e avisa quando a taxa de falha de uma UF passa do limiar.
+#
+# Segredos necessários (Settings → Secrets):
+#   • SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY — leitura da telemetria.
+#   • ALERTA_WEBHOOK_URL (opcional) — Discord/Slack. Sem ele o job só registra a
+#     linha `error` no log da execução, que continua consultável aqui.
+
+on:
+  schedule:
+    # De hora em hora. O sinal que interessa (parser quebrado) permanece até
+    # alguém corrigir, então checar com mais frequência não adiantaria nada —
+    # só geraria alertas repetidos do mesmo problema.
+    - cron: '17 * * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: alerta-parsing
+  cancel-in-progress: false
+
+jobs:
+  alerta:
+    name: Verificar saúde do parsing
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      ALERTA_WEBHOOK_URL: ${{ secrets.ALERTA_WEBHOOK_URL }}
+    steps:
+      - name: Falha cedo se faltar credencial do Supabase
+        if: ${{ env.SUPABASE_URL == '' || env.SUPABASE_SERVICE_ROLE_KEY == '' }}
+        run: |
+          echo "::error::Segredos SUPABASE_URL/SUPABASE_SERVICE_ROLE_KEY ausentes — configure em Settings → Secrets."
+          exit 1
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configura Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Instala dependências
+        run: npm ci
+
+      - name: Avalia a saúde do parsing
+        run: npm run job:alerta-parsing --workspace @barganha/backend
