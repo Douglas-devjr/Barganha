@@ -294,6 +294,20 @@ export class RepositorioSupabase
     };
   }
 
+  async apagarDoUsuario(cupomId: string, usuarioId: string): Promise<boolean> {
+    // Gate de acesso na própria escrita: o `usuario_id` no WHERE garante que
+    // ninguém apaga cupom de terceiro, mesmo adivinhando o id. Os itens saem por
+    // `on delete cascade`; o pool não é tocado (ver a doc da porta em tipos.ts).
+    const r = await this.db
+      .from('cupom')
+      .delete()
+      .eq('id', cupomId)
+      .eq('usuario_id', usuarioId)
+      .select('id');
+    if (r.error) falhar('exclusão de cupom do usuário', r.error);
+    return (r.data?.length ?? 0) > 0;
+  }
+
   async atualizarTotais(cupomId: string, total: TotaisNota): Promise<void> {
     // Guarda dupla: só cupom `processado` e SÓ quando ainda sem totais
     // (`valor_pago` nulo) — nunca sobrescreve o que a captura já gravou.

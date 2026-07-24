@@ -89,6 +89,20 @@ export class ServicoIngestao {
   }
 
   /**
+   * Apaga um cupom do PRÓPRIO usuário (direito ao apagamento, docs/04).
+   * `false` quando não existe ou é de outro dono → a HTTP traduz para 404.
+   *
+   * O pool anônimo NÃO é afetado, e isso é o desenho, não uma limitação: as
+   * observações nascem soltas, sem `usuario_id` nem `cupom_id` (decisão travada
+   * nº3), então não existe caminho de volta do cupom para elas. A UI precisa
+   * dizer isso ao usuário — apagar o histórico é dele; o preço já compartilhado
+   * é anônimo e segue servindo a base.
+   */
+  apagarCupom(usuarioId: string, cupomId: string): Promise<boolean> {
+    return this.repo.apagarDoUsuario(cupomId, usuarioId);
+  }
+
+  /**
    * C6.3 — Estado de um cupom do PRÓPRIO usuário (privado). O app consulta para
    * acompanhar o parsing assíncrono e exibir os itens. `undefined` quando o
    * cupom não existe ou é de outro dono — a camada HTTP traduz para 404.

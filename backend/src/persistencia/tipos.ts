@@ -142,6 +142,18 @@ export interface RepositorioCupom {
    * itens/pool (zero risco de duplicação).
    */
   atualizarTotais(cupomId: string, total: TotaisNota): Promise<void>;
+  /**
+   * Apaga um cupom do PRÓPRIO usuário e, em cascata, seus itens (direito ao
+   * apagamento, docs/04). Devolve `false` quando o cupom não existe ou é de
+   * outro dono — a camada HTTP traduz para 404, sem vazar existência.
+   *
+   * NÃO toca o pool: as `observacao_preco` geradas por este cupom são anônimas e
+   * SOLTAS — não existe coluna que as religue ao cupom (decisão travada nº3), e
+   * por isso não há o que apagar lá. Também não limpa `chave_publicada`: o hash
+   * da chave permanece para o dedup global continuar valendo se o mesmo cupom for
+   * reescaneado por qualquer conta (C9.2.1).
+   */
+  apagarDoUsuario(cupomId: string, usuarioId: string): Promise<boolean>;
   /** Marca o cupom como `falha` (erro permanente de parsing). */
   marcarFalha(cupomId: string, motivo?: string): Promise<void>;
   /** Lista ids de cupons elegíveis a reprocessamento (C2.5). */

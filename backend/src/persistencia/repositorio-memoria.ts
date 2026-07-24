@@ -245,6 +245,17 @@ export class RepositorioMemoria
     });
   }
 
+  apagarDoUsuario(cupomId: string, usuarioId: string): Promise<boolean> {
+    const c = this.cupons.get(cupomId);
+    if (!c || c.usuarioId !== usuarioId) return Promise.resolve(false);
+    this.cupons.delete(cupomId);
+    // Espelha o `on delete cascade` do banco real (array é readonly: splice).
+    for (let i = this.itensCupom.length - 1; i >= 0; i--) {
+      if (this.itensCupom[i]!.cupomId === cupomId) this.itensCupom.splice(i, 1);
+    }
+    return Promise.resolve(true);
+  }
+
   atualizarTotais(cupomId: string, total: TotaisNota): Promise<void> {
     const cupom = this.cupons.get(cupomId);
     // Mesmas guardas do adaptador real: só processado e ainda sem totais.

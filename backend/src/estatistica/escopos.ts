@@ -20,11 +20,15 @@ import {
   chaveMunicipio as chaveMunicipioCanonica,
   ESCOPO_GEO,
   type EscopoGeo,
+  MIN_OBSERVACOES_CONFIAVEL,
   type PrecoEstatistica,
 } from '@barganha/shared';
 
-/** Mínimo de observações p/ um nível ser considerado confiável (a calibrar). */
-export const MIN_OBSERVACOES_FALLBACK = 3;
+/**
+ * Mínimo de observações p/ um nível ser considerado confiável. A fonte é
+ * `shared` — o app decide igual, offline. Alias mantido pelo nome já usado aqui.
+ */
+export const MIN_OBSERVACOES_FALLBACK = MIN_OBSERVACOES_CONFIAVEL;
 
 /** Ordem do fallback: do mais específico ao mais amplo. */
 export const ORDEM_FALLBACK: readonly EscopoGeo[] = ESCOPO_GEO;
