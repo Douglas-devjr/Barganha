@@ -122,6 +122,31 @@ export class ClienteApi {
   }
 
   /**
+   * `DELETE /ingestao/cupom/:id` — PRIVADO: apaga o cupom do próprio usuário no
+   * servidor (direito ao apagamento, docs/04). `true` quando apagou; `false` em
+   * 404 (já não existe lá — o app pode seguir e limpar o espelho local).
+   *
+   * O pool anônimo não é afetado: as observações nascem soltas, sem ponteiro de
+   * volta ao cupom (decisão travada nº3). A UI diz isso ao usuário.
+   */
+  async apagarCupom(cupomIdServidor: string): Promise<boolean> {
+    const token = await this.resolverToken();
+    if (!token) throw new ErroApi(401, 'Sem sessão para apagar o cupom.');
+    try {
+      await this.requisitar<void>(
+        'DELETE',
+        `/ingestao/cupom/${encodeURIComponent(cupomIdServidor)}`,
+        undefined,
+        token,
+      );
+      return true;
+    } catch (e) {
+      if (e instanceof ErroApi && e.status === 404) return false;
+      throw e;
+    }
+  }
+
+  /**
    * `POST /consulta/preco` (C4.1) — ANÔNIMO. Resolve por EAN ou nome + recorte
    * geo. Retorna `null` em 404 (sem dados para o produto).
    */
