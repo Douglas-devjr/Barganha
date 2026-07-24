@@ -14,6 +14,7 @@ import {
   ESCOPO_GEO,
   type EscopoGeo,
   type FaixaPreco,
+  MIN_OBSERVACOES_CONFIAVEL,
   montarVeredito,
   normalizarPreco,
   type UnidadeBase,
@@ -54,12 +55,6 @@ const ESPECIFICIDADE: Record<EscopoGeo, number> = ESCOPO_GEO.reduce(
 );
 
 /**
- * Mínimo de observações p/ um nível ser considerado confiável offline. Espelha o
- * `MIN_OBSERVACOES_FALLBACK` do backend (docs/06, a calibrar com dados reais).
- */
-const MIN_OBSERVACOES_REGIONAL = 3;
-
-/**
  * Escolhe a melhor linha de cache para o produto — o análogo OFFLINE do
  * `resolverFallback` do backend (C3.3): o nível MAIS ESPECÍFICO
  * (loja→município→região→UF) que atinge o mínimo de observações; se nenhum
@@ -81,7 +76,7 @@ function melhorEstatistica(linhas: readonly CacheEstatistica[]): CacheEstatistic
 
   // 1) Mais específico com base suficiente.
   for (const l of candidatos) {
-    if (l.nObservacoes >= MIN_OBSERVACOES_REGIONAL) return l;
+    if (l.nObservacoes >= MIN_OBSERVACOES_CONFIAVEL) return l;
   }
   // 2) Ninguém atinge o mínimo → o de maior base disponível.
   let melhor: CacheEstatistica | undefined;

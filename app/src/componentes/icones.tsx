@@ -381,3 +381,147 @@ export function IconeCalendario(p: IconeProps) {
     </Base>
   );
 }
+
+/** checklist — a aba "Lista" (substituiu "Produtos" na barra, handoff 3a). */
+export function IconeLista(p: IconeProps) {
+  return (
+    <Base {...p}>
+      <Path d="M9 6h11M9 12h11M9 18h11" />
+      <Path d="m4 5.5 1 1 2-2" />
+      <Path d="m4 11.5 1 1 2-2" />
+      <Path d="m4 17.5 1 1 2-2" />
+    </Base>
+  );
+}
+
+/** barras — comparar mercados / resumo de economia. */
+export function IconeGrafico(p: IconeProps) {
+  return (
+    <Base {...p}>
+      <Path d="M4 20V10M10 20V4M16 20v-8" />
+      <Path d="M22 20H2" />
+    </Base>
+  );
+}
+
+/** mira/GPS — "usar minha localização" (detecção por GPS). */
+export function IconeGps(p: IconeProps) {
+  return (
+    <Base {...p}>
+      <Path d="M12 2v3M12 19v3M2 12h3M19 12h3" />
+      <Circle cx={12} cy={12} r={4} />
+    </Base>
+  );
+}
+
+/** balão de conversa — falar com o suporte. */
+export function IconeChat(p: IconeProps) {
+  return (
+    <Base {...p}>
+      <Path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+    </Base>
+  );
+}
+
+/** envelope aberto — enviar sugestão. */
+export function IconeEnvelope(p: IconeProps) {
+  return (
+    <Base {...p}>
+      <Path d="M4 4h16v12H5.2L4 17.2z" />
+    </Base>
+  );
+}
+
+/** lápis — editar dados. */
+export function IconeLapis(p: IconeProps) {
+  return (
+    <Base {...p}>
+      <Path d="M12 20h9" />
+      <Path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" />
+    </Base>
+  );
+}
+
+/** porta com seta — sair da conta. */
+export function IconeSair(p: IconeProps) {
+  return (
+    <Base {...p}>
+      <Path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+      <Path d="m16 17 5-5-5-5" />
+      <Path d="M21 12H9" />
+    </Base>
+  );
+}
+
+/** teclado — "digitar chave de acesso" (alternativa ao QR). */
+export function IconeTeclado(p: IconeProps) {
+  return (
+    <Base {...p}>
+      <Rect x={3} y={7} width={18} height={10} rx={2} />
+      <Path d="M7 15h10" />
+    </Base>
+  );
+}
+
+/** círculo de informação — dicas e notas de apoio. */
+export function IconeInfo(p: IconeProps) {
+  return (
+    <Base {...p}>
+      <Circle cx={12} cy={12} r={9} />
+      <Path d="M12 11v5" />
+      <Circle cx={12} cy={8} r={0.5} />
+    </Base>
+  );
+}
+
+/** setas em círculo — "tentar de novo" (erro/offline). */
+export function IconeRecarregar(p: IconeProps) {
+  return (
+    <Base {...p}>
+      <Path d="M21 12a9 9 0 1 1-3-6.7" />
+      <Path d="M21 3v5h-5" />
+    </Base>
+  );
+}
+
+/** presente — recompensa do detalhe da conquista. */
+export function IconePresente(p: IconeProps) {
+  return (
+    <Base {...p}>
+      <Path d="M4 8h13a3 3 0 0 1 0 6h-1" />
+      <Path d="M4 8v9a2 2 0 0 0 2 2h7a2 2 0 0 0 2-2V8z" />
+    </Base>
+  );
+}
+
+/** sinal de mais — adicionar item à lista / à cesta comparada. */
+export function IconeMais(p: IconeProps) {
+  return (
+    <Base {...p}>
+      <Path d="M12 5v14M5 12h14" />
+    </Base>
+  );
+}
+
+/** câmera dentro da moldura de scan — priming da permissão de câmera. */
+export function IconeCamera(p: IconeProps) {
+  return (
+    <Base {...p}>
+      <Path d="M4 8V5a1 1 0 0 1 1-1h3" />
+      <Path d="M16 4h3a1 1 0 0 1 1 1v3" />
+      <Path d="M20 16v3a1 1 0 0 1-1 1h-3" />
+      <Path d="M8 20H5a1 1 0 0 1-1-1v-3" />
+      <Rect x={8.5} y={9.5} width={7} height={5} rx={1} />
+    </Base>
+  );
+}
+
+/** etiqueta de preço — estado vazio de Produtos. */
+export function IconeEtiqueta(p: IconeProps) {
+  return (
+    <Base {...p}>
+      <Path d="M3 12l9-9h9v9l-9 9z" />
+      <Circle cx={16.5} cy={7.5} r={1.6} />
+    </Base>
+  );
+}

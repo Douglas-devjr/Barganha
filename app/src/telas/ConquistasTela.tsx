@@ -13,6 +13,8 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { type ReactElement, useCallback, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
+import { Pressable } from 'react-native';
+
 import {
   CabecalhoVoltar,
   Cartao,
@@ -112,7 +114,11 @@ export function ConquistasTela({ navigation }: Props) {
 
       <View style={estilos.grade}>
         {dados.selos.map((selo) => (
-          <Badge key={selo.id} selo={selo} />
+          <Badge
+            key={selo.id}
+            selo={selo}
+            aoTocar={() => navigation.navigate('ConquistaDetalhe', { id: selo.id })}
+          />
         ))}
       </View>
 
@@ -134,13 +140,22 @@ const ICONES: Record<IconeSelo, (p: IconeProps) => ReactElement> = {
   calendario: IconeCalendario,
 };
 
-function Badge({ selo }: { selo: Selo }) {
+function Badge({ selo, aoTocar }: { selo: Selo; aoTocar: () => void }) {
   const { c } = useTema();
   const conquistado = selo.conquistado;
   const Icone = ICONES[selo.icone];
 
   return (
-    <View style={[estilos.badge, !conquistado && estilos.badgeBloqueado]}>
+    <Pressable
+      onPress={aoTocar}
+      accessibilityRole="button"
+      accessibilityLabel={`${selo.titulo}, ${conquistado ? 'desbloqueada' : 'bloqueada'}`}
+      style={({ pressed }) => [
+        estilos.badge,
+        !conquistado && estilos.badgeBloqueado,
+        pressed && { opacity: 0.6 },
+      ]}
+    >
       <View
         style={[
           estilos.circulo,
@@ -161,7 +176,7 @@ function Badge({ selo }: { selo: Selo }) {
           {selo.descricao}
         </Texto>
       </View>
-    </View>
+    </Pressable>
   );
 }
 

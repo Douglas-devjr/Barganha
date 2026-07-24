@@ -13,16 +13,18 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Modal, Pressable, StyleSheet, TextInput, View } from 'react-native';
 
-import { ErroApi } from '@/api';
+import { clienteApi, ErroApi } from '@/api';
 import type { Veredito } from '@barganha/shared';
 import {
   Botao,
   Cartao,
   ColetorNotaWeb,
+  Dialogo,
   Esqueleto,
   Estado,
   Eyebrow,
   IconeAlerta,
+  IconeLixeira,
   IconeTendenciaBaixo,
   IconeTendenciaCima,
   IconeVoltar,
@@ -80,7 +82,7 @@ function quandoFoi(iso?: string | null): string {
 export function NotaFiscalTela({ navigation, route }: Props) {
   const { c } = useTema();
   const toast = useToast();
-  const { cupomLocalId } = route.params;
+  const { cupomLocalId, recemCapturado = false } = route.params;
   const [cupom, setCupom] = useState<CupomLocal | null>(null);
   const [itens, setItens] = useState<ItemCupomLocal[]>([]);
   const [offline, setOffline] = useState(false);
@@ -94,6 +96,8 @@ export function NotaFiscalTela({ navigation, route }: Props) {
   const [valorInput, setValorInput] = useState('');
   /** Veredito por item (id → barato/na média/caro), do cache regional local. */
   const [vereditos, setVereditos] = useState<Record<string, Veredito>>({});
+  const [confirmandoExclusao, setConfirmandoExclusao] = useState(false);
+  const [excluindo, setExcluindo] = useState(false);
   const ativo = useRef(true);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   /** Trava do toast de "cupom lido" — só avisa na primeira vez. */
@@ -157,15 +161,20 @@ export function NotaFiscalTela({ navigation, route }: Props) {
     };
   }, [cupomLocalId, recarregarLocal]);
 
-  // Toast do handoff ("Cupom lido · N itens adicionados"). Dispara UMA vez, na
-  // virada para processado — o protótipo mostrava logo após o scan, mas aqui o
-  // parsing é assíncrono: o número de itens só existe quando a nota volta.
+  // Confirmação do handoff, na virada para processado (o parsing é assíncrono,
+  // então o "sucesso" só pode existir quando a nota volta). Recém-escaneada,
+  // mostra a tela de sucesso (`CupomLido`) por cima; vinda do histórico, só o
+  // toast — quem reabre uma compra antiga não quer a comemoração de novo.
   useEffect(() => {
     if (cupom?.status !== 'processado' || itens.length === 0) return;
     if (avisouLido.current) return;
     avisouLido.current = true;
-    toast(`Cupom lido · ${itens.length} ${itens.length === 1 ? 'item' : 'itens'} adicionados`);
-  }, [cupom?.status, itens.length, toast]);
+    if (recemCapturado) {
+      navigation.navigate('CupomLido', { cupomLocalId });
+    } else {
+      toast(`Cupom lido · ${itens.length} ${itens.length === 1 ? 'item' : 'itens'} adicionados`);
+    }
+  }, [cupom?.status, itens.length, toast, recemCapturado, navigation, cupomLocalId]);
 
   // Veredito por item (handoff): compara o unitário pago com o típico da região.
   // Tudo do cache local — sem rede, sem bloquear a lista; item sem base fica sem
@@ -194,11 +203,38 @@ export function NotaFiscalTela({ navigation, route }: Props) {
     };
   }, [itens]);
 
-  async function descartar() {
+  /**
+   * Apaga a compra do histórico — local E no servidor (direito ao apagamento,
+   * docs/04). A ordem importa: o servidor primeiro, porque é o passo que pode
+   * falhar. Se apagássemos o espelho local antes, uma falha de rede deixaria o
+   * cupom vivo no servidor sem nada no aparelho para tentar de novo.
+   *
+   * Sem sinal, o local NÃO é apagado e a tela avisa — melhor manter a compra e
+   * o usuário repetir depois do que sumir da vista dele e ficar no servidor.
+   */
+  async function excluirCompra() {
     ativo.current = false;
     if (timer.current) clearTimeout(timer.current);
-    await cupons.excluir(cupomLocalId);
-    navigation.goBack();
+    setExcluindo(true);
+    try {
+      if (cupom?.cupomIdServidor) {
+        // 404 (`false`) é sucesso do ponto de vista do usuário: já não está lá.
+        await clienteApi.apagarCupom(cupom.cupomIdServidor);
+      }
+      await cupons.excluir(cupomLocalId);
+      setConfirmandoExclusao(false);
+      navigation.goBack();
+    } catch (e) {
+      setExcluindo(false);
+      setConfirmandoExclusao(false);
+      ativo.current = true;
+      const offlineAgora = e instanceof ErroApi && e.status === 0;
+      toast(
+        offlineAgora
+          ? 'Sem conexão para apagar no servidor. A compra continua aqui — tente de novo com internet.'
+          : 'Não conseguimos apagar esta compra agora. Tente de novo.',
+      );
+    }
   }
 
   const processado = cupom?.status === 'processado';
@@ -208,7 +244,8 @@ export function NotaFiscalTela({ navigation, route }: Props) {
     cupom.status === 'qr_capturado' &&
     cupom.cupomIdServidor != null &&
     /^https?:/i.test(cupom.qrPayload);
-  const podeDescartar = cupom != null && (!cupom.cupomIdServidor || falhou);
+  /** Já existe no servidor → a exclusão precisa ir lá também, não só no espelho. */
+  const jaSubiu = cupom?.cupomIdServidor != null;
   // Sem totais = `valor_pago` nulo (o parse novo sempre grava, mesmo desconto 0).
   const semTotais =
     processado &&
@@ -489,10 +526,37 @@ export function NotaFiscalTela({ navigation, route }: Props) {
 
       <View style={{ marginTop: espaco.xl, gap: espaco.sm }}>
         <Botao titulo="Salvar no histórico" bloco onPress={() => navigation.goBack()} />
-        {podeDescartar ? (
-          <Botao titulo="Descartar" variante="fantasma" bloco onPress={() => void descartar()} />
-        ) : null}
+        <Botao
+          titulo={jaSubiu ? 'Excluir compra' : 'Descartar'}
+          variante="fantasma"
+          bloco
+          onPress={() => setConfirmandoExclusao(true)}
+        />
       </View>
+
+      {/*
+        O texto explica o que sobrevive à exclusão. Sem isso, o usuário
+        razoavelmente supõe que apagar a compra "apaga o preço" — e, quando
+        descobrisse que não, seria como quebra de confiança. O desenho é o
+        contrário: a observação nasce anônima e solta (decisão travada nº3),
+        então não existe nem caminho de volta para apagá-la.
+      */}
+      <Dialogo
+        visivel={confirmandoExclusao}
+        icone={<IconeLixeira tamanho={22} cor={c.caro} />}
+        titulo={jaSubiu ? 'Excluir esta compra?' : 'Descartar esta compra?'}
+        mensagem={
+          jaSubiu
+            ? 'Ela sai do seu histórico, aqui e no servidor. Os preços que você já ' +
+              'compartilhou são anônimos e continuam ajudando outras pessoas — eles não ' +
+              'estão ligados a você nem a esta compra.'
+            : 'Esta compra ainda não foi enviada. Descartar apaga o cupom deste aparelho.'
+        }
+        rotuloConfirmar={jaSubiu ? 'Excluir' : 'Descartar'}
+        ocupado={excluindo}
+        aoConfirmar={() => void excluirCompra()}
+        aoCancelar={() => setConfirmandoExclusao(false)}
+      />
 
       <Modal
         visible={editando != null}

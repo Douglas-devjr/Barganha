@@ -59,6 +59,8 @@ describe('deSelos', () => {
       descricao: 'Escaneou o primeiro',
       conquistado: true,
       icone: 'check',
+      progresso: { atual: 1, alvo: 1 },
+      recompensa: 'Selo de primeira nota.',
     },
     {
       id: 'cacador',
@@ -66,6 +68,8 @@ describe('deSelos', () => {
       descricao: '10 cupons',
       conquistado: false,
       icone: 'recibo',
+      progresso: { atual: 3, alvo: 10 },
+      recompensa: 'Selo de caçador.',
     },
   ];
 

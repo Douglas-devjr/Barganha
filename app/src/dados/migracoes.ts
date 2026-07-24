@@ -136,4 +136,13 @@ export const MIGRACOES: string[] = [
   CREATE INDEX notificacao_criado_idx ON notificacao (criado_em DESC);
   CREATE INDEX notificacao_nao_lida_idx ON notificacao (lida_em) WHERE lida_em IS NULL;
   `,
+  // v6 — "no carrinho" na lista de compras (handoff 3a). A caixa de seleção da
+  // aba Lista marca o que o usuário já pegou na gôndola; persiste porque a
+  // compra atravessa fechamentos do app (e o corredor tem sinal ruim).
+  //
+  // O preço da gôndola digitado ao lado NÃO fica aqui de propósito: é de uma ida
+  // ao mercado, envelhece em horas e viraria um "típico" falso na próxima visita.
+  `
+  ALTER TABLE lista_compras ADD COLUMN marcado INTEGER NOT NULL DEFAULT 0;
+  `,
 ];

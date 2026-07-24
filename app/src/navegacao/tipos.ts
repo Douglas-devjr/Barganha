@@ -6,12 +6,18 @@
 
 import type { NavigatorScreenParams } from '@react-navigation/native';
 
+/**
+ * Handoff 3a: a aba "Produtos" deu lugar a "Lista" (checklist). Produtos não
+ * sumiu — virou tela de stack, alcançada pelo atalho dentro da Lista e pelos
+ * fluxos de scan/verificação. A troca é de PRIORIDADE: montar a compra é a
+ * tarefa recorrente; navegar o catálogo é consulta.
+ */
 export type TabParamList = {
   Inicio: undefined;
   // O EAN escaneado (C7.1) chega pelo correio de scan em memória
   // (`nucleo/scan-pendente`), não por param aninhado — mais confiável.
   Verificar: undefined;
-  Produtos: undefined;
+  Lista: undefined;
   Perfil: undefined;
 };
 
@@ -20,17 +26,43 @@ export type RootStackParamList = {
   Scanner: undefined;
   /** Scan de código de barras na gôndola (C7.1); devolve o EAN à aba Verificar. */
   EscanearBarras: undefined;
-  NotaFiscal: { cupomLocalId: string };
+  /**
+   * `recemCapturado` marca a nota que acabou de ser escaneada/digitada: quando
+   * ela terminar de processar, a NotaFiscal mostra a confirmação (`CupomLido`)
+   * por cima. Vindo do histórico, a flag é ausente e a tela abre direto no
+   * detalhe.
+   */
+  NotaFiscal: { cupomLocalId: string; recemCapturado?: boolean };
+  /** Histórico completo de cupons escaneados ("Ver tudo" de Últimas compras). */
+  Compras: undefined;
+  /** Catálogo dos produtos monitorados. Saiu da tab bar no 3a (ver TabParamList). */
+  Produtos: undefined;
   /** `chave` = id canônico, EAN ou descrição (chave do catálogo local, C7.5). */
   ProdutoDetalhe: { chave: string; nome?: string };
-  /** Lista de compras comparada por loja (C12.1). */
-  ListaCompras: undefined;
+  /** Ranking dos mercados da região pela cesta escolhida (C12.1). */
+  CompararMercados: undefined;
   /** Feed local de avisos (alerta disparado, conquista, resumo do mês). */
   Notificacoes: undefined;
   /** Selos de contribuição (C12.2), derivados do histórico local. */
   Conquistas: undefined;
+  /** Detalhe de um selo: progresso e recompensa. `id` vem de `nucleo/gamificacao`. */
+  ConquistaDetalhe: { id: string };
   /** Resumo de economia por mês (desconto honesto do cupom). */
   Dashboard: undefined;
+  /** Alternativa ao QR: os 44 dígitos da chave de acesso da NFC-e. */
+  DigitarChave: undefined;
+  /** Confirmação após um cupom ser lido e processado. */
+  CupomLido: { cupomLocalId: string };
+  /** Preferências de alerta (as mesmas das boas-vindas). */
+  Alertas: undefined;
+  /** Dados pessoais + sair / excluir conta. */
+  ConfiguracoesConta: undefined;
+  /** Região usada nas comparações (GPS ou busca manual) + raio. */
+  EditarRegiao: undefined;
+  /** Central de ajuda: FAQ + canais de contato. */
+  Ajuda: undefined;
+  /** Estado de rede ausente, com "tentar de novo". */
+  SemConexao: undefined;
   /**
    * Alerta de preço + lista de compras de um produto do catálogo local. Ambas
    * as preferências são indexadas pelo id canônico — daí ele ser o parâmetro

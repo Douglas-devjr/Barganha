@@ -24,6 +24,10 @@ export interface Selo {
   conquistado: boolean;
   /** Cada conquista tem seu próprio ícone (handoff 3a, screenshot 06). */
   icone: IconeSelo;
+  /** Progresso rumo ao selo (para a barra do detalhe). `alvo` é o que falta bater. */
+  progresso: { atual: number; alvo: number };
+  /** O que o selo dá — status, não dinheiro (docs/12). Texto para o detalhe. */
+  recompensa: string;
 }
 
 export interface Contribuicao {
@@ -65,41 +69,75 @@ export function calcularContribuicao(datasCaptura: string[], agora = new Date())
   }
 
   const totalCupons = datas.length;
+  const maiorNaSemana = maxCuponsNumaSemana(datas);
+
   const selos: Selo[] = [
-    selo('primeira-nota', 'Primeira nota', 'Escaneou o primeiro cupom', totalCupons >= 1, 'check'),
-    selo('cacador', 'Caçador de preços', '10 cupons escaneados', totalCupons >= 10, 'recibo'),
-    selo('veterano', 'Veterano da gôndola', '50 cupons escaneados', totalCupons >= 50, 'trofeu'),
-    selo('lenda', 'Lenda do mercado', '100 cupons escaneados', totalCupons >= 100, 'coroa'),
-    selo('ritmo', 'No ritmo', '4 semanas seguidas contribuindo', sequenciaSemanas >= 4, 'chama'),
-    selo(
-      'semana-cheia',
-      'Semana cheia',
-      '3 cupons na mesma semana',
-      temSemanaCheia(datas),
-      'calendario',
-    ),
+    selo({
+      id: 'primeira-nota',
+      titulo: 'Primeira nota',
+      descricao: 'Escaneou o primeiro cupom',
+      progresso: { atual: totalCupons, alvo: 1 },
+      recompensa: 'Sua jornada de economia começa aqui.',
+      icone: 'check',
+    }),
+    selo({
+      id: 'cacador',
+      titulo: 'Caçador de preços',
+      descricao: '10 cupons escaneados',
+      progresso: { atual: totalCupons, alvo: 10 },
+      recompensa: 'Selo de Caçador no seu perfil de contribuição.',
+      icone: 'recibo',
+    }),
+    selo({
+      id: 'veterano',
+      titulo: 'Veterano da gôndola',
+      descricao: '50 cupons escaneados',
+      progresso: { atual: totalCupons, alvo: 50 },
+      recompensa: 'Selo de Veterano e nível na base colaborativa.',
+      icone: 'trofeu',
+    }),
+    selo({
+      id: 'lenda',
+      titulo: 'Lenda do mercado',
+      descricao: '100 cupons escaneados',
+      progresso: { atual: totalCupons, alvo: 100 },
+      recompensa: 'O topo: selo de Lenda do mercado.',
+      icone: 'coroa',
+    }),
+    selo({
+      id: 'ritmo',
+      titulo: 'No ritmo',
+      descricao: '4 semanas seguidas contribuindo',
+      progresso: { atual: sequenciaSemanas, alvo: 4 },
+      recompensa: 'Selo de constância — quem mantém a base viva.',
+      icone: 'chama',
+    }),
+    selo({
+      id: 'semana-cheia',
+      titulo: 'Semana cheia',
+      descricao: '3 cupons na mesma semana',
+      progresso: { atual: maiorNaSemana, alvo: 3 },
+      recompensa: 'Selo de Semana cheia.',
+      icone: 'calendario',
+    }),
   ];
 
   return { totalCupons, cuponsNaSemana, sequenciaSemanas, selos };
 }
 
-function selo(
-  id: string,
-  titulo: string,
-  descricao: string,
-  conquistado: boolean,
-  icone: IconeSelo,
-): Selo {
-  return { id, titulo, descricao, conquistado, icone };
+function selo(base: Omit<Selo, 'conquistado'>): Selo {
+  return { ...base, conquistado: base.progresso.atual >= base.progresso.alvo };
 }
 
-function temSemanaCheia(datas: Date[]): boolean {
+/** Maior número de cupons já feito numa única semana (progresso de "semana cheia"). */
+function maxCuponsNumaSemana(datas: Date[]): number {
   const porSemana = new Map<number, number>();
+  let maior = 0;
   for (const d of datas) {
     const chave = inicioDaSemana(d);
     const n = (porSemana.get(chave) ?? 0) + 1;
-    if (n >= 3) return true;
     porSemana.set(chave, n);
+    if (n > maior) maior = n;
   }
-  return false;
+  return maior;
 }

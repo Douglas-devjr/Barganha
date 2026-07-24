@@ -15,7 +15,7 @@ import { useRef } from 'react';
 import { Alert, Linking, Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { Botao, IconeFechar, IconeScan, MolduraCamera, Texto } from '@/componentes';
+import { Botao, IconeFechar, IconeScan, IconeTeclado, MolduraCamera, Texto } from '@/componentes';
 import { cupons } from '@/dados';
 import { useCameraPronta } from '@/nucleo/camera';
 import { sincronizar } from '@/nucleo/sincronizador';
@@ -40,7 +40,7 @@ export function ScannerTela({ navigation }: Props) {
     try {
       const cupom = await cupons.registrarCaptura({ qrPayload });
       void sincronizar();
-      navigation.replace('NotaFiscal', { cupomLocalId: cupom.id });
+      navigation.replace('NotaFiscal', { cupomLocalId: cupom.id, recemCapturado: true });
     } catch {
       lido.current = false;
       Alert.alert('Não foi possível salvar', 'Tente escanear o cupom novamente.');
@@ -112,6 +112,23 @@ export function ScannerTela({ navigation }: Props) {
             </Texto>
           ) : null}
         </View>
+
+        {/* Saída para quando o QR não lê: digitar os 44 dígitos da chave. */}
+        <View style={estilos.rodape}>
+          <Pressable
+            onPress={() => navigation.replace('DigitarChave')}
+            accessibilityRole="button"
+            style={[estilos.chaveBotao, { backgroundColor: comAlfa(ACENTO, 0.1) }]}
+          >
+            <IconeTeclado tamanho={17} cor={ACENTO} />
+            <Texto cor="tinta" peso="semibold" tamanho="sm">
+              Digitar chave de acesso
+            </Texto>
+          </Pressable>
+          <Texto cor="suave" tamanho="xs" centralizado style={estilos.rodapeNota}>
+            Não consegue ler o QR Code? Digite os 44 números da chave.
+          </Texto>
+        </View>
       </SafeAreaView>
     </TemaFixo>
   );
@@ -136,6 +153,16 @@ const estilos = StyleSheet.create({
     backgroundColor: comAlfa(ACENTO, 0.12),
   },
   centro: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: espaco.xl },
+  rodape: { paddingHorizontal: espaco.xl, paddingBottom: espaco.md, gap: espaco.sm },
+  chaveBotao: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: espaco.sm,
+    height: 46,
+    borderRadius: raio.md,
+  },
+  rodapeNota: { opacity: 0.7 },
   dica: { marginTop: espaco.xl, maxWidth: 300 },
   permissao: {
     marginTop: espaco.lg,

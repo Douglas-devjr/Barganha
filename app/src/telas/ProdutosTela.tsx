@@ -12,14 +12,13 @@
  * — não fingimos que custa zero.
  */
 
-import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
-import type { CompositeScreenProps } from '@react-navigation/native';
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useCallback, useRef, useState } from 'react';
 import { Pressable, StyleSheet, TextInput, View } from 'react-native';
 
 import {
+  CabecalhoVoltar,
   CartaoLista,
   Dialogo,
   Esqueleto,
@@ -38,7 +37,6 @@ import {
   LinhaFolha,
   Tela,
   Texto,
-  TituloTela,
   useToast,
 } from '@/componentes';
 import { clienteApi } from '@/api';
@@ -47,12 +45,9 @@ import * as catalogo from '@/nucleo/catalogo';
 import { resolverLocalizacao } from '@/nucleo/localizacao';
 import type { ProdutoLocal } from '@/nucleo/catalogo';
 import { espaco, raio, useTema } from '@/tema';
-import type { RootStackParamList, TabParamList } from '@/navegacao/tipos';
+import type { RootStackParamList } from '@/navegacao/tipos';
 
-type Props = CompositeScreenProps<
-  BottomTabScreenProps<TabParamList, 'Produtos'>,
-  NativeStackScreenProps<RootStackParamList>
->;
+type Props = NativeStackScreenProps<RootStackParamList, 'Produtos'>;
 
 function moeda(v: number): string {
   return `R$ ${v.toFixed(2).replace('.', ',')}`;
@@ -136,15 +131,14 @@ export function ProdutosTela({ navigation }: Props) {
 
   return (
     <Tela>
-      <TituloTela
+      <CabecalhoVoltar
         titulo="Produtos"
-        direita={
-          !carregando ? (
-            <Texto cor="fraco" numerico style={estilos.contagem}>
-              {itens.length} {itens.length === 1 ? 'monitorado' : 'monitorados'}
-            </Texto>
-          ) : undefined
+        subtitulo={
+          !carregando
+            ? `${itens.length} ${itens.length === 1 ? 'monitorado' : 'monitorados'}`
+            : undefined
         }
+        aoVoltar={() => navigation.goBack()}
       />
 
       <View style={estilos.linhaBusca}>
@@ -417,7 +411,6 @@ function Variacao({ pct }: { pct?: number }) {
 }
 
 const estilos = StyleSheet.create({
-  contagem: { fontSize: 11 },
   linhaBusca: { flexDirection: 'row', gap: 10, marginTop: 14 },
   busca: {
     flex: 1,

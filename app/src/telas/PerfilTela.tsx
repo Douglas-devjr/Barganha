@@ -8,22 +8,22 @@
  * consulta anônima de preço — nunca viaja junto com dado privado (decisão #4).
  */
 
+import type { User } from '@supabase/supabase-js';
 import Constants from 'expo-constants';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useCallback, useState } from 'react';
-import { Linking, Modal, Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
+import { Modal, Pressable, StyleSheet, View } from 'react-native';
 
-import { clienteApi } from '@/api';
 import { useAuth } from '@/auth';
 import {
   Botao,
   CampoTexto,
   CartaoLista,
-  Dialogo,
   IconeCadeado,
-  IconeLixeira,
+  IconeInfo,
   IconeLoja,
+  IconePerfil,
   IconePino,
   IconeRecibo,
   IconeSino,
@@ -34,22 +34,16 @@ import {
   Texto,
   useToast,
 } from '@/componentes';
-import { cache, cupons, fila, meta, produtos } from '@/dados';
+import { cupons, meta, produtos } from '@/dados';
 import type { LocalEscolhido } from '@/dados/repositorio-meta';
 import type { MercadoFrequente } from '@/dados/repositorio-cupom';
 import type { RootStackParamList } from '@/navegacao/tipos';
 import { dataCurta } from '@/nucleo/formato';
 import { calcularContribuicao, type Contribuicao } from '@/nucleo/gamificacao';
-import { UFS } from '@/nucleo/localizacao';
-import { sincronizarEstatisticas } from '@/nucleo/sincronizador';
 import { espaco, raio, useTema } from '@/tema';
 
 /** Versão real do build (o protótipo trazia "2.0.1" como exemplo). */
 const VERSAO = Constants.expoConfig?.version ?? '0.0.0';
-
-/** Política publicada (site/, GitHub Pages) — "Privacidade dos dados" abre aqui. */
-const URL_PRIVACIDADE =
-  'https://douglas-devjr.github.io/barganha-legal/politica-de-privacidade.html';
 
 interface DadosPerfil {
   escolhido: LocalEscolhido | null;
@@ -76,34 +70,36 @@ function descreverRegiao(d: DadosPerfil): string {
   return 'Toque para definir';
 }
 
-function nomeDe(email?: string | null, metaNome?: string | null): string {
-  const bruto = (metaNome ?? email?.split('@')[0] ?? '').trim();
+/**
+ * Nome de exibição — do que o usuário informou, nunca do email.
+ *
+ * O fallback anterior era `email.split('@')[0]`, que transformava
+ * "knowenter@gmail.com" em "Knowenter": um identificador de máquina exibido como
+ * se fosse o nome da pessoa. Pior que não ter nome, porque parece um erro do app.
+ * Sem nome informado, devolve `null` e a UI usa uma saudação neutra.
+ *
+ * Ordem: o que a pessoa digitou aqui (`nome`) ganha do que o Google mandou
+ * (`full_name`/`name`) — ela pode ter editado justamente para mudar aquilo.
+ */
+function nomeDe(usuario: User | null): string | null {
+  const meta = usuario?.user_metadata ?? {};
+  const bruto = ((meta.nome ?? meta.full_name ?? meta.name ?? '') as string).trim();
   const parte = bruto.split(/[.\s_]+/)[0];
-  if (!parte) return 'Você';
+  if (!parte) return null;
   return parte.charAt(0).toUpperCase() + parte.slice(1);
 }
 
 export function PerfilTela() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const { usuario, sair } = useAuth();
+  const { usuario, definirNomeExibicao } = useAuth();
   const { c } = useTema();
   const toast = useToast();
   const [dados, setDados] = useState<DadosPerfil>(VAZIO);
-  const [ocupado, setOcupado] = useState(false);
-  /** Chave-mestra dos alertas (linha "Alertas de preço" do handoff). */
+  const [editandoNome, setEditandoNome] = useState(false);
+  const [nomeInput, setNomeInput] = useState('');
+  const [salvandoNome, setSalvandoNome] = useState(false);
+  /** Só o resumo "Ligados/Desligados" da linha de Alertas (edição vive em `Alertas`). */
   const [alertasLigados, setAlertasLigados] = useState(true);
-
-  /** Diálogo de confirmação aberto (handoff 3a: `sair` | `conta`). */
-  const [dialogo, setDialogo] = useState<'sair' | 'conta' | null>(null);
-  /**
-   * Cupons ainda na fila de upload quando o usuário pede para sair. Sair limpa
-   * o aparelho, então eles se perdem — o diálogo precisa dizer isso ANTES.
-   */
-  const [pendentesAoSair, setPendentesAoSair] = useState(0);
-  const [editando, setEditando] = useState(false);
-  const [ufSel, setUfSel] = useState<string | null>(null);
-  const [municipioInput, setMunicipioInput] = useState('');
-  const [salvandoRegiao, setSalvandoRegiao] = useState(false);
 
   const carregar = useCallback(async () => {
     const [escolhido, ufHistorico, cuponsEscaneados, mercados, datas, ligados] = await Promise.all([
@@ -136,70 +132,91 @@ export function PerfilTela() {
     }, [carregar]),
   );
 
-  function abrirEditor() {
-    setUfSel(dados.escolhido?.uf ?? dados.ufHistorico ?? null);
-    setMunicipioInput(dados.escolhido?.municipio ?? '');
-    setEditando(true);
+  async function salvarNome() {
+    setSalvandoNome(true);
+    const r = await definirNomeExibicao(nomeInput);
+    setSalvandoNome(false);
+    if (r.erro) return toast(r.erro);
+    // O `usuario` do contexto vem do listener de auth do supabase-js, que
+    // reemite a sessão após o updateUser — a tela reflete sozinha.
+    setEditandoNome(false);
+    toast(nomeInput.trim() ? 'Nome atualizado' : 'Nome removido');
   }
 
-  async function salvarRegiao() {
-    if (!ufSel) return;
-    setSalvandoRegiao(true);
-    try {
-      await meta.definirLocalEscolhido({
-        uf: ufSel,
-        municipio: municipioInput.trim() || undefined,
-      });
-      await meta.definirCursorDelta('');
-      await cache.limpar();
-      setEditando(false);
-      setDados(await carregar());
-      void sincronizarEstatisticas().catch(() => {});
-    } finally {
-      setSalvandoRegiao(false);
-    }
-  }
-
-  async function alternarAlertas(ligar: boolean) {
-    setAlertasLigados(ligar);
-    await meta.definirAlertasAtivos(ligar);
-    toast(ligar ? 'Alertas de preço ligados' : 'Alertas de preço desligados');
-  }
-
-  async function apagarConta() {
-    setOcupado(true);
-    try {
-      await clienteApi.apagarConta();
-      await sair();
-    } catch {
-      setOcupado(false);
-      setDialogo(null);
-      toast('Não foi possível apagar agora. Verifique a conexão.');
-    }
-  }
-
-  const nome = nomeDe(
-    usuario?.email,
-    (usuario?.user_metadata?.full_name ?? usuario?.user_metadata?.name) as string | undefined,
-  );
+  const nome = nomeDe(usuario);
+  // Sem nome: o avatar mostra o ícone de pessoa em vez de uma inicial tirada do
+  // email, e o título vira um convite a preencher.
+  const exibicao = nome ?? 'Definir meu nome';
 
   return (
     <Tela>
-      <View style={estilos.cabecalho}>
+      <Pressable
+        style={estilos.cabecalho}
+        onPress={() => {
+          setNomeInput(nome ?? '');
+          setEditandoNome(true);
+        }}
+        accessibilityRole="button"
+        accessibilityLabel="Editar nome de exibição"
+      >
         <View style={[estilos.avatar, { backgroundColor: c.tinta }]}>
-          <Texto peso="bold" cor="sobreTeal" style={estilos.avatarLetra}>
-            {nome.charAt(0)}
-          </Texto>
+          {nome ? (
+            <Texto peso="bold" cor="sobreTeal" style={estilos.avatarLetra}>
+              {nome.charAt(0)}
+            </Texto>
+          ) : (
+            <IconePerfil tamanho={22} cor={c.sobreTeal} />
+          )}
         </View>
         <View style={{ flex: 1 }}>
-          <Texto peso="bold" tamanho="xl" style={estilos.nome}>
-            {nome}
+          <Texto peso="bold" tamanho="xl" cor={nome ? 'tinta' : 'suave'} style={estilos.nome}>
+            {exibicao}
           </Texto>
           <Texto cor="fraco" style={estilos.email} numberOfLines={1}>
             {usuario?.email ?? '—'}
           </Texto>
         </View>
-      </View>
+      </Pressable>
+
+      <Modal
+        visible={editandoNome}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setEditandoNome(false)}
+      >
+        <Pressable
+          style={[estilos.modalFundo, { backgroundColor: c.veu }]}
+          onPress={() => setEditandoNome(false)}
+        >
+          <Pressable
+            style={[estilos.modalCartao, { backgroundColor: c.cartao }]}
+            onPress={() => {}}
+          >
+            <Texto peso="extrabold" tamanho="lg">
+              Como quer ser chamado?
+            </Texto>
+            <Texto cor="suave" tamanho="sm" style={estilos.modalApoio}>
+              Só aparece para você, dentro do app. Deixe em branco para não usar nome.
+            </Texto>
+            <CampoTexto
+              rotulo="Nome"
+              value={nomeInput}
+              onChangeText={setNomeInput}
+              placeholder="Seu primeiro nome"
+              autoCapitalize="words"
+              editable={!salvandoNome}
+            />
+            <View style={estilos.modalAcoes}>
+              <Botao
+                titulo="Cancelar"
+                variante="secundario"
+                onPress={() => setEditandoNome(false)}
+              />
+              <Botao titulo="Salvar" carregando={salvandoNome} onPress={() => void salvarNome()} />
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
 
       {/* card de região */}
       <CartaoLista style={estilos.blocoTopo}>
@@ -209,7 +226,7 @@ export function PerfilTela() {
           subtitulo="Região usada nas comparações"
           chevron
           ultima
-          onPress={abrirEditor}
+          onPress={() => navigation.navigate('EditarRegiao')}
         />
       </CartaoLista>
 
@@ -236,15 +253,9 @@ export function PerfilTela() {
         <LinhaLista
           icone={<IconeSino tamanho={18} cor={c.suave} />}
           titulo="Alertas de preço"
-          direita={
-            <Switch
-              value={alertasLigados}
-              onValueChange={(v) => void alternarAlertas(v)}
-              trackColor={{ false: c.linha, true: c.tinta }}
-              thumbColor={c.cartao}
-              accessibilityLabel="Alertas de preço"
-            />
-          }
+          subtitulo={alertasLigados ? 'Ligados' : 'Desligados'}
+          chevron
+          onPress={() => navigation.navigate('Alertas')}
         />
         <LinhaLista
           icone={<IconeRecibo tamanho={18} cor={c.suave} />}
@@ -262,10 +273,16 @@ export function PerfilTela() {
         />
         <LinhaLista
           icone={<IconeCadeado tamanho={18} cor={c.suave} />}
-          titulo="Privacidade dos dados"
+          titulo="Configurações da conta"
+          chevron
+          onPress={() => navigation.navigate('ConfiguracoesConta')}
+        />
+        <LinhaLista
+          icone={<IconeInfo tamanho={18} cor={c.suave} />}
+          titulo="Ajuda e suporte"
           chevron
           ultima
-          onPress={() => void Linking.openURL(URL_PRIVACIDADE)}
+          onPress={() => navigation.navigate('Ajuda')}
         />
       </CartaoLista>
 
@@ -302,164 +319,13 @@ export function PerfilTela() {
 
       <Texto cor="fraco" tamanho="xs" centralizado style={estilos.nota}>
         Guardamos só seu email para o login. Os preços que você compartilha entram anônimos e
-        soltos, sem ligação com você (LGPD).
+        soltos, sem ligação com você (LGPD). Para sair ou excluir a conta, use Configurações da
+        conta.
       </Texto>
-
-      <Botao
-        titulo="Sair"
-        variante="secundario"
-        bloco
-        desabilitado={ocupado}
-        onPress={() => {
-          // Consulta a fila antes de abrir: o texto do diálogo muda se houver
-          // cupom que ainda não subiu.
-          void fila
-            .contarPendentes()
-            .then(setPendentesAoSair)
-            .catch(() => setPendentesAoSair(0));
-          setDialogo('sair');
-        }}
-        style={{ marginTop: espaco.md }}
-      />
-
-      {/* Excluir conta: cartão próprio em `caro`, como no protótipo. */}
-      <Pressable
-        onPress={() => setDialogo('conta')}
-        disabled={ocupado}
-        accessibilityRole="button"
-        style={[
-          estilos.apagarConta,
-          { backgroundColor: c.cartao, borderColor: c.cartaoBorda, opacity: ocupado ? 0.6 : 1 },
-        ]}
-      >
-        <IconeLixeira tamanho={16} cor={c.caro} />
-        <Texto peso="semibold" style={{ color: c.caro, fontSize: 13.5 }}>
-          Excluir conta
-        </Texto>
-      </Pressable>
 
       <Texto cor="fraco" centralizado style={estilos.rodape}>
         BARGANHA V{VERSAO} · BASE COLABORATIVA
       </Texto>
-
-      <Modal
-        visible={editando}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setEditando(false)}
-      >
-        <Pressable
-          style={[estilos.modalFundo, { backgroundColor: c.veu }]}
-          onPress={() => setEditando(false)}
-        >
-          <Pressable
-            style={[estilos.modalCartao, { backgroundColor: c.cartao }]}
-            onPress={() => {}}
-          >
-            <Texto peso="extrabold" tamanho="lg">
-              Sua região
-            </Texto>
-            <Texto cor="suave" tamanho="sm" style={{ marginTop: espaco.xs }}>
-              Escolha o estado e, se quiser, a cidade — a comparação fica mais próxima da sua
-              gôndola.
-            </Texto>
-
-            <Texto peso="semibold" tamanho="sm" cor="suave" style={estilos.rotuloUf}>
-              Estado (UF)
-            </Texto>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={estilos.ufChips}
-            >
-              {UFS.map((uf) => {
-                const ativo = ufSel === uf;
-                return (
-                  <Pressable
-                    key={uf}
-                    onPress={() => setUfSel(uf)}
-                    style={[
-                      estilos.ufChip,
-                      {
-                        backgroundColor: ativo ? c.teal : c.cartao,
-                        borderColor: ativo ? c.teal : c.borda,
-                      },
-                    ]}
-                  >
-                    <Texto
-                      tamanho="sm"
-                      peso={ativo ? 'bold' : 'semibold'}
-                      cor={ativo ? 'sobreTeal' : 'suave'}
-                    >
-                      {uf}
-                    </Texto>
-                  </Pressable>
-                );
-              })}
-            </ScrollView>
-
-            <View style={{ marginTop: espaco.md }}>
-              <CampoTexto
-                rotulo="Cidade (opcional)"
-                value={municipioInput}
-                onChangeText={setMunicipioInput}
-                placeholder="Ex.: Rio de Janeiro"
-                autoCapitalize="words"
-              />
-            </View>
-
-            <View style={{ marginTop: espaco.lg, gap: espaco.sm }}>
-              <Botao
-                titulo="Salvar região"
-                bloco
-                carregando={salvandoRegiao}
-                desabilitado={!ufSel || salvandoRegiao}
-                onPress={() => void salvarRegiao()}
-              />
-              <Botao
-                titulo="Cancelar"
-                variante="fantasma"
-                bloco
-                onPress={() => setEditando(false)}
-              />
-            </View>
-          </Pressable>
-        </Pressable>
-      </Modal>
-
-      <Dialogo
-        visivel={dialogo === 'sair'}
-        titulo="Sair da conta?"
-        mensagem={
-          (pendentesAoSair > 0
-            ? `${pendentesAoSair} cupom(ns) ainda não foram enviados. Vamos tentar enviá-los ` +
-              'agora; o que não subir será perdido. Conecte-se à internet antes, se puder. '
-            : '') +
-          'Você precisará entrar de novo para registrar cupons. O histórico deste aparelho é ' +
-          'limpo; os preços já compartilhados são anônimos e continuam na base.'
-        }
-        rotuloConfirmar="Sair"
-        aoConfirmar={() => {
-          setDialogo(null);
-          void sair();
-        }}
-        aoCancelar={() => setDialogo(null)}
-      />
-
-      <Dialogo
-        visivel={dialogo === 'conta'}
-        titulo="Apagar conta?"
-        mensagem={
-          'Isto remove sua conta e todo o seu histórico, no aparelho e no servidor. Não dá para ' +
-          'desfazer. Os preços que você já compartilhou são anônimos e soltos — seguem ajudando ' +
-          'a comunidade, sem ligação com você (LGPD).'
-        }
-        rotuloConfirmar="Apagar conta"
-        icone={<IconeLixeira tamanho={24} cor={c.caro} />}
-        ocupado={ocupado}
-        aoConfirmar={() => void apagarConta()}
-        aoCancelar={() => setDialogo(null)}
-      />
     </Tela>
   );
 }
@@ -573,6 +439,13 @@ const estilos = StyleSheet.create({
     paddingHorizontal: espaco.lg,
   },
   modalCartao: { borderRadius: raio.hero, padding: espaco.lg },
+  modalApoio: { marginTop: espaco.xs, marginBottom: espaco.md },
+  modalAcoes: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: espaco.sm,
+    marginTop: espaco.md,
+  },
   rotuloUf: { marginTop: espaco.lg, marginLeft: espaco.xs, marginBottom: espaco.sm },
   ufChips: { gap: espaco.xs, paddingRight: espaco.md },
   ufChip: {

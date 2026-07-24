@@ -46,6 +46,13 @@
         {
           "cameraPermission": "O Barganha usa a câmera para ler o QR Code da nota fiscal."
         }
+      ],
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "O Barganha usa sua localização só para detectar sua região e comparar preços dos mercados por perto. Sua posição não é salva nem enviada.",
+          "isAndroidForegroundServiceEnabled": false
+        }
       ]
     ],
     "extra": {
