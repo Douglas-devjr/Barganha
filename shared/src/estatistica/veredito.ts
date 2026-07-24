@@ -18,6 +18,20 @@
 
 import type { UnidadeBase } from '../core';
 
+/**
+ * Mínimo de observações para um nível geográfico ser considerado CONFIÁVEL.
+ *
+ * Vive aqui porque os dois lados decidem com ele e precisam decidir IGUAL: o
+ * backend no fallback hierárquico (loja→município→região→UF) e o app, offline,
+ * ao escolher a melhor linha do cache. Enquanto a constante era copiada em cada
+ * lado, calibrá-la significava mudar em três arquivos — e esquecer um produzia o
+ * pior tipo de bug: o mesmo produto exibido como "barato" offline e "na média"
+ * online, sem nada no log.
+ *
+ * A calibrar com dados reais (docs/06).
+ */
+export const MIN_OBSERVACOES_CONFIAVEL = 3;
+
 /** Resultado da classificação. `sem_dados` = não há base suficiente p/ opinar. */
 export const VEREDITOS = ['barato', 'na_media', 'caro', 'sem_dados'] as const;
 export type Veredito = (typeof VEREDITOS)[number];
