@@ -2,6 +2,7 @@
  * Rotas de LEITURA do pool — todas ANÔNIMAS (sem conta, docs/04).
  *
  *  • `POST /consulta/preco` (C4.1) — faixa típica do produto no recorte geo.
+ *  • `POST /consulta/produtos` (C4.4) — catálogo regional (busca/populares).
  *  • `POST /consulta/lista` (C12.1) — onde a cesta sai mais barata.
  *  • `POST /sync/estatisticas` (C4.2) — delta desde o cursor (offline).
  *
@@ -10,6 +11,7 @@
  */
 
 import type {
+  BuscaProdutosRequest,
   ComparacaoListaRequest,
   ConsultaPrecoRequest,
   DeltaSyncRequest,
@@ -17,10 +19,15 @@ import type {
 import type { FastifyInstance } from 'fastify';
 
 import type { ContextoRotas } from '../contexto';
-import { SCHEMA_COMPARACAO_LISTA, SCHEMA_CONSULTA, SCHEMA_SYNC } from '../esquemas';
+import {
+  SCHEMA_BUSCA_PRODUTOS,
+  SCHEMA_COMPARACAO_LISTA,
+  SCHEMA_CONSULTA,
+  SCHEMA_SYNC,
+} from '../esquemas';
 
 export function registrarRotasConsulta(app: FastifyInstance, ctx: ContextoRotas): void {
-  const { servicoConsulta, servicoComparacaoLista, servicoSync } = ctx.deps;
+  const { servicoConsulta, servicoBuscaProdutos, servicoComparacaoLista, servicoSync } = ctx.deps;
 
   app.post<{ Body: ConsultaPrecoRequest }>(
     '/consulta/preco',
@@ -33,6 +40,19 @@ export function registrarRotasConsulta(app: FastifyInstance, ctx: ContextoRotas)
       return reply.send(resposta);
     },
   );
+
+  /**
+   * C4.4 — catálogo regional. Sempre 200: lista vazia é resposta legítima ("a
+   * sua região ainda não tem preço para isso"), não erro. É o que sustenta o
+   * app de quem nunca escaneou um cupom (docs/20).
+   */
+  if (servicoBuscaProdutos) {
+    app.post<{ Body: BuscaProdutosRequest }>(
+      '/consulta/produtos',
+      { schema: SCHEMA_BUSCA_PRODUTOS, onRequest: ctx.guardaLeitura },
+      async (req) => servicoBuscaProdutos.buscar(req.body),
+    );
+  }
 
   if (servicoComparacaoLista) {
     app.post<{ Body: ComparacaoListaRequest }>(

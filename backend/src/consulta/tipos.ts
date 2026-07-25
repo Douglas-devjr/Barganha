@@ -8,7 +8,7 @@
  * Opera só sobre o lado COMPARTILHADO (produto_canonico + preco_estatistica).
  */
 
-import type { ProdutoResumo } from '@barganha/shared';
+import type { PrecoEstatistica, ProdutoResumo } from '@barganha/shared';
 
 import type { CandidatoCanonico } from '../estatistica/casamento-texto';
 
@@ -35,6 +35,36 @@ export interface FonteComparacaoLojas {
   estatisticasDeLojasPorProdutos(
     produtoCanonicoIds: readonly string[],
   ): Promise<EstatisticaLojaLinha[]>;
+}
+
+/**
+ * Filtro da busca de catálogo regional (C4.4). O recorte é sempre por ESCOPO
+ * geográfico já derivado (município/UF) — o nível `loja` não entra: seria expor
+ * célula pequena (docs/04) e a busca não pergunta "nesta loja", pergunta "na
+ * minha região".
+ */
+export interface FiltroBuscaProdutos {
+  /** Chaves de escopo elegíveis (`UF:MUNICIPIO`, `UF`). Vazio = nada a buscar. */
+  escopoIds: readonly string[];
+  /** Restringe aos candidatos do casamento por texto. Ausente = populares. */
+  produtoCanonicoIds?: readonly string[];
+  /** Teto de LINHAS lidas (um produto rende uma por escopo × unidade-base). */
+  limite: number;
+}
+
+/**
+ * Fonte da busca no catálogo regional (C4.4) — o que destrava o cold start
+ * (docs/20). Só lado COMPARTILHADO, como toda a consulta.
+ */
+export interface FonteBuscaProdutos {
+  /**
+   * Linhas de `preco_estatistica` nos escopos pedidos, das MAIS observadas para
+   * as menos (é o ranking de "populares na região"). O serviço agrupa por produto
+   * e resolve o nível pelo fallback — aqui é só leitura filtrada.
+   */
+  estatisticasNoEscopo(filtro: FiltroBuscaProdutos): Promise<PrecoEstatistica[]>;
+  /** Resumos de exibição em LOTE (evita uma consulta por produto do resultado). */
+  resumosProdutos(produtoCanonicoIds: readonly string[]): Promise<ProdutoResumo[]>;
 }
 
 export interface FonteProdutoConsulta {

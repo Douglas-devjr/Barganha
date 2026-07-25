@@ -80,6 +80,8 @@ Este documento dá um **nome e um código curto** a cada etapa do desenvolviment
 | C4.2 | Delta sync (cursor por `atualizado_em` + escopo) |
 | C4.3 | Autenticação mínima |
 | C4.3.1 | Endurecer o token de conta: hoje o `usuarioId` (UUID) É o Bearer (sem segredo) — quem obtém o id ingere no histórico alheio. Evoluir p/ token/segredo próprio ou Supabase Auth/JWT |
+| C4.4 | Busca de produtos no pool (`POST /consulta/produtos`) — anônima, por termo (casamento de texto) ou **populares da região**, com o mesmo fallback geo da consulta. Destrava o **cold start**: conta nova sem cupom já monta lista e compara (ver `docs/20-cold-start-e-catalogo-regional.md`) |
+| C4.5 | Delta de catálogo (`POST /sync/produtos`): desce `ProdutoResumo` (nome/marca/categoria) dos ids já em cache p/ o catálogo regional ficar navegável **offline** `[Pós]` |
 *Responsáveis:* backend-engineer, data-engineer, privacy-lgpd-specialist
 
 ### `C5` — Esqueleto *(Fundação Mobile)* `[MVP]`

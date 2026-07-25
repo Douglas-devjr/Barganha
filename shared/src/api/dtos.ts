@@ -174,6 +174,40 @@ export interface ComparacaoListaResponse {
   lojas: LojaComparacao[];
 }
 
+// ─────────────── Busca de produtos no pool — catálogo regional (C4.4) ────────
+
+/**
+ * Busca no catálogo COMPARTILHADO, no recorte geográfico do usuário. Existe para
+ * resolver o cold start (docs/20): quem ainda não escaneou cupom nenhum não tem
+ * catálogo local, e sem isto não consegue montar lista nem comparar mercados.
+ *
+ * Anônima como as demais consultas — não recebe conta e não toca o mundo privado.
+ * Sem `termo`, devolve os **populares da região** (mais observados); com `termo`,
+ * ranqueia por similaridade de texto. Ordenação NUNCA é influenciada por
+ * patrocínio (decisão travada nº8).
+ */
+export interface BuscaProdutosRequest {
+  /** Texto digitado. Ausente/vazio = populares da região. */
+  termo?: string;
+  municipio?: string;
+  uf?: string;
+  /** Quantos produtos devolver. O servidor tem teto próprio. */
+  limite?: number;
+}
+
+/** Um produto do catálogo regional, já com a faixa típica do recorte resolvido. */
+export interface ProdutoEncontrado {
+  produto: ProdutoResumo;
+  /** Nível de fato usado (município → região → UF). A UI rotula com isto. */
+  escopoResolvido: EscopoGeo;
+  estatistica: PrecoEstatistica;
+}
+
+export interface BuscaProdutosResponse {
+  /** Vazia = a região ainda não tem preço para nada que case com o termo. */
+  produtos: ProdutoEncontrado[];
+}
+
 // ─────────────────── Enriquecimento de produto — curadoria (C11.5) ───────────
 
 /**

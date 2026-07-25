@@ -13,6 +13,7 @@ import type { Autenticacao } from '../auth/autenticador';
 import type { AutorizacaoCuradoria } from '../auth/curadoria';
 import type { GerenciadorConta } from '../auth/gerenciador-conta';
 import type { ServicoConta } from '../auth/servico-conta';
+import type { ServicoBuscaProdutos } from '../consulta/servico-busca-produtos';
 import type { ServicoComparacaoLista } from '../consulta/servico-comparacao-lista';
 import type { ServicoConsulta } from '../consulta/servico-consulta';
 import type { ServicoCuradoria } from '../curadoria/servico-curadoria';
@@ -63,6 +64,8 @@ export interface DependenciasHttp {
   servicoConsulta: ServicoConsulta;
   /** Lista de compras comparada por loja (C12.1). Omitido → rota não sobe. */
   servicoComparacaoLista?: ServicoComparacaoLista;
+  /** Busca no catálogo regional (C4.4, cold start). Omitido → rota não sobe. */
+  servicoBuscaProdutos?: ServicoBuscaProdutos;
   servicoSync: ServicoSync;
   /**
    * Conta anônima (C4.3) — afordância de testes/legado. Em produção o login é

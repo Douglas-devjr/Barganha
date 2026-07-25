@@ -82,6 +82,21 @@ export const SCHEMA_CONSULTA = {
   },
 } as const;
 
+// Busca no catálogo regional (C4.4) — tudo opcional: sem `termo` são os
+// populares da região; o teto do `limite` é do servidor, não do cliente.
+export const SCHEMA_BUSCA_PRODUTOS = {
+  body: {
+    type: 'object',
+    additionalProperties: false,
+    properties: {
+      termo: { type: 'string', maxLength: 120 },
+      municipio: { type: 'string', minLength: 1 },
+      uf: { type: 'string', minLength: 2, maxLength: 2 },
+      limite: { type: 'integer', minimum: 1 },
+    },
+  },
+} as const;
+
 export const SCHEMA_SYNC = {
   body: {
     type: 'object',

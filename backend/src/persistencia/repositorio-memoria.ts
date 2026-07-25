@@ -26,6 +26,8 @@ import type { CatalogoProdutos, SugestaoProduto } from '../anonimizacao/casament
 import type { RepositorioUsuario } from '../auth/tipos';
 import type {
   EstatisticaLojaLinha,
+  FiltroBuscaProdutos,
+  FonteBuscaProdutos,
   FonteComparacaoLojas,
   FonteProdutoConsulta,
 } from '../consulta/tipos';
@@ -111,6 +113,18 @@ interface ProdutoCanonicoInterno {
   imagemUrl?: string;
 }
 
+/** Resumo de exibição (C11.5) de um canônico — a forma que a UI consome. */
+function resumoDe(p: ProdutoCanonicoInterno): ProdutoResumo {
+  return {
+    produtoCanonicoId: p.id,
+    ...(p.nomeExibicao ? { nomeExibicao: p.nomeExibicao } : {}),
+    ...(p.marca ? { marca: p.marca } : {}),
+    ...(p.categoria ? { categoria: p.categoria } : {}),
+    ...(p.imagemUrl ? { imagemUrl: p.imagemUrl } : {}),
+    unidadeBase: p.unidadeBase,
+  };
+}
+
 /** Lançamento manual armazenado (PRIVADO — tem o autor). C11.3. */
 interface LancamentoModeracaoInterno extends LancamentoModeracaoNovo {
   id: string;
@@ -126,6 +140,7 @@ export class RepositorioMemoria
     RepositorioUsuario,
     CatalogoProdutos,
     FonteProdutoConsulta,
+    FonteBuscaProdutos,
     FonteComparacaoLojas,
     FonteObservacoes,
     RepositorioEstatistica,
@@ -379,15 +394,7 @@ export class RepositorioMemoria
 
   obterResumoProduto(produtoCanonicoId: string): Promise<ProdutoResumo | undefined> {
     const p = this.acharProdutoPorId(produtoCanonicoId);
-    if (!p) return Promise.resolve(undefined);
-    return Promise.resolve({
-      produtoCanonicoId: p.id,
-      ...(p.nomeExibicao ? { nomeExibicao: p.nomeExibicao } : {}),
-      ...(p.marca ? { marca: p.marca } : {}),
-      ...(p.categoria ? { categoria: p.categoria } : {}),
-      ...(p.imagemUrl ? { imagemUrl: p.imagemUrl } : {}),
-      unidadeBase: p.unidadeBase,
-    });
+    return Promise.resolve(p ? resumoDe(p) : undefined);
   }
 
   // Pré-filtro pelo token mais longo do nome (espelha o ilike do Supabase); o
@@ -398,6 +405,29 @@ export class RepositorioMemoria
     const r = [...this.todosProdutos()]
       .filter((p) => p.descricaoNormalizada.includes(token))
       .map((p) => ({ produtoCanonicoId: p.id, descricaoNormalizada: p.descricaoNormalizada }));
+    return Promise.resolve(r);
+  }
+
+  // ───────────────────────── FonteBuscaProdutos (C4.4) ────────────────
+
+  estatisticasNoEscopo(filtro: FiltroBuscaProdutos): Promise<PrecoEstatistica[]> {
+    const escopos = new Set(filtro.escopoIds);
+    const produtos = filtro.produtoCanonicoIds ? new Set(filtro.produtoCanonicoIds) : undefined;
+    const r = [...this.estatisticas.values()]
+      .filter((e) => escopos.has(e.escopoId))
+      .filter((e) => (produtos ? produtos.has(e.produtoCanonicoId) : true))
+      // Mais observadas primeiro: é o ranking de "populares na região" e, no
+      // corte pelo limite, sobra o que tem mais base (espelha o adaptador real).
+      .sort((a, b) => b.nObservacoes - a.nObservacoes)
+      .slice(0, filtro.limite);
+    return Promise.resolve(r);
+  }
+
+  resumosProdutos(produtoCanonicoIds: readonly string[]): Promise<ProdutoResumo[]> {
+    const r = produtoCanonicoIds.flatMap((id) => {
+      const p = this.acharProdutoPorId(id);
+      return p ? [resumoDe(p)] : [];
+    });
     return Promise.resolve(r);
   }
 
