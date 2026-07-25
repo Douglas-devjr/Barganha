@@ -344,3 +344,47 @@ describe('POST /ingestao/cupom/:id/html (C2.6)', () => {
     expect(repo.observacoesDoPool()).toHaveLength(poolAntes);
   });
 });
+
+describe('GET /ingestao/cupons — rehidratação do histórico (restore, docs/04)', () => {
+  it('exige autenticação (401 sem Bearer)', async () => {
+    const r = await app.inject({ method: 'GET', url: '/ingestao/cupons' });
+    expect(r.statusCode).toBe(401);
+  });
+
+  it('devolve só os cupons do dono, com o QR e a captura, para o app reconstruir o espelho', async () => {
+    const usuarioId = await novaConta();
+    const cupomId = await ingerirQr(usuarioId);
+    await app.inject({
+      method: 'POST',
+      url: urlHtml(cupomId),
+      headers: { authorization: `Bearer ${usuarioId}` },
+      payload: { html: HTML_RJ },
+    });
+
+    const r = await app.inject({
+      method: 'GET',
+      url: '/ingestao/cupons',
+      headers: { authorization: `Bearer ${usuarioId}` },
+    });
+
+    expect(r.statusCode).toBe(200);
+    const corpo = r.json();
+    expect(corpo.cupons).toHaveLength(1);
+    expect(corpo.cupons[0].cupomId).toBe(cupomId);
+    expect(corpo.cupons[0].qrPayload).toBe(QR_RJ);
+    expect(corpo.cupons[0].capturadoEm).toBe(CAPTURA);
+    expect(corpo.cupons[0].itens).toHaveLength(3);
+  });
+
+  it('conta recém-criada tem histórico vazio (após excluir a conta, seria o mesmo)', async () => {
+    const usuarioId = await novaConta();
+    const r = await app.inject({
+      method: 'GET',
+      url: '/ingestao/cupons',
+      headers: { authorization: `Bearer ${usuarioId}` },
+    });
+    expect(r.statusCode).toBe(200);
+    expect(r.json().cupons).toHaveLength(0);
+    expect(r.json().proximoCursor).toBeUndefined();
+  });
+});

@@ -14,11 +14,11 @@
  * renova o token e a próxima rodada envia.
  */
 
-import type { CupomResponse, IngestaoQrResponse } from '@barganha/shared';
+import type { CupomResponse, HistoricoCupom, IngestaoQrResponse } from '@barganha/shared';
 
 import { clienteApi, ErroApi } from '@/api';
 import { cache, cupons, fila, lista, meta, produtos } from '@/dados';
-import type { CupomLocal, ItemFilaUpload } from '@/dados';
+import type { CupomLocal, CupomRestaurado, ItemFilaUpload } from '@/dados';
 import { escoposSync, resolverLocalizacao } from '@/nucleo/localizacao';
 import { contarFalha, limparFalhas, log } from '@/nucleo/log';
 
@@ -269,10 +269,79 @@ async function recuperarSemCache(
   await meta.definirIdsRecuperados([...tentados, ...novos]);
 }
 
+/** Página do restore e teto de segurança de páginas por rodada. */
+const LIMITE_RESTORE_PAGINA = 50;
+const MAX_PAGINAS_RESTORE = 200;
+
+/** Traduz um cupom do histórico (DTO) para a forma do espelho local. */
+function paraRestaurado(h: HistoricoCupom): CupomRestaurado {
+  return {
+    cupomIdServidor: h.cupomId,
+    status: h.status,
+    qrPayload: h.qrPayload,
+    chaveAcesso: h.chaveAcesso ?? null,
+    capturadoEm: h.capturadoEm,
+    emitidoEm: h.emitidoEm ?? null,
+    uf: h.uf ?? null,
+    lojaCnpj: h.loja?.cnpj ?? null,
+    // Mesma preferência do processamento: nome fantasia, senão razão social.
+    lojaNome: h.loja?.nomeFantasia ?? h.loja?.razaoSocial ?? null,
+    // Município da loja: é aqui que os cupons anteriores à v8 ganham a cidade.
+    lojaMunicipio: h.loja?.municipio ?? null,
+    descontoTotal: h.descontoTotal ?? null,
+    valorPago: h.valorPago ?? null,
+    itens: h.itens.map((i) => ({
+      produtoCanonicoId: i.produtoCanonicoId ?? null,
+      descricaoOriginal: i.descricaoOriginal,
+      ean: i.ean ?? null,
+      quantidade: i.quantidade,
+      unidade: i.unidade,
+      valorUnitario: i.valorUnitario,
+      valorTotal: i.valorTotal,
+      desconto: i.desconto ?? null,
+      // Congelado pelo backend no processamento — o app só espelha, nunca
+      // recalcula (senão o número do passado mudaria a cada sync).
+      tipicoNaCompra: i.tipicoNaCompra ?? null,
+    })),
+  };
+}
+
 /**
- * Rodada completa de sincronização (upload + processamento + estatísticas).
- * Chamada no boot, ao voltar para o app (foreground) e após uma captura. Engole
- * erros — é best-effort.
+ * Rehidratação do histórico privado no login (restore, docs/04). Ao SAIR, o app
+ * limpa o espelho local; o histórico continua guardado na conta, no servidor.
+ * Aqui ele volta, paginado, para o app reconstruir o histórico — no mesmo
+ * aparelho, num novo, ou após reinstalar.
+ *
+ * Roda UMA vez por sessão (flag em `meta_sync`, que o logout apaga): a flag só é
+ * marcada ao chegar ao fim da paginação, então uma queda de sinal no meio faz a
+ * próxima rodada recomeçar — sem duplicar, porque `restaurarCupons` é idempotente
+ * (pula quem já existe). Requer sessão; 401 sobe como erro transitório e a rodada
+ * seguinte tenta de novo.
+ */
+export async function restaurarHistorico(): Promise<void> {
+  if (await meta.historicoRestaurado()) return;
+
+  let cursor: string | undefined;
+  for (let pagina = 0; pagina < MAX_PAGINAS_RESTORE; pagina++) {
+    const resp = await clienteApi.listarHistorico(cursor, LIMITE_RESTORE_PAGINA);
+    if (resp.cupons.length > 0) {
+      await cupons.restaurarCupons(resp.cupons.map(paraRestaurado));
+    }
+    if (!resp.proximoCursor) {
+      await meta.marcarHistoricoRestaurado();
+      return;
+    }
+    cursor = resp.proximoCursor;
+  }
+  // Estourou o teto (histórico gigante): o essencial já veio. Marca como
+  // concluído para não repaginar tudo a cada rodada — o resto é raríssimo.
+  await meta.marcarHistoricoRestaurado();
+}
+
+/**
+ * Rodada completa de sincronização (upload + processamento + restore +
+ * estatísticas). Chamada no boot, ao voltar para o app (foreground) e após uma
+ * captura. Engole erros — é best-effort.
  */
 export async function sincronizar(): Promise<void> {
   if (rodando) return;
@@ -281,6 +350,14 @@ export async function sincronizar(): Promise<void> {
   try {
     await processarFilaUpload();
     await atualizarProcessamentos();
+    // Restore ANTES das estatísticas: os produtos reidratados entram no recorte
+    // do delta sync, e o veredito da gôndola volta a funcionar para eles.
+    try {
+      await restaurarHistorico();
+      limparFalhas('sync.restore');
+    } catch (erro) {
+      contarFalha('sync.restore', erro);
+    }
     // Estatísticas num passo isolado: uma falha aqui não desfaz o upload/parsing.
     try {
       await sincronizarEstatisticas();

@@ -19,6 +19,7 @@ const CHAVE_ALERTA_RESUMO = 'alerta_resumo_mensal';
 const CHAVE_ALERTA_SENSIBILIDADE = 'alerta_sensibilidade';
 const CHAVE_ABERTURA = 'abertura_em';
 const CHAVE_RAIO = 'raio_comparacao_km';
+const CHAVE_HISTORICO_RESTAURADO = 'historico_restaurado_em';
 const CHAVE_IDS_RECUPERADOS = 'ids_recuperados_delta';
 const CHAVE_ESCOPOS_SYNC = 'escopos_delta';
 
@@ -128,6 +129,17 @@ export const registrarAbertura = (): Promise<void> =>
   definirMeta(CHAVE_ABERTURA, new Date().toISOString());
 
 /**
+ * Restauração do histórico privado já concluída NESTA sessão (restore no login,
+ * docs/04). Vive em `meta_sync`, que a limpeza do logout apaga (menos o
+ * consentimento) — então ausente após um novo login, e o restore roda de novo
+ * (aqui ou num aparelho novo). Presente = já reidratou; o sincronizador pula.
+ */
+export const historicoRestaurado = async (): Promise<boolean> =>
+  (await obterMeta(CHAVE_HISTORICO_RESTAURADO)) != null;
+export const marcarHistoricoRestaurado = (): Promise<void> =>
+  definirMeta(CHAVE_HISTORICO_RESTAURADO, new Date().toISOString());
+
+/**
  * Produtos que já passaram pela busca SEM cursor do delta (C7.7). Um produto que
  * entra no recorte depois do cursor (item que veio do catálogo regional) precisa
  * de uma busca do começo — mas só de UMA: se a região não tem preço para ele
@@ -163,6 +175,7 @@ export const assinaturaEscopos = (escopos: readonly string[]): string =>
 export const obterEscoposSync = (): Promise<string | null> => obterMeta(CHAVE_ESCOPOS_SYNC);
 export const definirEscoposSync = (escopos: readonly string[]): Promise<void> =>
   definirMeta(CHAVE_ESCOPOS_SYNC, assinaturaEscopos(escopos));
+
 /**
  * Raio (km) das comparações por loja — o segmentado 1/3/5 km de Editar região.
  * Só filtra o que já é anônimo (lojas da região); não guarda posição do usuário.

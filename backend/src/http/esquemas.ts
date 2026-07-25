@@ -39,6 +39,20 @@ export const SCHEMA_INGESTAO_HTML = {
   },
 } as const;
 
+// Histórico do usuário para rehidratação no login (restore, docs/04). GET com
+// querystring: cursor opaco + teto de página. `additionalProperties: false` vale
+// para a query — parâmetro desconhecido é 400.
+export const SCHEMA_HISTORICO_CUPONS = {
+  querystring: {
+    type: 'object',
+    additionalProperties: false,
+    properties: {
+      cursor: { type: 'string', minLength: 1 },
+      limite: { type: 'integer', minimum: 1, maximum: 100 },
+    },
+  },
+} as const;
+
 // Lista comparada (C12.1) — teto de 40 itens espelha o benchmark de mercado
 // (Preço da Hora BA) e limita o custo da consulta anônima.
 export const SCHEMA_COMPARACAO_LISTA = {

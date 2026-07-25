@@ -54,6 +54,28 @@ export interface ItemCupomLocal {
   tipicoNaCompra: TipicoNaCompra | null;
 }
 
+/**
+ * Um cupom vindo do servidor para reidratar o espelho local no login (restore,
+ * docs/04). Espelha o DTO `HistoricoCupom` com os nomes locais; `qrPayload` volta
+ * porque o espelho local o exige (NOT NULL) e ele é a base do reprocessamento
+ * retroativo (decisão travada nº2). É dado do próprio dono — nunca toca o pool.
+ */
+export interface CupomRestaurado {
+  cupomIdServidor: string;
+  status: StatusCupom;
+  qrPayload: string;
+  chaveAcesso?: string | null;
+  capturadoEm: string;
+  emitidoEm?: string | null;
+  uf?: string | null;
+  lojaCnpj?: string | null;
+  lojaNome?: string | null;
+  lojaMunicipio?: string | null;
+  descontoTotal?: number | null;
+  valorPago?: number | null;
+  itens: Omit<ItemCupomLocal, 'id' | 'cupomLocalId'>[];
+}
+
 /** Linha do cache de `preco_estatistica` baixada via delta sync (docs/05). */
 export interface CacheEstatistica {
   produtoCanonicoId: string;

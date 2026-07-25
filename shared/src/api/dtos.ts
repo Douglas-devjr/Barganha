@@ -87,6 +87,58 @@ export interface CupomResponse {
   valorPago?: number;
 }
 
+// ──────── Rehidratação do histórico privado no login (restore, docs/04) ────────
+
+/**
+ * Página do histórico do PRÓPRIO usuário para a rehidratação servidor→local. Ao
+ * SAIR, o app limpa o espelho local do aparelho (higiene de dispositivo
+ * compartilhado), mas o histórico continua guardado na CONTA, no servidor. Ao
+ * ENTRAR de novo — aqui ou num aparelho novo/reinstalação — este endpoint
+ * PRIVADO (Bearer, escopo do dono) traz os cupons de volta para o app
+ * reconstruir o histórico. Nunca toca o pool anônimo (decisão travada nº3).
+ *
+ * `cursor` é OPACO (keyset por captura); ausente = primeira página. `limite` é o
+ * teto de cupons por página — o serviço aplica um máximo.
+ */
+export interface HistoricoCuponsRequest {
+  cursor?: string;
+  limite?: number;
+}
+
+/**
+ * Um cupom do histórico do próprio usuário. Espelha o `CupomResponse` (cabeçalho
+ * + itens) e acrescenta o que o espelho local precisa para ser FIEL: `qrPayload`
+ * (invariante NOT NULL local + base do reprocessamento retroativo, decisão
+ * travada nº2), `chaveAcesso` (idempotência local, docs/05) e `capturadoEm`
+ * (data do histórico — base da sequência de semanas e dos selos). Tudo isto é
+ * dado do DONO, trafega só no canal autenticado dele e nunca cruza para o pool.
+ */
+export interface HistoricoCupom {
+  cupomId: string;
+  status: StatusCupom;
+  qrPayload: string;
+  chaveAcesso?: string;
+  capturadoEm: string;
+  emitidoEm?: string;
+  uf?: string;
+  loja?: {
+    cnpj: string;
+    razaoSocial?: string;
+    nomeFantasia?: string;
+    municipio?: string;
+    uf?: string;
+  };
+  itens: ItemNotaResponse[];
+  descontoTotal?: number;
+  valorPago?: number;
+}
+
+export interface HistoricoCuponsResponse {
+  cupons: HistoricoCupom[];
+  /** Cursor da próxima página (opaco). Ausente = fim do histórico. */
+  proximoCursor?: string;
+}
+
 // ───────────────────────────── Conta (C4.3) ─────────────────────────────
 
 /**

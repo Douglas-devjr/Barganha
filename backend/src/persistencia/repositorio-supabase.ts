@@ -66,7 +66,9 @@ import type {
 import type { FiltroDeltaSync, FonteDeltaSync, LinhaDelta } from '../sync/tipos';
 import type {
   CupomComItens,
+  CupomHistorico,
   CupomRegistro,
+  CursorHistorico,
   DadosIngestao,
   DadosNotaProcessada,
   FiltroReprocessamento,
@@ -352,6 +354,85 @@ export class RepositorioSupabase
       ...(c.data.valor_pago != null ? { valorPago: Number(c.data.valor_pago) } : {}),
       itens: (itensR.data ?? []).map((i) => paraItemPrivado(i)),
     };
+  }
+
+  async listarHistoricoDoUsuario(
+    usuarioId: string,
+    opcoes: { limite: number; apos?: CursorHistorico },
+  ): Promise<CupomHistorico[]> {
+    // Gate de acesso na própria consulta (`usuario_id`). Keyset (capturado_em,
+    // id) para a página ser estável mesmo com capturas no mesmo instante.
+    let q = this.db
+      .from('cupom')
+      .select(
+        'id, status, qr_payload, chave_acesso, capturado_em, emitido_em, uf, loja_cnpj, desconto_total, valor_pago',
+      )
+      .eq('usuario_id', usuarioId);
+    if (opcoes.apos) {
+      // Timestamp entre aspas (mesmo cuidado do delta): o valor é interpolado
+      // numa expressão PostgREST. O id é UUID (sem caractere de sintaxe).
+      const ts = `"${opcoes.apos.capturadoEm.replace(/"/g, '')}"`;
+      q = q.or(`capturado_em.gt.${ts},and(capturado_em.eq.${ts},id.gt.${opcoes.apos.cupomId})`);
+    }
+    const c = await q
+      .order('capturado_em', { ascending: true })
+      .order('id', { ascending: true })
+      .limit(opcoes.limite);
+    if (c.error) falhar('listagem do histórico do usuário (restore)', c.error);
+    const cupons = c.data ?? [];
+    if (cupons.length === 0) return [];
+
+    // Itens e lojas em LOTE (uma consulta cada), não N+1 por cupom.
+    const ids = cupons.map((x) => x.id as string);
+    const itensR = await this.db
+      .from('item_cupom')
+      .select(
+        'cupom_id, produto_canonico_id, descricao_original, ean, quantidade, unidade, valor_unitario, valor_total, desconto, tipico_mediana, tipico_unidade_base, tipico_escopo, tipico_n_observacoes',
+      )
+      .in('cupom_id', ids);
+    if (itensR.error) falhar('carga de itens do histórico (restore)', itensR.error);
+    const itensPorCupom = new Map<string, CupomComItens['itens']>();
+    for (const i of itensR.data ?? []) {
+      const lista = itensPorCupom.get(i.cupom_id as string) ?? [];
+      lista.push(paraItemPrivado(i));
+      itensPorCupom.set(i.cupom_id as string, lista);
+    }
+
+    const cnpjs = [...new Set(cupons.map((x) => x.loja_cnpj as string | null).filter(Boolean))];
+    const lojas = new Map<string, CupomComItens['loja']>();
+    if (cnpjs.length > 0) {
+      const lr = await this.db
+        .from('loja')
+        .select('cnpj, razao_social, nome_fantasia, municipio, uf')
+        .in('cnpj', cnpjs as string[]);
+      if (lr.error) falhar('carga de lojas do histórico (restore)', lr.error);
+      for (const l of lr.data ?? []) {
+        lojas.set(l.cnpj as string, {
+          cnpj: l.cnpj as string,
+          ...(l.razao_social ? { razaoSocial: l.razao_social as string } : {}),
+          ...(l.nome_fantasia ? { nomeFantasia: l.nome_fantasia as string } : {}),
+          ...(l.municipio ? { municipio: l.municipio as string } : {}),
+          ...(l.uf ? { uf: l.uf as string } : {}),
+        });
+      }
+    }
+
+    return cupons.map((x) => {
+      const loja = x.loja_cnpj ? lojas.get(x.loja_cnpj as string) : undefined;
+      return {
+        cupomId: x.id as string,
+        status: x.status,
+        qrPayload: x.qr_payload as string,
+        ...(x.chave_acesso ? { chaveAcesso: x.chave_acesso as string } : {}),
+        capturadoEm: x.capturado_em as string,
+        ...(x.emitido_em ? { emitidoEm: x.emitido_em as string } : {}),
+        ...(x.uf ? { uf: x.uf as string } : {}),
+        ...(loja ? { loja } : {}),
+        ...(x.desconto_total != null ? { descontoTotal: Number(x.desconto_total) } : {}),
+        ...(x.valor_pago != null ? { valorPago: Number(x.valor_pago) } : {}),
+        itens: itensPorCupom.get(x.id as string) ?? [],
+      };
+    });
   }
 
   async apagarDoUsuario(cupomId: string, usuarioId: string): Promise<boolean> {

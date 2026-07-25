@@ -61,7 +61,9 @@ import type {
 import type { FiltroDeltaSync, FonteDeltaSync, LinhaDelta } from '../sync/tipos';
 import type {
   CupomComItens,
+  CupomHistorico,
   CupomRegistro,
+  CursorHistorico,
   DadosIngestao,
   DadosNotaProcessada,
   FiltroReprocessamento,
@@ -226,10 +228,39 @@ export class RepositorioMemoria
   obterDoUsuario(cupomId: string, usuarioId: string): Promise<CupomComItens | undefined> {
     const c = this.cupons.get(cupomId);
     if (!c || c.usuarioId !== usuarioId) return Promise.resolve(undefined);
+    // `CupomHistorico` é superconjunto de `CupomComItens` (só acrescenta QR/chave/
+    // captura) — devolvê-lo aqui atende os dois usos com um mapeamento só.
+    return Promise.resolve(this.montarHistorico(c));
+  }
+
+  listarHistoricoDoUsuario(
+    usuarioId: string,
+    opcoes: { limite: number; apos?: CursorHistorico },
+  ): Promise<CupomHistorico[]> {
+    const apos = opcoes.apos;
+    const ordenados = [...this.cupons.values()]
+      .filter((c) => c.usuarioId === usuarioId)
+      // Mesma ordem keyset do adaptador real: captura ASC, desempate por id.
+      .sort((a, b) => a.capturadoEm.localeCompare(b.capturadoEm) || a.id.localeCompare(b.id))
+      .filter((c) =>
+        apos
+          ? c.capturadoEm > apos.capturadoEm ||
+            (c.capturadoEm === apos.capturadoEm && c.id > apos.cupomId)
+          : true,
+      )
+      .slice(0, opcoes.limite);
+    return Promise.resolve(ordenados.map((c) => this.montarHistorico(c)));
+  }
+
+  /** Monta a visão privada completa (cabeçalho + itens + QR/chave/captura). */
+  private montarHistorico(c: CupomInterno): CupomHistorico {
     const loja = c.lojaCnpj ? this.lojas.get(c.lojaCnpj) : undefined;
-    return Promise.resolve({
+    return {
       cupomId: c.id,
       status: c.status,
+      qrPayload: c.qrPayload,
+      ...(c.chaveAcesso ? { chaveAcesso: c.chaveAcesso } : {}),
+      capturadoEm: c.capturadoEm,
       ...(c.emitidoEm ? { emitidoEm: c.emitidoEm } : {}),
       ...(c.uf ? { uf: c.uf } : {}),
       ...(loja
@@ -246,7 +277,7 @@ export class RepositorioMemoria
       ...(c.descontoTotal != null ? { descontoTotal: c.descontoTotal } : {}),
       ...(c.valorPago != null ? { valorPago: c.valorPago } : {}),
       itens: this.itensCupom
-        .filter((i) => i.cupomId === cupomId)
+        .filter((i) => i.cupomId === c.id)
         .map((i) => ({
           ...(i.produtoCanonicoId ? { produtoCanonicoId: i.produtoCanonicoId } : {}),
           descricaoOriginal: i.descricaoOriginal,
@@ -256,8 +287,9 @@ export class RepositorioMemoria
           valorUnitario: i.valorUnitario,
           valorTotal: i.valorTotal,
           ...(i.desconto != null ? { desconto: i.desconto } : {}),
+          ...(i.tipicoNaCompra ? { tipicoNaCompra: i.tipicoNaCompra } : {}),
         })),
-    });
+    };
   }
 
   apagarDoUsuario(cupomId: string, usuarioId: string): Promise<boolean> {

@@ -105,6 +105,28 @@ export interface CupomComItens {
   valorPago?: number;
 }
 
+/**
+ * Uma linha do histórico do usuário para a rehidratação no login (restore,
+ * docs/04). É o `CupomComItens` (cabeçalho + itens) mais o que o espelho LOCAL
+ * precisa para ser fiel: o QR cru (invariante NOT NULL local + reprocessamento
+ * retroativo), a chave de acesso (idempotência local) e o instante de captura
+ * (base da sequência/selos). É lado privado de ponta a ponta — nunca cruza o pool.
+ */
+export interface CupomHistorico extends CupomComItens {
+  qrPayload: string;
+  chaveAcesso?: string;
+  capturadoEm: string;
+}
+
+/**
+ * Posição keyset da paginação do histórico: a captura, desempatada pelo id do
+ * cupom (dois cupons podem ter o mesmo `capturado_em` ao milissegundo).
+ */
+export interface CursorHistorico {
+  capturadoEm: string;
+  cupomId: string;
+}
+
 export interface FiltroReprocessamento {
   /** Restringe a uma UF (ex.: parser novo entrou no ar). */
   uf?: string;
@@ -123,6 +145,18 @@ export interface RepositorioCupom {
    * acesso): de outro dono ou inexistente → `undefined` (não vaza existência).
    */
   obterDoUsuario(cupomId: string, usuarioId: string): Promise<CupomComItens | undefined>;
+  /**
+   * Página do histórico privado do PRÓPRIO usuário para a rehidratação no login
+   * (restore, docs/04). Escopo do dono na própria consulta (`usuario_id`): nunca
+   * vaza cupom de terceiro. Ordena por captura (mais antigo → novo), desempatada
+   * por id; `apos` é a keyset da última linha da página anterior (ausente = 1ª
+   * página). Traz o cupom COMPLETO (cabeçalho + itens + QR) para o app
+   * reconstruir o espelho local. Devolve no máximo `limite` linhas.
+   */
+  listarHistoricoDoUsuario(
+    usuarioId: string,
+    opcoes: { limite: number; apos?: CursorHistorico },
+  ): Promise<CupomHistorico[]>;
   /**
    * Grava nota privada + pool anônimo e marca o cupom como `processado`.
    * Cupom JÁ `processado` é no-op (trava anti-corrida: fila × ingestão por

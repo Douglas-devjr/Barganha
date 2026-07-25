@@ -22,6 +22,7 @@ import type {
   DeltaSyncResponse,
   DenunciaPrecoRequest,
   DenunciaPrecoResponse,
+  HistoricoCuponsResponse,
   IngestaoHtmlRequest,
   IngestaoQrRequest,
   IngestaoQrResponse,
@@ -121,6 +122,26 @@ export class ClienteApi {
       if (e instanceof ErroApi && e.status === 404) return null;
       throw e;
     }
+  }
+
+  /**
+   * `GET /ingestao/cupons` — PRIVADO: página do histórico do próprio usuário para
+   * a rehidratação no login (restore, docs/04). Exige Bearer. O app itera as
+   * páginas pelo `proximoCursor` até esgotar; nunca toca o pool anônimo.
+   */
+  async listarHistorico(cursor?: string, limite?: number): Promise<HistoricoCuponsResponse> {
+    const token = await this.resolverToken();
+    if (!token) throw new ErroApi(401, 'Sem sessão para restaurar o histórico.');
+    const qs = new URLSearchParams();
+    if (cursor) qs.set('cursor', cursor);
+    if (limite != null) qs.set('limite', String(limite));
+    const sufixo = qs.toString() ? `?${qs.toString()}` : '';
+    return this.requisitar<HistoricoCuponsResponse>(
+      'GET',
+      `/ingestao/cupons${sufixo}`,
+      undefined,
+      token,
+    );
   }
 
   /**

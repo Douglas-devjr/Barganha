@@ -11,7 +11,7 @@ import type { StatusCupom, TipicoNaCompra } from '@barganha/shared';
 import { agoraIso, gerarIdLocal } from '@/nucleo/id';
 
 import { getBd } from './bd';
-import type { CupomLocal, ItemCupomLocal } from './tipos';
+import type { CupomLocal, CupomRestaurado, ItemCupomLocal } from './tipos';
 
 interface LinhaCupom {
   id: string;
@@ -167,6 +167,83 @@ export async function listarAguardandoProcessamento(): Promise<CupomLocal[]> {
 /** Remove o cupom local (e, em cascata, itens e fila). Usado por "Descartar". */
 export async function excluir(id: string): Promise<void> {
   await getBd().runAsync(`DELETE FROM cupom_local WHERE id = ?`, [id]);
+}
+
+/**
+ * Reidrata no espelho local os cupons que o servidor guardou sob a conta
+ * (restore no login, docs/04). IDEMPOTENTE: pula quem já existe localmente (por
+ * `cupom_id_servidor`) e usa `INSERT OR IGNORE` para tolerar corrida com o índice
+ * único de `chave_acesso` (o mesmo cupom espelhado por outro caminho). Devolve
+ * quantos foram de fato inseridos. Numa transação para não deixar cupom sem itens.
+ */
+export async function restaurarCupons(lista: CupomRestaurado[]): Promise<number> {
+  if (lista.length === 0) return 0;
+  const db = getBd();
+  let inseridos = 0;
+  // Exclusiva, como as demais escritas de cupom (ver nota em `aplicarProcessamento`).
+  await db.withExclusiveTransactionAsync(async (txn) => {
+    for (const c of lista) {
+      const jaExiste = await txn.getFirstAsync<{ id: string }>(
+        `SELECT id FROM cupom_local WHERE cupom_id_servidor = ? LIMIT 1`,
+        [c.cupomIdServidor],
+      );
+      if (jaExiste) continue;
+
+      const id = gerarIdLocal();
+      const agora = agoraIso();
+      const r = await txn.runAsync(
+        `INSERT OR IGNORE INTO cupom_local
+           (id, cupom_id_servidor, qr_payload, chave_acesso, capturado_em, status,
+            loja_cnpj, loja_nome, loja_municipio, emitido_em, uf, desconto_total, valor_pago,
+            criado_em, atualizado_em)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          id,
+          c.cupomIdServidor,
+          c.qrPayload,
+          c.chaveAcesso ?? null,
+          c.capturadoEm,
+          c.status,
+          c.lojaCnpj ?? null,
+          c.lojaNome ?? null,
+          c.lojaMunicipio ?? null,
+          c.emitidoEm ?? null,
+          c.uf ?? null,
+          c.descontoTotal ?? null,
+          c.valorPago ?? null,
+          agora,
+          agora,
+        ],
+      );
+      // Ignorado pelo índice único de chave (já espelhado por outro caminho): pula.
+      if (r.changes === 0) continue;
+      inseridos++;
+
+      for (const item of c.itens) {
+        await txn.runAsync(
+          `INSERT INTO item_cupom_local
+             (id, cupom_local_id, produto_canonico_id, descricao_original, ean,
+              quantidade, unidade, valor_unitario, valor_total, desconto,
+              tipico_mediana, tipico_unidade_base, tipico_escopo, tipico_n_observacoes)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [
+            gerarIdLocal(),
+            id,
+            item.produtoCanonicoId,
+            item.descricaoOriginal,
+            item.ean,
+            item.quantidade,
+            item.unidade,
+            item.valorUnitario,
+            item.valorTotal,
+            item.desconto,
+            ...colunasTipico(item.tipicoNaCompra),
+          ],
+        );
+      }
+    }
+  });
+  return inseridos;
 }
 
 /** Dados que o backend devolve após processar a nota (preenche a nota local). */

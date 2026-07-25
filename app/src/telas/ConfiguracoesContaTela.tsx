@@ -10,6 +10,12 @@
  * Sair e Excluir moram aqui (saíram do corpo do Perfil, como no handoff), com
  * os mesmos cuidados de antes: avisar sobre cupons ainda na fila antes do
  * logout e confirmar a exclusão em diálogo.
+ *
+ * Sair ≠ Excluir (docs/04): SAIR limpa só o espelho deste aparelho — o histórico
+ * fica guardado na CONTA (no servidor) e é reidratado no próximo login (restore,
+ * `nucleo/sincronizador`). EXCLUIR apaga a conta e todo o histórico, no aparelho
+ * e no servidor, sem volta. Os diálogos deixam essa diferença explícita, porque
+ * antes "Sair" parecia apagar tudo — e agora o contrato mudou.
  */
 
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -176,8 +182,8 @@ export function ConfiguracoesContaTela({ navigation }: Props) {
             ? `${pendentesAoSair} cupom(ns) ainda não foram enviados. Vamos tentar enviá-los ` +
               'agora; o que não subir será perdido. Conecte-se à internet antes, se puder. '
             : '') +
-          'Você precisará entrar de novo para registrar cupons. O histórico deste aparelho é ' +
-          'limpo; os preços já compartilhados são anônimos e continuam na base.'
+          'Seu histórico fica guardado na sua conta e volta quando você entrar de novo — aqui ' +
+          'ou em outro aparelho. Este aparelho é limpo ao sair. Para apagar de vez, use Excluir conta.'
         }
         rotuloConfirmar="Sair"
         aoConfirmar={() => {
