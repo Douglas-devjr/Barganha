@@ -40,8 +40,10 @@ export function registrarRotasCuradoria(app: FastifyInstance, ctx: ContextoRotas
 
   // Sem autorização configurada, NADA de curadoria sobe.
   if (!autorizacaoCuradoria) return;
-  const autorizado = (req: Parameters<typeof exigeCuradoria>[1], reply: Parameters<typeof exigeCuradoria>[2]) =>
-    exigeCuradoria(autorizacaoCuradoria, req, reply);
+  const autorizado = (
+    req: Parameters<typeof exigeCuradoria>[1],
+    reply: Parameters<typeof exigeCuradoria>[2],
+  ) => exigeCuradoria(autorizacaoCuradoria, req, reply);
   const opcoes = { onRequest: ctx.guardaCuradoriaIp };
 
   // ── Métricas de parsing por estado (C10.2) ──────────────────────────

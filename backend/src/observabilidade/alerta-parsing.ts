@@ -19,11 +19,7 @@
 import type { EventoParsing, SnapshotTelemetria } from './telemetria';
 
 /** Eventos que representam um cupom NÃO entregue por culpa nossa/do portal. */
-const EVENTOS_FALHA: EventoParsing[] = [
-  'falha_permanente',
-  'transitorio_esgotado',
-  'erro_portal',
-];
+const EVENTOS_FALHA: EventoParsing[] = ['falha_permanente', 'transitorio_esgotado', 'erro_portal'];
 
 /** Eventos que contam como tentativa concluída (base da taxa). */
 const EVENTOS_TOTAL: EventoParsing[] = ['processado', ...EVENTOS_FALHA];

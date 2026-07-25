@@ -42,7 +42,10 @@ export function tratarErro(erro: FastifyError, req: FastifyRequest, reply: Fasti
   if (erro instanceof HtmlErroPortalError) {
     // É transitório e o app re-tenta sozinho, mas um PICO disto significa que o
     // reCAPTCHA endureceu — sinal de operação que antes não deixava rastro.
-    req.log.warn({ action: 'portal.recusou', codigo: 'erro_portal' }, 'Portal recusou a verificação');
+    req.log.warn(
+      { action: 'portal.recusou', codigo: 'erro_portal' },
+      'Portal recusou a verificação',
+    );
     return reply.code(422).send({ erro: erro.message, codigo: 'erro_portal' });
   }
   req.log.error(

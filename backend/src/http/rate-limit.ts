@@ -79,7 +79,10 @@ export type GuardaTaxa = (req: FastifyRequest, reply: FastifyReply) => Promise<v
  * devolve promessa) para o Fastify avançar o ciclo; ao enviar o 429 o reply é
  * marcado como respondido e o handler não roda.
  */
-export function guardaDeTaxa(limitador: LimitadorJanelaFixa, opcoes: OpcoesGuarda = {}): GuardaTaxa {
+export function guardaDeTaxa(
+  limitador: LimitadorJanelaFixa,
+  opcoes: OpcoesGuarda = {},
+): GuardaTaxa {
   const chaveDe = opcoes.chave ?? ((req: FastifyRequest) => req.ip);
   const mensagem = opcoes.mensagem ?? 'Muitas requisições. Tente novamente em instantes.';
   return async (req: FastifyRequest, reply: FastifyReply): Promise<void> => {
