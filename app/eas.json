@@ -17,7 +17,7 @@
         "buildType": "apk"
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://api.staging.barganha.app"
+        "EXPO_PUBLIC_API_URL": "https://barganha-api.onrender.com"
       }
     },
     "production": {
