@@ -71,6 +71,15 @@ aqui, num aparelho novo ou após reinstalar — o app **reidrata** o histórico:
 - **Sem PII em log:** a rota e o serviço nunca logam `qrPayload`, `chave_acesso`,
   EAN ou descrição.
 
+## Retenção e apagamento
+- **Direito ao apagamento:** `DELETE /conta` remove a conta e, em cascata, todo o
+  histórico privado (aparelho + servidor). O pool anônimo não tem o que remover.
+- **Retenção por inatividade (TTL):** o histórico privado é guardado **enquanto a
+  conta existir**. Contas **inativas por 24 meses** (sem login) são elegíveis a
+  **purga** (conta de auth + `cupom`/`item_cupom`), com aviso por email antes.
+  > Estado: **regra definida, job de purga a implementar** antes do beta aberto
+  > (docs/16). O número (24 meses) e a regra já valem para a política publicada.
+
 ## Geolocalização sem rastrear pessoas
 - A localização vem do **endereço da loja (via CNPJ)**, não do GPS do usuário.
 - A "região do usuário" é **inferida do histórico de lojas** onde ele compra — não há rastreamento contínuo.

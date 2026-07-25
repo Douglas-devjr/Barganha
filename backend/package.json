@@ -10,7 +10,8 @@
     "job:recalculo": "node --env-file-if-exists=../.env --import tsx src/jobs/recalculo-estatistica.ts",
     "job:republicar": "node --env-file-if-exists=../.env --import tsx src/jobs/republicar-pool.ts",
     "job:enriquecer": "node --env-file-if-exists=../.env --import tsx src/jobs/enriquecer-catalogo.ts",
-    "job:alerta-parsing": "node --env-file-if-exists=../.env --import tsx src/jobs/alerta-parsing.ts"
+    "job:alerta-parsing": "node --env-file-if-exists=../.env --import tsx src/jobs/alerta-parsing.ts",
+    "job:purga-inativos": "node --env-file-if-exists=../.env --import tsx src/jobs/purga-inatividade.ts"
   },
   "dependencies": {
     "@barganha/shared": "*",
