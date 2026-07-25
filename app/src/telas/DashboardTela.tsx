@@ -1,11 +1,12 @@
 /**
- * Redesign "3a" — Resumo de economia. Segmentado dos últimos meses + gráfico de
- * barras (o mês ativo na tinta, os demais em `linha`) + "onde você mais
- * economizou".
+ * Redesign "3a" — Resumo de descontos. Segmentado dos últimos meses + gráfico de
+ * barras (o mês ativo na tinta, os demais em `linha`) + "de onde vieram".
  *
  * O número é o desconto HONESTO da própria NFC-e (`desconto_total` do cupom, ou
  * a soma dos descontos por item), nunca estimativa — mesma regra do card do
- * Início. Mês sem cupom processado simplesmente não aparece.
+ * Início, e pelo mesmo motivo NÃO se chama economia: é a promoção que o mercado
+ * deu, não o resultado de escolher bem (docs/06 §"Economia real").
+ * Mês sem cupom processado simplesmente não aparece.
  *
  * O handoff agrupa "onde economizou" por categoria; como categoria não desce ao
  * catálogo local (C11.5 vive no backend), agrupamos por PRODUTO — ver
@@ -91,12 +92,12 @@ export function DashboardTela({ navigation }: Props) {
   if (carregado && meses.length === 0) {
     return (
       <Tela>
-        <CabecalhoVoltar titulo="Resumo de economia" aoVoltar={() => navigation.goBack()} />
+        <CabecalhoVoltar titulo="Resumo de descontos" aoVoltar={() => navigation.goBack()} />
         <Estado
           icone={<IconeRecibo tamanho={30} cor={c.tinta} />}
-          titulo="Ainda sem economia registrada"
+          titulo="Ainda sem desconto registrado"
           texto={
-            'Escaneie cupons com desconto para acompanhar quanto você economizou por mês. O ' +
+            'Escaneie cupons com desconto para acompanhar quanto o mercado te deu por mês. O ' +
             'valor vem do próprio cupom — nunca de estimativa.'
           }
         />
@@ -106,7 +107,7 @@ export function DashboardTela({ navigation }: Props) {
 
   return (
     <Tela>
-      <CabecalhoVoltar titulo="Resumo de economia" aoVoltar={() => navigation.goBack()} />
+      <CabecalhoVoltar titulo="Resumo de descontos" aoVoltar={() => navigation.goBack()} />
 
       {/* segmentado dos meses disponíveis */}
       <View style={estilos.segmentado}>
@@ -140,7 +141,7 @@ export function DashboardTela({ navigation }: Props) {
 
       <Cartao>
         <Texto peso="semibold" cor="fraco" style={estilos.eyebrow}>
-          VOCÊ ECONOMIZOU
+          DESCONTOS NO MÊS
         </Texto>
         <Texto peso="bold" numerico style={estilos.valorGigante}>
           {moeda(doMes?.economia ?? 0)}
@@ -180,7 +181,7 @@ export function DashboardTela({ navigation }: Props) {
       </Cartao>
 
       <Texto peso="bold" tamanho="lg" style={estilos.secao}>
-        Onde você mais economizou
+        De onde vieram os descontos
       </Texto>
 
       {porProduto.length === 0 ? (

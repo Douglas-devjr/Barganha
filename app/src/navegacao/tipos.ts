@@ -47,7 +47,7 @@ export type RootStackParamList = {
   Conquistas: undefined;
   /** Detalhe de um selo: progresso e recompensa. `id` vem de `nucleo/gamificacao`. */
   ConquistaDetalhe: { id: string };
-  /** Resumo de economia por mês (desconto honesto do cupom). */
+  /** Resumo de descontos por mês (desconto honesto do cupom). */
   Dashboard: undefined;
   /** Alternativa ao QR: os 44 dígitos da chave de acesso da NFC-e. */
   DigitarChave: undefined;

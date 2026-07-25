@@ -128,7 +128,7 @@ function ValorCompra({ compra }: { compra: CompraResumo }) {
       )}
       {compra.economia > 0 ? (
         <Texto cor="suave" numerico style={estilos.economia}>
-          economia {moeda(compra.economia)}
+          desconto {moeda(compra.economia)}
         </Texto>
       ) : null}
     </View>

@@ -113,7 +113,7 @@ Este documento dá um **nome e um código curto** a cada etapa do desenvolviment
 ### `C8` — Histórico *(Histórico, Estatísticas & Perfil)*
 | Código | Sub-passo |
 |---|---|
-| C8.1 | Início: card de economia + últimas compras `[MVP]` |
+| C8.1 | Início: card de descontos + últimas compras `[MVP]` |
 | C8.2 | Perfil: dados mínimos, mercados favoritos, preferências `[MVP]` |
 | C8.3 | Estatísticas (gastos por mês/categoria/onde economiza) `[Pós]` |
 | C8.4 | Economia acumulada + tendência + alertas de preço `[Pós]` |

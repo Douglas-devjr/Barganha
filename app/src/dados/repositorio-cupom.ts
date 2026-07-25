@@ -247,7 +247,14 @@ export async function aplicarProcessamento(
   });
 }
 
-/** Resumo agregado do histórico — base do card de economia da Início (C8.1). */
+/**
+ * Resumo agregado do histórico — base do card de DESCONTOS da Início (C8.1).
+ *
+ * Os identificadores daqui ainda dizem "economia" por herança; o que eles somam
+ * é o desconto do cupom. A palavra "economia" está reservada para a métrica
+ * pagou × típico (docs/06 §"Economia real"), e a renomeação em massa fica para
+ * quando as duas precisarem coexistir — evita churn agora.
+ */
 export interface ResumoCompras {
   /** Notas já processadas (com itens). */
   totalCupons: number;
@@ -335,7 +342,7 @@ export async function economiaPorMes(limite = 12): Promise<EconomiaMensal[]> {
 }
 
 /**
- * Onde a economia veio, por PRODUTO (tela de Resumo de economia). Soma o
+ * De onde veio o desconto, por PRODUTO (tela de Resumo de descontos). Soma o
  * desconto por item, do maior para o menor.
  *
  * O handoff agrupa por CATEGORIA (Laticínios, Café…), mas categoria só existe

@@ -51,8 +51,8 @@ export function PainelAlertas({ preferencias, aoMudar }: PainelAlertasProps) {
     {
       id: 'resumoMensal' as const,
       Icone: IconeTrofeu,
-      titulo: 'Resumo mensal de economia',
-      descricao: 'Um recap do quanto você economizou no mês (em breve)',
+      titulo: 'Resumo mensal de descontos',
+      descricao: 'Um recap dos descontos que você teve no mês (em breve)',
     },
   ];
 

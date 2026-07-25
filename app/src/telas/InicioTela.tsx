@@ -4,9 +4,15 @@
  * chapado, atalho de conquistas e o cartão de "Últimas compras".
  *
  * Tudo do histórico PRIVADO local (offline); recarrega ao focar a aba para
- * refletir cupons recém-processados. A economia é o desconto honesto da própria
+ * refletir cupons recém-processados. O número é o desconto honesto da própria
  * NFC-e, nunca estimativa — por isso os stats da linha inferior são contagens
  * reais e o card não projeta nada.
+ *
+ * O card se chama DESCONTOS, não "economia", e o nome é deliberado: o que ele
+ * soma é a promoção que o MERCADO deu, idêntica se este app não existisse.
+ * "Economia" fica reservada para a métrica que mede a escolha do usuário
+ * (pagou × típico da região) — ver docs/06 §"Economia real". O snapshot que ela
+ * vai consumir já é gravado por item desde hoje.
  */
 
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
@@ -168,11 +174,11 @@ export function InicioTela() {
       <Pressable
         onPress={() => navigation.navigate('Dashboard')}
         accessibilityRole="button"
-        accessibilityLabel="Ver resumo de economia"
+        accessibilityLabel="Ver resumo de descontos"
         style={estilos.blocoTopo}
       >
         <CartaoEconomia
-          rotulo={`Economia · ${MESES[new Date().getMonth()]}`}
+          rotulo={`Descontos · ${MESES[new Date().getMonth()]}`}
           valor={moeda(economiaMes)}
           legenda={legendaEconomia(resumo, economiaMes)}
           acao="Ver resumo →"
@@ -291,7 +297,7 @@ function ValorCompra({ compra }: { compra: CompraResumo }) {
       )}
       {compra.economia > 0 ? (
         <Texto cor="suave" numerico style={estilos.economia}>
-          economia {moeda(compra.economia)}
+          desconto {moeda(compra.economia)}
         </Texto>
       ) : processado ? (
         <Texto cor="fraco" style={estilos.economia}>
@@ -306,8 +312,8 @@ function legendaEconomia(resumo: ResumoCompras, economiaMes: number): string {
   if (resumo.totalCupons === 0) {
     return 'Escaneie um cupom para acompanhar suas compras e promoções.';
   }
-  if (economiaMes > 0) return 'economizado em promoções este mês';
-  return 'sem promoções registradas neste mês';
+  if (economiaMes > 0) return 'em descontos que o mercado deu neste mês';
+  return 'sem descontos registrados neste mês';
 }
 
 const PASSOS: readonly string[] = [
