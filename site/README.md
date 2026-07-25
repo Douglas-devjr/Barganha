@@ -27,22 +27,29 @@ JS. **Sem ela publicada, ninguém confirma cadastro nem recupera senha** — ver
 
 O repositório principal é **privado** e o GitHub Pages gratuito só publica de
 repositório **público** — por isso estas páginas vão num repo público separado,
-só com este conteúdo. No PowerShell, a partir da raiz do projeto:
+só com este conteúdo: **`Douglas-devjr/barganha-legal`** (já criado, Pages ligado
+em `main` / raiz).
+
+Publicar = rodar, da raiz do projeto:
 
 ```powershell
-$tmp = Join-Path $env:TEMP 'barganha-legal'
-if (Test-Path $tmp) { Remove-Item $tmp -Recurse -Force }
-Copy-Item site $tmp -Recurse
-Remove-Item (Join-Path $tmp 'README.md')
-Set-Location $tmp
-git init -b main
-git add .
-git commit -m "docs: publica as paginas legais do Barganha"
-gh repo create barganha-legal --public --source . --push
-gh api -X POST repos/Douglas-devjr/barganha-legal/pages -f "source[branch]=main" -f "source[path]=/"
+npm run publicar:site
 ```
 
-URLs resultantes (colar na ficha da Play, ver `docs/14-conformidade-play-store.md`):
+O script (`scripts/publicar-site.ps1`) clona o repo público, **espelha** este
+diretório (menos este `README.md`, que é interno), commita, empurra e só termina
+quando a build do Pages responde 200 em todas as páginas. Se nada mudou, não
+commita nada. Opções:
+
+- `-Simular` — mostra o que mudaria, sem empurrar.
+- `-Mensagem "docs: ..."` — mensagem do commit (default: `docs: atualiza as paginas legais`).
+- `-SemEsperar` — não aguarda a build do Pages.
+
+> Só é preciso `gh auth login` uma vez. Se o `gh` estiver com
+> `git_protocol = ssh` e a conta não tiver chave pública, o push por SSH falha —
+> o script força a URL HTTPS justamente por isso.
+
+URLs em produção (colar na ficha da Play, ver `docs/14-conformidade-play-store.md`):
 
 - Site: `https://douglas-devjr.github.io/barganha-legal/`
 - Política: `https://douglas-devjr.github.io/barganha-legal/politica-de-privacidade.html`
@@ -54,5 +61,6 @@ URLs resultantes (colar na ficha da Play, ver `docs/14-conformidade-play-store.m
 
 ## Atualizar depois
 
-Editar os arquivos AQUI (fonte da verdade, versionada com o produto), repetir a
-cópia acima e, no diretório temporário, `git add . ; git commit ; git push`.
+Editar os arquivos AQUI — esta é a fonte da verdade, versionada com o produto — e
+rodar `npm run publicar:site` de novo. O repo público é derivado: nunca edite
+nada por lá, porque o próximo espelhamento sobrescreve.
