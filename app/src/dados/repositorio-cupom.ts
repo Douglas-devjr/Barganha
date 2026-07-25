@@ -22,6 +22,7 @@ interface LinhaCupom {
   status: string;
   loja_cnpj: string | null;
   loja_nome: string | null;
+  loja_municipio: string | null;
   emitido_em: string | null;
   uf: string | null;
   desconto_total: number | null;
@@ -40,6 +41,7 @@ function mapearCupom(l: LinhaCupom): CupomLocal {
     status: l.status as StatusCupom,
     lojaCnpj: l.loja_cnpj,
     lojaNome: l.loja_nome,
+    lojaMunicipio: l.loja_municipio,
     emitidoEm: l.emitido_em,
     uf: l.uf,
     descontoTotal: l.desconto_total,
@@ -174,6 +176,7 @@ export interface ResultadoProcessamento {
   chaveAcesso?: string;
   lojaCnpj?: string;
   lojaNome?: string;
+  lojaMunicipio?: string;
   emitidoEm?: string;
   uf?: string;
   /** Desconto total do cupom (R$), quando o portal informa (C2.6). */
@@ -203,7 +206,7 @@ export async function aplicarProcessamento(
     await txn.runAsync(
       `UPDATE cupom_local
           SET cupom_id_servidor = ?, status = ?, chave_acesso = COALESCE(?, chave_acesso),
-              loja_cnpj = ?, loja_nome = ?, emitido_em = ?, uf = ?,
+              loja_cnpj = ?, loja_nome = ?, loja_municipio = ?, emitido_em = ?, uf = ?,
               desconto_total = COALESCE(?, desconto_total),
               valor_pago = COALESCE(?, valor_pago), atualizado_em = ?
         WHERE id = ?`,
@@ -213,6 +216,7 @@ export async function aplicarProcessamento(
         r.chaveAcesso ?? null,
         r.lojaCnpj ?? null,
         r.lojaNome ?? null,
+        r.lojaMunicipio ?? null,
         r.emitidoEm ?? null,
         r.uf ?? null,
         r.descontoTotal ?? null,

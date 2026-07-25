@@ -80,19 +80,32 @@ export async function listarObservacoes(): Promise<ObservacaoLocal[]> {
   return linhas.map(mapear);
 }
 
+/** Origem geográfica de uma compra — sempre da LOJA da nota, nunca do usuário. */
+export interface LocalDoCupom {
+  uf: string;
+  /** Município da loja; `null` em cupons anteriores à migração v8. */
+  municipio: string | null;
+}
+
 /**
- * UF predominante do histórico (a mais recente com UF preenchida). É o recorte
- * geográfico para a consulta/sync regional — derivado da LOJA, nunca do usuário
- * (decisão travada). `null` quando ainda não há cupom processado com UF.
+ * Locais das compras RECENTES (da mais nova para a mais antiga), base do recorte
+ * geográfico da consulta/sync regional — derivado da LOJA, nunca do usuário
+ * (decisão travada nº4). Quem escolhe a região entre estes é
+ * `escolherLocalPredominante` (`@/nucleo/localizacao-regras`).
+ *
+ * A janela existe para quem MUDA de cidade: contando só as compras recentes, a
+ * região acompanha as novas em vez de ficar presa no histórico antigo.
  */
-export async function obterUfRecente(): Promise<string | null> {
-  const linha = await getBd().getFirstAsync<{ uf: string | null }>(
-    `SELECT uf FROM cupom_local
+export async function listarLocaisRecentes(limite = 20): Promise<LocalDoCupom[]> {
+  const linhas = await getBd().getAllAsync<{ uf: string; municipio: string | null }>(
+    `SELECT uf, loja_municipio AS municipio
+       FROM cupom_local
       WHERE uf IS NOT NULL
       ORDER BY capturado_em DESC
-      LIMIT 1`,
+      LIMIT ?`,
+    [limite],
   );
-  return linha?.uf ?? null;
+  return linhas.map((l) => ({ uf: l.uf, municipio: l.municipio }));
 }
 
 /** Ids canônicos distintos no histórico — alvos do delta sync de estatísticas. */

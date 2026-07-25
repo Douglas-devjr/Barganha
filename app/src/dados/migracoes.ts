@@ -160,4 +160,17 @@ export const MIGRACOES: string[] = [
   ALTER TABLE item_cupom_local ADD COLUMN tipico_escopo TEXT;
   ALTER TABLE item_cupom_local ADD COLUMN tipico_n_observacoes INTEGER;
   `,
+  // v8 — município da LOJA no espelho do cupom. O backend já mandava o campo em
+  // `loja.municipio` (DTO de cupom e de histórico); o app o descartava.
+  //
+  // É o que permite a região derivada do histórico chegar ao nível de MUNICÍPIO
+  // — o principal da agregação (decisão travada nº4) — em vez de parar na UF,
+  // que é só o degrau mais amplo do fallback (docs/06). Continua sendo geo da
+  // LOJA, e o valor não sai deste aparelho.
+  //
+  // Cupons já espelhados ficam com NULL (o backfill vem no restore pós-login) e
+  // seguem resolvendo por UF, exatamente como antes desta coluna.
+  `
+  ALTER TABLE cupom_local ADD COLUMN loja_municipio TEXT;
+  `,
 ];

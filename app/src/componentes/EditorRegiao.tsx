@@ -10,8 +10,8 @@
  *   • GPS ("Usar minha localização") — detecta a cidade uma vez e pré-preenche;
  *     a posição (lat/lng) nunca é salva nem enviada (docs/04 admite GPS
  *     transitório). Módulo nativo `expo-location` → exige novo dev build.
- *   • Região das compras — deriva a UF da loja do último cupom (offline, é o
- *     fallback de quem não quer dar GPS).
+ *   • Região das compras — deriva município/UF das lojas onde a pessoa mais
+ *     compra (offline, é o fallback de quem não quer dar GPS).
  *   • Manual — filtra as UFs enquanto digita + cidade em texto livre.
  *
  * A agregação de preço continua pela LOJA (CNPJ); o GPS aqui só ajuda a pessoa a
@@ -30,10 +30,10 @@ import {
   View,
 } from 'react-native';
 
-import { cache, meta, produtos } from '@/dados';
+import { cache, meta } from '@/dados';
 import type { RaioKm } from '@/dados/repositorio-meta';
 import { detectarRegiaoPorGps } from '@/nucleo/gps';
-import { UFS } from '@/nucleo/localizacao';
+import { localDoHistorico, type LocalizacaoEfetiva, UFS } from '@/nucleo/localizacao';
 import { sincronizarEstatisticas } from '@/nucleo/sincronizador';
 import { espaco, raio, useTema } from '@/tema';
 
@@ -64,7 +64,7 @@ export function EditorRegiao({ aoSalvar }: EditorRegiaoProps) {
   const [cidade, setCidade] = useState('');
   const [busca, setBusca] = useState('');
   const [raioKm, setRaioKm] = useState<RaioKm>(3);
-  const [ufDoHistorico, setUfDoHistorico] = useState<string | null>(null);
+  const [localDasCompras, setLocalDasCompras] = useState<LocalizacaoEfetiva | null>(null);
   const [salvando, setSalvando] = useState(false);
   const [localizando, setLocalizando] = useState(false);
 
@@ -73,13 +73,13 @@ export function EditorRegiao({ aoSalvar }: EditorRegiaoProps) {
     void (async () => {
       const [escolhido, doHistorico, km] = await Promise.all([
         meta.obterLocalEscolhido(),
-        produtos.obterUfRecente(),
+        localDoHistorico(),
         meta.obterRaioKm(),
       ]);
       if (!vivo) return;
       setUf(escolhido?.uf ?? null);
       setCidade(escolhido?.municipio ?? '');
-      setUfDoHistorico(doHistorico);
+      setLocalDasCompras(doHistorico);
       setRaioKm(km);
     })();
     return () => {
@@ -115,12 +115,18 @@ export function EditorRegiao({ aoSalvar }: EditorRegiaoProps) {
   }
 
   function usarRegiaoDasCompras() {
-    if (!ufDoHistorico) {
+    if (!localDasCompras) {
       toast('Escaneie um cupom primeiro — a região vem da loja da sua compra');
       return;
     }
-    setUf(ufDoHistorico);
-    toast(`Região da sua última compra: ${ufDoHistorico}`);
+    const { uf: ufCompras, municipio } = localDasCompras;
+    setUf(ufCompras);
+    if (municipio) setCidade(municipio);
+    toast(
+      municipio
+        ? `Região das suas compras: ${municipio} · ${ufCompras}`
+        : `Região das suas compras: ${ufCompras}`,
+    );
   }
 
   async function salvar() {
@@ -182,8 +188,8 @@ export function EditorRegiao({ aoSalvar }: EditorRegiaoProps) {
         <IconeChevron tamanho={16} cor={c.fraco} />
       </Pressable>
 
-      {/* fallback offline: a região da loja do último cupom */}
-      {ufDoHistorico ? (
+      {/* fallback offline: a região das lojas onde a pessoa mais compra */}
+      {localDasCompras ? (
         <Pressable
           onPress={usarRegiaoDasCompras}
           accessibilityRole="button"
@@ -203,7 +209,11 @@ export function EditorRegiao({ aoSalvar }: EditorRegiaoProps) {
               Usar a região das minhas compras
             </Texto>
             <Texto cor="fraco" tamanho="xs">
-              Detecta pela loja do último cupom ({ufDoHistorico})
+              Detecta pelas lojas dos seus cupons (
+              {localDasCompras.municipio
+                ? `${localDasCompras.municipio} · ${localDasCompras.uf}`
+                : localDasCompras.uf}
+              )
             </Texto>
           </View>
           <IconeChevron tamanho={16} cor={c.fraco} />

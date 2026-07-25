@@ -114,6 +114,7 @@ async function aplicarCupomRemoto(cupomLocalId: string, remoto: CupomResponse): 
     status: remoto.status,
     ...(remoto.loja?.cnpj ? { lojaCnpj: remoto.loja.cnpj } : {}),
     ...(lojaNome ? { lojaNome } : {}),
+    ...(remoto.loja?.municipio ? { lojaMunicipio: remoto.loja.municipio } : {}),
     ...(remoto.emitidoEm ? { emitidoEm: remoto.emitidoEm } : {}),
     ...(remoto.uf ? { uf: remoto.uf } : {}),
     ...(remoto.descontoTotal != null ? { descontoTotal: remoto.descontoTotal } : {}),

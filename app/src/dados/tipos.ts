@@ -18,6 +18,8 @@ export interface CupomLocal {
   status: StatusCupom;
   lojaCnpj: string | null;
   lojaNome: string | null;
+  /** Município da LOJA (nunca do usuário) — recorte regional das comparações. */
+  lojaMunicipio: string | null;
   emitidoEm: string | null;
   uf: string | null;
   /** Desconto total do cupom (R$), quando o portal informa (C2.6). */

@@ -2,7 +2,8 @@
  * C8.2 + Redesign "3a" — Perfil. Cabeçalho com avatar + nome + email; cartão de
  * conta (Região com "Editar" + Cupons escaneados + Aparência claro/escuro); os
  * mercados frequentes; e as ações de conta: SAIR (encerra a sessão e limpa este
- * aparelho) e APAGAR CONTA (direito ao apagamento, docs/04).
+ * aparelho — o histórico fica guardado na conta e volta no próximo login) e
+ * APAGAR CONTA (direito ao apagamento, docs/04).
  *
  * A região escolhida mora só neste aparelho e serve apenas para recortar a
  * consulta anônima de preço — nunca viaja junto com dado privado (decisão #4).
@@ -34,12 +35,13 @@ import {
   Texto,
   useToast,
 } from '@/componentes';
-import { cupons, meta, produtos } from '@/dados';
+import { cupons, meta } from '@/dados';
 import type { LocalEscolhido } from '@/dados/repositorio-meta';
 import type { MercadoFrequente } from '@/dados/repositorio-cupom';
 import type { RootStackParamList } from '@/navegacao/tipos';
 import { dataCurta } from '@/nucleo/formato';
 import { calcularContribuicao, type Contribuicao } from '@/nucleo/gamificacao';
+import { localDoHistorico, type LocalizacaoEfetiva } from '@/nucleo/localizacao';
 import { espaco, raio, useTema } from '@/tema';
 
 /** Versão real do build (o protótipo trazia "2.0.1" como exemplo). */
@@ -47,7 +49,7 @@ const VERSAO = Constants.expoConfig?.version ?? '0.0.0';
 
 interface DadosPerfil {
   escolhido: LocalEscolhido | null;
-  ufHistorico: string | null;
+  localHistorico: LocalizacaoEfetiva | null;
   cuponsEscaneados: number;
   mercados: MercadoFrequente[];
   /** C12.2 — sequência de semanas + selos, do histórico local. */
@@ -56,7 +58,7 @@ interface DadosPerfil {
 
 const VAZIO: DadosPerfil = {
   escolhido: null,
-  ufHistorico: null,
+  localHistorico: null,
   cuponsEscaneados: 0,
   mercados: [],
   contribuicao: calcularContribuicao([]),
@@ -66,7 +68,10 @@ function descreverRegiao(d: DadosPerfil): string {
   if (d.escolhido) {
     return d.escolhido.municipio ? `${d.escolhido.municipio} · ${d.escolhido.uf}` : d.escolhido.uf;
   }
-  if (d.ufHistorico) return `${d.ufHistorico} (do histórico)`;
+  if (d.localHistorico) {
+    const { uf, municipio } = d.localHistorico;
+    return municipio ? `${municipio} · ${uf} (do histórico)` : `${uf} (do histórico)`;
+  }
   return 'Toque para definir';
 }
 
@@ -102,18 +107,19 @@ export function PerfilTela() {
   const [alertasLigados, setAlertasLigados] = useState(true);
 
   const carregar = useCallback(async () => {
-    const [escolhido, ufHistorico, cuponsEscaneados, mercados, datas, ligados] = await Promise.all([
-      meta.obterLocalEscolhido(),
-      produtos.obterUfRecente(),
-      cupons.contarCupons(),
-      cupons.listarMercadosFrequentes(5),
-      cupons.listarDatasCapturas(),
-      meta.alertasAtivos(),
-    ]);
+    const [escolhido, localHistorico, cuponsEscaneados, mercados, datas, ligados] =
+      await Promise.all([
+        meta.obterLocalEscolhido(),
+        localDoHistorico(),
+        cupons.contarCupons(),
+        cupons.listarMercadosFrequentes(5),
+        cupons.listarDatasCapturas(),
+        meta.alertasAtivos(),
+      ]);
     setAlertasLigados(ligados);
     return {
       escolhido,
-      ufHistorico,
+      localHistorico,
       cuponsEscaneados,
       mercados,
       contribuicao: calcularContribuicao(datas),
