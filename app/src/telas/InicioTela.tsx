@@ -101,7 +101,7 @@ export function InicioTela() {
           cupons.economiaPorMes(2),
           verificarAlertas(),
           cupons.listarMercadosFrequentes(50),
-          cupons.listarDatasCapturas(),
+          cupons.listarDatasContribuicao(),
         ]);
         if (!ativo) return;
         setResumo(r);

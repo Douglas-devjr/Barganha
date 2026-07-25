@@ -113,7 +113,7 @@ export function PerfilTela() {
         localDoHistorico(),
         cupons.contarCupons(),
         cupons.listarMercadosFrequentes(5),
-        cupons.listarDatasCapturas(),
+        cupons.listarDatasContribuicao(),
         meta.alertasAtivos(),
       ]);
     setAlertasLigados(ligados);

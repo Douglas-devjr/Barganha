@@ -3,7 +3,12 @@
  * as datas de captura dos cupons e devolve sequência de semanas, contadores e
  * selos. A recompensa é status + estatística pessoal (modelo dos apps de nota
  * fiscal, sem pagar cashback) — é o motor contra a partida a frio: cada cupom
- * escaneado alimenta a base coletiva anônima.
+ * processado alimenta a base coletiva anônima.
+ *
+ * Só entram aqui as datas dos cupons PROCESSADOS por completo
+ * (`cupons.listarDatasContribuicao()`). Cupom parado na fila ou com falha no
+ * portal não gerou preço nenhum na base — contá-lo seria premiar contribuição
+ * que não existe, e a barra andaria para trás quando o parsing falhasse.
  *
  * Semana = ISO (segunda a domingo), no fuso LOCAL do aparelho. A sequência
  * conta semanas consecutivas com pelo menos 1 cupom; a semana corrente ainda
@@ -31,6 +36,7 @@ export interface Selo {
 }
 
 export interface Contribuicao {
+  /** Cupons PROCESSADOS por completo — os que viraram preço na base. */
   totalCupons: number;
   cuponsNaSemana: number;
   /** Semanas consecutivas com >=1 cupom (a corrente conta se já tiver cupom). */
@@ -75,7 +81,7 @@ export function calcularContribuicao(datasCaptura: string[], agora = new Date())
     selo({
       id: 'primeira-nota',
       titulo: 'Primeira nota',
-      descricao: 'Escaneou o primeiro cupom',
+      descricao: 'Primeiro cupom processado',
       progresso: { atual: totalCupons, alvo: 1 },
       recompensa: 'Sua jornada de economia começa aqui.',
       icone: 'check',
@@ -83,7 +89,7 @@ export function calcularContribuicao(datasCaptura: string[], agora = new Date())
     selo({
       id: 'cacador',
       titulo: 'Caçador de preços',
-      descricao: '10 cupons escaneados',
+      descricao: '10 cupons processados',
       progresso: { atual: totalCupons, alvo: 10 },
       recompensa: 'Selo de Caçador no seu perfil de contribuição.',
       icone: 'recibo',
@@ -91,7 +97,7 @@ export function calcularContribuicao(datasCaptura: string[], agora = new Date())
     selo({
       id: 'veterano',
       titulo: 'Veterano da gôndola',
-      descricao: '50 cupons escaneados',
+      descricao: '50 cupons processados',
       progresso: { atual: totalCupons, alvo: 50 },
       recompensa: 'Selo de Veterano e nível na base colaborativa.',
       icone: 'trofeu',
@@ -99,7 +105,7 @@ export function calcularContribuicao(datasCaptura: string[], agora = new Date())
     selo({
       id: 'lenda',
       titulo: 'Lenda do mercado',
-      descricao: '100 cupons escaneados',
+      descricao: '100 cupons processados',
       progresso: { atual: totalCupons, alvo: 100 },
       recompensa: 'O topo: selo de Lenda do mercado.',
       icone: 'coroa',

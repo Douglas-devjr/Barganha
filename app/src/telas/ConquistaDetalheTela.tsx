@@ -61,7 +61,7 @@ export function ConquistaDetalheTela({ navigation, route }: Props) {
   useFocusEffect(
     useCallback(() => {
       let vivo = true;
-      void cupons.listarDatasCapturas().then((datas) => {
+      void cupons.listarDatasContribuicao().then((datas) => {
         if (!vivo) return;
         const encontrado = calcularContribuicao(datas).selos.find((s) => s.id === id) ?? null;
         setSelo(encontrado);

@@ -460,14 +460,43 @@ export async function economiaPorProduto(limite = 5, mes?: string): Promise<Econ
 }
 
 /**
- * C12.2 — Datas de captura de TODOS os cupons (qualquer status): escanear já é
- * contribuir, mesmo antes do parsing. Base da sequência de semanas e dos selos.
+ * C12.2 — Datas de captura dos cupons que CONTAM como contribuição: só os
+ * `processado` COM itens espelhados. Cupom na fila, em parsing, com falha no
+ * portal ou espelho vazio (mesma noção de incompleto de
+ * `listarAguardandoProcessamento`) não virou preço na base coletiva — logo não
+ * vira selo. Quando o parsing completar, a data de captura entra retroativa: a
+ * semana da contribuição continua sendo a do escaneamento.
+ *
+ * Base da sequência de semanas e dos selos.
  */
-export async function listarDatasCapturas(): Promise<string[]> {
+export async function listarDatasContribuicao(): Promise<string[]> {
   const linhas = await getBd().getAllAsync<{ capturado_em: string }>(
-    `SELECT capturado_em FROM cupom_local ORDER BY capturado_em ASC`,
+    `SELECT c.capturado_em
+       FROM cupom_local c
+      WHERE c.status = 'processado'
+        AND EXISTS (SELECT 1 FROM item_cupom_local i WHERE i.cupom_local_id = c.id)
+      ORDER BY c.capturado_em ASC`,
   );
   return linhas.map((l) => l.capturado_em);
+}
+
+/**
+ * Cupons escaneados que ainda estão a caminho de contar: na fila, no parsing ou
+ * espelhados sem itens. Só serve para a tela de Conquistas explicar a diferença
+ * entre o que o Perfil chama de "escaneados" e o que os selos contam.
+ *
+ * Não inclui `falha`: aquele cupom não está "quase lá", e a tela da nota já
+ * mostra o erro.
+ */
+export async function contarEmProcessamento(): Promise<number> {
+  const linha = await getBd().getFirstAsync<{ total: number }>(
+    `SELECT COUNT(*) AS total
+       FROM cupom_local c
+      WHERE c.status = 'qr_capturado'
+         OR (c.status = 'processado'
+             AND NOT EXISTS (SELECT 1 FROM item_cupom_local i WHERE i.cupom_local_id = c.id))`,
+  );
+  return linha?.total ?? 0;
 }
 
 /** Total de cupons capturados (todos os status) — Perfil "cupons escaneados". */

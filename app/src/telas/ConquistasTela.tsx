@@ -3,9 +3,12 @@
  * selos) + grade 2×N de badges: conquistados em círculo de tinta, bloqueados
  * tracejados e esmaecidos.
  *
- * Tudo sai de `nucleo/gamificacao.calcularContribuicao()` sobre as datas de
- * captura locais — nenhuma tabela nova, nenhum número inventado. A recompensa é
- * status e estatística pessoal; não há cashback (docs/12).
+ * Tudo sai de `nucleo/gamificacao.calcularContribuicao()` sobre as datas dos
+ * cupons PROCESSADOS por completo — nenhuma tabela nova, nenhum número
+ * inventado. Cupom ainda em processamento não conta (não virou preço na base);
+ * a tela diz quantos são, para o número não parecer errado ao lado dos
+ * "escaneados" do Perfil. A recompensa é status e estatística pessoal; não há
+ * cashback (docs/12).
  */
 
 import { useFocusEffect } from '@react-navigation/native';
@@ -54,13 +57,18 @@ function nivelDe(conquistados: number): string {
 export function ConquistasTela({ navigation }: Props) {
   const { c } = useTema();
   const [dados, setDados] = useState<Contribuicao>(VAZIO);
+  const [emProcessamento, setEmProcessamento] = useState(0);
 
   useFocusEffect(
     useCallback(() => {
       let ativo = true;
-      void cupons.listarDatasCapturas().then((datas) => {
-        if (ativo) setDados(calcularContribuicao(datas));
-      });
+      void Promise.all([cupons.listarDatasContribuicao(), cupons.contarEmProcessamento()]).then(
+        ([datas, pendentes]) => {
+          if (!ativo) return;
+          setDados(calcularContribuicao(datas));
+          setEmProcessamento(pendentes);
+        },
+      );
       return () => {
         ativo = false;
       };
@@ -105,11 +113,20 @@ export function ConquistasTela({ navigation }: Props) {
 
       <View style={estilos.resumo}>
         <Texto cor="suave" tamanho="sm">
-          {dados.totalCupons === 1 ? '1 cupom escaneado' : `${dados.totalCupons} cupons escaneados`}
+          {dados.totalCupons === 1
+            ? '1 cupom processado'
+            : `${dados.totalCupons} cupons processados`}
           {dados.sequenciaSemanas > 0
             ? ` · ${dados.sequenciaSemanas} ${dados.sequenciaSemanas === 1 ? 'semana seguida' : 'semanas seguidas'}`
             : ''}
         </Texto>
+        {emProcessamento > 0 ? (
+          <Texto cor="fraco" tamanho="xs" style={estilos.pendentes}>
+            {emProcessamento === 1
+              ? '1 cupom ainda em processamento — conta quando terminar.'
+              : `${emProcessamento} cupons ainda em processamento — contam quando terminarem.`}
+          </Texto>
+        ) : null}
       </View>
 
       <View style={estilos.grade}>
@@ -123,7 +140,7 @@ export function ConquistasTela({ navigation }: Props) {
       </View>
 
       <Texto cor="fraco" tamanho="xs" centralizado style={estilos.nota}>
-        Cada cupom escaneado vira preço anônimo na base da sua região. As conquistas medem sua
+        Cada cupom processado vira preço anônimo na base da sua região. As conquistas medem sua
         contribuição — não valem dinheiro.
       </Texto>
     </Tela>
@@ -191,6 +208,7 @@ const estilos = StyleSheet.create({
   trilho: { height: 6, borderRadius: raio.pill, marginTop: espaco.md, overflow: 'hidden' },
   preenchido: { height: '100%', borderRadius: raio.pill },
   resumo: { marginTop: espaco.md, marginBottom: espaco.lg },
+  pendentes: { marginTop: espaco.xs },
   grade: { flexDirection: 'row', flexWrap: 'wrap', gap: espaco.md },
   badge: {
     // 2 colunas: metade da largura menos o gap.
