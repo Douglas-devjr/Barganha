@@ -11,7 +11,7 @@ Fase: **fim da ideação / início do desenvolvimento.** O escopo e as restriç�
 
 ## Como navegar este repositório
 - **`docs/`** — a fonte da verdade do produto e da arquitetura. Leia antes de codar.
-  - `00-visao-produto.md` · `01-arquitetura.md` · `02-modelo-de-dados.md` · `03-captura-nfce-sefaz.md` · `04-privacidade-lgpd.md` · `05-offline-sync.md` · `06-comparacao-estatistica.md` · `07-roadmap-mvp.md` · `08-equipe-agentes.md` · `09-padrao-commits.md` · `10-plano-de-desenvolvimento.md` · `11-catalogo-de-etapas.md` · `12-qualidade-performance-escala.md` · `13-lancamento-operacao.md` · `14-conformidade-play-store.md` · `15-beta-fechado.md` · `16-lancamento-aberto.md` · `17-fontes-catalogo.md` · `18-ofertas-e-monetizacao.md` · `politica-de-privacidade.md`
+  - `00-visao-produto.md` · `01-arquitetura.md` · `02-modelo-de-dados.md` · `03-captura-nfce-sefaz.md` · `04-privacidade-lgpd.md` · `05-offline-sync.md` · `06-comparacao-estatistica.md` · `07-roadmap-mvp.md` · `08-equipe-agentes.md` · `09-padrao-commits.md` · `10-plano-de-desenvolvimento.md` · `11-catalogo-de-etapas.md` · `12-qualidade-performance-escala.md` · `13-lancamento-operacao.md` · `14-conformidade-play-store.md` · `15-beta-fechado.md` · `16-lancamento-aberto.md` · `17-fontes-catalogo.md` · `18-ofertas-e-monetizacao.md` · `19-ambientes-e-endurecimento.md` · `20-cold-start-e-catalogo-regional.md` · `politica-de-privacidade.md`
 - **`site/`** — páginas legais estáticas (política de privacidade + exclusão de conta) publicadas via GitHub Pages (ver `site/README.md`).
 
 ## Códigos de etapa (como o dono pede implementações)

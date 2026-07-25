@@ -17,6 +17,7 @@
  */
 
 import type { DeltaSyncRequest, DeltaSyncResponse } from '@barganha/shared';
+import { podeExporEstatistica } from '@barganha/shared';
 
 import type { CursorDelta } from './tipos';
 import type { FonteDeltaSync } from './tipos';
@@ -74,7 +75,14 @@ export class ServicoSync {
       : (req.cursor ?? '');
 
     return {
-      estatisticas: linhas.map((l) => l.estatistica),
+      // Supressão de célula pequena (docs/04): linha de escopo LOJA abaixo do
+      // piso não desce para o cache do aparelho. Filtrar DEPOIS do cursor é
+      // essencial — derivar a posição da página já filtrada rebobinaria o
+      // cursor para antes das linhas suprimidas e o sync repetiria a mesma
+      // página para sempre. `temMais` também segue a página crua.
+      estatisticas: linhas
+        .map((l) => l.estatistica)
+        .filter((e) => podeExporEstatistica(e.escopo, e.nObservacoes)),
       cursor,
       // Página cheia = provavelmente há mais. Um falso positivo custa uma
       // chamada vazia; um falso negativo custaria dado faltando no cache.

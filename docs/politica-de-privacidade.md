@@ -1,6 +1,6 @@
 # Política de Privacidade — Barganha
 
-**Última atualização:** 29/06/2026 · **Versão:** 1.1
+**Última atualização:** 24/07/2026 · **Versão:** 1.2
 
 O **Barganha** ajuda você a saber, na gôndola, se um preço está bom — comparando preços de mercado por unidade (R$/kg, R$/L, R$/un) a partir de uma base **colaborativa e anônima**. Privacidade não é promessa: é como o app foi **construído**. Esta política explica, em linguagem direta, o que coletamos, o que **nunca** coletamos e quais são os seus direitos.
 
@@ -19,6 +19,8 @@ O Barganha separa estritamente dois conjuntos de dados, e eles **nunca se cruzam
 | O que é | as notas que você escaneou | observações de preço soltas |
 | Identifica você? | sim (fica no escopo da sua conta) | **não** — sem usuário, sem nota, sem chave |
 | Para que serve | mostrar suas compras e sua economia | calcular a faixa típica de preço da região |
+
+Seu histórico fica guardado **na sua conta**. Se você **sair** (logout), ele é limpo deste aparelho, mas **volta quando você entrar de novo** — aqui ou em outro aparelho. Só **Excluir conta** apaga o histórico de vez (ver seção 9).
 
 ## 3. O que coletamos
 - **Email e senha de login** (ou sua **conta Google**, se você escolher entrar com o Google). É o **mínimo** para criar e proteger sua conta. A senha é guardada **criptografada**; nunca a vemos em texto puro. Esse dado serve **só para autenticar** — nunca entra na base de preços.
@@ -54,6 +56,8 @@ Não vendemos seus dados. A base de preços é **coletiva e anônima** por const
 
 ## 9. Retenção e apagamento
 - Seu **email de login** e seu **histórico privado** ficam enquanto sua conta existir.
+- **Sair (logout) não apaga nada** no servidor: limpa só este aparelho e seu histórico **volta no próximo login**. Para apagar de vez, use **Excluir conta**.
+- **Inatividade:** se você não entrar na sua conta por **24 meses**, ela e o histórico podem ser **apagados**. Avisamos por email antes.
 - A **base de preços anônima** é mantida para a comparação funcionar; como ela já não identifica ninguém, não há dado pessoal a remover nela.
 - **Apagar sua conta** (no Perfil) remove sua conta de login **e** todo o seu histórico — no aparelho e no servidor. Como os dois mundos são separados, isso não quebra a base coletiva de preços.
 
@@ -63,8 +67,8 @@ Você pode, a qualquer momento, solicitar: **confirmação** de tratamento, **ac
 ## 11. Segurança
 Adotamos medidas técnicas para proteger os dados, incluindo a separação arquitetural entre o lado privado e o lado anônimo, descarte de identificadores no processamento e limites contra abuso.
 
-## 12. Crianças e adolescentes
-O Barganha não é direcionado a menores de idade e não coleta intencionalmente seus dados.
+## 12. Idade mínima, crianças e adolescentes
+O Barganha é destinado a **maiores de 18 anos**. Não é direcionado a crianças ou adolescentes e não coleta intencionalmente seus dados. Mantemos um histórico de compras que é durável e reconstituível na sua conta — por isso o uso é restrito a adultos.
 
 ## 13. Alterações desta política
 Podemos atualizar este texto. Mudanças relevantes serão comunicadas no app, com nova data de "última atualização".

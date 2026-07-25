@@ -11,6 +11,8 @@
  */
 
 import type {
+  BuscaProdutosRequest,
+  BuscaProdutosResponse,
   ComparacaoListaRequest,
   ComparacaoListaResponse,
   ConsultaPrecoRequest,
@@ -20,6 +22,7 @@ import type {
   DeltaSyncResponse,
   DenunciaPrecoRequest,
   DenunciaPrecoResponse,
+  HistoricoCuponsResponse,
   IngestaoHtmlRequest,
   IngestaoQrRequest,
   IngestaoQrResponse,
@@ -122,6 +125,51 @@ export class ClienteApi {
   }
 
   /**
+   * `GET /ingestao/cupons` — PRIVADO: página do histórico do próprio usuário para
+   * a rehidratação no login (restore, docs/04). Exige Bearer. O app itera as
+   * páginas pelo `proximoCursor` até esgotar; nunca toca o pool anônimo.
+   */
+  async listarHistorico(cursor?: string, limite?: number): Promise<HistoricoCuponsResponse> {
+    const token = await this.resolverToken();
+    if (!token) throw new ErroApi(401, 'Sem sessão para restaurar o histórico.');
+    const qs = new URLSearchParams();
+    if (cursor) qs.set('cursor', cursor);
+    if (limite != null) qs.set('limite', String(limite));
+    const sufixo = qs.toString() ? `?${qs.toString()}` : '';
+    return this.requisitar<HistoricoCuponsResponse>(
+      'GET',
+      `/ingestao/cupons${sufixo}`,
+      undefined,
+      token,
+    );
+  }
+
+  /**
+   * `DELETE /ingestao/cupom/:id` — PRIVADO: apaga o cupom do próprio usuário no
+   * servidor (direito ao apagamento, docs/04). `true` quando apagou; `false` em
+   * 404 (já não existe lá — o app pode seguir e limpar o espelho local).
+   *
+   * O pool anônimo não é afetado: as observações nascem soltas, sem ponteiro de
+   * volta ao cupom (decisão travada nº3). A UI diz isso ao usuário.
+   */
+  async apagarCupom(cupomIdServidor: string): Promise<boolean> {
+    const token = await this.resolverToken();
+    if (!token) throw new ErroApi(401, 'Sem sessão para apagar o cupom.');
+    try {
+      await this.requisitar<void>(
+        'DELETE',
+        `/ingestao/cupom/${encodeURIComponent(cupomIdServidor)}`,
+        undefined,
+        token,
+      );
+      return true;
+    } catch (e) {
+      if (e instanceof ErroApi && e.status === 404) return false;
+      throw e;
+    }
+  }
+
+  /**
    * `POST /consulta/preco` (C4.1) — ANÔNIMO. Resolve por EAN ou nome + recorte
    * geo. Retorna `null` em 404 (sem dados para o produto).
    */
@@ -132,6 +180,15 @@ export class ClienteApi {
       if (e instanceof ErroApi && e.status === 404) return null;
       throw e;
     }
+  }
+
+  /**
+   * `POST /consulta/produtos` (C4.4) — ANÔNIMO. Catálogo da região: busca por
+   * termo ou, sem termo, os produtos mais vistos por ali. É o que dá o que fazer
+   * a quem ainda não escaneou cupom nenhum (docs/20).
+   */
+  buscarProdutos(req: BuscaProdutosRequest): Promise<BuscaProdutosResponse> {
+    return this.requisitar<BuscaProdutosResponse>('POST', '/consulta/produtos', req);
   }
 
   /**

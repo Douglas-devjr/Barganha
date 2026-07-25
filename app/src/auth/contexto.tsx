@@ -23,11 +23,21 @@ import type { Session, User } from '@supabase/supabase-js';
 
 import { enviarPendentesAntesDeSair, redefinirAppLocal } from '@/nucleo/conta';
 
+import { obterUrlCallbackEmail } from './config';
 import { supabase } from './supabase';
 
-// Deep link de retorno do app (esquema `barganha`, app.json). Vale para o dev
-// build e o standalone; cadastre-o em Supabase → Auth → URL Configuration.
+// Deep link de retorno do app (esquema `barganha`, app.json). É o alvo FINAL do
+// retorno: o OAuth (Google) volta direto aqui via `openAuthSessionAsync`, e a
+// página-ponte dos e-mails salta para cá. Cadastre-o em Supabase → Auth → URL
+// Configuration.
 const REDIRECT = 'barganha://auth-callback';
+
+// Para onde os LINKS DE E-MAIL (confirmação de cadastro, reset de senha) apontam.
+// Precisa ser HTTPS: o navegador do celular recusa abrir o esquema custom vindo
+// do redirect automático do Supabase, então passamos por uma página-ponte que
+// repassa o `?code=` para `REDIRECT` com um toque (docs/19 §5). Cadastre esta URL
+// também nas Redirect URLs do Supabase.
+const REDIRECT_EMAIL = obterUrlCallbackEmail();
 
 export interface ResultadoAuth {
   /** Mensagem de erro pronta para a UI; ausente em sucesso. */
@@ -44,7 +54,14 @@ interface ValorAuth {
   /** `true` após abrir o link de "esqueci a senha" — o gate força a tela de nova senha. */
   recuperandoSenha: boolean;
   entrarComSenha(email: string, senha: string): Promise<ResultadoAuth>;
-  cadastrar(email: string, senha: string): Promise<ResultadoAuth>;
+  /**
+   * `nomeExibicao` é OPCIONAL e serve só para o app chamar a pessoa pelo nome.
+   * Sem ele, a saudação é neutra — nunca o pedaço do email, que produz
+   * "Olá, knowenter" e soa como sistema, não como produto.
+   */
+  cadastrar(email: string, senha: string, nomeExibicao?: string): Promise<ResultadoAuth>;
+  /** Grava/limpa o nome de exibição em `user_metadata` (editável no Perfil). */
+  definirNomeExibicao(nome: string): Promise<ResultadoAuth>;
   entrarComGoogle(): Promise<ResultadoAuth>;
   enviarResetSenha(email: string): Promise<ResultadoAuth>;
   atualizarSenha(novaSenha: string): Promise<ResultadoAuth>;
@@ -157,15 +174,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return error ? { erro: traduzErro(error.message) } : {};
       },
 
-      async cadastrar(email, senha) {
+      async cadastrar(email, senha, nomeExibicao) {
+        const nome = nomeExibicao?.trim();
         const { data, error } = await supabase.auth.signUp({
           email: email.trim(),
           password: senha,
-          options: { emailRedirectTo: REDIRECT },
+          options: {
+            emailRedirectTo: REDIRECT_EMAIL,
+            // Vai para `user_metadata` em `auth.users` — o mesmo lugar onde o
+            // Google já entrega o `full_name`. NÃO desce para `public.usuario` e
+            // jamais cruza para o pool: o mundo compartilhado continua sem
+            // qualquer campo de pessoa (decisão travada nº3, docs/04).
+            ...(nome ? { data: { nome } } : {}),
+          },
         });
         if (error) return { erro: traduzErro(error.message) };
         // Sem sessão de imediato → projeto exige confirmação de email.
         return { precisaConfirmarEmail: data.session == null };
+      },
+
+      async definirNomeExibicao(nome) {
+        const limpo = nome.trim();
+        const { error } = await supabase.auth.updateUser({
+          // String vazia (o usuário limpou o campo) grava `null`, e a UI volta a
+          // saudar sem nome — em vez de recair no pedaço do email.
+          data: { nome: limpo.length > 0 ? limpo : null },
+        });
+        return error ? { erro: traduzErro(error.message) } : {};
       },
 
       async entrarComGoogle() {
@@ -195,7 +230,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       async enviarResetSenha(email) {
         const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-          redirectTo: REDIRECT,
+          redirectTo: REDIRECT_EMAIL,
         });
         return error ? { erro: traduzErro(error.message) } : {};
       },

@@ -4,12 +4,9 @@
  * alerta dispara. A orquestração (SQLite/localização) fica em `alertas.ts`.
  */
 
-import { chaveMunicipio } from '@barganha/shared';
+import { chaveMunicipio, MIN_OBSERVACOES_CONFIAVEL } from '@barganha/shared';
 
 import type { CacheEstatistica } from '../dados/tipos';
-
-/** Mínimo de observações p/ o nível regional valer (espelha o veredito local). */
-const MIN_OBSERVACOES = 3;
 
 export interface AlertaDisparado {
   produtoCanonicoId: string;
@@ -34,7 +31,9 @@ export function escolherEstatisticaRegional(
 ): CacheEstatistica | null {
   if (!local?.uf) return null;
   const confiaveis = estatisticas.filter(
-    (e) => e.nObservacoes >= MIN_OBSERVACOES && (e.escopo === 'municipio' || e.escopo === 'uf'),
+    (e) =>
+      e.nObservacoes >= MIN_OBSERVACOES_CONFIAVEL &&
+      (e.escopo === 'municipio' || e.escopo === 'uf'),
   );
   const chaveMun = local.municipio ? chaveMunicipio(local.uf, local.municipio) : '';
   const doMunicipio = chaveMun

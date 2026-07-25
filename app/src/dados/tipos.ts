@@ -5,7 +5,7 @@
  * id de servidor, status de upload).
  */
 
-import type { StatusCupom, UnidadeBase, EscopoGeo } from '@barganha/shared';
+import type { StatusCupom, TipicoNaCompra, UnidadeBase, EscopoGeo } from '@barganha/shared';
 
 /** Cupom no dispositivo. `id` é local (gerarIdLocal); `cupomIdServidor` chega
  * após a ingestão. `qrPayload` é privado e nunca vai ao pool (docs/04). */
@@ -18,6 +18,8 @@ export interface CupomLocal {
   status: StatusCupom;
   lojaCnpj: string | null;
   lojaNome: string | null;
+  /** Município da LOJA (nunca do usuário) — recorte regional das comparações. */
+  lojaMunicipio: string | null;
   emitidoEm: string | null;
   uf: string | null;
   /** Desconto total do cupom (R$), quando o portal informa (C2.6). */
@@ -40,6 +42,38 @@ export interface ItemCupomLocal {
   valorUnitario: number;
   valorTotal: number;
   desconto: number | null;
+  /**
+   * Típico da região CONGELADO no processamento deste cupom (ver
+   * `TipicoNaCompra` em @barganha/shared). Vem pronto do backend; o app nunca
+   * recalcula — é o que mantém números do passado estáveis e offline.
+   *
+   * `null` quando o item não casou com produto canônico ou a região não tinha
+   * base na época. Hoje é o caso da maioria (pool raso) e é o correto: sem
+   * base, o app não afirma nada.
+   */
+  tipicoNaCompra: TipicoNaCompra | null;
+}
+
+/**
+ * Um cupom vindo do servidor para reidratar o espelho local no login (restore,
+ * docs/04). Espelha o DTO `HistoricoCupom` com os nomes locais; `qrPayload` volta
+ * porque o espelho local o exige (NOT NULL) e ele é a base do reprocessamento
+ * retroativo (decisão travada nº2). É dado do próprio dono — nunca toca o pool.
+ */
+export interface CupomRestaurado {
+  cupomIdServidor: string;
+  status: StatusCupom;
+  qrPayload: string;
+  chaveAcesso?: string | null;
+  capturadoEm: string;
+  emitidoEm?: string | null;
+  uf?: string | null;
+  lojaCnpj?: string | null;
+  lojaNome?: string | null;
+  lojaMunicipio?: string | null;
+  descontoTotal?: number | null;
+  valorPago?: number | null;
+  itens: Omit<ItemCupomLocal, 'id' | 'cupomLocalId'>[];
 }
 
 /** Linha do cache de `preco_estatistica` baixada via delta sync (docs/05). */

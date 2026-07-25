@@ -11,6 +11,7 @@ import { GuardaCuradoria } from './auth/curadoria';
 import { GerenciadorContaSupabase } from './auth/gerenciador-conta';
 import { VerificadorTokenCache, VerificadorTokenSupabase } from './auth/verificador-token';
 import type { ConfigBackend } from './config/env';
+import { ServicoBuscaProdutos } from './consulta/servico-busca-produtos';
 import { ServicoComparacaoLista } from './consulta/servico-comparacao-lista';
 import { ServicoConsulta } from './consulta/servico-consulta';
 import { ServicoCuradoria } from './curadoria/servico-curadoria';
@@ -49,6 +50,8 @@ export interface Backend {
   matcherTexto: MatcherTexto;
   /** API de consulta de preço com fallback geo (C4.1). */
   servicoConsulta: ServicoConsulta;
+  /** Busca no catálogo regional — o cold start de quem não tem cupom (C4.4). */
+  servicoBuscaProdutos: ServicoBuscaProdutos;
   /** Lista de compras comparada por loja (C12.1). */
   servicoComparacaoLista: ServicoComparacaoLista;
   /** Delta sync incremental do cache de estatística (C4.2). */
@@ -118,6 +121,10 @@ export function montarBackend(config: ConfigBackend): Backend {
       agendadorRecalculo.marcar(ids);
       return Promise.resolve();
     },
+    // Congela o típico da região em cada item ANTES de o cupom entrar no pool.
+    // Hoje quase nada casa (pool raso) e o snapshot fica vazio — a captura roda
+    // assim mesmo porque a mediana de hoje é irrecuperável amanhã.
+    fonteTipico: repo,
   });
   const fila = new FilaMemoria((t) => processador.processar(t.cupomId), {
     aoEsgotar: (tarefa, erro) => {
@@ -144,6 +151,9 @@ export function montarBackend(config: ConfigBackend): Backend {
   // contra o GoTrue; o `usuarioId` (= auth.users.id) só identifica o lado
   // PRIVADO — o pool segue anônimo (docs/04). Sem conta anônima em produção.
   const servicoConsulta = new ServicoConsulta(repo, repo);
+  // C4.4 — sem isto, conta nova (zero cupom) fica sem produto nenhum p/ montar
+  // lista ou comparar mercados (cold start, docs/20).
+  const servicoBuscaProdutos = new ServicoBuscaProdutos(repo, repo);
   const servicoComparacaoLista = new ServicoComparacaoLista(repo);
   const servicoSync = new ServicoSync(repo);
   // O cache evita uma ida ao GoTrue por request privado (o polling da tela da
@@ -171,6 +181,7 @@ export function montarBackend(config: ConfigBackend): Backend {
     agendadorRecalculo,
     matcherTexto,
     servicoConsulta,
+    servicoBuscaProdutos,
     servicoComparacaoLista,
     servicoSync,
     autenticacao,

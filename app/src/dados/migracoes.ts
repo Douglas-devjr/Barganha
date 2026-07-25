@@ -136,4 +136,41 @@ export const MIGRACOES: string[] = [
   CREATE INDEX notificacao_criado_idx ON notificacao (criado_em DESC);
   CREATE INDEX notificacao_nao_lida_idx ON notificacao (lida_em) WHERE lida_em IS NULL;
   `,
+  // v6 — "no carrinho" na lista de compras (handoff 3a). A caixa de seleção da
+  // aba Lista marca o que o usuário já pegou na gôndola; persiste porque a
+  // compra atravessa fechamentos do app (e o corredor tem sinal ruim).
+  //
+  // O preço da gôndola digitado ao lado NÃO fica aqui de propósito: é de uma ida
+  // ao mercado, envelhece em horas e viraria um "típico" falso na próxima visita.
+  `
+  ALTER TABLE lista_compras ADD COLUMN marcado INTEGER NOT NULL DEFAULT 0;
+  `,
+  // v7 — snapshot do TÍPICO da região no momento da compra, por item.
+  //
+  // Espelha as colunas novas de `item_cupom` no backend. Aqui é só espelho: o
+  // valor é calculado no servidor ANTES de o cupom entrar no pool (para a base
+  // ser o típico de antes da própria compra) e desce pronto pelo DTO.
+  //
+  // Cupons já sincronizados ficam com NULL para sempre — a mediana daquela
+  // semana não existe mais em lugar nenhum. É exatamente por isso que a coluna
+  // entra agora, antes da tela que vai consumi-la (docs/06 §"Economia real").
+  `
+  ALTER TABLE item_cupom_local ADD COLUMN tipico_mediana REAL;
+  ALTER TABLE item_cupom_local ADD COLUMN tipico_unidade_base TEXT;
+  ALTER TABLE item_cupom_local ADD COLUMN tipico_escopo TEXT;
+  ALTER TABLE item_cupom_local ADD COLUMN tipico_n_observacoes INTEGER;
+  `,
+  // v8 — município da LOJA no espelho do cupom. O backend já mandava o campo em
+  // `loja.municipio` (DTO de cupom e de histórico); o app o descartava.
+  //
+  // É o que permite a região derivada do histórico chegar ao nível de MUNICÍPIO
+  // — o principal da agregação (decisão travada nº4) — em vez de parar na UF,
+  // que é só o degrau mais amplo do fallback (docs/06). Continua sendo geo da
+  // LOJA, e o valor não sai deste aparelho.
+  //
+  // Cupons já espelhados ficam com NULL (o backfill vem no restore pós-login) e
+  // seguem resolvendo por UF, exatamente como antes desta coluna.
+  `
+  ALTER TABLE cupom_local ADD COLUMN loja_municipio TEXT;
+  `,
 ];

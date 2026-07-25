@@ -1,11 +1,12 @@
 /**
- * Redesign "3a" — card de economia do Início. No 2a era um hero em gradiente;
- * o 3a é um CARTÃO CHAPADO: eyebrow + número gigante (40/700/-2, tabular) +
- * legenda, e uma linha inferior de stats separada por divisória.
+ * Redesign "3a" — card do número grande do Início. No 2a era um hero em
+ * gradiente; o 3a é um CARTÃO CHAPADO: eyebrow + número gigante (40/700/-2,
+ * tabular) + legenda, e uma linha inferior de stats separada por divisória.
  *
- * O valor é o desconto honesto vindo dos próprios cupons (nunca estimativa),
- * então quando não há economia registrada o número é R$ 0,00 e a legenda
- * explica — não inventamos projeção.
+ * O componente é só a forma — quem o usa decide o número. Hoje o Início passa o
+ * desconto honesto vindo dos próprios cupons (nunca estimativa), então quando
+ * não há desconto registrado o número é R$ 0,00 e a legenda explica — não
+ * inventamos projeção.
  */
 
 import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';

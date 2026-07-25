@@ -90,6 +90,22 @@ describe('resolverFallback (C3.3)', () => {
     expect(resolverFallback([], LOCAL)).toBeUndefined();
   });
 
+  it('não serve LOJA abaixo do piso nem como "maior base" (docs/04)', () => {
+    // Sem a supressão, a loja com n=2 venceria o município com n=1 no passo 2 e
+    // o app exibiria uma mediana que é, na prática, a compra de uma pessoa.
+    const candidatos = [
+      estat('loja', '12345678000199', 2),
+      estat('municipio', 'RJ:RIO DE JANEIRO', 1),
+    ];
+    const r = resolverFallback(candidatos, LOCAL);
+    expect(r?.escopoResolvido).toBe('municipio');
+    expect(r?.baixaConfianca).toBe(true);
+  });
+
+  it('só há LOJA rasa → nada é servido (404), em vez de vazar a célula', () => {
+    expect(resolverFallback([estat('loja', '12345678000199', 2)], LOCAL)).toBeUndefined();
+  });
+
   it('com duas unidades-base no mesmo nível, escolhe a de maior base (n)', () => {
     const candidatos = [
       { ...estat('municipio', 'RJ:RIO DE JANEIRO', 3), unidadeBase: 'un' as const },

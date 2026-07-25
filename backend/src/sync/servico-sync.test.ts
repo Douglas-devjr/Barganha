@@ -85,6 +85,44 @@ describe('ServicoSync (C4.2)', () => {
     expect((await new ServicoSync(folgada, 10).delta({})).temMais).toBeUndefined();
   });
 
+  it('não desce LOJA abaixo do piso — e o cursor NÃO rebobina (docs/04)', async () => {
+    // Sem filtro de município (usuário sem região escolhida) o delta traria todo
+    // escopo, inclusive loja com n=1. A linha é suprimida, mas a posição keyset
+    // tem de continuar vindo da página CRUA: derivar o cursor do que sobrou
+    // faria o sync repetir a mesma página para sempre.
+    const fonte = new FonteStub([
+      { estatistica: estat({ atualizadoEm: '2026-06-21T00:00:00.000Z' }), seq: 1 },
+      {
+        estatistica: estat({
+          atualizadoEm: '2026-06-22T00:00:00.000Z',
+          escopo: 'loja',
+          escopoId: '12345678000199',
+          nObservacoes: 1,
+        }),
+        seq: 2,
+      },
+    ]);
+    const r = await new ServicoSync(fonte).delta({});
+
+    expect(r.estatisticas.map((e) => e.escopo)).toEqual(['municipio']);
+    expect(r.cursor).toBe('2026-06-22T00:00:00.000Z|2');
+  });
+
+  it('deixa passar a LOJA que já amadureceu (n no piso)', async () => {
+    const fonte = new FonteStub([
+      {
+        estatistica: estat({
+          atualizadoEm: '2026-06-21T00:00:00.000Z',
+          escopo: 'loja',
+          escopoId: '12345678000199',
+          nObservacoes: 3,
+        }),
+        seq: 1,
+      },
+    ]);
+    expect((await new ServicoSync(fonte).delta({})).estatisticas).toHaveLength(1);
+  });
+
   it('aceita o cursor ANTIGO (só ISO, sem seq) sem perder linhas', () => {
     // Cliente já instalado tem o formato v1 no SQLite. Retomar do começo
     // daquele instante (seq -1) reenvia algumas linhas — inofensivo, o cache

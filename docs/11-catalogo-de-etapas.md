@@ -80,6 +80,8 @@ Este documento dá um **nome e um código curto** a cada etapa do desenvolviment
 | C4.2 | Delta sync (cursor por `atualizado_em` + escopo) |
 | C4.3 | Autenticação mínima |
 | C4.3.1 | Endurecer o token de conta: hoje o `usuarioId` (UUID) É o Bearer (sem segredo) — quem obtém o id ingere no histórico alheio. Evoluir p/ token/segredo próprio ou Supabase Auth/JWT |
+| C4.4 | Busca de produtos no pool (`POST /consulta/produtos`) — anônima, por termo (casamento de texto) ou **populares da região**, com o mesmo fallback geo da consulta. Destrava o **cold start**: conta nova sem cupom já monta lista e compara (ver `docs/20-cold-start-e-catalogo-regional.md`) |
+| C4.5 | Delta de catálogo (`POST /sync/produtos`): desce `ProdutoResumo` (nome/marca/categoria) dos ids já em cache p/ o catálogo regional ficar navegável **offline** `[Pós]` |
 *Responsáveis:* backend-engineer, data-engineer, privacy-lgpd-specialist
 
 ### `C5` — Esqueleto *(Fundação Mobile)* `[MVP]`
@@ -108,15 +110,18 @@ Este documento dá um **nome e um código curto** a cada etapa do desenvolviment
 | C7.3 | Exibição híbrida + linha de promoção + “última atualização” |
 | C7.4 | Produtos (lista) |
 | C7.5 | Detalhe do produto (gráfico de evolução 6 meses) |
+| C7.6 | Catálogo regional no app (cold start): o sheet de adicionar item e o Comparar mercados mesclam histórico + busca no pool (C4.4); sem histórico, mostram os populares da região |
+| C7.7 | Escopo do delta sync inclui os ids da **lista de compras** — produto só listado, nunca comprado, hoje fica sem preço offline |
 *Responsáveis:* mobile-engineer, ux-designer, data-scientist
 
 ### `C8` — Histórico *(Histórico, Estatísticas & Perfil)*
 | Código | Sub-passo |
 |---|---|
-| C8.1 | Início: card de economia + últimas compras `[MVP]` |
+| C8.1 | Início: card de descontos + últimas compras `[MVP]` |
 | C8.2 | Perfil: dados mínimos, mercados favoritos, preferências `[MVP]` |
 | C8.3 | Estatísticas (gastos por mês/categoria/onde economiza) `[Pós]` |
 | C8.4 | Economia acumulada + tendência + alertas de preço `[Pós]` |
+| C8.4.1 | **Economia real** (pagou × típico) — a captura do snapshot por item já está feita; falta a UI, e o gatilho é **cobertura medida**, não data. Condições inegociáveis e fórmula em `docs/06 §Economia real` `[Pós]` |
 *Responsáveis:* mobile-engineer, ux-designer, product-manager
 
 ### `C9` — Qualidade *(QA, Privacidade & Performance)* `[MVP]` *(transversal)*

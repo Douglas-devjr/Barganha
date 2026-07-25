@@ -87,7 +87,7 @@ export function deResumoMensal(
     tipo: 'resumo_mes',
     chaveDedupe: `resumo:${mes}`,
     titulo: `Seu resumo de ${rotuloMes(mes)}`,
-    subtitulo: `Você economizou ${moeda(economia)} em promoções no mês.`,
+    subtitulo: `Você teve ${moeda(economia)} em descontos no mês.`,
     criadoEm: agora.toISOString(),
   };
 }

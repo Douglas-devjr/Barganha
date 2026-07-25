@@ -5,7 +5,7 @@
  */
 
 import type { UnidadeBase } from '../core';
-import type { PrecoEstatistica } from '../dominio/entidades';
+import type { PrecoEstatistica, TipicoNaCompra } from '../dominio/entidades';
 import type { EscopoGeo, MotivoDenuncia, StatusCupom, StatusModeracao } from '../dominio/enums';
 
 // ─────────────────────────── Ingestão (C2.1) ───────────────────────────
@@ -52,6 +52,12 @@ export interface ItemNotaResponse {
   valorUnitario: number;
   valorTotal: number;
   desconto?: number;
+  /**
+   * Típico da região congelado no processamento (ver `TipicoNaCompra`). Desce ao
+   * espelho local para a comparação pagou × típico ser 100% offline depois — o
+   * app não recalcula nem re-consulta o pool para números do passado.
+   */
+  tipicoNaCompra?: TipicoNaCompra;
 }
 
 /**
@@ -79,6 +85,58 @@ export interface CupomResponse {
   descontoTotal?: number;
   /** Valor efetivamente pago (R$) = soma dos itens − desconto total. */
   valorPago?: number;
+}
+
+// ──────── Rehidratação do histórico privado no login (restore, docs/04) ────────
+
+/**
+ * Página do histórico do PRÓPRIO usuário para a rehidratação servidor→local. Ao
+ * SAIR, o app limpa o espelho local do aparelho (higiene de dispositivo
+ * compartilhado), mas o histórico continua guardado na CONTA, no servidor. Ao
+ * ENTRAR de novo — aqui ou num aparelho novo/reinstalação — este endpoint
+ * PRIVADO (Bearer, escopo do dono) traz os cupons de volta para o app
+ * reconstruir o histórico. Nunca toca o pool anônimo (decisão travada nº3).
+ *
+ * `cursor` é OPACO (keyset por captura); ausente = primeira página. `limite` é o
+ * teto de cupons por página — o serviço aplica um máximo.
+ */
+export interface HistoricoCuponsRequest {
+  cursor?: string;
+  limite?: number;
+}
+
+/**
+ * Um cupom do histórico do próprio usuário. Espelha o `CupomResponse` (cabeçalho
+ * + itens) e acrescenta o que o espelho local precisa para ser FIEL: `qrPayload`
+ * (invariante NOT NULL local + base do reprocessamento retroativo, decisão
+ * travada nº2), `chaveAcesso` (idempotência local, docs/05) e `capturadoEm`
+ * (data do histórico — base da sequência de semanas e dos selos). Tudo isto é
+ * dado do DONO, trafega só no canal autenticado dele e nunca cruza para o pool.
+ */
+export interface HistoricoCupom {
+  cupomId: string;
+  status: StatusCupom;
+  qrPayload: string;
+  chaveAcesso?: string;
+  capturadoEm: string;
+  emitidoEm?: string;
+  uf?: string;
+  loja?: {
+    cnpj: string;
+    razaoSocial?: string;
+    nomeFantasia?: string;
+    municipio?: string;
+    uf?: string;
+  };
+  itens: ItemNotaResponse[];
+  descontoTotal?: number;
+  valorPago?: number;
+}
+
+export interface HistoricoCuponsResponse {
+  cupons: HistoricoCupom[];
+  /** Cursor da próxima página (opaco). Ausente = fim do histórico. */
+  proximoCursor?: string;
 }
 
 // ───────────────────────────── Conta (C4.3) ─────────────────────────────
@@ -166,6 +224,40 @@ export interface LojaComparacao {
 export interface ComparacaoListaResponse {
   itensTotal: number;
   lojas: LojaComparacao[];
+}
+
+// ─────────────── Busca de produtos no pool — catálogo regional (C4.4) ────────
+
+/**
+ * Busca no catálogo COMPARTILHADO, no recorte geográfico do usuário. Existe para
+ * resolver o cold start (docs/20): quem ainda não escaneou cupom nenhum não tem
+ * catálogo local, e sem isto não consegue montar lista nem comparar mercados.
+ *
+ * Anônima como as demais consultas — não recebe conta e não toca o mundo privado.
+ * Sem `termo`, devolve os **populares da região** (mais observados); com `termo`,
+ * ranqueia por similaridade de texto. Ordenação NUNCA é influenciada por
+ * patrocínio (decisão travada nº8).
+ */
+export interface BuscaProdutosRequest {
+  /** Texto digitado. Ausente/vazio = populares da região. */
+  termo?: string;
+  municipio?: string;
+  uf?: string;
+  /** Quantos produtos devolver. O servidor tem teto próprio. */
+  limite?: number;
+}
+
+/** Um produto do catálogo regional, já com a faixa típica do recorte resolvido. */
+export interface ProdutoEncontrado {
+  produto: ProdutoResumo;
+  /** Nível de fato usado (município → região → UF). A UI rotula com isto. */
+  escopoResolvido: EscopoGeo;
+  estatistica: PrecoEstatistica;
+}
+
+export interface BuscaProdutosResponse {
+  /** Vazia = a região ainda não tem preço para nada que case com o termo. */
+  produtos: ProdutoEncontrado[];
 }
 
 // ─────────────────── Enriquecimento de produto — curadoria (C11.5) ───────────

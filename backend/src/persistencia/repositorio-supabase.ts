@@ -20,14 +20,18 @@ import {
   type PrecoEstatistica,
   type ProdutoResumo,
   type StatusModeracao,
+  type TipicoNaCompra,
   type TotaisNota,
 } from '@barganha/shared';
 import type { PostgrestError, SupabaseClient } from '@supabase/supabase-js';
 
+import type { ItemCupomNovo } from '../anonimizacao/anonimizador';
 import type { CatalogoProdutos, SugestaoProduto } from '../anonimizacao/casamento';
 import type { RepositorioUsuario } from '../auth/tipos';
 import type {
   EstatisticaLojaLinha,
+  FiltroBuscaProdutos,
+  FonteBuscaProdutos,
   FonteComparacaoLojas,
   FonteProdutoConsulta,
 } from '../consulta/tipos';
@@ -62,7 +66,9 @@ import type {
 import type { FiltroDeltaSync, FonteDeltaSync, LinhaDelta } from '../sync/tipos';
 import type {
   CupomComItens,
+  CupomHistorico,
   CupomRegistro,
+  CursorHistorico,
   DadosIngestao,
   DadosNotaProcessada,
   FiltroReprocessamento,
@@ -108,6 +114,70 @@ interface RespostaPagina<T> {
   error: PostgrestError | null;
 }
 
+/**
+ * Uma linha de `preco_estatistica` na forma do domínio. Os numéricos do Postgres
+ * chegam como string no PostgREST — daí o `num` em cada faixa.
+ */
+function paraEstatistica(e: Record<string, unknown>): PrecoEstatistica {
+  return {
+    produtoCanonicoId: e.produto_canonico_id as string,
+    escopo: e.escopo as PrecoEstatistica['escopo'],
+    escopoId: e.escopo_id as string,
+    unidadeBase: e.unidade_base as PrecoEstatistica['unidadeBase'],
+    mediana: num(e.mediana),
+    p25: num(e.p25),
+    p75: num(e.p75),
+    minimo: num(e.minimo),
+    maximo: num(e.maximo),
+    menorPromocional: num(e.menor_promocional),
+    nObservacoes: Number(e.n_observacoes),
+    atualizadoEm: e.atualizado_em as string,
+  };
+}
+
+/**
+ * Uma linha de `item_cupom` na forma do domínio (lado PRIVADO). Os numéricos do
+ * Postgres chegam como string no PostgREST — daí o `num`.
+ *
+ * O `tipicoNaCompra` só é montado com os QUATRO campos presentes: mediana sem
+ * escopo/`n` não é auditável, e meia-informação aqui viraria número exibido sem
+ * lastro. Ausência é a resposta honesta.
+ */
+function paraItemPrivado(i: Record<string, unknown>): ItemCupomNovo {
+  const mediana = num(i.tipico_mediana);
+  const unidadeBase = i.tipico_unidade_base as TipicoNaCompra['unidadeBase'] | null;
+  const escopo = i.tipico_escopo as TipicoNaCompra['escopo'] | null;
+  const nObservacoes = num(i.tipico_n_observacoes);
+  const tipicoNaCompra: TipicoNaCompra | undefined =
+    mediana != null && unidadeBase != null && escopo != null && nObservacoes != null
+      ? { mediana, unidadeBase, escopo, nObservacoes }
+      : undefined;
+
+  return {
+    ...(i.produto_canonico_id ? { produtoCanonicoId: i.produto_canonico_id as string } : {}),
+    descricaoOriginal: i.descricao_original as string,
+    ...(i.ean ? { ean: i.ean as string } : {}),
+    quantidade: Number(i.quantidade),
+    unidade: i.unidade as string,
+    valorUnitario: Number(i.valor_unitario),
+    valorTotal: Number(i.valor_total),
+    ...(i.desconto != null ? { desconto: Number(i.desconto) } : {}),
+    ...(tipicoNaCompra ? { tipicoNaCompra } : {}),
+  };
+}
+
+/** Uma linha de `produto_canonico` no resumo de exibição da UI (C11.5). */
+function paraResumoProduto(p: Record<string, unknown>): ProdutoResumo {
+  return {
+    produtoCanonicoId: p.id as string,
+    ...(p.nome_exibicao ? { nomeExibicao: p.nome_exibicao as string } : {}),
+    ...(p.marca ? { marca: p.marca as string } : {}),
+    ...(p.categoria ? { categoria: p.categoria as string } : {}),
+    ...(p.imagem_url ? { imagemUrl: p.imagem_url as string } : {}),
+    unidadeBase: p.unidade_base as ProdutoResumo['unidadeBase'],
+  };
+}
+
 /** Projeção crua de `observacao_preco` usada pela agregação. */
 interface LinhaObservacaoBruta {
   produto_canonico_id: string;
@@ -149,6 +219,7 @@ export class RepositorioSupabase
     RepositorioUsuario,
     CatalogoProdutos,
     FonteProdutoConsulta,
+    FonteBuscaProdutos,
     FonteComparacaoLojas,
     FonteObservacoes,
     RepositorioEstatistica,
@@ -249,7 +320,7 @@ export class RepositorioSupabase
     const itensR = await this.db
       .from('item_cupom')
       .select(
-        'produto_canonico_id, descricao_original, ean, quantidade, unidade, valor_unitario, valor_total, desconto',
+        'produto_canonico_id, descricao_original, ean, quantidade, unidade, valor_unitario, valor_total, desconto, tipico_mediana, tipico_unidade_base, tipico_escopo, tipico_n_observacoes',
       )
       .eq('cupom_id', cupomId);
     if (itensR.error) falhar('carga de itens do cupom', itensR.error);
@@ -281,17 +352,101 @@ export class RepositorioSupabase
       ...(loja ? { loja } : {}),
       ...(c.data.desconto_total != null ? { descontoTotal: Number(c.data.desconto_total) } : {}),
       ...(c.data.valor_pago != null ? { valorPago: Number(c.data.valor_pago) } : {}),
-      itens: (itensR.data ?? []).map((i) => ({
-        ...(i.produto_canonico_id ? { produtoCanonicoId: i.produto_canonico_id } : {}),
-        descricaoOriginal: i.descricao_original,
-        ...(i.ean ? { ean: i.ean } : {}),
-        quantidade: Number(i.quantidade),
-        unidade: i.unidade,
-        valorUnitario: Number(i.valor_unitario),
-        valorTotal: Number(i.valor_total),
-        ...(i.desconto != null ? { desconto: Number(i.desconto) } : {}),
-      })),
+      itens: (itensR.data ?? []).map((i) => paraItemPrivado(i)),
     };
+  }
+
+  async listarHistoricoDoUsuario(
+    usuarioId: string,
+    opcoes: { limite: number; apos?: CursorHistorico },
+  ): Promise<CupomHistorico[]> {
+    // Gate de acesso na própria consulta (`usuario_id`). Keyset (capturado_em,
+    // id) para a página ser estável mesmo com capturas no mesmo instante.
+    let q = this.db
+      .from('cupom')
+      .select(
+        'id, status, qr_payload, chave_acesso, capturado_em, emitido_em, uf, loja_cnpj, desconto_total, valor_pago',
+      )
+      .eq('usuario_id', usuarioId);
+    if (opcoes.apos) {
+      // Timestamp entre aspas (mesmo cuidado do delta): o valor é interpolado
+      // numa expressão PostgREST. O id é UUID (sem caractere de sintaxe).
+      const ts = `"${opcoes.apos.capturadoEm.replace(/"/g, '')}"`;
+      q = q.or(`capturado_em.gt.${ts},and(capturado_em.eq.${ts},id.gt.${opcoes.apos.cupomId})`);
+    }
+    const c = await q
+      .order('capturado_em', { ascending: true })
+      .order('id', { ascending: true })
+      .limit(opcoes.limite);
+    if (c.error) falhar('listagem do histórico do usuário (restore)', c.error);
+    const cupons = c.data ?? [];
+    if (cupons.length === 0) return [];
+
+    // Itens e lojas em LOTE (uma consulta cada), não N+1 por cupom.
+    const ids = cupons.map((x) => x.id as string);
+    const itensR = await this.db
+      .from('item_cupom')
+      .select(
+        'cupom_id, produto_canonico_id, descricao_original, ean, quantidade, unidade, valor_unitario, valor_total, desconto, tipico_mediana, tipico_unidade_base, tipico_escopo, tipico_n_observacoes',
+      )
+      .in('cupom_id', ids);
+    if (itensR.error) falhar('carga de itens do histórico (restore)', itensR.error);
+    const itensPorCupom = new Map<string, CupomComItens['itens']>();
+    for (const i of itensR.data ?? []) {
+      const lista = itensPorCupom.get(i.cupom_id as string) ?? [];
+      lista.push(paraItemPrivado(i));
+      itensPorCupom.set(i.cupom_id as string, lista);
+    }
+
+    const cnpjs = [...new Set(cupons.map((x) => x.loja_cnpj as string | null).filter(Boolean))];
+    const lojas = new Map<string, CupomComItens['loja']>();
+    if (cnpjs.length > 0) {
+      const lr = await this.db
+        .from('loja')
+        .select('cnpj, razao_social, nome_fantasia, municipio, uf')
+        .in('cnpj', cnpjs as string[]);
+      if (lr.error) falhar('carga de lojas do histórico (restore)', lr.error);
+      for (const l of lr.data ?? []) {
+        lojas.set(l.cnpj as string, {
+          cnpj: l.cnpj as string,
+          ...(l.razao_social ? { razaoSocial: l.razao_social as string } : {}),
+          ...(l.nome_fantasia ? { nomeFantasia: l.nome_fantasia as string } : {}),
+          ...(l.municipio ? { municipio: l.municipio as string } : {}),
+          ...(l.uf ? { uf: l.uf as string } : {}),
+        });
+      }
+    }
+
+    return cupons.map((x) => {
+      const loja = x.loja_cnpj ? lojas.get(x.loja_cnpj as string) : undefined;
+      return {
+        cupomId: x.id as string,
+        status: x.status,
+        qrPayload: x.qr_payload as string,
+        ...(x.chave_acesso ? { chaveAcesso: x.chave_acesso as string } : {}),
+        capturadoEm: x.capturado_em as string,
+        ...(x.emitido_em ? { emitidoEm: x.emitido_em as string } : {}),
+        ...(x.uf ? { uf: x.uf as string } : {}),
+        ...(loja ? { loja } : {}),
+        ...(x.desconto_total != null ? { descontoTotal: Number(x.desconto_total) } : {}),
+        ...(x.valor_pago != null ? { valorPago: Number(x.valor_pago) } : {}),
+        itens: itensPorCupom.get(x.id as string) ?? [],
+      };
+    });
+  }
+
+  async apagarDoUsuario(cupomId: string, usuarioId: string): Promise<boolean> {
+    // Gate de acesso na própria escrita: o `usuario_id` no WHERE garante que
+    // ninguém apaga cupom de terceiro, mesmo adivinhando o id. Os itens saem por
+    // `on delete cascade`; o pool não é tocado (ver a doc da porta em tipos.ts).
+    const r = await this.db
+      .from('cupom')
+      .delete()
+      .eq('id', cupomId)
+      .eq('usuario_id', usuarioId)
+      .select('id');
+    if (r.error) falhar('exclusão de cupom do usuário', r.error);
+    return (r.data?.length ?? 0) > 0;
   }
 
   async atualizarTotais(cupomId: string, total: TotaisNota): Promise<void> {
@@ -342,6 +497,13 @@ export class RepositorioSupabase
         valor_unitario: i.valorUnitario,
         valor_total: i.valorTotal,
         desconto: i.desconto ?? null,
+        // Snapshot do típico da região no processamento — os 4 campos andam
+        // juntos (mediana sem escopo/n não é auditável). Nulos quando o item
+        // não casou ou a região ainda não tinha base.
+        tipico_mediana: i.tipicoNaCompra?.mediana ?? null,
+        tipico_unidade_base: i.tipicoNaCompra?.unidadeBase ?? null,
+        tipico_escopo: i.tipicoNaCompra?.escopo ?? null,
+        tipico_n_observacoes: i.tipicoNaCompra?.nObservacoes ?? null,
       })),
       p_observacoes: observacoes.map((o) => ({
         produto_canonico_id: o.produtoCanonicoId,
@@ -465,14 +627,7 @@ export class RepositorioSupabase
       .maybeSingle();
     if (r.error) falhar('carga do resumo de produto', r.error);
     if (!r.data) return undefined;
-    return {
-      produtoCanonicoId: r.data.id,
-      ...(r.data.nome_exibicao ? { nomeExibicao: r.data.nome_exibicao } : {}),
-      ...(r.data.marca ? { marca: r.data.marca } : {}),
-      ...(r.data.categoria ? { categoria: r.data.categoria } : {}),
-      ...(r.data.imagem_url ? { imagemUrl: r.data.imagem_url } : {}),
-      unidadeBase: r.data.unidade_base,
-    };
+    return paraResumoProduto(r.data);
   }
 
   async candidatosPorNome(nome: string): Promise<CandidatoCanonico[]> {
@@ -491,6 +646,40 @@ export class RepositorioSupabase
       produtoCanonicoId: p.id,
       descricaoNormalizada: p.descricao_normalizada,
     }));
+  }
+
+  // ───────────────────────── FonteBuscaProdutos (C4.4) ────────────────
+
+  /**
+   * Linhas do recorte geo, das mais observadas para as menos. A ordenação vai no
+   * BANCO de propósito: é ela que faz o corte pelo `limite` significar "os mais
+   * observados da região" (o ranking de populares) em vez de "os que o Postgres
+   * devolveu primeiro". O nível `loja` não entra porque os `escopoIds` recebidos
+   * são só município/UF — quem deriva é o serviço.
+   */
+  async estatisticasNoEscopo(filtro: FiltroBuscaProdutos): Promise<PrecoEstatistica[]> {
+    if (filtro.escopoIds.length === 0) return [];
+    let consulta = this.db
+      .from('preco_estatistica')
+      .select('*')
+      .in('escopo_id', [...filtro.escopoIds]);
+    if (filtro.produtoCanonicoIds) {
+      if (filtro.produtoCanonicoIds.length === 0) return [];
+      consulta = consulta.in('produto_canonico_id', [...filtro.produtoCanonicoIds]);
+    }
+    const r = await consulta.order('n_observacoes', { ascending: false }).limit(filtro.limite);
+    if (r.error) falhar('busca de produtos no escopo (C4.4)', r.error);
+    return (r.data ?? []).map(paraEstatistica);
+  }
+
+  async resumosProdutos(produtoCanonicoIds: readonly string[]): Promise<ProdutoResumo[]> {
+    if (produtoCanonicoIds.length === 0) return [];
+    const r = await this.db
+      .from('produto_canonico')
+      .select('id, nome_exibicao, marca, categoria, imagem_url, unidade_base')
+      .in('id', [...produtoCanonicoIds]);
+    if (r.error) falhar('carga de resumos de produto (C4.4)', r.error);
+    return (r.data ?? []).map(paraResumoProduto);
   }
 
   // ───────────────────────── FonteObservacoes (C3) ────────────────────
@@ -611,20 +800,7 @@ export class RepositorioSupabase
       .eq('produto_canonico_id', produtoCanonicoId)
       .in('escopo_id', escopoIds);
     if (r.error) falhar('consulta de candidatos para fallback', r.error);
-    return (r.data ?? []).map((e) => ({
-      produtoCanonicoId: e.produto_canonico_id,
-      escopo: e.escopo,
-      escopoId: e.escopo_id,
-      unidadeBase: e.unidade_base,
-      mediana: num(e.mediana),
-      p25: num(e.p25),
-      p75: num(e.p75),
-      minimo: num(e.minimo),
-      maximo: num(e.maximo),
-      menorPromocional: num(e.menor_promocional),
-      nObservacoes: Number(e.n_observacoes),
-      atualizadoEm: e.atualizado_em,
-    }));
+    return (r.data ?? []).map(paraEstatistica);
   }
 
   // ───────────────────────── FonteComparacaoLojas (C12.1) ─────────────
@@ -699,20 +875,7 @@ export class RepositorioSupabase
     if (r.error) falhar('leitura do delta de estatísticas', r.error);
     return (r.data ?? []).map((e) => ({
       seq: Number(e.seq),
-      estatistica: {
-        produtoCanonicoId: e.produto_canonico_id,
-        escopo: e.escopo,
-        escopoId: e.escopo_id,
-        unidadeBase: e.unidade_base,
-        mediana: num(e.mediana),
-        p25: num(e.p25),
-        p75: num(e.p75),
-        minimo: num(e.minimo),
-        maximo: num(e.maximo),
-        menorPromocional: num(e.menor_promocional),
-        nObservacoes: Number(e.n_observacoes),
-        atualizadoEm: e.atualizado_em,
-      },
+      estatistica: paraEstatistica(e),
     }));
   }
 

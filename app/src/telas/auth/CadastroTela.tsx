@@ -25,6 +25,7 @@ const MIN_SENHA = 6;
 
 export function CadastroTela({ navigation }: Props) {
   const { cadastrar } = useAuth();
+  const [nome, setNome] = useState('');
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
   const [confirmar, setConfirmar] = useState('');
@@ -40,7 +41,7 @@ export function CadastroTela({ navigation }: Props) {
 
     setErro(undefined);
     setCarregando(true);
-    const r = await cadastrar(email, senha);
+    const r = await cadastrar(email, senha, nome);
     setCarregando(false);
     if (r.erro) return setErro(r.erro);
     if (r.precisaConfirmarEmail) setEnviado(true);
@@ -67,6 +68,21 @@ export function CadastroTela({ navigation }: Props) {
       />
 
       <View style={estilos.form}>
+        {/*
+          Opcional de propósito: pedir o nome como obrigatório seria coletar dado
+          pessoal sem necessidade (minimização, docs/04). Ele existe só para o app
+          conseguir cumprimentar a pessoa — sem ele a saudação é neutra.
+        */}
+        <CampoTexto
+          rotulo="Como quer ser chamado? (opcional)"
+          value={nome}
+          onChangeText={setNome}
+          placeholder="Seu primeiro nome"
+          autoCapitalize="words"
+          autoComplete="given-name"
+          textContentType="givenName"
+          editable={!carregando}
+        />
         <CampoTexto
           rotulo="Email"
           value={email}

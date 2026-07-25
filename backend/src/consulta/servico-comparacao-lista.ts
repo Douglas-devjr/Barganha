@@ -14,6 +14,9 @@
  *    cobertura → menor total.
  *  • Filtro geográfico pela LOJA (chave normalizada de município, docs/06);
  *    sem município → UF; sem geo → todas (útil em dev/beta).
+ *  • Piso de exposição por célula (loja × produto): abaixo de
+ *    `MIN_OBSERVACOES_EXPOR_LOJA` o item não entra na cesta daquela loja
+ *    (docs/04). Loja que fica sem nenhum item coberto some do ranking.
  */
 
 import type {
@@ -22,7 +25,7 @@ import type {
   ItemComparacaoLoja,
   LojaComparacao,
 } from '@barganha/shared';
-import { chaveMunicipio } from '@barganha/shared';
+import { chaveMunicipio, podeExporLoja } from '@barganha/shared';
 
 import type { EstatisticaLojaLinha, FonteComparacaoLojas } from './tipos';
 
@@ -50,6 +53,10 @@ export class ServicoComparacaoLista {
     const porLoja = new Map<string, Map<string, EstatisticaLojaLinha>>();
     for (const linha of noRecorte) {
       if (linha.mediana == null) continue;
+      // Supressão de célula pequena (docs/04): aqui TUDO é escopo loja, então o
+      // piso vale para cada célula (loja × produto). Com n=1 o preço exibido
+      // seria literalmente a compra de uma pessoa naquela loja.
+      if (!podeExporLoja(linha.nObservacoes)) continue;
       const itens = porLoja.get(linha.lojaCnpj) ?? new Map<string, EstatisticaLojaLinha>();
       const atual = itens.get(linha.produtoCanonicoId);
       if (!atual || linha.nObservacoes > atual.nObservacoes) {

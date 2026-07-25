@@ -33,6 +33,11 @@ export interface DialogoProps {
    * excluir); o alerta genérico é só o padrão de quem não informa.
    */
   icone?: ReactNode;
+  /**
+   * Conteúdo extra entre a mensagem e as ações — para quando a confirmação
+   * precisa de uma entrada (ex.: editar o nome de exibição).
+   */
+  children?: ReactNode;
 }
 
 export function Dialogo({
@@ -46,6 +51,7 @@ export function Dialogo({
   destrutivo = true,
   ocupado = false,
   icone,
+  children,
 }: DialogoProps) {
   const { c } = useTema();
   const duracao = useDuracao(DURACAO.dialogo);
@@ -97,6 +103,8 @@ export function Dialogo({
             {mensagem}
           </Texto>
 
+          {children ? <View style={estilos.extra}>{children}</View> : null}
+
           <View style={estilos.acoes}>
             <Botao
               titulo={rotuloCancelar}
@@ -143,6 +151,7 @@ const estilos = StyleSheet.create({
     justifyContent: 'center',
   },
   mensagem: { marginTop: espaco.xs, lineHeight: 19 },
+  extra: { alignSelf: 'stretch', marginTop: espaco.md },
   acoes: { flexDirection: 'row', gap: espaco.md, marginTop: espaco.xl, alignSelf: 'stretch' },
   acao: { flex: 1 },
   destrutivo: {

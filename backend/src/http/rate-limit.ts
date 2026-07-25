@@ -70,13 +70,19 @@ export interface OpcoesGuarda {
   mensagem?: string;
 }
 
+/** Hook `onRequest` pronto para uso — o que `guardaDeTaxa` devolve. */
+export type GuardaTaxa = (req: FastifyRequest, reply: FastifyReply) => Promise<void>;
+
 /**
  * Hook `onRequest` do Fastify: barra com 429 quando a chave estoura o limite.
  * Roda ANTES do handler — não consome o serviço protegido. É `async` (sempre
  * devolve promessa) para o Fastify avançar o ciclo; ao enviar o 429 o reply é
  * marcado como respondido e o handler não roda.
  */
-export function guardaDeTaxa(limitador: LimitadorJanelaFixa, opcoes: OpcoesGuarda = {}) {
+export function guardaDeTaxa(
+  limitador: LimitadorJanelaFixa,
+  opcoes: OpcoesGuarda = {},
+): GuardaTaxa {
   const chaveDe = opcoes.chave ?? ((req: FastifyRequest) => req.ip);
   const mensagem = opcoes.mensagem ?? 'Muitas requisições. Tente novamente em instantes.';
   return async (req: FastifyRequest, reply: FastifyReply): Promise<void> => {

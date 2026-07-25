@@ -30,8 +30,9 @@ export async function sincronizarFeed(
   try {
     const eventos = [...disparos.map((d) => deAlerta(d, agora))];
 
-    // Selos: recalculados do histórico local; a chave por selo evita duplicar.
-    const datas = await cupons.listarDatasCapturas();
+    // Selos: recalculados do histórico local (só cupons processados); a chave
+    // por selo evita duplicar.
+    const datas = await cupons.listarDatasContribuicao();
     eventos.push(...deSelos(calcularContribuicao(datas, agora).selos, agora));
 
     // Resumo do mês ANTERIOR — só faz sentido quando o mês já fechou.

@@ -137,3 +137,101 @@ describe('ServicoIngestao.ingerirHtml (C2.6)', () => {
     await expect(servico.ingerirHtml('user-1', 'x', HTML_RJ)).rejects.toThrow(/processador/i);
   });
 });
+
+describe('ServicoIngestao.listarHistorico (restore no login, docs/04)', () => {
+  // cUF 31 = MG (sem parser): fica `qr_capturado`, útil como 2º cupom do histórico.
+  const QR_MG =
+    'https://nfce.fazenda.mg.gov.br/portalnfce?p=31260612345678000199650010000000011000000011|2|1';
+
+  /** Semeia dois cupons do mesmo dono: RJ processado (com itens) e MG capturado. */
+  async function semearDoisCupons(servico: ServicoIngestao) {
+    const rj = await servico.ingerir('user-1', {
+      qrPayload: QR_RJ,
+      capturadoEm: '2026-06-27T12:00:00.000Z',
+    });
+    await servico.ingerirHtml('user-1', rj.cupomId, HTML_RJ);
+    const mg = await servico.ingerir('user-1', {
+      qrPayload: QR_MG,
+      capturadoEm: '2026-06-28T12:00:00.000Z',
+    });
+    return { rjId: rj.cupomId, mgId: mg.cupomId };
+  }
+
+  it('devolve os cupons do dono com QR, chave, captura e itens; ordena por captura', async () => {
+    const repo = new RepositorioMemoria();
+    const servico = servicoComProcessador(repo);
+    const { rjId, mgId } = await semearDoisCupons(servico);
+
+    const pagina = await servico.listarHistorico('user-1', {});
+
+    expect(pagina.cupons.map((c) => c.cupomId)).toEqual([rjId, mgId]); // captura ASC
+    expect(pagina.proximoCursor).toBeUndefined();
+
+    const rj = pagina.cupons[0]!;
+    expect(rj.status).toBe('processado');
+    expect(rj.qrPayload).toBe(QR_RJ);
+    expect(rj.chaveAcesso).toBe('33260612345678000199650010000000011000000016');
+    expect(rj.capturadoEm).toBe('2026-06-27T12:00:00.000Z');
+    expect(rj.itens).toHaveLength(3);
+    expect(rj.loja?.cnpj).toBe('12345678000199');
+  });
+
+  it('não vaza histórico de outro dono', async () => {
+    const repo = new RepositorioMemoria();
+    const servico = servicoComProcessador(repo);
+    await semearDoisCupons(servico);
+    await servico.ingerir('outro-user', {
+      qrPayload: QR_MG,
+      capturadoEm: '2026-06-29T12:00:00.000Z',
+    });
+
+    const meu = await servico.listarHistorico('user-1', {});
+    expect(meu.cupons).toHaveLength(2);
+    expect(meu.cupons.every((c) => c.qrPayload !== undefined)).toBe(true);
+
+    const outro = await servico.listarHistorico('outro-user', {});
+    expect(outro.cupons).toHaveLength(1);
+  });
+
+  it('pagina pelo cursor opaco, sem repetir nem pular cupons', async () => {
+    const repo = new RepositorioMemoria();
+    const servico = servicoComProcessador(repo);
+    const { rjId, mgId } = await semearDoisCupons(servico);
+
+    const p1 = await servico.listarHistorico('user-1', { limite: 1 });
+    expect(p1.cupons.map((c) => c.cupomId)).toEqual([rjId]);
+    expect(p1.proximoCursor).toBeDefined();
+
+    const p2 = await servico.listarHistorico('user-1', { limite: 1, cursor: p1.proximoCursor });
+    expect(p2.cupons.map((c) => c.cupomId)).toEqual([mgId]);
+  });
+
+  it('limite acima do teto é limitado (não estoura a resposta)', async () => {
+    const repo = new RepositorioMemoria();
+    const servico = servicoComProcessador(repo);
+    await semearDoisCupons(servico);
+    // 9999 > MAX (100): não deve lançar; devolve o que há.
+    const pagina = await servico.listarHistorico('user-1', { limite: 9999 });
+    expect(pagina.cupons).toHaveLength(2);
+  });
+
+  it('cursor malformado é tratado como início, não como erro', async () => {
+    const repo = new RepositorioMemoria();
+    const servico = servicoComProcessador(repo);
+    await semearDoisCupons(servico);
+    const pagina = await servico.listarHistorico('user-1', { cursor: 'lixo!!!' });
+    expect(pagina.cupons).toHaveLength(2);
+  });
+
+  it('cupom apagado some do histórico (apagamento propagado, docs/04)', async () => {
+    const repo = new RepositorioMemoria();
+    const servico = servicoComProcessador(repo);
+    const { rjId } = await semearDoisCupons(servico);
+
+    expect(await servico.apagarCupom('user-1', rjId)).toBe(true);
+
+    const pagina = await servico.listarHistorico('user-1', {});
+    expect(pagina.cupons.map((c) => c.cupomId)).not.toContain(rjId);
+    expect(pagina.cupons).toHaveLength(1);
+  });
+});

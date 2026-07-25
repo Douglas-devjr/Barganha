@@ -23,7 +23,12 @@ import {
   HtmlErroPortalError,
   PayloadQrInvalidoError,
 } from '../erros';
-import type { Anonimizador } from '../anonimizacao/anonimizador';
+import type {
+  Anonimizador,
+  ItemCupomNovo,
+  ResultadoAnonimizacao,
+} from '../anonimizacao/anonimizador';
+import { comTipicoNaCompra, type FonteTipico } from '../estatistica/tipico-na-compra';
 import { logDeCupom } from '../observabilidade/log';
 import { sanitizarErro } from '../observabilidade/sanitizar';
 import type { Telemetria } from '../observabilidade/telemetria';
@@ -74,12 +79,19 @@ export interface OpcoesProcessador {
    * mediana/faixa nunca é construída.
    */
   aoPublicarPool?: (produtoCanonicoIds: string[]) => Promise<void>;
+  /**
+   * Fonte do típico regional para congelar em cada item (`TipicoNaCompra`).
+   * Omitida → os itens são gravados sem snapshot (dev/testes seguem iguais).
+   * Em produção o composition root liga no repositório de estatística.
+   */
+  fonteTipico?: FonteTipico;
 }
 
 export class ProcessadorCupom {
   private readonly rollout: Rollout;
   private readonly telemetria: Telemetria;
   private readonly aoPublicarPool?: (produtoCanonicoIds: string[]) => Promise<void>;
+  private readonly fonteTipico?: FonteTipico;
 
   constructor(
     private readonly repo: RepositorioCupom,
@@ -90,6 +102,7 @@ export class ProcessadorCupom {
     this.rollout = opcoes.rollout ?? ROLLOUT_TUDO;
     this.telemetria = opcoes.telemetria ?? telemetriaNula;
     this.aoPublicarPool = opcoes.aoPublicarPool;
+    this.fonteTipico = opcoes.fonteTipico;
   }
 
   async processar(cupomId: string): Promise<void> {
@@ -199,11 +212,18 @@ export class ProcessadorCupom {
       uf,
     );
 
+    // ORDEM IMPORTANTE: o típico é lido AQUI, antes de `marcarProcessado`. Neste
+    // ponto as observações deste cupom ainda não entraram no pool e o recálculo
+    // (`aoPublicarPool`, mais abaixo) ainda não rodou — a mediana congelada é a
+    // de ANTES da própria compra. Depois do `marcarProcessado` ela já teria o
+    // preço do usuário dentro, e ele estaria se comparando consigo mesmo.
+    const itensPrivados = await this.congelarTipico(cupom.id, uf, resultado);
+
     const { poolPublicado } = await this.repo.marcarProcessado(cupom.id, {
       loja: resultado.loja,
       emitidoEm: resultado.emitidoEm,
       uf,
-      itensPrivados: resultado.itensPrivados,
+      itensPrivados,
       observacoes: resultado.observacoes,
       // Totais do cupom (desconto/pago) persistem no CUPOM privado: o app os
       // recebe também pelo polling do caminho servidor, não só pelo HTML (C2.6).
@@ -244,6 +264,43 @@ export class ProcessadorCupom {
           'Pool publicado, mas o recálculo da estatística falhou',
         );
       }
+    }
+  }
+
+  /**
+   * Congela em cada item o típico da região (ver `comTipicoNaCompra`). É a única
+   * chance: a série histórica de `preco_estatistica` não é guardada, então esta
+   * mediana não existe mais amanhã.
+   *
+   * BEST-EFFORT, como o recálculo: o histórico do usuário e o pool valem mais
+   * que o snapshot. Se a leitura falhar, os itens são gravados sem ele e o cupom
+   * conclui normalmente — perder o baseline de um cupom é ruim, perder o cupom
+   * é pior.
+   */
+  private async congelarTipico(
+    cupomId: string,
+    uf: string,
+    resultado: ResultadoAnonimizacao,
+  ): Promise<ItemCupomNovo[]> {
+    if (!this.fonteTipico) return resultado.itensPrivados;
+    try {
+      return await comTipicoNaCompra(
+        resultado.itensPrivados,
+        {
+          lojaCnpj: resultado.loja.cnpj,
+          ...(resultado.loja.municipio ? { municipio: resultado.loja.municipio } : {}),
+          ...(resultado.loja.uf ? { uf: resultado.loja.uf } : {}),
+        },
+        this.fonteTipico,
+      );
+    } catch (erro) {
+      // Mesma regra de log do caminho do pool: nunca o `usuarioId`, nunca a
+      // lista de produtos (docs/04, decisão travada nº3).
+      logDeCupom(cupomId, uf).warn(
+        { action: 'tipico_na_compra.falhou', erro: sanitizarErro(erro) },
+        'Não foi possível congelar o típico dos itens — cupom segue normalmente',
+      );
+      return resultado.itensPrivados;
     }
   }
 

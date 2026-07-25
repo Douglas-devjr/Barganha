@@ -81,6 +81,27 @@ export async function limpar(): Promise<void> {
   await getBd().runAsync(`DELETE FROM cache_estatistica`);
 }
 
+/**
+ * Dos ids pedidos, os que NÃO têm nenhuma linha em cache (C7.7).
+ *
+ * Existe por causa do cursor do delta: ele avança sobre o que foi ENTREGUE, e um
+ * produto que entra no recorte depois (item novo na lista, vindo do catálogo
+ * regional) tem estatística mais ANTIGA que o cursor — o delta incremental nunca
+ * a traria. Estes ids precisam de uma busca sem cursor, do começo.
+ */
+export async function idsSemEstatistica(produtoCanonicoIds: readonly string[]): Promise<string[]> {
+  if (produtoCanonicoIds.length === 0) return [];
+  const marcadores = produtoCanonicoIds.map(() => '?').join(', ');
+  const linhas = await getBd().getAllAsync<{ produto_canonico_id: string }>(
+    `SELECT DISTINCT produto_canonico_id
+       FROM cache_estatistica
+      WHERE produto_canonico_id IN (${marcadores})`,
+    [...produtoCanonicoIds],
+  );
+  const comCache = new Set(linhas.map((l) => l.produto_canonico_id));
+  return produtoCanonicoIds.filter((id) => !comCache.has(id));
+}
+
 /** Todas as faixas em cache de um produto (vários escopos). Base do veredito (C7). */
 export async function listarEstatisticasDoProduto(
   produtoCanonicoId: string,

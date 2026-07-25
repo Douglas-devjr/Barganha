@@ -18,24 +18,44 @@ O protótipo é uma máquina de estados com uma variável `route`. Ordem natural
 
 | route | Tela | Entra a partir de |
 |---|---|---|
-| `onboarding` | Onboarding (3 slides) | abertura do app (primeira vez) |
+| `splash` | Splash de abertura | abertura do app (auto → onboarding em ~1.9s) |
+| `onboarding` | Onboarding (3 slides) | após o splash |
 | `login` | Login | fim do onboarding / "Pular" |
+| `criar` | Criar conta | Login → "Criar conta grátis" |
+| `bemvindo` | Boas-vindas pós-cadastro (configura alertas) | após criar conta |
 | `recuperar` | Recuperar senha | Login → "Esqueci a senha" |
-| `inicio` | Início (home) | após entrar |
+| `permcam` | Permissão de câmera (priming + negada) | após entrar / concluir boas-vindas |
+| `permloc` | Permissão de localização (priming + negada) | após permitir câmera |
+| `inicio` | Início (home) | após permissões |
 | `notificacoes` | Notificações | sino no header do Início / Perfil |
 | `conquistas` | Conquistas e prêmios | card no Início / Perfil |
+| `conquistadet` | Detalhe da conquista | tap num badge em Conquistas |
 | `verificar` | Verificar preço ⭐ | aba inferior |
 | `escanear` | Escanear cupom (câmera) | FAB central |
-| `processando` | Lendo cupom… (loading) | após "Simular leitura" |
+| `chave` | Digitar chave de acesso (NFC-e) | Escanear → "Digitar chave" |
+| `processando` | Lendo cupom… (loading) | após "Simular leitura" / validar chave |
+| `sucesso` | Cupom lido com sucesso | após leitura/validação OK |
 | `erro` | Erro de leitura | após "Simular cupom inválido" |
-| `produtos` | Produtos (lista) | aba inferior |
+| `produtos` | Produtos (lista) | atalho na Lista / fluxos internos |
 | `editar` | Editar produto | kebab → Editar |
 | `detalhe` | Detalhe do produto | item "Leite" em Produtos / Verificar |
-| `compra` | Detalhe da compra (cupom) | item de compra no Início |
+| `lista` | Lista de compras | **aba inferior** ("Lista") |
+| `mercados` | Comparar mercados (região) | card no Início / atalho |
+| `compras` | Histórico de compras ("Ver tudo") | Início → "Ver tudo" |
+| `compra` | Detalhe da compra (cupom) | item de compra no Início / histórico |
 | `dashboard` | Resumo de economia | card de economia no Início |
 | `perfil` | Perfil / ajustes | aba inferior / avatar |
+| `alertas` | Alertas de preço (configuração) | Perfil → Alertas de preço |
+| `conta` | Configurações da conta | Perfil → Configurações da conta |
+| `regiao` | Editar região (GPS + busca) | Perfil → card de região |
+| `ajuda` | Ajuda e suporte (FAQ) | Perfil → Ajuda e suporte |
+| `offline` | Sem conexão | erro de rede / demo em Perfil |
 
-Sobrepostos (não são `route`, são flags de estado): **bottom-sheets** (`sheet` = `acoes` \| `filtros` \| `denunciar`), **diálogo de confirmação** (`dialog` = `produto` \| `conta`) e **toast**.
+**Estados vazios (primeiro uso, "dia 1"):** a flag `primeiroUso` troca **Início, Produtos, Lista e Dashboard** por suas versões sem dados (mesma `route`, conteúdo vazio + CTA de escanear). Alternável em Perfil → Estados (demo).
+
+Sobrepostos (não são `route`, são flags de estado): **bottom-sheets** (`sheet` = `acoes` \| `filtros` \| `denunciar` \| `addItem`), **diálogo de confirmação** (`dialog` = `produto` \| `conta`) e **toast**.
+
+**Permissões:** `permcam`/`permloc` têm sub-estado de **negada** (`camNeg`/`locNeg`) — muda ícone, textos e ações (priming → "Permitir"; negada → "Abrir ajustes" / alternativa manual).
 
 ⭐ = tela-assinatura (o veredito de preço).
 
@@ -174,7 +194,64 @@ Sobrepostos (não são `route`, são flags de estado): **bottom-sheets** (`sheet
 - Header com voltar. Segmentado Maio/Junho/**Julho** (ativo `chip`). Card "VOCÊ ECONOMIZOU R$ 132,40" com **gráfico de barras** (fev→jul, jul em `ink`, meses anteriores em `line`/`faint`). Seção "Onde você mais economizou" com 3 barras de progresso (Laticínios 76% / Café 58% / Grãos 42%).
 
 ### Perfil (`perfil`)
-- Avatar "D" + nome/email. Card de região (Rio · Tijuca). Lista de ajustes: Conquistas (4/6), Notificações, **Alertas de preço** (switch), **Tema** (segmentado Claro/Escuro — controla o tema do app inteiro), Privacidade dos dados. Botão **Excluir conta** (texto `up`, → diálogo `conta`). Rodapé "BARGANHA V2.0.1 · BASE COLABORATIVA".
+- Avatar "D" + nome/email. Card de região (Rio · Tijuca → `regiao`). Lista de ajustes: Conquistas (4/6 → `conquistas`), Notificações (→ `notificacoes`), **Alertas de preço** (→ `alertas`, resumo "N ativos"), **Tema** (segmentado Claro/Escuro — controla o tema do app inteiro), **Configurações da conta** (→ `conta`), **Ajuda e suporte** (→ `ajuda`). Seção **Estados (demo)**: primeiro uso, rever permissões, sem conexão (atalhos só-protótipo). Rodapé "BARGANHA V2.0.1 · BASE COLABORATIVA".
+
+### Splash de abertura (`splash`)
+- Overlay `ink` full-screen com logo "B" (quadrado `bg`, animação `popIn`) + wordmark `bg` + tagline. Auto-avança para `onboarding` em ~1.9s (ou ao tocar). No app: tela nativa de splash / primeiro frame.
+
+### Criar conta (`criar`)
+- Mesma linguagem do Login (painel `ink` + folha `bg`). Campos Nome/E-mail/Senha (placeholders), botão **Criar conta** + **Continuar com Google**, nota de Termos/Privacidade, rodapé "Já tem conta? Entrar" (→ `login`). Criar → `bemvindo`.
+
+### Boas-vindas pós-cadastro (`bemvindo`)
+- Selo de check (`chip`), "Bem-vindo, Douglas!", e **configuração de alertas** já no onboarding: 3 switches (quando baixar / ofertas perto / resumo mensal) + **sensibilidade** segmentada (3% / 5% / 10% abaixo do típico). Compartilha estado (`bvAlertas`, `bvSens`) com a tela `alertas`. "Tudo pronto, começar" / "Configurar depois" → `permcam`.
+
+### Permissão de câmera (`permcam`)
+- Priming full-screen: ícone câmera em quadrado `chip`, título "Precisamos da câmera", explicação de uso (só no escaneamento, nada gravado). Primária **Permitir câmera** (→ `permloc`); secundária "Agora não" (→ estado **negada**).
+- **Negada** (`camNeg`): ícone `line2`/`faint`, "Câmera bloqueada", primária **Abrir ajustes** (toast), secundária **Digitar chave manualmente** (→ `chave`).
+
+### Permissão de localização (`permloc`)
+- Priming: ícone pin, "Ative sua localização", uso (comparar mercados da região / ofertas por perto). Primária **Usar minha localização** (→ `inicio` + toast); secundária "Escolher manualmente" (→ **negada**).
+- **Negada** (`locNeg`): "Localização desativada", primária **Escolher região manual** (→ `regiao`), secundária "Agora não" (→ `inicio`).
+
+### Digitar chave de acesso (`chave`)
+- Alternativa ao QR: textarea para os **44 dígitos** da NFC-e com formatação em blocos de 4 e **contador ao vivo** (N/44). Dica de onde achar a chave. **Validar chave** só habilita com 44 dígitos (incompleto → toast); válido → `processando` → Produtos. "Voltar para a câmera" → `escanear`.
+
+### Cupom lido com sucesso (`sucesso`)
+- Selo de check animado (`popIn`), "Cupom lido com sucesso!", card-resumo do cupom (loja/data, total, economia `down`, contagem baratos/na média/caros + conquista). "Ver detalhes do cupom" (→ `compra`) / "Voltar ao início".
+
+### Lista de compras (`lista`) — aba
+- Card de **estimativa** da lista (total pelos típicos + "no Assaí sai por R$ …"). Itens com **checkbox** (marca "no carrinho", line-through) e **campo de preço da gôndola** por item (placeholder = típico) → veredito ao vivo por item; ao preencher, o topo mostra "NA GÔNDOLA ATÉ AGORA" somando qtd×preço. "+ Adicionar item" abre o sheet `addItem`.
+- **Vazia** (`primeiroUso`): estado vazio com ícone checklist + "Adicionar item".
+
+### Adicionar item à lista (`sheet:addItem`)
+- Bottom-sheet com **busca ao vivo** no catálogo (digita "sabão" → "Sabão Omo 1,6 kg", "Sabão líquido Ypê 5 L" com típico e botão +). Sem texto → catálogo; sem match → vazio. Mesma lógica de busca do Comparar mercados. "Concluir" fecha.
+
+### Comparar mercados (`mercados`)
+- **Busca** de produto com sugestões ao vivo; selecionados viram **chips removíveis** (×). Ranking dos mercados da região pela cesta selecionada: posição, distância, badge **MAIS BARATO** no 1º, total (tabular), diferença vs. o 1º e barra proporcional de custo. Estado vazio orienta a buscar. Recalcula por seleção.
+
+### Histórico de compras (`compras`)
+- "Ver tudo" do Início: cupons agrupados por mês (JULHO/JUNHO) com total mensal; cada linha = mercado, data·itens, total e economia. Tap → `compra`.
+
+### Alertas de preço (`alertas`)
+- Mesma UI da `bemvindo` (3 switches + sensibilidade), compartilhando `bvAlertas`/`bvSens`. "Salvar preferências" → volta + toast.
+
+### Configurações da conta (`conta`)
+- Dados pessoais (nome, e-mail, telefone mascarado) + editar dados/senha/privacidade; **Sair da conta** (→ `login`) e **Excluir conta** (→ diálogo `conta`).
+
+### Editar região (`regiao`)
+- **Usar minha localização** (GPS → toast "Tijuca") e **busca manual** que só revela resultados ao digitar (com estado vazio). Seleção por rádio + **raio das comparações** (1/3/5 km). "Salvar região".
+
+### Ajuda e suporte (`ajuda`)
+- Busca + **FAQ em acordeão** (expande/recolhe) + "Fale com a gente" (suporte, sugestão, reportar). Rodapé com e-mail de suporte.
+
+### Detalhe da conquista (`conquistadet`)
+- Ícone grande, nome, status (Desbloqueada/Bloqueada), descrição, **barra de progresso** com nota (ex.: "Faltam R$ 368") e recompensa. Vale para as 6 conquistas (incl. bloqueadas).
+
+### Sem conexão (`offline`)
+- Estado full-screen: ícone wi-fi cortado, "Você está sem conexão", explicação (base colaborativa precisa de internet), **Tentar de novo** + nota de que cupons já escaneados ficam salvos e sincronizam depois.
+
+### Estados vazios / primeiro uso (`primeiroUso`)
+- **Início vazio:** hero `ink` "Escaneie seu primeiro cupom" + CTA + passos "COMO FUNCIONA" (1-2-3). **Produtos vazio / Lista vazia / Dashboard vazio:** ícone `line2`, título, texto e CTA de escanear/adicionar. Mesma `route`, sem dados.
 
 ### Padrões sobrepostos
 - **Bottom-sheet de ações** (`sheet=acoes`): título do item + Editar / Denunciar preço incorreto / Excluir da lista (`up`) + **Cancelar**. Entra com slide-up (`sheetUp` .28s) sobre backdrop.
@@ -183,8 +260,9 @@ Sobrepostos (não são `route`, são flags de estado): **bottom-sheets** (`sheet
 - **Diálogo de confirmação** (`dialog`): pop central (`popIn` .22s) com ícone, título, mensagem, **Cancelar** (contorno) / ação destrutiva `up`. Dois usos: excluir produto e excluir conta (textos diferentes).
 - **Toast**: pílula `ink`/`bg` no rodapé (acima da tab bar), some sozinha (~2.4s). Usado em: alerta on/off, salvar edição, denúncia enviada, item/conta removido, cupom lido, notificações lidas, link enviado.
 
-### Tab bar (persistente em inicio/verificar/produtos/perfil)
-- 4 abas (Início, Verificar, Produtos, Perfil) + **FAB central** circular `ink` (ícone de scanner `bg`) sobreposto (−30px), borda `bg` 4px, abre `escanear`. Aba ativa em `ink`, inativa em `faint`. Não aparece nos overlays (onboarding/login/escanear/etc.).
+### Tab bar (persistente em inicio/verificar/lista/perfil)
+- 4 abas (**Início, Verificar, Lista, Perfil**) + **FAB central** circular `ink` (ícone de scanner `bg`) sobreposto (−30px), borda `bg` 4px, abre `escanear`. Aba ativa em `ink`, inativa em `faint`. Não aparece nos overlays (splash/onboarding/login/criar/bemvindo/permissões/escanear/chave/etc.).
+- **Nota:** a aba antiga "Produtos" foi substituída por **"Lista"** (ícone de checklist). A tela `produtos` continua existindo e é alcançada por atalho dentro da Lista e pelos fluxos de scan/verificação — só não tem mais item próprio na tab bar.
 
 ---
 
@@ -197,7 +275,9 @@ Sobrepostos (não são `route`, são flags de estado): **bottom-sheets** (`sheet
 
 ## Gestão de estado
 Variáveis do protótipo (mapeie para navegação real + estado local/store no app):
-`route`, `prev`, `theme` (`claro`|`escuro`), `query` (busca do Verificar), `prodQuery` (busca de Produtos), `cat`, `sort`, `sheet`, `dialog`, `loading`, `toast`, `sel` (item selecionado), `motivo` (índice do motivo de denúncia), `notifLidas`, `onb` (índice do slide), `alerta` (switch).
+`route`, `prev`, `theme` (`claro`|`escuro`), `query` (busca do Verificar), `prodQuery` (busca de Produtos), `cat`, `sort`, `sheet` (inclui `addItem`), `dialog`, `loading`, `toast`, `sel`, `motivo`, `notifLidas`, `onb`, `alerta`, `primeiroUso` (estados vazios dia-1), `camNeg`/`locNeg` (permissão negada), `chave` (dígitos da NFC-e), `bvAlertas`/`bvSens` (config de alertas, compartilhada Boas-vindas↔Alertas), `regQuery`/`regiaoSel`/`regRaio` (região), `mercQuery`/`mercSelNames` (comparar mercados), `addQuery` (busca do sheet adicionar), `listaMarcados`/`listaPrecos` (checkbox + preço da gôndola por item), `faqOpen`, `conquistaSel`.
+
+> Atalho de inspeção no protótipo: `window.__go('rota', {…estado})` força qualquer tela/estado (usado para gerar os screenshots).
 
 ## Modelo de dados (exemplos usados)
 Produtos com faixa de preço regional (para o veredito e a lista):
@@ -267,36 +347,58 @@ Nenhum bitmap. Todos os ícones são SVG stroke (equivalentes Lucide/Feather). L
 ## Screenshots (`screens/`)
 Referência visual de cada tela/estado, capturada do protótipo. **Use junto com a spec da tela correspondente acima** — a imagem mostra o layout final; a tabela diz o que cada elemento faz e para onde leva.
 
-| Arquivo | Tela (`route`) | O que mostra / interações-chave |
+| Arquivo | Tela (`route`/estado) | O que mostra / interações-chave |
 |---|---|---|
-| `01-onboarding.png` | `onboarding` | Slide 1 de 3. Ícone em quadrado `chip`, dots, "Pular" (topo) e botão "Próximo"/"Começar" → `login`. |
-| `02-login.png` | `login` | Painel `ink` + folha com E-mail/Senha. "Esqueci a senha" → `recuperar`; "Entrar"/Google/"Criar conta" → `inicio`. |
-| `03-recuperar-senha.png` | `recuperar` | Campo e-mail + "Enviar link de redefinição" → toast + volta ao `login`. |
-| `04-inicio.png` | `inicio` | Header (sino c/ badge → `notificacoes`; avatar → `perfil`). Card economia → `dashboard`. Card conquista → `conquistas`. Linhas de compras → `compra`. Tab bar + FAB → `escanear`. |
-| `05-dashboard-economia.png` | `dashboard` | Segmentado de mês, gráfico de barras (jul em `ink`), barras por categoria. Voltar → origem. |
-| `06-conquistas.png` | `conquistas` | Card de nível com progresso 4/6 + grid de badges (2 bloqueados tracejados). |
-| `07-detalhe-compra.png` | `compra` | Cupom: total, economia (`down`), itens com veredito por item (barato/na média/caro). |
-| `08-verificar-preco.png` | `verificar` ⭐ | Busca digitável (recalcula veredito ao vivo), chips rápidos, card do veredito com régua animada, "Denunciar" → sheet, "Ver histórico" → `detalhe`, "Avisar quando baixar" → toggle+toast. Ícone scanner no campo → `escanear`. |
-| `09-produtos.png` | `produtos` | Busca + botão filtro (badge de ativos → sheet filtros). Linhas: preço tabular + variação (↓`down` / ↑`up` / "na média" `mid`). Kebab ⋮ → sheet ações. Item Leite → `detalhe`. |
-| `10-sheet-acoes.png` | `produtos` + `sheet:acoes` | Bottom-sheet sobre backdrop: Editar → `editar`; Denunciar → sheet denúncia; Excluir → diálogo; Cancelar fecha. |
-| `11-editar-produto.png` | `editar` | Header modal Cancelar/Salvar (toast), nome, chips de categoria, valor do alerta, switch monitorar, Excluir da lista → diálogo. |
-| `12-sheet-filtros.png` | `produtos` + `sheet:filtros` | Chips de categoria, ordenação com check, "Limpar" e "Ver resultados" (aplica na lista). |
-| `13-detalhe-produto.png` | `detalhe` | Típico da região, sparkline fev→jul, badge "em queda", "Onde comprar hoje" (badge MENOR/preços), switch de alerta. Kebab no header → sheet ações. |
-| `14-dialogo-excluir.png` | `detalhe` + `dialog` | Diálogo de confirmação destrutivo: ícone, título, msg, **Cancelar** / **Excluir** (`up`). Mesmo padrão para excluir conta. |
-| `15-perfil.png` | `perfil` | Avatar, região, lista: Conquistas (4/6), Notificações, switch Alertas, segmentado **Tema Claro/Escuro** (troca global), Privacidade, **Excluir conta** → diálogo. |
-| `16-notificacoes.png` | `notificacoes` | Seções HOJE/ESTA SEMANA, itens com ícone + ponto de não-lida, "Marcar lidas" zera pontos. |
-| `17-escanear.png` | `escanear` (overlay) | Câmera full-screen escura: moldura com cantos, linha de leitura animada, fechar (X), digitar chave. Sucesso → `processando` → Produtos; inválido → `processando` → `erro`. |
-| `18-erro-leitura.png` | `erro` | Estado de erro: ícone alerta `up`, causa, "Tentar de novo" → `escanear`, "Voltar ao início". |
-| `19-carregando-cupom.png` | `processando` | Loading overlay: spinner + "Lendo cupom…" (~1.7 s). |
-| `20-produtos-skeleton.png` | `produtos` + `loading` | Skeleton shimmer (5 linhas) enquanto a lista carrega (~1.2 s pós-scan). |
-| `21-produtos-toast.png` | `produtos` + toast | Toast pílula `ink` acima da tab bar ("Cupom lido · 12 itens adicionados"), some em ~2.4 s. |
-| `22-perfil-dark.png` | `perfil` (escuro) | Tema escuro aplicado; segmentado com "Escuro" ativo. |
-| `23-inicio-dark.png` | `inicio` (escuro) | Home no tema escuro — mesmos tokens, valores da paleta `escuro`. |
-| `24-verificar-dark.png` | `verificar` (escuro) | Veredito no escuro: semáforo vira `#4ADE80`/`#F87171`/`#E8A33C`. |
+| `01-splash.png` | `splash` | Abertura: logo "B" + wordmark. Auto → `onboarding` (~1.9s). |
+| `02-onboarding.png` | `onboarding` | Slide 1 de 3, dots, "Pular" → `login`, "Próximo"/"Começar". |
+| `03-login.png` | `login` | Painel `ink` + folha E-mail/Senha. "Esqueci a senha" → `recuperar`; "Criar conta" → `criar`; entrar → `permcam`. |
+| `04-criar-conta.png` | `criar` | Nome/E-mail/Senha + Google + termos. Criar → `bemvindo`. |
+| `05-bem-vindo.png` | `bemvindo` | Configura alertas (3 switches + sensibilidade 3/5/10%). → `permcam`. |
+| `06-permissao-camera.png` | `permcam` | Priming da câmera. "Permitir" → `permloc`; "Agora não" → negada. |
+| `07-permissao-camera-negada.png` | `permcam` + `camNeg` | Bloqueada: "Abrir ajustes" / "Digitar chave manualmente" → `chave`. |
+| `08-permissao-localizacao.png` | `permloc` | Priming da localização. "Usar minha localização" → `inicio`. |
+| `09-permissao-localizacao-negada.png` | `permloc` + `locNeg` | Desativada: "Escolher região manual" → `regiao`. |
+| `10-inicio.png` | `inicio` | Card economia → `dashboard`; conquista → `conquistas`; "Ver tudo" → `compras`; compras → `compra`; Comparar mercados → `mercados`. |
+| `11-inicio-primeiro-uso.png` | `inicio` + `primeiroUso` | Estado dia-1: hero "Escaneie seu primeiro cupom" + "COMO FUNCIONA". |
+| `12-verificar-preco.png` | `verificar` ⭐ | Busca digitável recalcula veredito ao vivo, régua animada, chips, "Denunciar", "Avisar quando baixar". |
+| `13-escanear.png` | `escanear` (overlay) | Câmera: moldura + linha animada; "Digitar chave" → `chave`; simular leitura/erro. |
+| `14-digitar-chave.png` | `chave` | 44 dígitos, contador ao vivo, "Validar chave" (habilita em 44). |
+| `15-cupom-sucesso.png` | `sucesso` | Check + resumo do cupom (total, economia, contagem). → `compra` / início. |
+| `16-erro-leitura.png` | `erro` | Erro: "Tentar de novo" → `escanear`. |
+| `17-produtos.png` | `produtos` | Atalho Lista + busca/filtro; linhas com variação (↓`down`/↑`up`/"na média"). Kebab → sheet; Leite → `detalhe`. |
+| `18-produtos-vazio.png` | `produtos` + `primeiroUso` | Vazio: "Nenhum produto ainda" + escanear. |
+| `19-detalhe-produto.png` | `detalhe` | Típico da região, sparkline fev→jul, "Onde comprar hoje", switch de alerta. |
+| `20-editar-produto.png` | `editar` | Cancelar/Salvar, categoria, valor do alerta, monitorar, Excluir → diálogo. |
+| `21-lista-compras.png` | `lista` (aba) | Estimativa + itens com checkbox e **preço da gôndola** (veredito por item). "+ Adicionar item" → sheet. |
+| `22-lista-vazia.png` | `lista` + `primeiroUso` | Vazio: "Sua lista está vazia" + "Adicionar item". |
+| `23-adicionar-item.png` | `lista` + `sheet:addItem` | Sheet de busca ao vivo ("sabão" → sugestões + botão +). |
+| `24-comparar-mercados.png` | `mercados` | Busca de produto, chips removíveis, ranking por cesta com "MAIS BARATO" e barras. |
+| `25-historico-compras.png` | `compras` | "Ver tudo": cupons por mês (JUL/JUN), tap → `compra`. |
+| `26-detalhe-compra.png` | `compra` | Cupom: total, economia, itens com veredito por item. |
+| `27-dashboard.png` | `dashboard` | Segmentado de mês, gráfico de barras, barras por categoria. |
+| `28-dashboard-vazio.png` | `dashboard` + `primeiroUso` | Vazio: "Ainda sem dados" + escanear. |
+| `29-perfil.png` | `perfil` | Região → `regiao`; Alertas → `alertas`; Conta → `conta`; Ajuda → `ajuda`; Tema; Estados (demo). |
+| `30-alertas.png` | `alertas` | 3 switches + sensibilidade (compartilha estado com boas-vindas). |
+| `31-config-conta.png` | `conta` | Dados pessoais + sair/excluir conta (→ diálogo). |
+| `32-editar-regiao.png` | `regiao` | "Usar minha localização" (GPS) + busca manual + raio (1/3/5 km). |
+| `33-ajuda-suporte.png` | `ajuda` | Busca + FAQ acordeão (aberto) + "Fale com a gente". |
+| `34-notificacoes.png` | `notificacoes` | HOJE/ESTA SEMANA, pontos de não-lida, "Marcar lidas". |
+| `35-conquistas.png` | `conquistas` | Nível + grid de badges (2 bloqueados). Tap → `conquistadet`. |
+| `36-conquista-detalhe.png` | `conquistadet` | Ícone, status, progresso + recompensa. |
+| `37-sheet-acoes.png` | `produtos` + `sheet:acoes` | Editar / Denunciar / Excluir / Cancelar. |
+| `38-sheet-filtros.png` | `produtos` + `sheet:filtros` | Categoria + ordenação (check) + "Ver resultados". |
+| `39-sheet-denunciar.png` | `produtos` + `sheet:denunciar` | 4 motivos (rádio) + "Enviar denúncia". |
+| `40-dialogo-excluir.png` | `conta` + `dialog:conta` | Confirmação destrutiva: Cancelar / Excluir (`up`). |
+| `41-sem-conexao.png` | `offline` | Wi-fi cortado, "Tentar de novo". |
+| `42-inicio-dark.png` | `inicio` (escuro) | Home no tema escuro. |
+| `43-verificar-dark.png` | `verificar` (escuro) | Veredito no escuro (`#4ADE80`/`#F87171`/`#E8A33C`). |
+| `44-perfil-dark.png` | `perfil` (escuro) | Perfil no tema escuro. |
+| `45-dashboard-dark.png` | `dashboard` (escuro) | Dashboard no tema escuro. |
 
-> As capturas mostram o topo do frame 390×844; sheets/diálogos aparecem sobre a tela dimmed. Para ver qualquer estado completo e interativo, abra o `.dc.html`.
+> As capturas mostram o topo do frame; sheets/diálogos aparecem sobre a tela dimmed. Para ver qualquer estado completo e interativo, abra o `.dc.html` (todas as rotas podem ser forçadas via `window.__go('rota', {…estado})` no console).
 
 ## Arquivos deste bundle
 - `README.md` — este documento (auto-suficiente).
 - `Barganha - Protótipo (referência).dc.html` — protótipo interativo hi-fi (abra no navegador; alterne tema no Perfil).
-- `screens/` — 24 screenshots nomeados (tabela acima), claro + escuro, incluindo estados de loading, erro, sheets, diálogo e toast.
+- `support.js` — runtime do protótipo (necessário ao lado do `.dc.html`).
+- `screens/` — 45 screenshots nomeados (tabela acima), claro + escuro, incluindo onboarding, permissões, estados vazios (dia 1), loading, erro, sucesso, sheets, diálogo e offline.

@@ -4,9 +4,15 @@
  * chapado, atalho de conquistas e o cartão de "Últimas compras".
  *
  * Tudo do histórico PRIVADO local (offline); recarrega ao focar a aba para
- * refletir cupons recém-processados. A economia é o desconto honesto da própria
+ * refletir cupons recém-processados. O número é o desconto honesto da própria
  * NFC-e, nunca estimativa — por isso os stats da linha inferior são contagens
  * reais e o card não projeta nada.
+ *
+ * O card se chama DESCONTOS, não "economia", e o nome é deliberado: o que ele
+ * soma é a promoção que o MERCADO deu, idêntica se este app não existisse.
+ * "Economia" fica reservada para a métrica que mede a escolha do usuário
+ * (pagou × típico da região) — ver docs/06 §"Economia real". O snapshot que ela
+ * vai consumir já é gravado por item desde hoje.
  */
 
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
@@ -20,7 +26,9 @@ import {
   CartaoEconomia,
   CartaoLista,
   Eyebrow,
+  IconeGrafico,
   IconeLoja,
+  IconePerfil,
   IconeRecibo,
   IconeSino,
   IconeTendenciaBaixo,
@@ -51,11 +59,14 @@ const RESUMO_VAZIO: ResumoCompras = {
 const DIAS = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB'];
 const MESES = ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ'];
 
-/** Primeiro nome do usuário (metadados do Google ou parte local do email). */
-function primeiroNome(nome?: string | null, email?: string | null): string {
-  const bruto = (nome ?? email?.split('@')[0] ?? '').trim();
-  const primeiro = bruto.split(/[.\s_]+/)[0];
-  if (!primeiro) return 'por aí';
+/**
+ * Primeiro nome informado pelo usuário (ou vindo do Google). NUNCA derivado do
+ * email: "Olá, Knowenter" é pior que uma saudação sem nome — parece defeito.
+ * Sem nome, a chamada vira só "Olá" (ver `saudacaoDe`).
+ */
+function primeiroNome(nome?: string | null): string | null {
+  const primeiro = (nome ?? '').trim().split(/[.\s_]+/)[0];
+  if (!primeiro) return null;
   return primeiro.charAt(0).toUpperCase() + primeiro.slice(1);
 }
 
@@ -90,7 +101,7 @@ export function InicioTela() {
           cupons.economiaPorMes(2),
           verificarAlertas(),
           cupons.listarMercadosFrequentes(50),
-          cupons.listarDatasCapturas(),
+          cupons.listarDatasContribuicao(),
         ]);
         if (!ativo) return;
         setResumo(r);
@@ -114,11 +125,11 @@ export function InicioTela() {
     }, []),
   );
 
-  const nome = primeiroNome(
-    (usuario?.user_metadata?.full_name ?? usuario?.user_metadata?.name) as string | undefined,
-    usuario?.email,
-  );
-  const inicial = nome.charAt(0).toUpperCase();
+  const meta = usuario?.user_metadata ?? {};
+  // `nome` (digitado no cadastro/perfil) ganha do que o Google mandou.
+  const nome = primeiroNome((meta.nome ?? meta.full_name ?? meta.name) as string | undefined);
+  // Sem nome, o avatar não inventa inicial a partir do email — usa o ícone.
+  const inicial = nome?.charAt(0).toUpperCase() ?? null;
   const mesAtual = new Date().toISOString().slice(0, 7);
   const economiaMes = meses.find((m) => m.mes === mesAtual)?.economia ?? 0;
 
@@ -128,7 +139,7 @@ export function InicioTela() {
         <View style={{ flex: 1 }}>
           <Eyebrow>{eyebrowDe(cidade)}</Eyebrow>
           <Texto peso="bold" tamanho="titulo" style={estilos.saudacao}>
-            Olá, {nome}
+            {nome ? `Olá, ${nome}` : 'Olá'}
           </Texto>
         </View>
 
@@ -150,20 +161,24 @@ export function InicioTela() {
           accessibilityLabel="Abrir perfil"
           style={[estilos.circulo, { backgroundColor: c.cartao, borderColor: c.cartaoBorda }]}
         >
-          <Texto peso="bold" style={{ fontSize: 16 }}>
-            {inicial}
-          </Texto>
+          {inicial ? (
+            <Texto peso="bold" style={{ fontSize: 16 }}>
+              {inicial}
+            </Texto>
+          ) : (
+            <IconePerfil tamanho={18} cor={c.tinta} />
+          )}
         </Pressable>
       </View>
 
       <Pressable
         onPress={() => navigation.navigate('Dashboard')}
         accessibilityRole="button"
-        accessibilityLabel="Ver resumo de economia"
+        accessibilityLabel="Ver resumo de descontos"
         style={estilos.blocoTopo}
       >
         <CartaoEconomia
-          rotulo={`Economia · ${MESES[new Date().getMonth()]}`}
+          rotulo={`Descontos · ${MESES[new Date().getMonth()]}`}
           valor={moeda(economiaMes)}
           legenda={legendaEconomia(resumo, economiaMes)}
           acao="Ver resumo →"
@@ -209,13 +224,25 @@ export function InicioTela() {
         </CartaoLista>
       ) : null}
 
+      {/* atalho do handoff: "onde minha cesta sai mais barata?" */}
+      <CartaoLista style={estilos.bloco}>
+        <LinhaLista
+          icone={<IconeGrafico tamanho={18} cor={c.tinta} />}
+          titulo="Comparar mercados"
+          subtitulo="Veja onde sua cesta sai mais barata"
+          chevron
+          ultima
+          onPress={() => navigation.navigate('CompararMercados')}
+        />
+      </CartaoLista>
+
       <View style={estilos.secao}>
         <Texto peso="bold" style={estilos.secaoTitulo}>
           Últimas compras
         </Texto>
         {recentes.length > 0 ? (
           <Pressable
-            onPress={() => navigation.navigate('Abas', { screen: 'Produtos' })}
+            onPress={() => navigation.navigate('Compras')}
             accessibilityRole="button"
             hitSlop={8}
           >
@@ -270,7 +297,7 @@ function ValorCompra({ compra }: { compra: CompraResumo }) {
       )}
       {compra.economia > 0 ? (
         <Texto cor="suave" numerico style={estilos.economia}>
-          economia {moeda(compra.economia)}
+          desconto {moeda(compra.economia)}
         </Texto>
       ) : processado ? (
         <Texto cor="fraco" style={estilos.economia}>
@@ -285,34 +312,67 @@ function legendaEconomia(resumo: ResumoCompras, economiaMes: number): string {
   if (resumo.totalCupons === 0) {
     return 'Escaneie um cupom para acompanhar suas compras e promoções.';
   }
-  if (economiaMes > 0) return 'economizado em promoções este mês';
-  return 'sem promoções registradas neste mês';
+  if (economiaMes > 0) return 'em descontos que o mercado deu neste mês';
+  return 'sem descontos registrados neste mês';
 }
 
-/** Estado vazio (primeiro uso): tile + apoio + botão primário. */
+const PASSOS: readonly string[] = [
+  'Escaneie o QR Code do cupom fiscal',
+  'Veja se cada item está barato para a sua região',
+  'Economize e acompanhe no resumo do mês',
+];
+
+/**
+ * Estado vazio (primeiro uso): hero + botão primário + os 3 passos de "como
+ * funciona" do handoff, que só fazem sentido para quem ainda não escaneou nada.
+ */
 function VazioCompras({ aoEscanear }: { aoEscanear: () => void }) {
   const { c } = useTema();
   return (
-    <CartaoLista>
-      <View style={estilos.vazio}>
-        <View style={[estilos.vazioIcone, { backgroundColor: c.linha }]}>
-          <IconeRecibo tamanho={26} cor={c.tinta} />
+    <>
+      <CartaoLista>
+        <View style={estilos.vazio}>
+          <View style={[estilos.vazioIcone, { backgroundColor: c.linha }]}>
+            <IconeRecibo tamanho={26} cor={c.tinta} />
+          </View>
+          <Texto peso="bold" centralizado style={{ marginTop: espaco.md }}>
+            Escaneie seu primeiro cupom
+          </Texto>
+          <Texto cor="suave" tamanho="sm" centralizado style={estilos.vazioTexto}>
+            Ao ler a NFC-e da sua compra, a gente começa a comparar os preços da sua região para
+            você.
+          </Texto>
+          <Botao
+            titulo="Escanear cupom"
+            bloco
+            onPress={aoEscanear}
+            style={{ marginTop: espaco.lg }}
+          />
         </View>
-        <Texto peso="bold" centralizado style={{ marginTop: espaco.md }}>
-          Nenhuma compra ainda
-        </Texto>
-        <Texto cor="suave" tamanho="sm" centralizado style={estilos.vazioTexto}>
-          Escaneie o QR do seu cupom fiscal para montar seu histórico e alimentar os preços da sua
-          região.
-        </Texto>
-        <Botao
-          titulo="Escanear cupom"
-          bloco
-          onPress={aoEscanear}
-          style={{ marginTop: espaco.lg }}
-        />
-      </View>
-    </CartaoLista>
+      </CartaoLista>
+
+      <Eyebrow style={estilos.comoFunciona}>Como funciona</Eyebrow>
+      <CartaoLista>
+        {PASSOS.map((passo, idx) => (
+          <View
+            key={passo}
+            style={[
+              estilos.passo,
+              idx < PASSOS.length - 1 && { borderBottomWidth: 1, borderBottomColor: c.linha },
+            ]}
+          >
+            <View style={[estilos.passoNumero, { backgroundColor: c.linha }]}>
+              <Texto peso="bold" numerico style={estilos.passoNumeroTexto}>
+                {idx + 1}
+              </Texto>
+            </View>
+            <Texto cor="suave" tamanho="sm" style={{ flex: 1 }}>
+              {passo}
+            </Texto>
+          </View>
+        ))}
+      </CartaoLista>
+    </>
   );
 }
 
@@ -358,4 +418,14 @@ const estilos = StyleSheet.create({
     justifyContent: 'center',
   },
   vazioTexto: { marginTop: espaco.xs, lineHeight: 18, maxWidth: 280 },
+  comoFunciona: { marginTop: espaco.xl, marginBottom: espaco.sm, marginLeft: espaco.xs },
+  passo: { flexDirection: 'row', alignItems: 'center', gap: espaco.md, paddingVertical: 13 },
+  passoNumero: {
+    width: 26,
+    height: 26,
+    borderRadius: raio.pill,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  passoNumeroTexto: { fontSize: 12 },
 });

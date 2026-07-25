@@ -105,6 +105,28 @@ export interface CupomComItens {
   valorPago?: number;
 }
 
+/**
+ * Uma linha do histórico do usuário para a rehidratação no login (restore,
+ * docs/04). É o `CupomComItens` (cabeçalho + itens) mais o que o espelho LOCAL
+ * precisa para ser fiel: o QR cru (invariante NOT NULL local + reprocessamento
+ * retroativo), a chave de acesso (idempotência local) e o instante de captura
+ * (base da sequência/selos). É lado privado de ponta a ponta — nunca cruza o pool.
+ */
+export interface CupomHistorico extends CupomComItens {
+  qrPayload: string;
+  chaveAcesso?: string;
+  capturadoEm: string;
+}
+
+/**
+ * Posição keyset da paginação do histórico: a captura, desempatada pelo id do
+ * cupom (dois cupons podem ter o mesmo `capturado_em` ao milissegundo).
+ */
+export interface CursorHistorico {
+  capturadoEm: string;
+  cupomId: string;
+}
+
 export interface FiltroReprocessamento {
   /** Restringe a uma UF (ex.: parser novo entrou no ar). */
   uf?: string;
@@ -124,6 +146,18 @@ export interface RepositorioCupom {
    */
   obterDoUsuario(cupomId: string, usuarioId: string): Promise<CupomComItens | undefined>;
   /**
+   * Página do histórico privado do PRÓPRIO usuário para a rehidratação no login
+   * (restore, docs/04). Escopo do dono na própria consulta (`usuario_id`): nunca
+   * vaza cupom de terceiro. Ordena por captura (mais antigo → novo), desempatada
+   * por id; `apos` é a keyset da última linha da página anterior (ausente = 1ª
+   * página). Traz o cupom COMPLETO (cabeçalho + itens + QR) para o app
+   * reconstruir o espelho local. Devolve no máximo `limite` linhas.
+   */
+  listarHistoricoDoUsuario(
+    usuarioId: string,
+    opcoes: { limite: number; apos?: CursorHistorico },
+  ): Promise<CupomHistorico[]>;
+  /**
    * Grava nota privada + pool anônimo e marca o cupom como `processado`.
    * Cupom JÁ `processado` é no-op (trava anti-corrida: fila × ingestão por
    * HTML não podem duplicar o pool). `sobrescreverProcessado` é a exceção
@@ -142,6 +176,18 @@ export interface RepositorioCupom {
    * itens/pool (zero risco de duplicação).
    */
   atualizarTotais(cupomId: string, total: TotaisNota): Promise<void>;
+  /**
+   * Apaga um cupom do PRÓPRIO usuário e, em cascata, seus itens (direito ao
+   * apagamento, docs/04). Devolve `false` quando o cupom não existe ou é de
+   * outro dono — a camada HTTP traduz para 404, sem vazar existência.
+   *
+   * NÃO toca o pool: as `observacao_preco` geradas por este cupom são anônimas e
+   * SOLTAS — não existe coluna que as religue ao cupom (decisão travada nº3), e
+   * por isso não há o que apagar lá. Também não limpa `chave_publicada`: o hash
+   * da chave permanece para o dedup global continuar valendo se o mesmo cupom for
+   * reescaneado por qualquer conta (C9.2.1).
+   */
+  apagarDoUsuario(cupomId: string, usuarioId: string): Promise<boolean>;
   /** Marca o cupom como `falha` (erro permanente de parsing). */
   marcarFalha(cupomId: string, motivo?: string): Promise<void>;
   /** Lista ids de cupons elegíveis a reprocessamento (C2.5). */

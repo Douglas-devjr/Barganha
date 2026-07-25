@@ -6,12 +6,12 @@
  * estruturada vêm do backend e chegam depois via `aplicarProcessamento`.
  */
 
-import type { StatusCupom } from '@barganha/shared';
+import type { StatusCupom, TipicoNaCompra } from '@barganha/shared';
 
 import { agoraIso, gerarIdLocal } from '@/nucleo/id';
 
 import { getBd } from './bd';
-import type { CupomLocal, ItemCupomLocal } from './tipos';
+import type { CupomLocal, CupomRestaurado, ItemCupomLocal } from './tipos';
 
 interface LinhaCupom {
   id: string;
@@ -22,6 +22,7 @@ interface LinhaCupom {
   status: string;
   loja_cnpj: string | null;
   loja_nome: string | null;
+  loja_municipio: string | null;
   emitido_em: string | null;
   uf: string | null;
   desconto_total: number | null;
@@ -40,6 +41,7 @@ function mapearCupom(l: LinhaCupom): CupomLocal {
     status: l.status as StatusCupom,
     lojaCnpj: l.loja_cnpj,
     lojaNome: l.loja_nome,
+    lojaMunicipio: l.loja_municipio,
     emitidoEm: l.emitido_em,
     uf: l.uf,
     descontoTotal: l.desconto_total,
@@ -47,6 +49,18 @@ function mapearCupom(l: LinhaCupom): CupomLocal {
     criadoEm: l.criado_em,
     atualizadoEm: l.atualizado_em,
   };
+}
+
+/**
+ * As 4 colunas do típico congelado, na ordem do INSERT. Os campos andam SEMPRE
+ * juntos: mediana sem escopo/`n` não é auditável, então ou grava tudo ou grava
+ * NULL em tudo. Ter isto num lugar só evita que os dois INSERTs de item
+ * (processamento e restore) divirjam.
+ */
+function colunasTipico(
+  t: TipicoNaCompra | null,
+): [number, string, string, number] | [null, null, null, null] {
+  return t ? [t.mediana, t.unidadeBase, t.escopo, t.nObservacoes] : [null, null, null, null];
 }
 
 export interface NovaCaptura {
@@ -155,6 +169,83 @@ export async function excluir(id: string): Promise<void> {
   await getBd().runAsync(`DELETE FROM cupom_local WHERE id = ?`, [id]);
 }
 
+/**
+ * Reidrata no espelho local os cupons que o servidor guardou sob a conta
+ * (restore no login, docs/04). IDEMPOTENTE: pula quem já existe localmente (por
+ * `cupom_id_servidor`) e usa `INSERT OR IGNORE` para tolerar corrida com o índice
+ * único de `chave_acesso` (o mesmo cupom espelhado por outro caminho). Devolve
+ * quantos foram de fato inseridos. Numa transação para não deixar cupom sem itens.
+ */
+export async function restaurarCupons(lista: CupomRestaurado[]): Promise<number> {
+  if (lista.length === 0) return 0;
+  const db = getBd();
+  let inseridos = 0;
+  // Exclusiva, como as demais escritas de cupom (ver nota em `aplicarProcessamento`).
+  await db.withExclusiveTransactionAsync(async (txn) => {
+    for (const c of lista) {
+      const jaExiste = await txn.getFirstAsync<{ id: string }>(
+        `SELECT id FROM cupom_local WHERE cupom_id_servidor = ? LIMIT 1`,
+        [c.cupomIdServidor],
+      );
+      if (jaExiste) continue;
+
+      const id = gerarIdLocal();
+      const agora = agoraIso();
+      const r = await txn.runAsync(
+        `INSERT OR IGNORE INTO cupom_local
+           (id, cupom_id_servidor, qr_payload, chave_acesso, capturado_em, status,
+            loja_cnpj, loja_nome, loja_municipio, emitido_em, uf, desconto_total, valor_pago,
+            criado_em, atualizado_em)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          id,
+          c.cupomIdServidor,
+          c.qrPayload,
+          c.chaveAcesso ?? null,
+          c.capturadoEm,
+          c.status,
+          c.lojaCnpj ?? null,
+          c.lojaNome ?? null,
+          c.lojaMunicipio ?? null,
+          c.emitidoEm ?? null,
+          c.uf ?? null,
+          c.descontoTotal ?? null,
+          c.valorPago ?? null,
+          agora,
+          agora,
+        ],
+      );
+      // Ignorado pelo índice único de chave (já espelhado por outro caminho): pula.
+      if (r.changes === 0) continue;
+      inseridos++;
+
+      for (const item of c.itens) {
+        await txn.runAsync(
+          `INSERT INTO item_cupom_local
+             (id, cupom_local_id, produto_canonico_id, descricao_original, ean,
+              quantidade, unidade, valor_unitario, valor_total, desconto,
+              tipico_mediana, tipico_unidade_base, tipico_escopo, tipico_n_observacoes)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [
+            gerarIdLocal(),
+            id,
+            item.produtoCanonicoId,
+            item.descricaoOriginal,
+            item.ean,
+            item.quantidade,
+            item.unidade,
+            item.valorUnitario,
+            item.valorTotal,
+            item.desconto,
+            ...colunasTipico(item.tipicoNaCompra),
+          ],
+        );
+      }
+    }
+  });
+  return inseridos;
+}
+
 /** Dados que o backend devolve após processar a nota (preenche a nota local). */
 export interface ResultadoProcessamento {
   cupomIdServidor: string;
@@ -162,6 +253,7 @@ export interface ResultadoProcessamento {
   chaveAcesso?: string;
   lojaCnpj?: string;
   lojaNome?: string;
+  lojaMunicipio?: string;
   emitidoEm?: string;
   uf?: string;
   /** Desconto total do cupom (R$), quando o portal informa (C2.6). */
@@ -191,7 +283,7 @@ export async function aplicarProcessamento(
     await txn.runAsync(
       `UPDATE cupom_local
           SET cupom_id_servidor = ?, status = ?, chave_acesso = COALESCE(?, chave_acesso),
-              loja_cnpj = ?, loja_nome = ?, emitido_em = ?, uf = ?,
+              loja_cnpj = ?, loja_nome = ?, loja_municipio = ?, emitido_em = ?, uf = ?,
               desconto_total = COALESCE(?, desconto_total),
               valor_pago = COALESCE(?, valor_pago), atualizado_em = ?
         WHERE id = ?`,
@@ -201,6 +293,7 @@ export async function aplicarProcessamento(
         r.chaveAcesso ?? null,
         r.lojaCnpj ?? null,
         r.lojaNome ?? null,
+        r.lojaMunicipio ?? null,
         r.emitidoEm ?? null,
         r.uf ?? null,
         r.descontoTotal ?? null,
@@ -214,8 +307,9 @@ export async function aplicarProcessamento(
       await txn.runAsync(
         `INSERT INTO item_cupom_local
            (id, cupom_local_id, produto_canonico_id, descricao_original, ean,
-            quantidade, unidade, valor_unitario, valor_total, desconto)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            quantidade, unidade, valor_unitario, valor_total, desconto,
+            tipico_mediana, tipico_unidade_base, tipico_escopo, tipico_n_observacoes)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           gerarIdLocal(),
           cupomLocalId,
@@ -227,13 +321,21 @@ export async function aplicarProcessamento(
           item.valorUnitario,
           item.valorTotal,
           item.desconto,
+          ...colunasTipico(item.tipicoNaCompra),
         ],
       );
     }
   });
 }
 
-/** Resumo agregado do histórico — base do card de economia da Início (C8.1). */
+/**
+ * Resumo agregado do histórico — base do card de DESCONTOS da Início (C8.1).
+ *
+ * Os identificadores daqui ainda dizem "economia" por herança; o que eles somam
+ * é o desconto do cupom. A palavra "economia" está reservada para a métrica
+ * pagou × típico (docs/06 §"Economia real"), e a renomeação em massa fica para
+ * quando as duas precisarem coexistir — evita churn agora.
+ */
 export interface ResumoCompras {
   /** Notas já processadas (com itens). */
   totalCupons: number;
@@ -321,7 +423,7 @@ export async function economiaPorMes(limite = 12): Promise<EconomiaMensal[]> {
 }
 
 /**
- * Onde a economia veio, por PRODUTO (tela de Resumo de economia). Soma o
+ * De onde veio o desconto, por PRODUTO (tela de Resumo de descontos). Soma o
  * desconto por item, do maior para o menor.
  *
  * O handoff agrupa por CATEGORIA (Laticínios, Café…), mas categoria só existe
@@ -358,14 +460,43 @@ export async function economiaPorProduto(limite = 5, mes?: string): Promise<Econ
 }
 
 /**
- * C12.2 — Datas de captura de TODOS os cupons (qualquer status): escanear já é
- * contribuir, mesmo antes do parsing. Base da sequência de semanas e dos selos.
+ * C12.2 — Datas de captura dos cupons que CONTAM como contribuição: só os
+ * `processado` COM itens espelhados. Cupom na fila, em parsing, com falha no
+ * portal ou espelho vazio (mesma noção de incompleto de
+ * `listarAguardandoProcessamento`) não virou preço na base coletiva — logo não
+ * vira selo. Quando o parsing completar, a data de captura entra retroativa: a
+ * semana da contribuição continua sendo a do escaneamento.
+ *
+ * Base da sequência de semanas e dos selos.
  */
-export async function listarDatasCapturas(): Promise<string[]> {
+export async function listarDatasContribuicao(): Promise<string[]> {
   const linhas = await getBd().getAllAsync<{ capturado_em: string }>(
-    `SELECT capturado_em FROM cupom_local ORDER BY capturado_em ASC`,
+    `SELECT c.capturado_em
+       FROM cupom_local c
+      WHERE c.status = 'processado'
+        AND EXISTS (SELECT 1 FROM item_cupom_local i WHERE i.cupom_local_id = c.id)
+      ORDER BY c.capturado_em ASC`,
   );
   return linhas.map((l) => l.capturado_em);
+}
+
+/**
+ * Cupons escaneados que ainda estão a caminho de contar: na fila, no parsing ou
+ * espelhados sem itens. Só serve para a tela de Conquistas explicar a diferença
+ * entre o que o Perfil chama de "escaneados" e o que os selos contam.
+ *
+ * Não inclui `falha`: aquele cupom não está "quase lá", e a tela da nota já
+ * mostra o erro.
+ */
+export async function contarEmProcessamento(): Promise<number> {
+  const linha = await getBd().getFirstAsync<{ total: number }>(
+    `SELECT COUNT(*) AS total
+       FROM cupom_local c
+      WHERE c.status = 'qr_capturado'
+         OR (c.status = 'processado'
+             AND NOT EXISTS (SELECT 1 FROM item_cupom_local i WHERE i.cupom_local_id = c.id))`,
+  );
+  return linha?.total ?? 0;
 }
 
 /** Total de cupons capturados (todos os status) — Perfil "cupons escaneados". */
@@ -486,6 +617,10 @@ export async function listarItens(cupomLocalId: string): Promise<ItemCupomLocal[
     valor_unitario: number;
     valor_total: number;
     desconto: number | null;
+    tipico_mediana: number | null;
+    tipico_unidade_base: string | null;
+    tipico_escopo: string | null;
+    tipico_n_observacoes: number | null;
   }>(`SELECT * FROM item_cupom_local WHERE cupom_local_id = ?`, [cupomLocalId]);
 
   return linhas.map((l) => ({
@@ -499,6 +634,19 @@ export async function listarItens(cupomLocalId: string): Promise<ItemCupomLocal[
     valorUnitario: l.valor_unitario,
     valorTotal: l.valor_total,
     desconto: l.desconto,
+    // Só monta com os QUATRO presentes: mediana sem escopo/`n` não é auditável.
+    tipicoNaCompra:
+      l.tipico_mediana != null &&
+      l.tipico_unidade_base != null &&
+      l.tipico_escopo != null &&
+      l.tipico_n_observacoes != null
+        ? {
+            mediana: l.tipico_mediana,
+            unidadeBase: l.tipico_unidade_base as TipicoNaCompra['unidadeBase'],
+            escopo: l.tipico_escopo as TipicoNaCompra['escopo'],
+            nObservacoes: l.tipico_n_observacoes,
+          }
+        : null,
   }));
 }
 

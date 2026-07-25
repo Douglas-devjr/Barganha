@@ -26,6 +26,8 @@ import type { CatalogoProdutos, SugestaoProduto } from '../anonimizacao/casament
 import type { RepositorioUsuario } from '../auth/tipos';
 import type {
   EstatisticaLojaLinha,
+  FiltroBuscaProdutos,
+  FonteBuscaProdutos,
   FonteComparacaoLojas,
   FonteProdutoConsulta,
 } from '../consulta/tipos';
@@ -59,7 +61,9 @@ import type {
 import type { FiltroDeltaSync, FonteDeltaSync, LinhaDelta } from '../sync/tipos';
 import type {
   CupomComItens,
+  CupomHistorico,
   CupomRegistro,
+  CursorHistorico,
   DadosIngestao,
   DadosNotaProcessada,
   FiltroReprocessamento,
@@ -111,6 +115,18 @@ interface ProdutoCanonicoInterno {
   imagemUrl?: string;
 }
 
+/** Resumo de exibição (C11.5) de um canônico — a forma que a UI consome. */
+function resumoDe(p: ProdutoCanonicoInterno): ProdutoResumo {
+  return {
+    produtoCanonicoId: p.id,
+    ...(p.nomeExibicao ? { nomeExibicao: p.nomeExibicao } : {}),
+    ...(p.marca ? { marca: p.marca } : {}),
+    ...(p.categoria ? { categoria: p.categoria } : {}),
+    ...(p.imagemUrl ? { imagemUrl: p.imagemUrl } : {}),
+    unidadeBase: p.unidadeBase,
+  };
+}
+
 /** Lançamento manual armazenado (PRIVADO — tem o autor). C11.3. */
 interface LancamentoModeracaoInterno extends LancamentoModeracaoNovo {
   id: string;
@@ -126,6 +142,7 @@ export class RepositorioMemoria
     RepositorioUsuario,
     CatalogoProdutos,
     FonteProdutoConsulta,
+    FonteBuscaProdutos,
     FonteComparacaoLojas,
     FonteObservacoes,
     RepositorioEstatistica,
@@ -211,10 +228,39 @@ export class RepositorioMemoria
   obterDoUsuario(cupomId: string, usuarioId: string): Promise<CupomComItens | undefined> {
     const c = this.cupons.get(cupomId);
     if (!c || c.usuarioId !== usuarioId) return Promise.resolve(undefined);
+    // `CupomHistorico` é superconjunto de `CupomComItens` (só acrescenta QR/chave/
+    // captura) — devolvê-lo aqui atende os dois usos com um mapeamento só.
+    return Promise.resolve(this.montarHistorico(c));
+  }
+
+  listarHistoricoDoUsuario(
+    usuarioId: string,
+    opcoes: { limite: number; apos?: CursorHistorico },
+  ): Promise<CupomHistorico[]> {
+    const apos = opcoes.apos;
+    const ordenados = [...this.cupons.values()]
+      .filter((c) => c.usuarioId === usuarioId)
+      // Mesma ordem keyset do adaptador real: captura ASC, desempate por id.
+      .sort((a, b) => a.capturadoEm.localeCompare(b.capturadoEm) || a.id.localeCompare(b.id))
+      .filter((c) =>
+        apos
+          ? c.capturadoEm > apos.capturadoEm ||
+            (c.capturadoEm === apos.capturadoEm && c.id > apos.cupomId)
+          : true,
+      )
+      .slice(0, opcoes.limite);
+    return Promise.resolve(ordenados.map((c) => this.montarHistorico(c)));
+  }
+
+  /** Monta a visão privada completa (cabeçalho + itens + QR/chave/captura). */
+  private montarHistorico(c: CupomInterno): CupomHistorico {
     const loja = c.lojaCnpj ? this.lojas.get(c.lojaCnpj) : undefined;
-    return Promise.resolve({
+    return {
       cupomId: c.id,
       status: c.status,
+      qrPayload: c.qrPayload,
+      ...(c.chaveAcesso ? { chaveAcesso: c.chaveAcesso } : {}),
+      capturadoEm: c.capturadoEm,
       ...(c.emitidoEm ? { emitidoEm: c.emitidoEm } : {}),
       ...(c.uf ? { uf: c.uf } : {}),
       ...(loja
@@ -231,7 +277,7 @@ export class RepositorioMemoria
       ...(c.descontoTotal != null ? { descontoTotal: c.descontoTotal } : {}),
       ...(c.valorPago != null ? { valorPago: c.valorPago } : {}),
       itens: this.itensCupom
-        .filter((i) => i.cupomId === cupomId)
+        .filter((i) => i.cupomId === c.id)
         .map((i) => ({
           ...(i.produtoCanonicoId ? { produtoCanonicoId: i.produtoCanonicoId } : {}),
           descricaoOriginal: i.descricaoOriginal,
@@ -241,8 +287,20 @@ export class RepositorioMemoria
           valorUnitario: i.valorUnitario,
           valorTotal: i.valorTotal,
           ...(i.desconto != null ? { desconto: i.desconto } : {}),
+          ...(i.tipicoNaCompra ? { tipicoNaCompra: i.tipicoNaCompra } : {}),
         })),
-    });
+    };
+  }
+
+  apagarDoUsuario(cupomId: string, usuarioId: string): Promise<boolean> {
+    const c = this.cupons.get(cupomId);
+    if (!c || c.usuarioId !== usuarioId) return Promise.resolve(false);
+    this.cupons.delete(cupomId);
+    // Espelha o `on delete cascade` do banco real (array é readonly: splice).
+    for (let i = this.itensCupom.length - 1; i >= 0; i--) {
+      if (this.itensCupom[i]!.cupomId === cupomId) this.itensCupom.splice(i, 1);
+    }
+    return Promise.resolve(true);
   }
 
   atualizarTotais(cupomId: string, total: TotaisNota): Promise<void> {
@@ -368,15 +426,7 @@ export class RepositorioMemoria
 
   obterResumoProduto(produtoCanonicoId: string): Promise<ProdutoResumo | undefined> {
     const p = this.acharProdutoPorId(produtoCanonicoId);
-    if (!p) return Promise.resolve(undefined);
-    return Promise.resolve({
-      produtoCanonicoId: p.id,
-      ...(p.nomeExibicao ? { nomeExibicao: p.nomeExibicao } : {}),
-      ...(p.marca ? { marca: p.marca } : {}),
-      ...(p.categoria ? { categoria: p.categoria } : {}),
-      ...(p.imagemUrl ? { imagemUrl: p.imagemUrl } : {}),
-      unidadeBase: p.unidadeBase,
-    });
+    return Promise.resolve(p ? resumoDe(p) : undefined);
   }
 
   // Pré-filtro pelo token mais longo do nome (espelha o ilike do Supabase); o
@@ -387,6 +437,29 @@ export class RepositorioMemoria
     const r = [...this.todosProdutos()]
       .filter((p) => p.descricaoNormalizada.includes(token))
       .map((p) => ({ produtoCanonicoId: p.id, descricaoNormalizada: p.descricaoNormalizada }));
+    return Promise.resolve(r);
+  }
+
+  // ───────────────────────── FonteBuscaProdutos (C4.4) ────────────────
+
+  estatisticasNoEscopo(filtro: FiltroBuscaProdutos): Promise<PrecoEstatistica[]> {
+    const escopos = new Set(filtro.escopoIds);
+    const produtos = filtro.produtoCanonicoIds ? new Set(filtro.produtoCanonicoIds) : undefined;
+    const r = [...this.estatisticas.values()]
+      .filter((e) => escopos.has(e.escopoId))
+      .filter((e) => (produtos ? produtos.has(e.produtoCanonicoId) : true))
+      // Mais observadas primeiro: é o ranking de "populares na região" e, no
+      // corte pelo limite, sobra o que tem mais base (espelha o adaptador real).
+      .sort((a, b) => b.nObservacoes - a.nObservacoes)
+      .slice(0, filtro.limite);
+    return Promise.resolve(r);
+  }
+
+  resumosProdutos(produtoCanonicoIds: readonly string[]): Promise<ProdutoResumo[]> {
+    const r = produtoCanonicoIds.flatMap((id) => {
+      const p = this.acharProdutoPorId(id);
+      return p ? [resumoDe(p)] : [];
+    });
     return Promise.resolve(r);
   }
 

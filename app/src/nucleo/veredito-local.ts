@@ -14,8 +14,10 @@ import {
   ESCOPO_GEO,
   type EscopoGeo,
   type FaixaPreco,
+  MIN_OBSERVACOES_CONFIAVEL,
   montarVeredito,
   normalizarPreco,
+  podeExporEstatistica,
   type UnidadeBase,
   unidadePadraoDaBase,
   type VeredictoHibrido,
@@ -54,12 +56,6 @@ const ESPECIFICIDADE: Record<EscopoGeo, number> = ESCOPO_GEO.reduce(
 );
 
 /**
- * Mínimo de observações p/ um nível ser considerado confiável offline. Espelha o
- * `MIN_OBSERVACOES_FALLBACK` do backend (docs/06, a calibrar com dados reais).
- */
-const MIN_OBSERVACOES_REGIONAL = 3;
-
-/**
  * Escolhe a melhor linha de cache para o produto — o análogo OFFLINE do
  * `resolverFallback` do backend (C3.3): o nível MAIS ESPECÍFICO
  * (loja→município→região→UF) que atinge o mínimo de observações; se nenhum
@@ -67,11 +63,15 @@ const MIN_OBSERVACOES_REGIONAL = 3;
  * (o nível principal) ganhar da UF, que sempre tem mais observações por agregá-lo.
  */
 function melhorEstatistica(linhas: readonly CacheEstatistica[]): CacheEstatistica | undefined {
-  if (linhas.length === 0) return undefined;
+  // Supressão de célula pequena (docs/04): loja abaixo do piso de exposição não
+  // participa. O servidor já não serve essas linhas; aqui a trava cobre cache
+  // antigo, baixado antes da regra existir.
+  const expostas = linhas.filter((l) => podeExporEstatistica(l.escopo, l.nObservacoes));
+  if (expostas.length === 0) return undefined;
 
   // Uma linha por escopo: a de maior base (mesmo EAN pode vir em unidades diferentes).
   const porEscopo = new Map<EscopoGeo, CacheEstatistica>();
-  for (const l of linhas) {
+  for (const l of expostas) {
     const atual = porEscopo.get(l.escopo);
     if (!atual || l.nObservacoes > atual.nObservacoes) porEscopo.set(l.escopo, l);
   }
@@ -81,7 +81,7 @@ function melhorEstatistica(linhas: readonly CacheEstatistica[]): CacheEstatistic
 
   // 1) Mais específico com base suficiente.
   for (const l of candidatos) {
-    if (l.nObservacoes >= MIN_OBSERVACOES_REGIONAL) return l;
+    if (l.nObservacoes >= MIN_OBSERVACOES_CONFIAVEL) return l;
   }
   // 2) Ninguém atinge o mínimo → o de maior base disponível.
   let melhor: CacheEstatistica | undefined;

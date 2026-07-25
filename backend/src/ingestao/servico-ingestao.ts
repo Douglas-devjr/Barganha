@@ -11,11 +11,49 @@
  * retroativo (C2.5). Erros só acontecem se o QR/chave forem inválidos.
  */
 
-import type { CupomResponse, IngestaoQrRequest, IngestaoQrResponse } from '@barganha/shared';
+import type {
+  CupomResponse,
+  HistoricoCupom,
+  HistoricoCuponsRequest,
+  HistoricoCuponsResponse,
+  IngestaoQrRequest,
+  IngestaoQrResponse,
+} from '@barganha/shared';
 
 import type { FilaProcessamento } from '../fila/tipos';
 import { parseQrNfce } from '../parsers/qr-payload';
-import type { CupomRegistro, RepositorioCupom } from '../persistencia/tipos';
+import type {
+  CupomHistorico,
+  CupomRegistro,
+  CursorHistorico,
+  RepositorioCupom,
+} from '../persistencia/tipos';
+
+/** Página padrão do histórico (restore) e teto rígido, mesmo que o app peça mais. */
+const LIMITE_HISTORICO_PADRAO = 50;
+const LIMITE_HISTORICO_MAX = 100;
+
+/**
+ * Cursor OPACO do histórico: base64 de `capturadoEm|cupomId`. Opaco de
+ * propósito — o app só o ecoa de volta (contrato `HistoricoCuponsRequest`), sem
+ * interpretar. Um cursor malformado (garbage) é tratado como ausente (recomeça
+ * do início) em vez de erro: é inofensivo e evita 400 por um valor que só nós
+ * emitimos.
+ */
+function codificarCursor(c: CursorHistorico): string {
+  return Buffer.from(`${c.capturadoEm}|${c.cupomId}`, 'utf8').toString('base64url');
+}
+
+function decodificarCursor(cursor: string): CursorHistorico | undefined {
+  try {
+    const cru = Buffer.from(cursor, 'base64url').toString('utf8');
+    const sep = cru.indexOf('|');
+    if (sep <= 0) return undefined;
+    return { capturadoEm: cru.slice(0, sep), cupomId: cru.slice(sep + 1) };
+  } catch {
+    return undefined;
+  }
+}
 
 /**
  * Porta mínima para o processamento a partir de HTML colhido pelo app (C2.6).
@@ -89,6 +127,83 @@ export class ServicoIngestao {
   }
 
   /**
+   * Apaga um cupom do PRÓPRIO usuário (direito ao apagamento, docs/04).
+   * `false` quando não existe ou é de outro dono → a HTTP traduz para 404.
+   *
+   * O pool anônimo NÃO é afetado, e isso é o desenho, não uma limitação: as
+   * observações nascem soltas, sem `usuario_id` nem `cupom_id` (decisão travada
+   * nº3), então não existe caminho de volta do cupom para elas. A UI precisa
+   * dizer isso ao usuário — apagar o histórico é dele; o preço já compartilhado
+   * é anônimo e segue servindo a base.
+   */
+  apagarCupom(usuarioId: string, cupomId: string): Promise<boolean> {
+    return this.repo.apagarDoUsuario(cupomId, usuarioId);
+  }
+
+  /**
+   * Rehidratação do histórico privado no login (restore, docs/04). Traz os
+   * cupons do PRÓPRIO usuário paginados por captura, para o app reconstruir o
+   * espelho local após um logout (que limpa o aparelho) ou numa reinstalação /
+   * troca de aparelho. Escopo do dono garantido no repositório; nunca toca o
+   * pool anônimo. O `cursor` é opaco e o `limite` é limitado a `LIMITE_HISTORICO_MAX`.
+   */
+  async listarHistorico(
+    usuarioId: string,
+    req: HistoricoCuponsRequest,
+  ): Promise<HistoricoCuponsResponse> {
+    const limite = Math.min(
+      Math.max(Math.trunc(req.limite ?? LIMITE_HISTORICO_PADRAO), 1),
+      LIMITE_HISTORICO_MAX,
+    );
+    const apos = req.cursor ? decodificarCursor(req.cursor) : undefined;
+    const cupons = await this.repo.listarHistoricoDoUsuario(usuarioId, { limite, apos });
+    // Página cheia ⇒ pode haver mais: devolve o cursor da última linha. (Uma
+    // página cheia que era a última gera uma ida a mais que volta vazia — barato,
+    // e o app encerra sozinho no `proximoCursor` ausente.)
+    const ultimo = cupons.length === limite ? cupons[cupons.length - 1] : undefined;
+    return {
+      cupons: cupons.map((c) => this.paraHistoricoDto(c)),
+      ...(ultimo
+        ? {
+            proximoCursor: codificarCursor({
+              capturadoEm: ultimo.capturadoEm,
+              cupomId: ultimo.cupomId,
+            }),
+          }
+        : {}),
+    };
+  }
+
+  /** Mapeia a visão de persistência para o DTO de restore (lado privado). */
+  private paraHistoricoDto(c: CupomHistorico): HistoricoCupom {
+    return {
+      cupomId: c.cupomId,
+      status: c.status,
+      qrPayload: c.qrPayload,
+      ...(c.chaveAcesso ? { chaveAcesso: c.chaveAcesso } : {}),
+      capturadoEm: c.capturadoEm,
+      ...(c.emitidoEm ? { emitidoEm: c.emitidoEm } : {}),
+      ...(c.uf ? { uf: c.uf } : {}),
+      ...(c.loja ? { loja: c.loja } : {}),
+      ...(c.descontoTotal != null ? { descontoTotal: c.descontoTotal } : {}),
+      ...(c.valorPago != null ? { valorPago: c.valorPago } : {}),
+      itens: c.itens.map((i) => ({
+        ...(i.produtoCanonicoId ? { produtoCanonicoId: i.produtoCanonicoId } : {}),
+        descricaoOriginal: i.descricaoOriginal,
+        ...(i.ean ? { ean: i.ean } : {}),
+        quantidade: i.quantidade,
+        unidade: i.unidade,
+        valorUnitario: i.valorUnitario,
+        valorTotal: i.valorTotal,
+        ...(i.desconto != null ? { desconto: i.desconto } : {}),
+        // Snapshot do típico da região no processamento: desce ao espelho local
+        // para a comparação pagou × típico ser offline e estável no tempo.
+        ...(i.tipicoNaCompra ? { tipicoNaCompra: i.tipicoNaCompra } : {}),
+      })),
+    };
+  }
+
+  /**
    * C6.3 — Estado de um cupom do PRÓPRIO usuário (privado). O app consulta para
    * acompanhar o parsing assíncrono e exibir os itens. `undefined` quando o
    * cupom não existe ou é de outro dono — a camada HTTP traduz para 404.
@@ -113,6 +228,9 @@ export class ServicoIngestao {
         valorUnitario: i.valorUnitario,
         valorTotal: i.valorTotal,
         ...(i.desconto != null ? { desconto: i.desconto } : {}),
+        // Snapshot do típico da região no processamento: desce ao espelho local
+        // para a comparação pagou × típico ser offline e estável no tempo.
+        ...(i.tipicoNaCompra ? { tipicoNaCompra: i.tipicoNaCompra } : {}),
       })),
     };
   }

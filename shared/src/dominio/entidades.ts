@@ -33,6 +33,32 @@ export interface Cupom {
   atualizadoEm: string;
 }
 
+/**
+ * SNAPSHOT do típico da região no instante em que a compra foi processada.
+ *
+ * Por que congelar em vez de calcular depois: a mediana de hoje não é a de
+ * julho. Comparar uma compra antiga com o pool atual transforma inflação em
+ * "economia" (ou em prejuízo) fantasma, e faz o número do usuário mudar sozinho
+ * a cada sincronização. Como a série histórica de `preco_estatistica` não é
+ * guardada, este valor é IRRECUPERÁVEL depois — a mesma razão de guardar o QR
+ * cru desde o dia 1 (decisão travada nº2).
+ *
+ * A mediana é lida ANTES de o cupom entrar no pool: a base é o típico de antes
+ * da própria compra do usuário, que não se auto-referencia.
+ *
+ * `mediana` é R$/`unidadeBase` (nunca valor cru — decisão travada nº5) e vem da
+ * faixa REGULAR, nunca de `menorPromocional` (docs/06). `nObservacoes` viaja
+ * junto porque quem for exibir precisa decidir se a base é grande o bastante —
+ * a captura é fiel, o filtro é da UI.
+ */
+export interface TipicoNaCompra {
+  mediana: number;
+  unidadeBase: UnidadeBase;
+  /** Nível geográfico de onde a mediana veio (`municipio`, `regiao` ou `uf`). */
+  escopo: EscopoGeo;
+  nObservacoes: number;
+}
+
 /** Item da nota do usuário (privado). `produtoCanonicoId` nulo até casar. */
 export interface ItemCupom {
   id: string;
@@ -45,6 +71,12 @@ export interface ItemCupom {
   valorUnitario: number;
   valorTotal: number;
   desconto?: number;
+  /**
+   * Típico da região no momento da compra. Ausente quando o item não casou com
+   * produto canônico ou o pool ainda não tinha base na região — é o caso comum
+   * hoje, e é o correto: sem base, não se afirma nada.
+   */
+  tipicoNaCompra?: TipicoNaCompra;
 }
 
 // ──────────────────────────── COMPARTILHADO ────────────────────────────

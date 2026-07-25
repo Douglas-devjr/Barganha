@@ -1,6 +1,6 @@
 /**
  * Redesign "3a" — barra de abas com o FAB central de scan que flutua sobre a
- * barra. 4 abas fixas (Início · Verificar · Produtos · Perfil); o FAB abre a tela
+ * barra. 4 abas fixas (Início · Verificar · Lista · Perfil); o FAB abre a tela
  * `Scanner` (QR) do stack raiz. Cores da paleta ativa (claro/escuro).
  *
  * 3a: zero cor de marca aqui — aba ativa na tinta, inativa em `fraco`. O FAB é
@@ -14,8 +14,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import {
   IconeInicio,
+  IconeLista,
   IconePerfil,
-  IconeProdutos,
   IconeScan,
   IconeVerificar,
   Texto,
@@ -29,7 +29,7 @@ const META: Record<keyof TabParamList, { rotulo: string; Icone: (p: IconeProps) 
   {
     Inicio: { rotulo: 'Início', Icone: IconeInicio },
     Verificar: { rotulo: 'Verificar', Icone: IconeVerificar },
-    Produtos: { rotulo: 'Produtos', Icone: IconeProdutos },
+    Lista: { rotulo: 'Lista', Icone: IconeLista },
     Perfil: { rotulo: 'Perfil', Icone: IconePerfil },
   };
 

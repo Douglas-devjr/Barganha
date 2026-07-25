@@ -11,9 +11,26 @@
  * papéis/Supabase Auth é trocar só esta peça.
  *
  * Falha fechada: sem nenhum token configurado, NADA é autorizado.
+ *
+ * A comparação é em tempo constante (ver `iguala`): um `Set.has` sai no primeiro
+ * caractere divergente, e a diferença de tempo entre "errou no 1º" e "errou no
+ * 20º" é medível o bastante para reconstruir o token byte a byte.
  */
 
+import { createHash, timingSafeEqual } from 'node:crypto';
+
 import { extrairUsuarioId } from './autenticador';
+
+/**
+ * Compara em tempo constante. Passa pelo SHA-256 antes porque
+ * `timingSafeEqual` exige buffers do MESMO tamanho — e o próprio comprimento do
+ * token não pode virar canal lateral. O digest tem 32 bytes sempre.
+ */
+function iguala(a: string, b: string): boolean {
+  const da = createHash('sha256').update(a).digest();
+  const db = createHash('sha256').update(b).digest();
+  return timingSafeEqual(da, db);
+}
 
 interface HeadersRequest {
   authorization?: string;
@@ -26,18 +43,27 @@ export interface AutorizacaoCuradoria {
 }
 
 export class GuardaCuradoria implements AutorizacaoCuradoria {
-  private readonly tokens: ReadonlySet<string>;
+  private readonly tokens: readonly string[];
 
   constructor(tokens: Iterable<string>) {
-    this.tokens = new Set([...tokens].map((t) => t.trim()).filter((t) => t.length > 0));
+    // Lista, não Set: a varredura precisa ser COMPLETA (sem curto-circuito no
+    // primeiro acerto) para o tempo não denunciar qual token casou.
+    this.tokens = [...new Set([...tokens].map((t) => t.trim()).filter((t) => t.length > 0))];
   }
 
   autorizado(headers: HeadersRequest): boolean {
     // Sem token configurado → nega tudo (fail-closed): nunca expõe curadoria por
     // omissão de configuração.
-    if (this.tokens.size === 0) return false;
+    if (this.tokens.length === 0) return false;
     const token = extrairUsuarioId(headers); // reaproveita o parser de Bearer
-    return token != null && this.tokens.has(token);
+    if (token == null) return false;
+    let ok = false;
+    for (const valido of this.tokens) {
+      // Sem `break`/`||=` de curto-circuito: acumula o resultado percorrendo
+      // todos os tokens, sempre no mesmo custo.
+      if (iguala(token, valido)) ok = true;
+    }
+    return ok;
   }
 }
 

@@ -27,6 +27,7 @@ import { ProvedorToast, Texto } from '@/componentes';
 import { inicializarBd, meta } from '@/dados';
 import { AuthNavegador, RaizNavegador } from '@/navegacao';
 import { sincronizar } from '@/nucleo/sincronizador';
+import { AberturaFluxo } from '@/telas/abertura/AberturaFluxo';
 import { OnboardingTela } from '@/telas/OnboardingTela';
 import { RedefinirSenhaTela } from '@/telas/auth/RedefinirSenhaTela';
 import { ProvedorTema, cores, useTema } from '@/tema';
@@ -78,10 +79,19 @@ function BarraStatus() {
   return <StatusBar style={escuro ? 'light' : 'dark'} />;
 }
 
-/** Gate de navegação: consentimento → login → app. Consome a sessão de auth. */
+/**
+ * Gate de navegação: consentimento → login → ABERTURA → app. Consome a sessão
+ * de auth.
+ *
+ * A ABERTURA (boas-vindas + permissão de câmera + região) roda uma vez por
+ * APARELHO, entre o login e as abas. Fica no gate, e não como rota do stack,
+ * porque tem ordem e não pode ser desempilhada para dentro do app.
+ */
 function Conteudo({ consentidoInicial }: { consentidoInicial: boolean }) {
   const { sessao, carregando, recuperandoSenha } = useAuth();
   const [consentido, setConsentido] = useState(consentidoInicial);
+  /** `null` = ainda lendo; `true`/`false` = abertura já concluída neste aparelho. */
+  const [aberturaFeita, setAberturaFeita] = useState<boolean | null>(null);
 
   // Sincroniza (upload da fila + delta) quando há sessão e ao voltar ao app.
   useEffect(() => {
@@ -90,6 +100,22 @@ function Conteudo({ consentidoInicial }: { consentidoInicial: boolean }) {
       if (estado === 'active' && sessao) void sincronizar();
     });
     return () => sub.remove();
+  }, [sessao]);
+
+  // O estado da abertura é relido a cada nova sessão (contas diferentes no mesmo
+  // aparelho não repetem o fluxo — a flag é do aparelho, não da conta).
+  useEffect(() => {
+    if (!sessao) {
+      setAberturaFeita(null);
+      return;
+    }
+    let vivo = true;
+    void meta.obterAberturaEm().then((em) => {
+      if (vivo) setAberturaFeita(em != null);
+    });
+    return () => {
+      vivo = false;
+    };
   }, [sessao]);
 
   if (!consentido) {
@@ -103,8 +129,27 @@ function Conteudo({ consentidoInicial }: { consentidoInicial: boolean }) {
     return <RedefinirSenhaTela />;
   }
 
+  if (!sessao) {
+    return (
+      <NavigationContainer>
+        <AuthNavegador />
+      </NavigationContainer>
+    );
+  }
+
+  // Há sessão: espera saber o estado da abertura antes de decidir (evita piscar
+  // as abas por um frame antes de mandar para a abertura).
+  if (aberturaFeita === null) {
+    return <Splash />;
+  }
+  if (!aberturaFeita) {
+    return <AberturaFluxo aoConcluir={() => setAberturaFeita(true)} />;
+  }
+
   return (
-    <NavigationContainer>{sessao ? <RaizNavegador /> : <AuthNavegador />}</NavigationContainer>
+    <NavigationContainer>
+      <RaizNavegador />
+    </NavigationContainer>
   );
 }
 
