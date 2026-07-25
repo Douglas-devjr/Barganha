@@ -127,6 +127,9 @@ async function aplicarCupomRemoto(cupomLocalId: string, remoto: CupomResponse): 
       valorUnitario: i.valorUnitario,
       valorTotal: i.valorTotal,
       desconto: i.desconto ?? null,
+      // Congelado pelo backend no processamento — o app só espelha, nunca
+      // recalcula (senão o número do passado mudaria a cada sync).
+      tipicoNaCompra: i.tipicoNaCompra ?? null,
     })),
   });
 }

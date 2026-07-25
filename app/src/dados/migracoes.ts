@@ -145,4 +145,19 @@ export const MIGRACOES: string[] = [
   `
   ALTER TABLE lista_compras ADD COLUMN marcado INTEGER NOT NULL DEFAULT 0;
   `,
+  // v7 — snapshot do TÍPICO da região no momento da compra, por item.
+  //
+  // Espelha as colunas novas de `item_cupom` no backend. Aqui é só espelho: o
+  // valor é calculado no servidor ANTES de o cupom entrar no pool (para a base
+  // ser o típico de antes da própria compra) e desce pronto pelo DTO.
+  //
+  // Cupons já sincronizados ficam com NULL para sempre — a mediana daquela
+  // semana não existe mais em lugar nenhum. É exatamente por isso que a coluna
+  // entra agora, antes da tela que vai consumi-la (docs/06 §"Economia real").
+  `
+  ALTER TABLE item_cupom_local ADD COLUMN tipico_mediana REAL;
+  ALTER TABLE item_cupom_local ADD COLUMN tipico_unidade_base TEXT;
+  ALTER TABLE item_cupom_local ADD COLUMN tipico_escopo TEXT;
+  ALTER TABLE item_cupom_local ADD COLUMN tipico_n_observacoes INTEGER;
+  `,
 ];

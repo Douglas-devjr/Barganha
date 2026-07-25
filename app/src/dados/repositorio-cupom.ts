@@ -6,7 +6,7 @@
  * estruturada vêm do backend e chegam depois via `aplicarProcessamento`.
  */
 
-import type { StatusCupom } from '@barganha/shared';
+import type { StatusCupom, TipicoNaCompra } from '@barganha/shared';
 
 import { agoraIso, gerarIdLocal } from '@/nucleo/id';
 
@@ -47,6 +47,18 @@ function mapearCupom(l: LinhaCupom): CupomLocal {
     criadoEm: l.criado_em,
     atualizadoEm: l.atualizado_em,
   };
+}
+
+/**
+ * As 4 colunas do típico congelado, na ordem do INSERT. Os campos andam SEMPRE
+ * juntos: mediana sem escopo/`n` não é auditável, então ou grava tudo ou grava
+ * NULL em tudo. Ter isto num lugar só evita que os dois INSERTs de item
+ * (processamento e restore) divirjam.
+ */
+function colunasTipico(
+  t: TipicoNaCompra | null,
+): [number, string, string, number] | [null, null, null, null] {
+  return t ? [t.mediana, t.unidadeBase, t.escopo, t.nObservacoes] : [null, null, null, null];
 }
 
 export interface NovaCaptura {
@@ -214,8 +226,9 @@ export async function aplicarProcessamento(
       await txn.runAsync(
         `INSERT INTO item_cupom_local
            (id, cupom_local_id, produto_canonico_id, descricao_original, ean,
-            quantidade, unidade, valor_unitario, valor_total, desconto)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            quantidade, unidade, valor_unitario, valor_total, desconto,
+            tipico_mediana, tipico_unidade_base, tipico_escopo, tipico_n_observacoes)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           gerarIdLocal(),
           cupomLocalId,
@@ -227,6 +240,7 @@ export async function aplicarProcessamento(
           item.valorUnitario,
           item.valorTotal,
           item.desconto,
+          ...colunasTipico(item.tipicoNaCompra),
         ],
       );
     }
@@ -486,6 +500,10 @@ export async function listarItens(cupomLocalId: string): Promise<ItemCupomLocal[
     valor_unitario: number;
     valor_total: number;
     desconto: number | null;
+    tipico_mediana: number | null;
+    tipico_unidade_base: string | null;
+    tipico_escopo: string | null;
+    tipico_n_observacoes: number | null;
   }>(`SELECT * FROM item_cupom_local WHERE cupom_local_id = ?`, [cupomLocalId]);
 
   return linhas.map((l) => ({
@@ -499,6 +517,19 @@ export async function listarItens(cupomLocalId: string): Promise<ItemCupomLocal[
     valorUnitario: l.valor_unitario,
     valorTotal: l.valor_total,
     desconto: l.desconto,
+    // Só monta com os QUATRO presentes: mediana sem escopo/`n` não é auditável.
+    tipicoNaCompra:
+      l.tipico_mediana != null &&
+      l.tipico_unidade_base != null &&
+      l.tipico_escopo != null &&
+      l.tipico_n_observacoes != null
+        ? {
+            mediana: l.tipico_mediana,
+            unidadeBase: l.tipico_unidade_base as TipicoNaCompra['unidadeBase'],
+            escopo: l.tipico_escopo as TipicoNaCompra['escopo'],
+            nObservacoes: l.tipico_n_observacoes,
+          }
+        : null,
   }));
 }
 

@@ -15,6 +15,12 @@
  * original comprovadamente não publicou nada. Isso também torna o job
  * idempotente: após republicar, os itens ganham canônico e saem da elegibilidade.
  *
+ * NÃO congela o típico da compra (`TipicoNaCompra`), e isso é deliberado: o
+ * cupom aqui é antigo, e gravar a mediana de HOJE como se fosse a da época
+ * inventaria um passado que nunca existiu — o oposto do motivo de o snapshot
+ * existir. Esses itens ficam sem baseline para sempre, o que é a resposta
+ * honesta. O caminho normal (`ProcessadorCupom.finalizar`) é quem congela.
+ *
  * Execução manual (one-off, workspace @barganha/backend):
  *   npm run job:republicar
  */

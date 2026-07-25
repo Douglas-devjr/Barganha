@@ -20,10 +20,12 @@ import {
   type PrecoEstatistica,
   type ProdutoResumo,
   type StatusModeracao,
+  type TipicoNaCompra,
   type TotaisNota,
 } from '@barganha/shared';
 import type { PostgrestError, SupabaseClient } from '@supabase/supabase-js';
 
+import type { ItemCupomNovo } from '../anonimizacao/anonimizador';
 import type { CatalogoProdutos, SugestaoProduto } from '../anonimizacao/casamento';
 import type { RepositorioUsuario } from '../auth/tipos';
 import type {
@@ -106,6 +108,37 @@ export const MAX_OBSERVACOES_AGREGACAO = 50_000;
 interface RespostaPagina<T> {
   data: T[] | null;
   error: PostgrestError | null;
+}
+
+/**
+ * Uma linha de `item_cupom` na forma do domínio (lado PRIVADO). Os numéricos do
+ * Postgres chegam como string no PostgREST — daí o `num`.
+ *
+ * O `tipicoNaCompra` só é montado com os QUATRO campos presentes: mediana sem
+ * escopo/`n` não é auditável, e meia-informação aqui viraria número exibido sem
+ * lastro. Ausência é a resposta honesta.
+ */
+function paraItemPrivado(i: Record<string, unknown>): ItemCupomNovo {
+  const mediana = num(i.tipico_mediana);
+  const unidadeBase = i.tipico_unidade_base as TipicoNaCompra['unidadeBase'] | null;
+  const escopo = i.tipico_escopo as TipicoNaCompra['escopo'] | null;
+  const nObservacoes = num(i.tipico_n_observacoes);
+  const tipicoNaCompra: TipicoNaCompra | undefined =
+    mediana != null && unidadeBase != null && escopo != null && nObservacoes != null
+      ? { mediana, unidadeBase, escopo, nObservacoes }
+      : undefined;
+
+  return {
+    ...(i.produto_canonico_id ? { produtoCanonicoId: i.produto_canonico_id as string } : {}),
+    descricaoOriginal: i.descricao_original as string,
+    ...(i.ean ? { ean: i.ean as string } : {}),
+    quantidade: Number(i.quantidade),
+    unidade: i.unidade as string,
+    valorUnitario: Number(i.valor_unitario),
+    valorTotal: Number(i.valor_total),
+    ...(i.desconto != null ? { desconto: Number(i.desconto) } : {}),
+    ...(tipicoNaCompra ? { tipicoNaCompra } : {}),
+  };
 }
 
 /** Projeção crua de `observacao_preco` usada pela agregação. */
@@ -249,7 +282,7 @@ export class RepositorioSupabase
     const itensR = await this.db
       .from('item_cupom')
       .select(
-        'produto_canonico_id, descricao_original, ean, quantidade, unidade, valor_unitario, valor_total, desconto',
+        'produto_canonico_id, descricao_original, ean, quantidade, unidade, valor_unitario, valor_total, desconto, tipico_mediana, tipico_unidade_base, tipico_escopo, tipico_n_observacoes',
       )
       .eq('cupom_id', cupomId);
     if (itensR.error) falhar('carga de itens do cupom', itensR.error);
@@ -281,16 +314,7 @@ export class RepositorioSupabase
       ...(loja ? { loja } : {}),
       ...(c.data.desconto_total != null ? { descontoTotal: Number(c.data.desconto_total) } : {}),
       ...(c.data.valor_pago != null ? { valorPago: Number(c.data.valor_pago) } : {}),
-      itens: (itensR.data ?? []).map((i) => ({
-        ...(i.produto_canonico_id ? { produtoCanonicoId: i.produto_canonico_id } : {}),
-        descricaoOriginal: i.descricao_original,
-        ...(i.ean ? { ean: i.ean } : {}),
-        quantidade: Number(i.quantidade),
-        unidade: i.unidade,
-        valorUnitario: Number(i.valor_unitario),
-        valorTotal: Number(i.valor_total),
-        ...(i.desconto != null ? { desconto: Number(i.desconto) } : {}),
-      })),
+      itens: (itensR.data ?? []).map((i) => paraItemPrivado(i)),
     };
   }
 
@@ -356,6 +380,13 @@ export class RepositorioSupabase
         valor_unitario: i.valorUnitario,
         valor_total: i.valorTotal,
         desconto: i.desconto ?? null,
+        // Snapshot do típico da região no processamento — os 4 campos andam
+        // juntos (mediana sem escopo/n não é auditável). Nulos quando o item
+        // não casou ou a região ainda não tinha base.
+        tipico_mediana: i.tipicoNaCompra?.mediana ?? null,
+        tipico_unidade_base: i.tipicoNaCompra?.unidadeBase ?? null,
+        tipico_escopo: i.tipicoNaCompra?.escopo ?? null,
+        tipico_n_observacoes: i.tipicoNaCompra?.nObservacoes ?? null,
       })),
       p_observacoes: observacoes.map((o) => ({
         produto_canonico_id: o.produtoCanonicoId,

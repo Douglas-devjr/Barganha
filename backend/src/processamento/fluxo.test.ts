@@ -94,6 +94,42 @@ describe('Fluxo de captura C2 (ingestão → parse → anonimização → pool)'
     expect(naLoja?.mediana).toBeGreaterThan(0);
   });
 
+  it('congela o típico ANTES de o cupom entrar no pool (não se compara consigo mesmo)', async () => {
+    // Espelha o composition root: `fonteTipico` + recálculo ligados. O que está
+    // sob teste é a ORDEM — se o típico fosse lido depois do `marcarProcessado`,
+    // a mediana já teria o preço deste mesmo cupom dentro.
+    const repo = new RepositorioMemoria();
+    const registro = new RegistroParsers([new ParserRj(clienteRjSp)]);
+    const anonimizador = new Anonimizador(repo);
+    const pipeline = new PipelineEstatistica(repo, repo);
+    const processador = new ProcessadorCupom(repo, registro, anonimizador, {
+      fonteTipico: repo,
+      aoPublicarPool: async (ids) => {
+        for (const id of ids) await pipeline.recalcularProduto(id);
+      },
+    });
+    const fila = new FilaMemoria((t) => processador.processar(t.cupomId), { dormir: semEspera });
+    const servico = new ServicoIngestao(repo, fila);
+
+    // 1º cupom do produto: na leitura o pool ainda estava vazio → sem baseline.
+    // Ausência é a resposta honesta; um snapshot aqui seria o próprio preço.
+    const r1 = await servico.ingerir('user-1', { qrPayload: QR_RJ, ...CAPTURA });
+    await fila.ociosa();
+    expect(repo.itensDoCupom(r1.cupomId).every((i) => i.tipicoNaCompra === undefined)).toBe(true);
+
+    // Outra conta, MESMA nota: o pool já tem a base publicada pela primeira (as
+    // observações são retidas pelo dedup, mas o histórico privado existe) — e
+    // agora há típico para congelar.
+    const r2 = await servico.ingerir('user-2', { qrPayload: QR_RJ, ...CAPTURA });
+    await fila.ociosa();
+
+    const comTipico = repo.itensDoCupom(r2.cupomId).filter((i) => i.tipicoNaCompra);
+    expect(comTipico.length).toBeGreaterThan(0);
+    // Nunca o nível loja: a base é o município (ver `comTipicoNaCompra`).
+    expect(comTipico[0]?.tipicoNaCompra?.escopo).toBe('municipio');
+    expect(comTipico[0]?.tipicoNaCompra?.mediana).toBeGreaterThan(0);
+  });
+
   it('processa SP com o mesmo serviço (parser resolvido por UF)', async () => {
     const { repo, servico, fila } = montar((c) => [new ParserRj(c), new ParserSp(c)], clienteRjSp);
     const res = await servico.ingerir('user-1', { qrPayload: QR_SP, ...CAPTURA });

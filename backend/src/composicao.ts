@@ -118,6 +118,10 @@ export function montarBackend(config: ConfigBackend): Backend {
       agendadorRecalculo.marcar(ids);
       return Promise.resolve();
     },
+    // Congela o típico da região em cada item ANTES de o cupom entrar no pool.
+    // Hoje quase nada casa (pool raso) e o snapshot fica vazio — a captura roda
+    // assim mesmo porque a mediana de hoje é irrecuperável amanhã.
+    fonteTipico: repo,
   });
   const fila = new FilaMemoria((t) => processador.processar(t.cupomId), {
     aoEsgotar: (tarefa, erro) => {

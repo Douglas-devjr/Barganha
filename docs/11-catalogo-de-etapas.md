@@ -117,6 +117,7 @@ Este documento dá um **nome e um código curto** a cada etapa do desenvolviment
 | C8.2 | Perfil: dados mínimos, mercados favoritos, preferências `[MVP]` |
 | C8.3 | Estatísticas (gastos por mês/categoria/onde economiza) `[Pós]` |
 | C8.4 | Economia acumulada + tendência + alertas de preço `[Pós]` |
+| C8.4.1 | **Economia real** (pagou × típico) — a captura do snapshot por item já está feita; falta a UI, e o gatilho é **cobertura medida**, não data. Condições inegociáveis e fórmula em `docs/06 §Economia real` `[Pós]` |
 *Responsáveis:* mobile-engineer, ux-designer, product-manager
 
 ### `C9` — Qualidade *(QA, Privacidade & Performance)* `[MVP]` *(transversal)*

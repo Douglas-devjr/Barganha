@@ -5,7 +5,7 @@
  * id de servidor, status de upload).
  */
 
-import type { StatusCupom, UnidadeBase, EscopoGeo } from '@barganha/shared';
+import type { StatusCupom, TipicoNaCompra, UnidadeBase, EscopoGeo } from '@barganha/shared';
 
 /** Cupom no dispositivo. `id` é local (gerarIdLocal); `cupomIdServidor` chega
  * após a ingestão. `qrPayload` é privado e nunca vai ao pool (docs/04). */
@@ -40,6 +40,16 @@ export interface ItemCupomLocal {
   valorUnitario: number;
   valorTotal: number;
   desconto: number | null;
+  /**
+   * Típico da região CONGELADO no processamento deste cupom (ver
+   * `TipicoNaCompra` em @barganha/shared). Vem pronto do backend; o app nunca
+   * recalcula — é o que mantém números do passado estáveis e offline.
+   *
+   * `null` quando o item não casou com produto canônico ou a região não tinha
+   * base na época. Hoje é o caso da maioria (pool raso) e é o correto: sem
+   * base, o app não afirma nada.
+   */
+  tipicoNaCompra: TipicoNaCompra | null;
 }
 
 /** Linha do cache de `preco_estatistica` baixada via delta sync (docs/05). */

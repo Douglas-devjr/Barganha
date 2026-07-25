@@ -5,7 +5,7 @@
  */
 
 import type { UnidadeBase } from '../core';
-import type { PrecoEstatistica } from '../dominio/entidades';
+import type { PrecoEstatistica, TipicoNaCompra } from '../dominio/entidades';
 import type { EscopoGeo, MotivoDenuncia, StatusCupom, StatusModeracao } from '../dominio/enums';
 
 // ─────────────────────────── Ingestão (C2.1) ───────────────────────────
@@ -52,6 +52,12 @@ export interface ItemNotaResponse {
   valorUnitario: number;
   valorTotal: number;
   desconto?: number;
+  /**
+   * Típico da região congelado no processamento (ver `TipicoNaCompra`). Desce ao
+   * espelho local para a comparação pagou × típico ser 100% offline depois — o
+   * app não recalcula nem re-consulta o pool para números do passado.
+   */
+  tipicoNaCompra?: TipicoNaCompra;
 }
 
 /**

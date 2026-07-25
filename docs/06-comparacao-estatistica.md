@@ -71,6 +71,70 @@ Faixas sugeridas (a calibrar com dados reais):
 - entre p25 e p75 → **na média**
 - acima de p75 → **caro**
 
+## Economia real (pagou × típico) — planejado, C8.4
+
+Hoje o app soma o **desconto da NFC-e** e chama isso de descontos — corretamente,
+porque é o que é: a promoção que o **mercado** deu, idêntica se o Barganha não
+existisse. A métrica que mede o *app* é outra: **quanto o usuário pagou a menos
+(ou a mais) que o típico da região**. Comprou leite a R$ 10 onde o típico é R$ 15
+→ economizou R$ 5.
+
+### O que já está pronto (feito antes da UI, de propósito)
+Todo item processado guarda o **snapshot do típico da região no instante da
+compra** (`TipicoNaCompra`: mediana, unidade-base, escopo e `n`). Está no
+`item_cupom` (migração `20260725090000`) e desce ao espelho local (migração v7).
+
+Foi feito primeiro porque **é a única parte irrecuperável**: `preco_estatistica`
+guarda só o estado atual, então a mediana de hoje não existe mais amanhã. Sem o
+snapshot, a métrica só teria duas saídas ruins — comparar compra antiga com pool
+de hoje (inflação vira economia fantasma, e o número muda sozinho a cada sync) ou
+nascer sem histórico. Mesma lógica de guardar o QR cru desde o dia 1.
+
+Duas decisões já embutidas na captura:
+- **A mediana é lida ANTES de o cupom entrar no pool** — a base é o típico de
+  antes da própria compra do usuário, que não se auto-referencia. A ordem está
+  travada por teste em `fluxo.test.ts`.
+- **O nível loja é excluído.** Comparar com a mediana da própria loja tende a
+  zero e responde "peguei promoção aqui?", não "escolhi bem?". Base é
+  município → região → UF.
+
+### O que falta (não construir antes da hora)
+Com o pool raso, o snapshot vem vazio para quase todo item e a tela mostraria
+"R$ 0,00 · 2 de 40 itens comparados" — uma prova visual de que o app ainda não
+tem dados. O gatilho para construir **não é uma data, é cobertura medida**:
+quando a fração de itens com `tipico_mediana` não-nula passar de ~60% num cupom
+típico. Como o campo já é gravado, dá para medir em vez de chutar.
+
+Quando for a hora, três condições **inegociáveis** — sem elas a métrica é *pior*
+que a atual, porque troca um número chato e verdadeiro por um bonito e não
+auditável:
+
+1. **Pode dar negativo.** Somar só os itens abaixo do típico infla o número
+   sistematicamente e vira métrica de vaidade. É um **saldo líquido**: às vezes
+   "R$ 32 abaixo do típico", às vezes "R$ 14 acima". Boletim, não troféu.
+2. **Declara a cobertura.** "23 de 41 itens comparados" — com dados sem EAN,
+   boa parte não casa. Um número parcial se passando por total é mentira por
+   omissão. E o piso de `n` para *afirmar* economia deve ser maior que o
+   `minObservacoesConfiavel` (3) usado no veredito da gôndola: 3 observações
+   servem para uma opinião com ressalva, não para "você economizou R$ 5,00".
+3. **Drill-down obrigatório.** O desconto do cupom é auditável (está no papel);
+   este número é uma afirmação do app. Cada real precisa ser rastreável até
+   "Leite 1L · pagou R$ 5,49/L · típico R$ 6,90/L · 12 observações no município".
+
+Duas notas de cálculo:
+- **Não somar as duas métricas.** O preço pago já é líquido do desconto. A
+  decomposição exata é `típico − pago = (típico − bruto) + desconto`: "destes
+  R$ 32, R$ 12 vieram de promoções do mercado e R$ 20 de escolher onde e o quê
+  comprar" — a segunda parcela é o valor do app.
+- **Fallback de cobertura zero:** enquanto não há base, o card assume ("ainda
+  juntando base na sua região") e mostra o desconto do cupom como stat
+  secundário — nunca R$ 0,00 sem explicação.
+
+Também fica para essa hora a **renomeação dos identificadores** (`economiaPorMes`,
+`EconomiaMensal`, `economia_total`…), que hoje dizem "economia" mas somam
+desconto. Renomear agora seria churn; renomear quando as duas métricas
+coexistirem é necessário.
+
 ## Casamento de produtos
 - **Com EAN:** casamento direto ao `produto_canonico`.
 - **Sem EAN** (hortifruti/padaria/açougue): casamento por **texto** (normalização + similaridade) gerando `produto_alias` com score, **confirmado** pelo usuário/curadoria antes de virar referência.

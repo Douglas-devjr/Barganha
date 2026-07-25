@@ -127,6 +127,9 @@ export class ServicoIngestao {
         valorUnitario: i.valorUnitario,
         valorTotal: i.valorTotal,
         ...(i.desconto != null ? { desconto: i.desconto } : {}),
+        // Snapshot do típico da região no processamento: desce ao espelho local
+        // para a comparação pagou × típico ser offline e estável no tempo.
+        ...(i.tipicoNaCompra ? { tipicoNaCompra: i.tipicoNaCompra } : {}),
       })),
     };
   }
