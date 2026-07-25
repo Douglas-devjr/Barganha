@@ -56,6 +56,8 @@ A comparação é **regional** (preço varia muito por município). Ao consultar
 1. tenta no escopo **loja** → se `n_observacoes` insuficiente,
 2. sobe para **município** → depois **região** → depois **UF**.
 
+O nível **loja** tem ainda um **piso de exposição** (privacidade, docs/04): abaixo de `MIN_OBSERVACOES_EXPOR_LOJA` a célula é suprimida — não é servida, nem sincronizada, nem exibida, e **não** volta como "maior base" no passo 2 (com `n = 1` a mediana da loja é o preço de uma compra específica). Os demais níveis só ganham a ressalva de baixa confiança.
+
 Sempre há resposta, no nível mais específico possível, e a UI informa a base:
 > "baseado em 3 mercados na sua cidade"
 

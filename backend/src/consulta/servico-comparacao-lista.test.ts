@@ -82,6 +82,26 @@ describe('ServicoComparacaoLista (C12.1)', () => {
     expect(r.lojas[0]?.itens[0]?.menorPromocional).toBe(6);
   });
 
+  it('suprime a célula (loja × produto) abaixo do piso de exposição (docs/04)', async () => {
+    const servico = new ServicoComparacaoLista(
+      fonte([
+        // Loja 111: um item maduro (n=5) e outro visto uma vez só (n=1).
+        linha({ lojaCnpj: '111', produtoCanonicoId: 'arroz', mediana: 10, nObservacoes: 5 }),
+        linha({ lojaCnpj: '111', produtoCanonicoId: 'feijao', mediana: 20, nObservacoes: 1 }),
+        // Loja 222 só tem células rasas → não pode aparecer no ranking.
+        linha({ lojaCnpj: '222', produtoCanonicoId: 'arroz', mediana: 5, nObservacoes: 2 }),
+      ]),
+    );
+    const r = await servico.comparar({
+      itens: [{ produtoCanonicoId: 'arroz' }, { produtoCanonicoId: 'feijao' }],
+    });
+
+    expect(r.lojas.map((l) => l.lojaCnpj)).toEqual(['111']);
+    expect(r.lojas[0]).toMatchObject({ total: 10, itensCobertos: 1 });
+    // O feijão de n=1 vira lacuna, não preço: seria a compra de uma pessoa.
+    expect(r.lojas[0]?.itens.find((i) => i.produtoCanonicoId === 'feijao')?.preco).toBeUndefined();
+  });
+
   it('sem estatística de loja no recorte → lista de lojas vazia (não erro)', async () => {
     const servico = new ServicoComparacaoLista(fonte([linha({ ufLoja: 'SP' })]));
     const r = await servico.comparar({ itens: [{ produtoCanonicoId: 'arroz' }], uf: 'RJ' });

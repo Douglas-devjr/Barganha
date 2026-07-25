@@ -17,6 +17,7 @@ import {
   MIN_OBSERVACOES_CONFIAVEL,
   montarVeredito,
   normalizarPreco,
+  podeExporEstatistica,
   type UnidadeBase,
   unidadePadraoDaBase,
   type VeredictoHibrido,
@@ -62,11 +63,15 @@ const ESPECIFICIDADE: Record<EscopoGeo, number> = ESCOPO_GEO.reduce(
  * (o nível principal) ganhar da UF, que sempre tem mais observações por agregá-lo.
  */
 function melhorEstatistica(linhas: readonly CacheEstatistica[]): CacheEstatistica | undefined {
-  if (linhas.length === 0) return undefined;
+  // Supressão de célula pequena (docs/04): loja abaixo do piso de exposição não
+  // participa. O servidor já não serve essas linhas; aqui a trava cobre cache
+  // antigo, baixado antes da regra existir.
+  const expostas = linhas.filter((l) => podeExporEstatistica(l.escopo, l.nObservacoes));
+  if (expostas.length === 0) return undefined;
 
   // Uma linha por escopo: a de maior base (mesmo EAN pode vir em unidades diferentes).
   const porEscopo = new Map<EscopoGeo, CacheEstatistica>();
-  for (const l of linhas) {
+  for (const l of expostas) {
     const atual = porEscopo.get(l.escopo);
     if (!atual || l.nObservacoes > atual.nObservacoes) porEscopo.set(l.escopo, l);
   }

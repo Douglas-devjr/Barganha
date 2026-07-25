@@ -16,6 +16,8 @@
 2. **Itens entram "soltos" no pool.** Cada `observacao_preco` é independente — **não** ficam amarrados como "fulano comprou estes 30 itens juntos, neste horário". Isso quebra a *impressão digital da cesta*, que poderia re-identificar a pessoa.
 3. **Chave de acesso não vai ao pool compartilhado.** Ela permite vincular a nota a um CPF via SEFAZ; fica só no lado privado.
 4. **Sem vínculo usuário↔observação.** `observacao_preco` não tem `usuario_id` nem `cupom_id`.
+5. **Supressão de célula pequena no escopo LOJA.** Uma `preco_estatistica` de escopo `loja` com pouquíssimas observações publica, na prática, *"alguém comprou este item nesta loja por este preço nesta data"* — com `n = 1` a mediana **é** o preço daquela compra, e loja + produto + preço + dia é contexto identificável por quem estava lá. Abaixo de `MIN_OBSERVACOES_EXPOR_LOJA` (hoje **3**) a célula **não é servida nem exibida**: a consulta sobe para município (nunca "cai" para a loja rasa nem como maior base), o delta sync não desce a linha para o aparelho e a comparação de cesta (C12.1) trata o item como lacuna. Município e acima **não** são suprimidos — agregam muitas lojas, então `n` baixo ali significa "poucos dados" (ressalva de confiança, docs/06), não a compra de uma pessoa.
+   > A agregação continua calculando o nível loja normalmente — o piso é de **exposição**, não de cálculo. Fonte única: `shared/src/anonimizacao/exposicao.ts`. É um piso de **privacidade**, separado de propósito do `MIN_OBSERVACOES_CONFIAVEL` (qualidade estatística, a calibrar): baixá-lo é decisão de LGPD, não de calibração.
 
 ## Princípios LGPD adotados
 - **Minimização:** coletar e guardar apenas o necessário para o veredito de preço.
@@ -58,5 +60,6 @@ substituindo a conta anônima de C4.3. Isso introduz **um** dado pessoal — a
 - [ ] O dado de **login** (email/identidade Google) não saiu de `auth.users`/lado privado.
 - [ ] Coleta o mínimo necessário; há base legal/consentimento para o que coleta.
 - [ ] O usuário consegue apagar seus dados (inclui apagar a conta de auth).
+- [ ] Nenhuma estatística de escopo `loja` sai (API, sync ou UI) abaixo do piso de exposição.
 
 > Toda PR que toca dados deve passar por este checklist e pela revisão do agente **privacy-lgpd-specialist**.

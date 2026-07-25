@@ -8,7 +8,10 @@
  *  2. RESOLVER, na consulta, o nível MAIS ESPECÍFICO com base suficiente,
  *     subindo loja → município → região → UF até atingir o `n` mínimo (docs/06).
  *     Sempre há resposta; quando nenhum nível atinge o mínimo, devolve o de
- *     maior base disponível com `baixaConfianca = true`.
+ *     maior base disponível com `baixaConfianca = true` — exceto o nível LOJA,
+ *     que é SUPRIMIDO abaixo do piso de exposição (`podeExporEstatistica`,
+ *     docs/04): ali `n` baixo revelaria a compra de uma pessoa. A derivação (1)
+ *     não muda — a loja continua sendo agregada, só não é servida cedo demais.
  *
  * Região (`regiao`) fica entre município e UF (ex.: região metropolitana). Sem
  * dados de referência de metrorregião na v1, é resolvida por um `ResolvedorRegiao`
@@ -21,6 +24,7 @@ import {
   ESCOPO_GEO,
   type EscopoGeo,
   MIN_OBSERVACOES_CONFIAVEL,
+  podeExporEstatistica,
   type PrecoEstatistica,
 } from '@barganha/shared';
 
@@ -127,6 +131,10 @@ export function resolverFallback(
     let linha: PrecoEstatistica | undefined;
     for (const c of candidatos) {
       if (c.escopo !== escopo || c.escopoId !== chave) continue;
+      // Supressão de célula pequena (docs/04): loja abaixo do piso nem entra na
+      // disputa — nem como "maior base" no passo 2. Sem isto, um produto visto
+      // uma única vez numa loja seria servido com a mediana = aquele preço.
+      if (!podeExporEstatistica(c.escopo, c.nObservacoes)) continue;
       if (!linha || c.nObservacoes > linha.nObservacoes) linha = c;
     }
     if (linha) porEscopo.set(escopo, linha);
