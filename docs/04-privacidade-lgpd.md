@@ -80,6 +80,12 @@ aqui, num aparelho novo ou após reinstalar — o app **reidrata** o histórico:
   > Estado: **regra definida, job de purga a implementar** antes do beta aberto
   > (docs/16). O número (24 meses) e a regra já valem para a política publicada.
 
+## Idade mínima
+- Uso restrito a **maiores de 18 anos** (declarado no onboarding e na política).
+  Um histórico de compras **durável e reconstituível** é sensível demais para
+  menores; o app não é dirigido a crianças (alinhado à *Families Policy* da Play
+  Store, docs/14). Sem coleta de idade além dessa declaração — minimização.
+
 ## Geolocalização sem rastrear pessoas
 - A localização vem do **endereço da loja (via CNPJ)**, não do GPS do usuário.
 - A "região do usuário" é **inferida do histórico de lojas** onde ele compra — não há rastreamento contínuo.
