@@ -19,6 +19,8 @@ const CHAVE_ALERTA_RESUMO = 'alerta_resumo_mensal';
 const CHAVE_ALERTA_SENSIBILIDADE = 'alerta_sensibilidade';
 const CHAVE_ABERTURA = 'abertura_em';
 const CHAVE_RAIO = 'raio_comparacao_km';
+const CHAVE_IDS_RECUPERADOS = 'ids_recuperados_delta';
+const CHAVE_ESCOPOS_SYNC = 'escopos_delta';
 
 export async function obterMeta(chave: string): Promise<string | null> {
   const linha = await getBd().getFirstAsync<{ valor: string | null }>(
@@ -125,6 +127,42 @@ export const obterAberturaEm = (): Promise<string | null> => obterMeta(CHAVE_ABE
 export const registrarAbertura = (): Promise<void> =>
   definirMeta(CHAVE_ABERTURA, new Date().toISOString());
 
+/**
+ * Produtos que já passaram pela busca SEM cursor do delta (C7.7). Um produto que
+ * entra no recorte depois do cursor (item que veio do catálogo regional) precisa
+ * de uma busca do começo — mas só de UMA: se a região não tem preço para ele
+ * hoje, repetir a cada rodada é chamada jogada fora, e quando o preço aparecer
+ * será uma linha NOVA, que o delta incremental entrega sozinho.
+ *
+ * Vive junto do cursor e é zerada com ele na troca de região (`EditorRegiao`).
+ */
+export async function obterIdsRecuperados(): Promise<string[]> {
+  const bruto = await obterMeta(CHAVE_IDS_RECUPERADOS);
+  if (!bruto) return [];
+  try {
+    const lido: unknown = JSON.parse(bruto);
+    return Array.isArray(lido) ? lido.filter((i): i is string => typeof i === 'string') : [];
+  } catch {
+    return []; // valor corrompido: recomeça a memória, no pior caso re-busca.
+  }
+}
+
+export const definirIdsRecuperados = (ids: readonly string[]): Promise<void> =>
+  definirMeta(CHAVE_IDS_RECUPERADOS, JSON.stringify([...ids]));
+
+/**
+ * Escopos (`escopo_id`) que o cursor do delta já percorreu. O cursor vale só
+ * PARA ELES: quando entra uma chave nova — o município que passou a ser
+ * conhecido depois do primeiro cupom, ou uma troca de região — as linhas dela
+ * anteriores ao cursor jamais chegariam pelo delta incremental. Comparar a
+ * assinatura é o que faz o sincronizador recomeçar a janela nesse caso.
+ */
+export const assinaturaEscopos = (escopos: readonly string[]): string =>
+  [...escopos].sort().join('|');
+
+export const obterEscoposSync = (): Promise<string | null> => obterMeta(CHAVE_ESCOPOS_SYNC);
+export const definirEscoposSync = (escopos: readonly string[]): Promise<void> =>
+  definirMeta(CHAVE_ESCOPOS_SYNC, assinaturaEscopos(escopos));
 /**
  * Raio (km) das comparações por loja — o segmentado 1/3/5 km de Editar região.
  * Só filtra o que já é anônimo (lojas da região); não guarda posição do usuário.

@@ -17,7 +17,7 @@
 import type { CupomResponse, IngestaoQrResponse } from '@barganha/shared';
 
 import { clienteApi, ErroApi } from '@/api';
-import { cache, cupons, fila, meta, produtos } from '@/dados';
+import { cache, cupons, fila, lista, meta, produtos } from '@/dados';
 import type { CupomLocal, ItemFilaUpload } from '@/dados';
 import { escoposSync, resolverLocalizacao } from '@/nucleo/localizacao';
 import { contarFalha, limparFalhas, log } from '@/nucleo/log';
@@ -162,22 +162,50 @@ export async function atualizarProcessamentos(): Promise<void> {
 
 /**
  * C7.2 — Delta sync das estatísticas regionais para o cache offline. Baixa só o
- * que mudou desde o cursor, no recorte dos produtos do histórico + a região do
- * usuário (município + UF de fallback, derivados da localização escolhida ou da
- * LOJA — nunca do usuário). É o que faz o veredito da gôndola funcionar sem
- * sinal. Best-effort e idempotente (cursor por `atualizado_em`).
+ * que mudou desde o cursor, no recorte dos produtos do histórico + os da lista
+ * de compras (C7.7) + a região do usuário (município + UF de fallback, derivados
+ * da localização escolhida ou da LOJA — nunca do usuário). É o que faz o
+ * veredito da gôndola funcionar sem sinal. Best-effort e idempotente (cursor por
+ * `atualizado_em`).
  */
 export async function sincronizarEstatisticas(): Promise<void> {
-  const [produtoCanonicoIds, local, cursorInicial] = await Promise.all([
+  const [doHistorico, daLista, local, cursorInicial, escoposAnteriores] = await Promise.all([
     produtos.listarProdutoCanonicoIds(),
+    // C7.7 — a lista de compras também define o recorte: produto que veio do
+    // catálogo regional (C7.6) e nunca foi comprado não está no histórico, e sem
+    // isto ficaria para sempre sem típico offline.
+    lista.listarProdutoCanonicoIds(),
     resolverLocalizacao(),
     meta.obterCursorDelta(),
+    meta.obterEscoposSync(),
   ]);
+  const produtoCanonicoIds = [...new Set([...doHistorico, ...daLista])];
   // Sem produtos no histórico e sem região conhecida: nada a sincronizar ainda.
   if (produtoCanonicoIds.length === 0 && !local) return;
 
   const municipios = local ? escoposSync(local) : [];
-  let cursor = cursorInicial;
+
+  // C7.7 — recuperação dos produtos NOVOS no recorte. O cursor avança sobre o
+  // que foi entregue, então um produto que entra depois (item que veio do
+  // catálogo regional, C7.6) tem estatística mais ANTIGA que o cursor e o delta
+  // incremental jamais a traria. Estes vêm numa busca própria, sem cursor.
+  // Isolado: uma falha aqui não pode impedir o delta principal da rodada — os
+  // ids ficam sem marca e a próxima rodada tenta de novo.
+  try {
+    await recuperarSemCache(produtoCanonicoIds, municipios);
+    limparFalhas('sync.recuperacao');
+  } catch (erro) {
+    contarFalha('sync.recuperacao', erro);
+  }
+
+  // O cursor só percorreu os escopos da rodada anterior. Quando entra uma chave
+  // NOVA — tipicamente o município, que passa a ser conhecido depois do primeiro
+  // cupom processado — as linhas dela mais antigas que o cursor nunca chegariam
+  // pelo delta incremental, e o app ficaria preso no típico de UF mesmo tendo
+  // município. Recomeçar a janela resolve; o cache NÃO é limpo porque o que já
+  // está lá continua válido (`salvarEstatisticas` é upsert por chave).
+  const assinatura = meta.assinaturaEscopos(municipios);
+  let cursor = assinatura === escoposAnteriores ? cursorInicial : null;
 
   // O servidor tem teto de linhas por resposta e sinaliza `temMais` quando a
   // página encheu. Repaginar AQUI é o que garante que uma janela grande (região
@@ -193,9 +221,52 @@ export async function sincronizarEstatisticas(): Promise<void> {
     // Grava o cursor a cada página: se a próxima falhar (sinal caiu), a rodada
     // seguinte retoma daqui em vez de refazer tudo.
     await meta.definirCursorDelta(resp.cursor);
+    // Junto com o primeiro cursor da janela: daqui em diante ele cobre estes
+    // escopos. Se a rodada cair no meio, a próxima retoma pelo cursor gravado.
+    if (pagina === 0) await meta.definirEscoposSync(municipios);
     cursor = resp.cursor;
-    if (!resp.temMais || resp.estatisticas.length === 0) return;
+    // Só `temMais` decide continuar: o servidor o marca quando a página CRUA
+    // encheu, e uma página inteira pode voltar vazia depois da supressão de
+    // célula pequena (docs/04) sem que o delta tenha acabado. Parar por
+    // `estatisticas.length === 0` deixaria o resto da janela para a próxima
+    // rodada. Página não-cheia (`!temMais`) já cobre o caso "nada mudou".
+    if (!resp.temMais) return;
   }
+}
+
+/**
+ * Baixa TUDO (sem cursor) dos produtos do recorte que ainda não têm nada em
+ * cache. Não mexe no cursor persistido: este é um recorte lateral, e adiantá-lo
+ * com o resultado daqui pularia o que o delta principal ainda deve entregar.
+ * Idempotente — `salvarEstatisticas` é upsert por chave.
+ */
+async function recuperarSemCache(
+  produtoCanonicoIds: readonly string[],
+  municipios: readonly string[],
+): Promise<void> {
+  const [semCache, jaTentados] = await Promise.all([
+    cache.idsSemEstatistica(produtoCanonicoIds),
+    meta.obterIdsRecuperados(),
+  ]);
+  const tentados = new Set(jaTentados);
+  const novos = semCache.filter((id) => !tentados.has(id));
+  if (novos.length === 0) return;
+
+  let cursor: string | undefined;
+  for (let pagina = 0; pagina < MAX_PAGINAS_DELTA; pagina++) {
+    const resp = await clienteApi.sincronizar({
+      ...(cursor ? { cursor } : {}),
+      ...(municipios.length > 0 ? { municipios: [...municipios] } : {}),
+      produtoCanonicoIds: novos,
+    });
+    await cache.salvarEstatisticas(resp.estatisticas);
+    if (!resp.temMais) break;
+    cursor = resp.cursor;
+  }
+
+  // Só marca depois de concluir: uma queda de sinal no meio lança antes daqui, e
+  // a próxima rodada tenta de novo em vez de dar o produto por perdido.
+  await meta.definirIdsRecuperados([...tentados, ...novos]);
 }
 
 /**

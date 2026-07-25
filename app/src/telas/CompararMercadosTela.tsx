@@ -14,7 +14,7 @@
  */
 
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, TextInput, View } from 'react-native';
 
 import type { LojaComparacao } from '@barganha/shared';
@@ -24,7 +24,6 @@ import {
   CabecalhoVoltar,
   Cartao,
   Estado,
-  filtrarPorNome,
   IconeBusca,
   IconeFechar,
   IconeGrafico,
@@ -34,11 +33,21 @@ import {
 } from '@/componentes';
 import { lista as listaRepo } from '@/dados';
 import type { RootStackParamList } from '@/navegacao/tipos';
+import {
+  buscarNaRegiao,
+  comparaveis,
+  filtrarLocais,
+  mesclar,
+  type ProdutoBuscavel,
+} from '@/nucleo/busca-produtos';
 import * as catalogo from '@/nucleo/catalogo';
 import type { ProdutoLocal } from '@/nucleo/catalogo';
 import { moeda } from '@/nucleo/formato';
 import { resolverLocalizacao } from '@/nucleo/localizacao';
 import { espaco, raio, tabular, useTema } from '@/tema';
+
+/** Espera depois da última tecla antes de consultar a região (C7.6). */
+const DEBOUNCE_MS = 350;
 
 type Props = NativeStackScreenProps<RootStackParamList, 'CompararMercados'>;
 
@@ -47,7 +56,8 @@ export function CompararMercadosTela({ navigation }: Props) {
 
   const [catalogoLocal, setCatalogoLocal] = useState<ProdutoLocal[]>([]);
   const [busca, setBusca] = useState('');
-  const [cesta, setCesta] = useState<ProdutoLocal[]>([]);
+  const [regionais, setRegionais] = useState<ProdutoBuscavel[]>([]);
+  const [cesta, setCesta] = useState<ProdutoBuscavel[]>([]);
   const [lojas, setLojas] = useState<LojaComparacao[]>([]);
   const [itensTotal, setItensTotal] = useState(0);
   const [comparando, setComparando] = useState(false);
@@ -68,15 +78,29 @@ export function CompararMercadosTela({ navigation }: Props) {
       setCatalogoLocal(todos);
       setRegiao(local ? (local.municipio ?? local.uf) : null);
 
-      const ids = new Set(daLista.map((i) => i.produtoCanonicoId));
-      setCesta(todos.filter((p) => p.produtoCanonicoId && ids.has(p.produtoCanonicoId)));
+      // A cesta sai da LISTA, não da interseção com o histórico: desde o C7.6 a
+      // lista pode ter produto que veio do catálogo regional e que o usuário
+      // nunca comprou — antes ele sumia calado daqui.
+      const doHistorico = new Map(comparaveis(todos).map((p) => [p.produtoCanonicoId, p]));
+      setCesta(
+        daLista.map(
+          (i) =>
+            doHistorico.get(i.produtoCanonicoId) ?? {
+              chave: i.produtoCanonicoId,
+              produtoCanonicoId: i.produtoCanonicoId,
+              nome: i.nome,
+              unidadeBase: null,
+              origem: 'regiao' as const,
+            },
+        ),
+      );
     })();
     return () => {
       vivo = false;
     };
   }, []);
 
-  const comparar = useCallback(async (atual: ProdutoLocal[]) => {
+  const comparar = useCallback(async (atual: ProdutoBuscavel[]) => {
     if (atual.length === 0) {
       setLojas([]);
       setItensTotal(0);
@@ -87,9 +111,7 @@ export function CompararMercadosTela({ navigation }: Props) {
     try {
       const local = await resolverLocalizacao();
       const r = await clienteApi.compararLista({
-        itens: atual.flatMap((p) =>
-          p.produtoCanonicoId ? [{ produtoCanonicoId: p.produtoCanonicoId, quantidade: 1 }] : [],
-        ),
+        itens: atual.map((p) => ({ produtoCanonicoId: p.produtoCanonicoId, quantidade: 1 })),
         ...(local?.municipio ? { municipio: local.municipio } : {}),
         ...(local?.uf ? { uf: local.uf } : {}),
       });
@@ -114,21 +136,43 @@ export function CompararMercadosTela({ navigation }: Props) {
     void comparar(cesta);
   }, [cesta, comparar]);
 
-  function adicionar(p: ProdutoLocal) {
+  /**
+   * Busca na região com debounce e descarte de resposta atrasada (o resultado de
+   * "arr" não pode chegar depois do de "arroz" e sobrescrevê-lo). Só com texto:
+   * aqui, diferente do sheet da Lista, uma vitrine de populares competiria com a
+   * cesta que a pessoa veio comparar.
+   */
+  const rodada = useRef(0);
+  useEffect(() => {
+    if (!busca.trim()) {
+      setRegionais([]);
+      return;
+    }
+    const minha = ++rodada.current;
+    const timer = setTimeout(() => {
+      void buscarNaRegiao(busca).then((r) => {
+        if (rodada.current === minha) setRegionais(r);
+      });
+    }, DEBOUNCE_MS);
+    return () => clearTimeout(timer);
+  }, [busca]);
+
+  function adicionar(p: ProdutoBuscavel) {
     setBusca('');
-    setCesta((atual) => (atual.some((i) => i.chave === p.chave) ? atual : [...atual, p]));
+    setCesta((atual) =>
+      atual.some((i) => i.produtoCanonicoId === p.produtoCanonicoId) ? atual : [...atual, p],
+    );
   }
 
-  function tirar(p: ProdutoLocal) {
-    setCesta((atual) => atual.filter((i) => i.chave !== p.chave));
+  function tirar(p: ProdutoBuscavel) {
+    setCesta((atual) => atual.filter((i) => i.produtoCanonicoId !== p.produtoCanonicoId));
   }
 
-  const naCesta = new Set(cesta.map((p) => p.chave));
+  const naCesta = new Set(cesta.map((p) => p.produtoCanonicoId));
   const sugestoes = busca
-    ? filtrarPorNome(
-        catalogoLocal.filter((p) => p.produtoCanonicoId && !naCesta.has(p.chave)),
-        busca,
-      ).slice(0, 6)
+    ? mesclar(filtrarLocais(catalogoLocal, busca), regionais)
+        .filter((p) => !naCesta.has(p.produtoCanonicoId))
+        .slice(0, 6)
     : [];
 
   // Referência do "quanto mais caro que o líder": só lojas com cobertura total
@@ -182,9 +226,11 @@ export function CompararMercadosTela({ navigation }: Props) {
                     {p.nome}
                   </Texto>
                   <Texto cor="fraco" tamanho="xs" numerico>
-                    {p.faixaPessoal?.mediana != null
-                      ? `seu típico ${moeda(p.faixaPessoal.mediana)}`
-                      : `${p.nObservacoes} ${p.nObservacoes === 1 ? 'compra' : 'compras'}`}
+                    {p.tipico == null
+                      ? 'sem preço típico ainda'
+                      : p.origem === 'historico'
+                        ? `seu típico ${moeda(p.tipico)}`
+                        : `típico na região ${moeda(p.tipico)}`}
                   </Texto>
                 </View>
                 <View style={[estilos.mais, { backgroundColor: c.teal }]}>
@@ -195,7 +241,7 @@ export function CompararMercadosTela({ navigation }: Props) {
           </Cartao>
         ) : (
           <Texto cor="fraco" tamanho="sm" centralizado style={estilos.semSugestao}>
-            Nenhum produto com esse nome no seu histórico.
+            Nenhum produto com esse nome no seu histórico nem na sua região.
           </Texto>
         )
       ) : null}

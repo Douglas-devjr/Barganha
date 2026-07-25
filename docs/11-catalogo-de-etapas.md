@@ -110,6 +110,8 @@ Este documento dá um **nome e um código curto** a cada etapa do desenvolviment
 | C7.3 | Exibição híbrida + linha de promoção + “última atualização” |
 | C7.4 | Produtos (lista) |
 | C7.5 | Detalhe do produto (gráfico de evolução 6 meses) |
+| C7.6 | Catálogo regional no app (cold start): o sheet de adicionar item e o Comparar mercados mesclam histórico + busca no pool (C4.4); sem histórico, mostram os populares da região |
+| C7.7 | Escopo do delta sync inclui os ids da **lista de compras** — produto só listado, nunca comprado, hoje fica sem preço offline |
 *Responsáveis:* mobile-engineer, ux-designer, data-scientist
 
 ### `C8` — Histórico *(Histórico, Estatísticas & Perfil)*

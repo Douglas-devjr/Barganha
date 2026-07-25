@@ -11,6 +11,8 @@
  */
 
 import type {
+  BuscaProdutosRequest,
+  BuscaProdutosResponse,
   ComparacaoListaRequest,
   ComparacaoListaResponse,
   ConsultaPrecoRequest,
@@ -157,6 +159,15 @@ export class ClienteApi {
       if (e instanceof ErroApi && e.status === 404) return null;
       throw e;
     }
+  }
+
+  /**
+   * `POST /consulta/produtos` (C4.4) — ANÔNIMO. Catálogo da região: busca por
+   * termo ou, sem termo, os produtos mais vistos por ali. É o que dá o que fazer
+   * a quem ainda não escaneou cupom nenhum (docs/20).
+   */
+  buscarProdutos(req: BuscaProdutosRequest): Promise<BuscaProdutosResponse> {
+    return this.requisitar<BuscaProdutosResponse>('POST', '/consulta/produtos', req);
   }
 
   /**

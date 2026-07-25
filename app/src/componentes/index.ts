@@ -37,7 +37,7 @@ export { FolhaInferior, LinhaFolha } from './FolhaInferior';
 export type { FolhaInferiorProps } from './FolhaInferior';
 export { FolhaDenuncia } from './FolhaDenuncia';
 export type { FolhaDenunciaProps } from './FolhaDenuncia';
-export { FolhaAdicionarItem, filtrarPorNome } from './FolhaAdicionarItem';
+export { FolhaAdicionarItem } from './FolhaAdicionarItem';
 export type { FolhaAdicionarItemProps } from './FolhaAdicionarItem';
 export { Segmentado } from './Segmentado';
 export type { SegmentadoProps, OpcaoSegmentada } from './Segmentado';

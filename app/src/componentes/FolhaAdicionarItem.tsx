@@ -1,18 +1,26 @@
 /**
- * Handoff 3a (`sheet:addItem`) — bottom-sheet de busca ao vivo para pôr um
- * produto na lista de compras.
+ * Handoff 3a (`sheet:addItem`) + C7.6 — bottom-sheet de busca ao vivo para pôr
+ * um produto na lista de compras.
  *
- * A busca é no CATÁLOGO LOCAL (o que o usuário já comprou), não no pool: é o
- * único conjunto que existe offline e o que ele reconhece pelo nome. Só entram
- * produtos com id canônico — a lista é comparada entre lojas por esse id, e um
- * item sem ele não teria com o que ser comparado.
+ * Duas fontes (docs/20): o CATÁLOGO LOCAL (o que o usuário já comprou, offline e
+ * instantâneo) e o catálogo REGIONAL (o pool anônimo da região dele, online e
+ * com debounce). Antes só existia a primeira — e por isso quem acabava de criar
+ * conta abria este sheet e via um vazio, sem nada para adicionar.
  *
- * Mesma lógica de busca de "Comparar mercados" (ver `filtrarPorNome`).
+ * Sem texto digitado e sem histórico, mostramos os POPULARES da região: é o
+ * primeiro conteúdo real que uma conta nova encontra no app.
  */
 
-import { useState } from 'react';
-import { Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, Pressable, StyleSheet, TextInput, View } from 'react-native';
 
+import {
+  buscarNaRegiao,
+  comparaveis,
+  filtrarLocais,
+  mesclar,
+  type ProdutoBuscavel,
+} from '@/nucleo/busca-produtos';
 import type { ProdutoLocal } from '@/nucleo/catalogo';
 import { moeda } from '@/nucleo/formato';
 import { espaco, raio, useTema } from '@/tema';
@@ -21,22 +29,11 @@ import { FolhaInferior } from './FolhaInferior';
 import { IconeBusca, IconeLoja, IconeMais } from './icones';
 import { Texto } from './Texto';
 
-/**
- * Busca por nome, sem acento e sem caso — a mesma dos dois lugares que buscam
- * produto (este sheet e Comparar mercados). Sem texto, devolve o catálogo todo.
- */
-export function filtrarPorNome<T extends { nome: string }>(
-  itens: readonly T[],
-  texto: string,
-): T[] {
-  const alvo = normalizar(texto);
-  if (!alvo) return [...itens];
-  return itens.filter((i) => normalizar(i.nome).includes(alvo));
-}
+/** Espera depois da última tecla antes de consultar a região. */
+const DEBOUNCE_MS = 350;
 
-function normalizar(s: string): string {
-  return s.trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
-}
+/** Teto de linhas renderizadas — o sheet não é uma lista infinita. */
+const MAX_LINHAS = 30;
 
 export interface FolhaAdicionarItemProps {
   visivel: boolean;
@@ -44,7 +41,7 @@ export interface FolhaAdicionarItemProps {
   candidatos: readonly ProdutoLocal[];
   /** Ids já na lista — aparecem marcados e não podem ser adicionados de novo. */
   jaNaLista: ReadonlySet<string>;
-  aoAdicionar: (produto: ProdutoLocal) => void;
+  aoAdicionar: (produto: ProdutoBuscavel) => void;
   aoFechar: () => void;
 }
 
@@ -57,14 +54,40 @@ export function FolhaAdicionarItem({
 }: FolhaAdicionarItemProps) {
   const { c } = useTema();
   const [busca, setBusca] = useState('');
+  const [regionais, setRegionais] = useState<ProdutoBuscavel[]>([]);
+  const [carregandoRegiao, setCarregandoRegiao] = useState(false);
 
-  // Só produtos identificados na base: sem id canônico não há comparação entre
-  // lojas, que é a razão de a lista existir.
-  const comparaveis = candidatos.filter((p) => p.produtoCanonicoId != null);
-  const resultados = filtrarPorNome(comparaveis, busca).slice(0, 30);
+  const locais = filtrarLocais(candidatos, busca);
+  const temHistorico = comparaveis(candidatos).length > 0;
+
+  /**
+   * Consulta a região com debounce. O `rodada` descarta resposta atrasada: sem
+   * ele, o resultado de "arr" podia chegar depois do de "arroz" e sobrescrevê-lo.
+   */
+  const rodada = useRef(0);
+  const consultarRegiao = useCallback((termo: string) => {
+    const minha = ++rodada.current;
+    setCarregandoRegiao(true);
+    void buscarNaRegiao(termo)
+      .then((r) => {
+        if (rodada.current === minha) setRegionais(r);
+      })
+      .finally(() => {
+        if (rodada.current === minha) setCarregandoRegiao(false);
+      });
+  }, []);
+
+  useEffect(() => {
+    if (!visivel) return;
+    const timer = setTimeout(() => consultarRegiao(busca), DEBOUNCE_MS);
+    return () => clearTimeout(timer);
+  }, [visivel, busca, consultarRegiao]);
+
+  const resultados = mesclar(locais, regionais).slice(0, MAX_LINHAS);
 
   function fechar() {
     setBusca('');
+    setRegionais([]);
     aoFechar();
   }
 
@@ -89,19 +112,29 @@ export function FolhaAdicionarItem({
           autoCorrect={false}
           style={[estilos.buscaInput, { color: c.tinta }]}
         />
+        {carregandoRegiao ? <ActivityIndicator size="small" color={c.fraco} /> : null}
       </View>
 
-      {comparaveis.length === 0 ? (
-        <Texto cor="fraco" tamanho="sm" centralizado style={estilos.vazio}>
-          Você ainda não tem produtos identificados na base. Escaneie um cupom para começar.
+      {/* Sem histórico, o que está na tela é o catálogo da região — dizer isso
+          evita a leitura de que o app "já sabe" o que a pessoa compra. */}
+      {!temHistorico && resultados.length > 0 ? (
+        <Texto cor="fraco" tamanho="xs" style={estilos.apoioRegiao}>
+          {busca ? 'Produtos da sua região' : 'Mais vistos na sua região'}
         </Texto>
-      ) : resultados.length === 0 ? (
+      ) : null}
+
+      {resultados.length === 0 ? (
         <Texto cor="fraco" tamanho="sm" centralizado style={estilos.vazio}>
-          Nenhum produto com esse nome no seu histórico.
+          {carregandoRegiao
+            ? 'Buscando na sua região…'
+            : busca
+              ? 'Nenhum produto com esse nome no seu histórico nem na sua região.'
+              : 'Ainda não há produtos com preço na sua região. Escaneie um cupom para começar a ' +
+                'base — o seu e o de todo mundo.'}
         </Texto>
       ) : (
         resultados.map((p, idx) => {
-          const dentro = p.produtoCanonicoId != null && jaNaLista.has(p.produtoCanonicoId);
+          const dentro = jaNaLista.has(p.produtoCanonicoId);
           return (
             <Pressable
               key={p.chave}
@@ -127,11 +160,7 @@ export function FolhaAdicionarItem({
                   {p.nome}
                 </Texto>
                 <Texto cor="fraco" tamanho="xs" numerico>
-                  {p.faixaPessoal?.mediana != null
-                    ? `seu típico ${moeda(p.faixaPessoal.mediana)}${
-                        p.unidadeBase ? `/${p.unidadeBase}` : ''
-                      }`
-                    : `${p.nObservacoes} ${p.nObservacoes === 1 ? 'compra' : 'compras'}`}
+                  {apoio(p)}
                 </Texto>
               </View>
 
@@ -146,8 +175,22 @@ export function FolhaAdicionarItem({
   );
 }
 
+/**
+ * Linha de apoio de cada resultado. O rótulo diz de onde vem o número — "seu
+ * típico" é o histórico da pessoa; "típico na região" é o pool. Colapsar os dois
+ * num só número esconderia a diferença entre "eu pago isso" e "por aqui custa isso".
+ */
+function apoio(p: ProdutoBuscavel): string {
+  const sufixo = p.unidadeBase ? `/${p.unidadeBase}` : '';
+  if (p.tipico == null) return 'sem preço típico ainda';
+  return p.origem === 'historico'
+    ? `seu típico ${moeda(p.tipico)}${sufixo}`
+    : `típico na região ${moeda(p.tipico)}${sufixo}`;
+}
+
 const estilos = StyleSheet.create({
   apoio: { marginTop: -espaco.xs, marginBottom: espaco.md },
+  apoioRegiao: { marginTop: espaco.sm, marginBottom: -espaco.xs },
   busca: {
     height: 48,
     flexDirection: 'row',

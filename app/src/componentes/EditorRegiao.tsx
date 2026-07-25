@@ -137,7 +137,10 @@ export function EditorRegiao({ aoSalvar }: EditorRegiaoProps) {
       await meta.definirRaioKm(raioKm);
       // Trocar a região invalida o cache: o recorte geográfico mudou, então as
       // linhas do recorte anterior não valem mais e o cursor volta ao zero.
+      // A memória da recuperação sem cursor (C7.7) zera junto — na região nova,
+      // todo produto do recorte precisa ser buscado do começo outra vez.
       await meta.definirCursorDelta('');
+      await meta.definirIdsRecuperados([]);
       await cache.limpar();
       void sincronizarEstatisticas().catch(() => {});
       toast(cidade.trim() ? `Região salva: ${cidade.trim()} · ${uf}` : `Região salva: ${uf}`);

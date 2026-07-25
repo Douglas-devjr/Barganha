@@ -85,6 +85,19 @@ export async function desmarcarTodos(): Promise<void> {
   await getBd().runAsync(`UPDATE lista_compras SET marcado = 0`);
 }
 
+/**
+ * Ids da lista para o recorte do delta sync (C7.7). Desde o C7.6 a lista pode
+ * conter produto vindo do catálogo REGIONAL, que o usuário nunca comprou: sem
+ * entrar aqui, ele ficaria fora do sync e sem típico offline — justo o item que
+ * a pessoa acabou de dizer que quer comprar.
+ */
+export async function listarProdutoCanonicoIds(): Promise<string[]> {
+  const linhas = await getBd().getAllAsync<{ produto_canonico_id: string }>(
+    `SELECT produto_canonico_id FROM lista_compras`,
+  );
+  return linhas.map((l) => l.produto_canonico_id);
+}
+
 /** Se o produto já está na lista (estado do botão "adicionar"). */
 export async function contem(produtoCanonicoId: string): Promise<boolean> {
   const linha = await getBd().getFirstAsync<{ um: number }>(

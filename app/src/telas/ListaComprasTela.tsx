@@ -43,10 +43,12 @@ import { clienteApi } from '@/api';
 import { lista as listaRepo } from '@/dados';
 import type { ItemLista } from '@/dados/repositorio-lista';
 import type { RootStackParamList, TabParamList } from '@/navegacao/tipos';
+import type { ProdutoBuscavel } from '@/nucleo/busca-produtos';
 import * as catalogo from '@/nucleo/catalogo';
 import type { ProdutoLocal } from '@/nucleo/catalogo';
 import { moeda, parseMoeda } from '@/nucleo/formato';
 import { resolverLocalizacao } from '@/nucleo/localizacao';
+import { sincronizarEstatisticas } from '@/nucleo/sincronizador';
 import { tipicosDaRegiao, type TipicoRegional } from '@/nucleo/tipico-regional';
 import { espaco, raio, tabular, useTema } from '@/tema';
 
@@ -143,11 +145,19 @@ export function ListaComprasTela({ navigation }: Props) {
     );
   }
 
-  async function adicionar(p: ProdutoLocal) {
-    if (!p.produtoCanonicoId) return;
+  /**
+   * O produto pode vir do histórico OU do catálogo da região (C7.6) — a lista
+   * guarda id canônico + nome, que os dois têm. Depois de entrar aqui, o id
+   * passa a fazer parte do recorte do delta sync (C7.7) e o típico do item
+   * funciona offline na próxima sincronização.
+   */
+  async function adicionar(p: ProdutoBuscavel) {
     await listaRepo.adicionar(p.produtoCanonicoId, p.nome);
     await recarregar();
     toast(`“${p.nome}” entrou na lista`);
+    // O item novo acabou de entrar no recorte do sync (C7.7): puxar agora é o
+    // que faz o típico dele existir offline já na próxima abertura da tela.
+    void sincronizarEstatisticas().catch(() => {});
   }
 
   async function remover(item: ItemLista) {
