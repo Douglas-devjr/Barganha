@@ -77,8 +77,11 @@ aqui, num aparelho novo ou após reinstalar — o app **reidrata** o histórico:
 - **Retenção por inatividade (TTL):** o histórico privado é guardado **enquanto a
   conta existir**. Contas **inativas por 24 meses** (sem login) são elegíveis a
   **purga** (conta de auth + `cupom`/`item_cupom`), com aviso por email antes.
-  > Estado: **regra definida, job de purga a implementar** antes do beta aberto
-  > (docs/16). O número (24 meses) e a regra já valem para a política publicada.
+  > Estado: **job implementado** (`npm run job:purga-inativos`, agendado por cron
+  > externo) e **inofensivo por padrão** — sem `PURGA_APLICAR=true` é só relatório.
+  > Falta o **canal de email transacional**: enquanto o aviso não sai de fato, a
+  > purga fica travada por construção (sem aviso, sem purga). Ligar de verdade
+  > antes do beta aberto (docs/16). O número (24 meses) já vale para a política.
 
 ## Idade mínima
 - Uso restrito a **maiores de 18 anos** (declarado no onboarding e na política).
