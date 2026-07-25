@@ -1,8 +1,16 @@
-# Site legal do Barganha (C10.0 / C9.4)
+# Site do Barganha (C10.0 / C9.4)
 
 Páginas estáticas exigidas pela Google Play — política de privacidade (C9.4) e
 exclusão de conta — mais um índice que serve de "site oficial" na ficha da loja.
-Sem JS, sem dependências, tema claro/escuro automático.
+Sem dependências, tema claro/escuro automático.
+
+Junto delas vive **`auth-callback.html`**, que não é página legal e sim
+**funcional**: é a ponte que faz os links de e-mail de autenticação abrirem o app
+(confirmação de cadastro e recuperação de senha). O navegador do celular recusa
+abrir o esquema `barganha://` vindo do redirect do Supabase, então o e-mail aponta
+para esta página HTTPS, que repassa o `?code=` ao app com um toque. É a única com
+JS. **Sem ela publicada, ninguém confirma cadastro nem recupera senha** — ver
+`docs/19-ambientes-e-endurecimento.md` §5.
 
 ## Antes de publicar (obrigatório)
 
@@ -11,6 +19,9 @@ Sem JS, sem dependências, tema claro/escuro automático.
    `politica-de-privacidade.html` e `exclusao-de-conta.html`. Manter o texto em
    sincronia com `docs/politica-de-privacidade.md`.
 2. Revisão jurídica do texto (nota em `docs/politica-de-privacidade.md`).
+3. Cadastrar a URL da ponte (`.../auth-callback.html`) nas **Redirect URLs** do
+   Supabase (Authentication → URL Configuration), mantendo também
+   `barganha://auth-callback` — usado pelo login com Google.
 
 ## Publicar no GitHub Pages (R$ 0)
 
@@ -36,6 +47,10 @@ URLs resultantes (colar na ficha da Play, ver `docs/14-conformidade-play-store.m
 - Site: `https://douglas-devjr.github.io/barganha-legal/`
 - Política: `https://douglas-devjr.github.io/barganha-legal/politica-de-privacidade.html`
 - Exclusão de conta: `https://douglas-devjr.github.io/barganha-legal/exclusao-de-conta.html`
+- Ponte de auth (não vai na ficha da Play):
+  `https://douglas-devjr.github.io/barganha-legal/auth-callback.html`
+  — é o default de `obterUrlCallbackEmail()` em `app/src/auth/config.ts`. Se a URL
+  mudar (domínio próprio), ajuste lá ou via `EXPO_PUBLIC_AUTH_EMAIL_REDIRECT`.
 
 ## Atualizar depois
 

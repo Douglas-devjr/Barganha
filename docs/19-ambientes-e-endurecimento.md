@@ -170,7 +170,75 @@ quebra de vez.
 
 ---
 
-## 5. O que fica para quando escalar (não fazer agora)
+## 5. Links de e-mail de auth: confirmação e reset (deep link × página-ponte)
+
+**O problema.** Os e-mails de auth (confirmar cadastro, recuperar senha) mandam o
+usuário para o Supabase (`/auth/v1/verify?...&redirect_to=barganha://auth-callback`),
+que faz um **redirect 302 automático** para o esquema do app,
+`barganha://auth-callback?code=...` (o valor de `REDIRECT` em
+`app/src/auth/contexto.ts`). No celular, o navegador **não entrega** um esquema
+custom vindo de um redirect sem gesto do usuário: o Chrome trata `barganha://`
+como endereço web, não acha o "site" e mostra **"Não é possível acessar esse
+site"**. Resultado observado: o usuário confirma o e-mail achando que confirmou,
+mas o link nunca chega ao app — e o login por senha responde com
+`Invalid login credentials` (o GoTrue recente usa a mesma mensagem para
+credencial errada **e** para e-mail não confirmado), o que se traduz na UI como
+"Email ou senha incorretos" e manda o diagnóstico para o lado errado.
+
+O app **já sabe** receber o deep link (`getInitialURL` + listener `url` →
+`exchangeCodeForSession`, em `app/src/auth/contexto.tsx`). O que falta é o caminho
+de ENTREGA do link até o app — e isso é config de ambiente, não código.
+
+### 5a. A página-ponte (implementada) — mantém a confirmação de e-mail ligada
+
+A solução que funciona **mantendo "Confirm email" LIGADO** (para testar o fluxo
+real) já está no código:
+
+- **`site/auth-callback.html`** — página HTTPS que recebe o `?code=` (o navegador
+  a carrega sem problema), repassa TODOS os parâmetros para
+  `barganha://auth-callback?...` e oferece um botão **"Abrir no Barganha"**. O
+  toque é o gesto que os navegadores exigem para lançar o esquema; a tentativa
+  automática é só um atalho. Também trata `error_description`/link expirado.
+- **App** — os links de e-mail passam a apontar para essa página, não mais para o
+  esquema custom: `emailRedirectTo` (cadastro) e `redirectTo` (reset) usam
+  `REDIRECT_EMAIL = obterUrlCallbackEmail()` (`app/src/auth/config.ts`, default no
+  GitHub Pages, sobrescrevível por `EXPO_PUBLIC_AUTH_EMAIL_REDIRECT`). O OAuth do
+  Google continua no `barganha://` direto (`openAuthSessionAsync` intercepta o
+  esquema), e a escuta do deep link em `contexto.tsx` já recebe o salto da ponte.
+
+**Passo a passo para valer no dev (`barganha-dev`):**
+
+1. **Publique o `site/` atualizado** para o repo público do GitHub Pages (o
+   procedimento está em `site/README.md`), para que
+   `https://douglas-devjr.github.io/barganha-legal/auth-callback.html` fique no ar.
+2. **Authentication → URL Configuration → Redirect URLs:** adicione
+   `https://douglas-devjr.github.io/barganha-legal/auth-callback.html` **e**
+   mantenha `barganha://auth-callback` (usado pelo OAuth). Sem a URL na allow-list
+   o Supabase ignora o `redirect_to` e cai na Site URL.
+3. **Recarregue o Metro** no dev build (mudança é só de JS — não precisa rebuild
+   nativo). O `scheme: "barganha"` já está no `app.json`; se ao tocar no botão o
+   app não abrir, é porque o dev build instalado é anterior ao `scheme` — aí sim
+   refaça o build.
+4. Confirme quem já havia cadastrado antes desta correção na mão (Authentication →
+   Users → "…" → **Confirm email**), já que o link antigo deles não chegou ao app.
+
+### 5b. Endurecimento de produção (opcional, quando escalar)
+
+A ponte com botão já é robusta. Dois refinamentos entram quando houver domínio
+próprio, para o link abrir o app **sem o toque**:
+
+- **Android App Links:** publicar `/.well-known/assetlinks.json` (SHA-256 da
+  assinatura) e declarar o `intentFilter` com `autoVerify` no `app.json`
+  (`android.intentFilters`) — hoje só há `scheme`.
+- **iOS Universal Links:** publicar `/.well-known/apple-app-site-association` e
+  declarar `associatedDomains` (`applinks:<dominio>`) no `app.json`.
+
+Com App Links, a mesma `auth-callback.html` passa a abrir o app automaticamente; o
+botão continua como fallback para quem não tem o app instalado.
+
+---
+
+## 6. O que fica para quando escalar (não fazer agora)
 
 Dois pontos são conhecidos e **corretos como estão** enquanto o backend rodar em
 uma única instância. Ambos passam a importar no dia em que houver duas:

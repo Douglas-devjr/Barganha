@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex" />
+    <title>Barganha — abrindo o app</title>
+    <!--
+      Página-ponte de autenticação (docs/19 §5).
+
+      Os links de e-mail do Supabase (confirmar cadastro, recuperar senha) não
+      podem apontar direto para o esquema `barganha://`: o navegador do celular
+      recusa entregar um esquema custom vindo de um redirect automático e mostra
+      "não é possível acessar esse site". Então o e-mail aponta para ESTA página
+      HTTPS, que o navegador carrega sem problema, e daqui saltamos para o app
+      levando o mesmo `?code=` (ou `?error=`). O TOQUE do usuário no botão é o
+      gesto que os navegadores exigem para lançar o esquema — por isso o botão é
+      o caminho garantido; a tentativa automática é só um atalho.
+
+      Sem dependências, tema claro/escuro automático, como as demais páginas.
+    -->
+    <style>
+      :root {
+        --tinta: #14b8a6;
+        --fundo: #faf7f0;
+        --texto: #1b1b19;
+        --suave: #6b6b66;
+        --sobre-tinta: #f5fdfb;
+        --borda: #e6e1d6;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --fundo: #1b1b19;
+          --texto: #f2efe6;
+          --suave: #a3a099;
+          --borda: #33322e;
+        }
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+      }
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        background: var(--fundo);
+        color: var(--texto);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+        line-height: 1.5;
+      }
+      main {
+        width: 100%;
+        max-width: 380px;
+        text-align: center;
+      }
+      .logo {
+        width: 64px;
+        height: 64px;
+        border-radius: 18px;
+        background: var(--tinta);
+        color: var(--sobre-tinta);
+        font-weight: 800;
+        font-size: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 24px;
+      }
+      h1 {
+        font-size: 22px;
+        margin: 0 0 8px;
+        letter-spacing: -0.5px;
+      }
+      p {
+        color: var(--suave);
+        margin: 0 0 24px;
+        font-size: 15px;
+      }
+      a.botao {
+        display: block;
+        background: var(--tinta);
+        color: var(--sobre-tinta);
+        text-decoration: none;
+        font-weight: 700;
+        font-size: 16px;
+        padding: 15px 20px;
+        border-radius: 14px;
+      }
+      a.botao:active {
+        opacity: 0.85;
+      }
+      .rodape {
+        margin-top: 20px;
+        font-size: 13px;
+        color: var(--suave);
+      }
+      .rodape a {
+        color: var(--tinta);
+      }
+      .erro {
+        color: #dc2626;
+      }
+      [hidden] {
+        display: none !important;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div class="logo">B</div>
+
+      <div id="ok">
+        <h1>Abrindo o Barganha…</h1>
+        <p>Se o app não abrir sozinho, toque no botão abaixo.</p>
+        <a id="abrir" class="botao" href="#">Abrir no Barganha</a>
+        <p class="rodape">
+          Não tem o app instalado? Abra este link no celular onde o Barganha está.
+        </p>
+      </div>
+
+      <div id="semParametros" hidden>
+        <h1>Link incompleto</h1>
+        <p>
+          Este endereço só funciona quando aberto a partir de um e-mail do Barganha (confirmação de
+          cadastro ou recuperação de senha). Peça um novo link pelo app e tente de novo.
+        </p>
+      </div>
+
+      <div id="erro" hidden>
+        <h1>Link inválido ou expirado</h1>
+        <p class="erro" id="erroMsg"></p>
+        <p>Peça um novo link pelo app e tente de novo.</p>
+      </div>
+    </main>
+
+    <script>
+      (function () {
+        // O Supabase entrega os parâmetros na query (fluxo PKCE: `?code=`) e, em
+        // alguns casos de erro, no fragmento (`#error=`). Consideramos os dois.
+        var busca = window.location.search.replace(/^\?/, '');
+        var hash = window.location.hash.replace(/^#/, '');
+        var bruto = busca || hash;
+        var params = new URLSearchParams(bruto);
+
+        var erro = params.get('error_description') || params.get('error');
+        var code = params.get('code');
+
+        function mostrar(id) {
+          ['ok', 'semParametros', 'erro'].forEach(function (x) {
+            document.getElementById(x).hidden = x !== id;
+          });
+        }
+
+        if (erro) {
+          document.getElementById('erroMsg').textContent = decodeURIComponent(erro);
+          mostrar('erro');
+          return;
+        }
+        if (!code && !bruto) {
+          mostrar('semParametros');
+          return;
+        }
+
+        // Repassa TODOS os parâmetros recebidos para o app — o AuthProvider lê
+        // `code` (troca por sessão) e também `error_description`/`error`.
+        var alvo = 'barganha://auth-callback' + (bruto ? '?' + bruto : '');
+        var botao = document.getElementById('abrir');
+        botao.setAttribute('href', alvo);
+        mostrar('ok');
+
+        // Tentativa automática (atalho; pode ser bloqueada sem gesto). O botão
+        // continua como caminho garantido.
+        setTimeout(function () {
+          window.location.href = alvo;
+        }, 400);
+      })();
+    </script>
+  </body>
+</html>

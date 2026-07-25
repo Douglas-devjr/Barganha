@@ -23,11 +23,21 @@ import type { Session, User } from '@supabase/supabase-js';
 
 import { enviarPendentesAntesDeSair, redefinirAppLocal } from '@/nucleo/conta';
 
+import { obterUrlCallbackEmail } from './config';
 import { supabase } from './supabase';
 
-// Deep link de retorno do app (esquema `barganha`, app.json). Vale para o dev
-// build e o standalone; cadastre-o em Supabase → Auth → URL Configuration.
+// Deep link de retorno do app (esquema `barganha`, app.json). É o alvo FINAL do
+// retorno: o OAuth (Google) volta direto aqui via `openAuthSessionAsync`, e a
+// página-ponte dos e-mails salta para cá. Cadastre-o em Supabase → Auth → URL
+// Configuration.
 const REDIRECT = 'barganha://auth-callback';
+
+// Para onde os LINKS DE E-MAIL (confirmação de cadastro, reset de senha) apontam.
+// Precisa ser HTTPS: o navegador do celular recusa abrir o esquema custom vindo
+// do redirect automático do Supabase, então passamos por uma página-ponte que
+// repassa o `?code=` para `REDIRECT` com um toque (docs/19 §5). Cadastre esta URL
+// também nas Redirect URLs do Supabase.
+const REDIRECT_EMAIL = obterUrlCallbackEmail();
 
 export interface ResultadoAuth {
   /** Mensagem de erro pronta para a UI; ausente em sucesso. */
@@ -170,7 +180,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           email: email.trim(),
           password: senha,
           options: {
-            emailRedirectTo: REDIRECT,
+            emailRedirectTo: REDIRECT_EMAIL,
             // Vai para `user_metadata` em `auth.users` — o mesmo lugar onde o
             // Google já entrega o `full_name`. NÃO desce para `public.usuario` e
             // jamais cruza para o pool: o mundo compartilhado continua sem
@@ -220,7 +230,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       async enviarResetSenha(email) {
         const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-          redirectTo: REDIRECT,
+          redirectTo: REDIRECT_EMAIL,
         });
         return error ? { erro: traduzErro(error.message) } : {};
       },
