@@ -195,7 +195,7 @@ export function CompararMercadosTela({ navigation }: Props) {
         <TextInput
           value={busca}
           onChangeText={setBusca}
-          placeholder="Buscar produto para comparar… ex.: sabão"
+          placeholder="Buscar produto… ex.: sabão"
           placeholderTextColor={c.fraco}
           autoCorrect={false}
           style={[estilos.buscaInput, { color: c.tinta }]}
