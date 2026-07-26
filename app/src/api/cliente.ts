@@ -29,6 +29,7 @@ import type {
 } from '@barganha/shared';
 
 import { obterBaseUrl } from './config';
+import { ehRemoto, escolherTimeout } from './politica-timeout';
 
 export class ErroApi extends Error {
   constructor(
@@ -46,7 +47,13 @@ export class ErroApi extends Error {
 // firewall dropando pacotes em silêncio) deixa o fetch pendurado por minutos e a
 // UI presa em "Enviando/Processando…" sem nunca cair no estado offline. Abortar
 // vira `ErroApi(0)` — transitório: o sincronizador re-tenta com backoff.
-const TIMEOUT_REQUISICAO_MS = 15000;
+//
+// O teto NÃO é fixo: o plano free do Render hiberna e o primeiro request depois
+// do silêncio precisa de mais fôlego. Quem decide é `politica-timeout`.
+//
+// Estado de módulo, não de instância: "a instância do Render está acordada" é
+// fato do processo inteiro, e cada tela constrói o seu próprio ClienteApi.
+let ultimoContatoEm: number | null = null;
 
 export interface OpcoesClienteApi {
   baseUrl?: string;
@@ -234,7 +241,12 @@ export class ClienteApi {
     if (token) headers.Authorization = `Bearer ${token}`;
 
     const aborto = new AbortController();
-    const timer = setTimeout(() => aborto.abort(), TIMEOUT_REQUISICAO_MS);
+    const timeout = escolherTimeout({
+      remoto: ehRemoto(this.baseUrl),
+      ultimoContatoEm,
+      agora: Date.now(),
+    });
+    const timer = setTimeout(() => aborto.abort(), timeout);
     let resposta: Response;
     try {
       resposta = await fetch(`${this.baseUrl}${caminho}`, {
@@ -243,6 +255,8 @@ export class ClienteApi {
         body: corpo !== undefined ? JSON.stringify(corpo) : undefined,
         signal: aborto.signal,
       });
+      // Qualquer resposta — inclusive 4xx/5xx — prova que o processo está no ar.
+      ultimoContatoEm = Date.now();
     } catch {
       throw new ErroApi(0, 'Sem conexão com o servidor.');
     } finally {
