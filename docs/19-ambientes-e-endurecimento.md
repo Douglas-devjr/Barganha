@@ -252,3 +252,30 @@ uma única instância. Ambos passam a importar no dia em que houver duas:
   trocar o miolo por um store compartilhado (Redis/Postgres) sem tocar nas rotas.
 
 Antecipar qualquer um dos dois hoje custa complexidade e não compra nada.
+
+---
+
+## 7. Hibernação do Render free (cold start)
+
+O plano free hiberna a instância após ~15 min sem tráfego e o request seguinte
+gasta 30–60s acordando o processo. Isso atravessava o app como falha inventada:
+o cliente HTTP abortava em 15s fixos e a UI dizia "Sem conexão com o servidor"
+para um servidor que estava apenas subindo. Duas defesas, independentes:
+
+- **No app** — `app/src/api/politica-timeout.ts`. O teto deixou de ser fixo: 15s
+  quando houve resposta nos últimos 5 min (instância comprovadamente acordada) ou
+  quando a base é local (`http://` na LAN, onde não há hibernação); 60s no
+  primeiro contato depois do silêncio. Qualquer resposta HTTP conta como prova de
+  vida, inclusive 4xx. Como é JS puro, a correção viaja por `eas update`.
+- **Na infra** — `.github/workflows/manter-api-acordada.yml`. `GET /saude` a cada
+  10 min mantém a instância de pé; o repositório é público, então os minutos de
+  Actions são gratuitos.
+
+> **Cron só roda na branch padrão.** Um workflow agendado é lido da `main`: em
+> branch de feature ele nunca dispara. Enquanto o merge não acontece, o cold
+> start segue existindo — e é justamente por isso que a defesa do app não é
+> redundante com o ping.
+
+**Orçamento:** o free do Render dá 750 horas de instância por mês e um serviço
+acordado 24/7 consome ~730. Cabe, mas não sobra para um segundo serviço free —
+no dia em que existir um staging, este cron precisa ser reavaliado.

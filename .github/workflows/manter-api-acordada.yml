@@ -1,0 +1,43 @@
+name: Manter a API acordada
+
+# C10.2 — O backend vive no plano FREE do Render, que hiberna a instância após
+# ~15 min sem tráfego; o primeiro request seguinte gasta 30–60s acordando o
+# processo. O app tolera (o teto de tempo se alarga sozinho — ver
+# `app/src/api/politica-timeout.ts`), mas o testador vê lentidão sem motivo.
+#
+# Um GET barato em `/saude` a cada 10 min mantém a instância de pé. O repositório
+# é público, então os minutos de Actions não são cobrados.
+#
+# ATENÇÃO ao orçamento do Render: o free dá 750 horas de instância por MÊS e um
+# serviço acordado 24/7 consome ~730. Cabe, mas não sobra para um segundo
+# serviço free — se um dia houver staging, este cron precisa ser reavaliado.
+
+on:
+  schedule:
+    # A cada 10 min. O cron do GitHub atrasa sob carga e pode pular execuções;
+    # 10 min dá folga contra os ~15 min de ociosidade que disparam a hibernação.
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: manter-api-acordada
+  cancel-in-progress: true
+
+jobs:
+  ping:
+    name: Ping em /saude
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Acorda a instância
+        env:
+          # Variável de repositório (Settings → Variables) para o dia em que
+          # houver domínio próprio; sem ela, a URL atual do Render.
+          API_URL: ${{ vars.API_URL || 'https://barganha-api.onrender.com' }}
+        run: |
+          # --max-time generoso: um cold start legítimo leva 30–60s e NÃO é erro.
+          # Só falha o job depois das tentativas, quando é indisponibilidade real.
+          curl --fail --silent --show-error \
+               --max-time 90 --retry 2 --retry-delay 15 --retry-all-errors \
+               "$API_URL/saude"
+          echo
