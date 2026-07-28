@@ -138,6 +138,9 @@ export function VerificarTela({ navigation }: Props) {
   function escolher(p: ProdutoLocal) {
     setSelecionado(p);
     setResultado(null);
+    // O preço é da gôndola daquele item: herdá-lo no próximo produto daria um
+    // veredito falso já na abertura do card.
+    setPreco('');
     // Escolheu: a lista sai de cena e a busca zera para o próximo uso.
     setTrocando(false);
     setBusca('');
