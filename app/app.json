@@ -11,7 +11,9 @@
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
+    "icon": "./assets/icon.png",
     "splash": {
+      "image": "./assets/splash-mark.png",
       "backgroundColor": "#1B1B19",
       "resizeMode": "contain"
     },
@@ -35,8 +37,12 @@
       "package": "com.barganha.app",
       "versionCode": 1,
       "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#1B1B19"
       }
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
     },
     "plugins": [
       "expo-font",
