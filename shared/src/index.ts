@@ -18,3 +18,4 @@ export * from './estatistica/veredito';
 export * from './estatistica/normalizacao';
 export * from './estatistica/faixa';
 export * from './observabilidade/redacao';
+export * from './observabilidade/request-id';

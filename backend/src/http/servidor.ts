@@ -19,6 +19,7 @@
  * memória (sem Supabase nem rede).
  */
 
+import { gerarRequestId, HEADER_REQUEST_ID, sanitizarRequestId } from '@barganha/shared';
 import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest } from 'fastify';
 
 import { opcoesLogFastify } from '../observabilidade/log';
@@ -63,6 +64,16 @@ export function construirServidor(deps: DependenciasHttp): FastifyInstance {
     // `reqId` por requisição — é ele que correlaciona as linhas de um request.
     logger: deps.logger ? opcoesLogFastify : false,
     trustProxy: deps.trustProxy ?? false,
+    // C10.4 — Request ID rastreável. O padrão do Fastify é um contador que
+    // REINICIA a cada boot ("req-1", "req-2"): no free tier, onde a instância
+    // dorme e volta várias vezes por dia, dois erros distintos da mesma semana
+    // recebem o mesmo id e a correlação vira ruído.
+    //
+    // Aqui o id do CLIENTE tem prioridade — é ele que o app mostra na tela e que
+    // o usuário informa no suporte. Só é aceito depois de sanitizado: cabeçalho
+    // é entrada não confiável e este valor vai direto para o log (ver
+    // `shared/observabilidade/request-id.ts`).
+    genReqId: (req) => sanitizarRequestId(req.headers[HEADER_REQUEST_ID]) ?? gerarRequestId(),
   });
   const limites = deps.limites ?? LIMITES_PADRAO;
 
@@ -74,8 +85,12 @@ export function construirServidor(deps: DependenciasHttp): FastifyInstance {
   // Carimba a rota como `action` em toda linha daquela requisição. Usa a rota
   // COM template (`/ingestao/cupom/:id`), nunca a URL concreta — agrupa no
   // painel e evita que um id vire cardinalidade infinita de métrica.
-  app.addHook('onRequest', (req, _reply, done) => {
+  app.addHook('onRequest', (req, reply, done) => {
     req.log = req.log.child({ action: `http:${req.method} ${req.routeOptions?.url ?? req.url}` });
+    // Devolve o id em TODA resposta, inclusive nas de sucesso. Só no erro seria
+    // tarde: quando o usuário relata "ficou lento" ou "veio o preço errado" não
+    // houve erro nenhum, e sem o id não há como achar aquela requisição.
+    void reply.header(HEADER_REQUEST_ID, req.id);
     done();
   });
 

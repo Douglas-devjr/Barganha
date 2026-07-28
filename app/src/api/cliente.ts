@@ -28,6 +28,8 @@ import type {
   IngestaoQrResponse,
 } from '@barganha/shared';
 
+import { gerarRequestId, HEADER_REQUEST_ID } from '@barganha/shared';
+
 import { obterBaseUrl } from './config';
 import { ehRemoto, escolherTimeout } from './politica-timeout';
 
@@ -37,6 +39,13 @@ export class ErroApi extends Error {
     mensagem: string,
     /** Código de máquina do backend (ex.: `desafio`/`erro_portal` no 422 da C2.6). */
     readonly codigo?: string,
+    /**
+     * C10.4 — Request ID daquela chamada. É o que permite pegar o print do
+     * usuário e achar a linha exata no log do servidor. Presente mesmo quando o
+     * backend não respondeu (`status` 0): o id é gerado ANTES do envio, então
+     * timeout e queda de rede também ficam rastreáveis pelo lado do app.
+     */
+    readonly requestId?: string,
   ) {
     super(mensagem);
     this.name = 'ErroApi';
@@ -64,6 +73,8 @@ export interface OpcoesClienteApi {
 interface CorpoErro {
   erro?: string;
   codigo?: string;
+  /** Eco do Request ID (C10.4) — o servidor devolve o mesmo que recebeu. */
+  requestId?: string;
 }
 
 export class ClienteApi {
@@ -236,7 +247,15 @@ export class ClienteApi {
     corpo?: unknown,
     token?: string,
   ): Promise<T> {
-    const headers: Record<string, string> = { Accept: 'application/json' };
+    // C10.4 — o id nasce AQUI, antes do envio. Se nascesse no servidor, toda
+    // falha que não chega lá (timeout, celular sem rede, backend dormindo) ficaria
+    // sem identificador nenhum — e são justamente as que o usuário mais relata.
+    const requestId = gerarRequestId();
+
+    const headers: Record<string, string> = {
+      Accept: 'application/json',
+      [HEADER_REQUEST_ID]: requestId,
+    };
     if (corpo !== undefined) headers['Content-Type'] = 'application/json';
     if (token) headers.Authorization = `Bearer ${token}`;
 
@@ -258,7 +277,7 @@ export class ClienteApi {
       // Qualquer resposta — inclusive 4xx/5xx — prova que o processo está no ar.
       ultimoContatoEm = Date.now();
     } catch {
-      throw new ErroApi(0, 'Sem conexão com o servidor.');
+      throw new ErroApi(0, 'Sem conexão com o servidor.', undefined, requestId);
     } finally {
       clearTimeout(timer);
     }
@@ -266,14 +285,19 @@ export class ClienteApi {
     if (!resposta.ok) {
       let mensagem = `Erro ${resposta.status}.`;
       let codigo: string | undefined;
+      // O do corpo tem prioridade sobre o nosso, e o cabeçalho é o plano B para
+      // erro sem JSON (502 do proxy, corpo vazio). Só cai no id local quando o
+      // servidor não disse nada — aí ele ainda vale para o log do app.
+      let idDoServidor = resposta.headers.get(HEADER_REQUEST_ID) ?? undefined;
       try {
         const json = (await resposta.json()) as CorpoErro;
         if (json.erro) mensagem = json.erro;
         codigo = json.codigo;
+        idDoServidor = json.requestId ?? idDoServidor;
       } catch {
         // resposta sem corpo JSON — mantém a mensagem padrão.
       }
-      throw new ErroApi(resposta.status, mensagem, codigo);
+      throw new ErroApi(resposta.status, mensagem, codigo, idDoServidor ?? requestId);
     }
 
     if (resposta.status === 204) return undefined as T;
