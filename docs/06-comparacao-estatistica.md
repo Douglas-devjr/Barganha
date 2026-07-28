@@ -66,10 +66,73 @@ Mostrar os ângulos disponíveis: *seu histórico*, *vs. esta loja* e *vs. a reg
 ## Veredito (exemplo)
 > **R$ 7,90/L** — acima do típico (R$ 6,50/L). Já vi por **R$ 5,99/L** no Atacadão há 3 semanas.
 
-Faixas sugeridas (a calibrar com dados reais):
-- abaixo de p25 → **barato**
-- entre p25 e p75 → **na média**
-- acima de p75 → **caro**
+A regra tem **dois filtros**, nesta ordem — o veredito só sai quando os dois concordam:
+
+1. **Zona morta (magnitude).** `|preço − mediana| / mediana` precisa passar de **5%**
+   (`LIMIARES_VEREDITO.diferencaMinimaRelevante`). Dentro disso é sempre **na média**.
+2. **Percentil (direção).** Passou dos 5%: abaixo de p25 → **barato**, acima de p75 →
+   **caro**, no meio → **na média**.
+
+### Por que a zona morta existe
+
+O percentil sozinho não tem noção de magnitude — `< p25` é uma **posição**, não uma
+diferença. E 25% da população está abaixo do p25 **por definição**, então o rótulo saía
+com essa frequência mesmo quando a economia era irrisória.
+
+O tamanho do gap `(mediana − p25)/mediana` depende inteiramente de quanto o produto
+varia de preço na região. Simulando a distribuição com a mesma função de percentil do
+`agregacao.ts` (mediana do gap, e entre parênteses o décimo percentil — o caso ruim):
+
+| n \ dispersão (CV) | 3% | 5% | 8% | 12% | 20% |
+|---|---|---|---|---|---|
+| 3 | 1,5% (0,3%) | 2,5% (0,5%) | 4,0% (0,7%) | 6,0% (1,1%) | 9,6% (1,8%) |
+| 8 | 1,8% (0,8%) | 3,0% (1,4%) | 4,8% (2,2%) | 7,1% (3,2%) | 11,5% (5,3%) |
+| 40 | 2,0% (1,3%) | 3,2% (2,2%) | 5,1% (3,5%) | 7,5% (5,2%) | 12,2% (8,5%) |
+
+Ou seja: o limiar implícito da regra antiga oscilava de **0,3% a 12%** conforme o
+produto. Num item homogêneo (refrigerante, onde toda loja cobra quase o mesmo) o app
+estampava "BARATO" por R$ 0,10 num item de R$ 8. O problema é **pior com `n` pequeno**,
+que é exatamente o regime do pool hoje.
+
+### Por que 5%
+
+Os 5% cercam três coisas ao mesmo tempo:
+- **ruído da própria agregação** — janela de 180 dias com inflação de alimento dentro,
+  arredondamento da normalização por kg/L, mistura de embalagens;
+- **percepção humana** — o limiar de diferença perceptível em preço de mercado fica na
+  faixa de 5–10%;
+- **relevância prática** — 5% num item de R$ 10 é R$ 0,50; abaixo disso o usuário não
+  muda de decisão, e o veredito só gasta credibilidade.
+
+O corte é **cirúrgico**. Fração de vereditos "barato" que a zona morta rebaixa:
+
+| dispersão (CV) | zona 3% | **zona 5%** | zona 7% | zona 10% |
+|---|---|---|---|---|
+| 3% (homogêneo) | 40% | **79%** | 95% | 100% |
+| 5% | 13% | **42%** | 67% | 90% |
+| 8% (típico) | 4% | **15%** | 34% | 61% |
+| 12% | 1% | **6%** | 13% | 31% |
+| 20% (disperso) | 0% | **1%** | 3% | 9% |
+
+A 5% o filtro atinge quase só os produtos homogêneos — onde o veredito era ruído — e
+deixa intactos os dispersos, onde era sinal real. A 3% é tímido demais para consertar a
+coluna de CV 3–5%; a 7–10% começa a comer sinal legítimo da faixa típica (CV 8%).
+
+### O que deliberadamente NÃO foi feito
+
+Não existe **override por magnitude** (do tipo "≥15% acima da mediana → caro mesmo
+dentro do p75"). A falha oposta — "na média" escondendo um preço muito acima do típico —
+praticamente não ocorre: 0,1% dos casos com CV 8%, 1,5% com CV 12%. Só aparece em CV 20%
+(8,5%), e nessa faixa a dispersão provavelmente denuncia **casamento de produto ruim**
+(marcas/tamanhos diferentes no mesmo canônico), não um mercado caro. A correção certa ali
+é o casamento, não o veredito.
+
+### A revisitar com dados reais
+
+Hoje o limiar é **simétrico**. Há um argumento para "barato" exigir um gap maior que
+"caro": o pool nasce de **compras**, e as pessoas compram mais em promoção, o que puxa a
+mediana para baixo. O cerco IQR já segrega as promoções profundas, mas o viés residual é
+mensurável — e virar assimétrico é trocar uma constante por duas.
 
 ## Economia real (pagou × típico) — planejado, C8.4
 
@@ -145,7 +208,7 @@ coexistirem é necessário.
 - Quando entrar lançamento manual de gôndola (fase futura), reforçar moderação e detecção de anomalia.
 
 ## A calibrar com dados reais (responsável: data-scientist)
-- Limiares exatos de barato/caro por categoria.
+- Zona morta por categoria (hoje global em 5%) e possível assimetria barato/caro.
 - Meia-vida do decaimento temporal.
 - Mínimo de `n_observacoes` por nível de escopo.
 - Heurística de detecção de promoção sem campo de desconto.

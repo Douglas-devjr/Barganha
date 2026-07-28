@@ -30,6 +30,42 @@ describe('classificarPreco (C3.6)', () => {
     expect(classificarPreco(6.4, faixaRegional)).toBe('na_media');
   });
 
+  it('zona morta: diferença irrelevante vs. o típico é sempre "na média"', () => {
+    // Produto homogêneo — toda loja cobra quase o mesmo, então p25 fica colado
+    // na mediana. Sem a zona morta, R$ 0,05 de diferença virava "BARATO".
+    const homogenea: FaixaPreco = {
+      mediana: 8.0,
+      p25: 7.95,
+      p75: 8.05,
+      nObservacoes: 20,
+      unidadeBase: 'un',
+      atualizadoEm: '2026-06-20T00:00:00.000Z',
+    };
+    expect(classificarPreco(7.9, homogenea)).toBe('na_media'); // −1,25%: abaixo do p25, mas irrelevante
+    expect(classificarPreco(8.2, homogenea)).toBe('na_media'); // +2,5%: acima do p75, mas irrelevante
+    // Passou dos 5% ­→ o percentil volta a mandar.
+    expect(classificarPreco(7.5, homogenea)).toBe('barato'); // −6,25%
+    expect(classificarPreco(8.5, homogenea)).toBe('caro'); // +6,25%
+  });
+
+  it('a zona morta não engole o sinal de produto disperso', () => {
+    // Arroz: preço varia de verdade entre lojas. p25 já está a 12% da mediana,
+    // bem além da zona morta — a regra de percentil segue intacta.
+    const dispersa: FaixaPreco = {
+      mediana: 25.0,
+      p25: 22.0,
+      p75: 29.0,
+      nObservacoes: 18,
+      unidadeBase: 'kg',
+      atualizadoEm: '2026-06-20T00:00:00.000Z',
+    };
+    expect(classificarPreco(21.5, dispersa)).toBe('barato');
+    expect(classificarPreco(30.0, dispersa)).toBe('caro');
+    // E o meio da faixa continua "na média" mesmo longe da mediana: a dispersão
+    // é real, e um % fixo sozinho chamaria isto de caro sem motivo.
+    expect(classificarPreco(28.0, dispersa)).toBe('na_media'); // +12%, mas dentro do p75
+  });
+
   it('sem percentis, cai para a banda ± em torno da mediana', () => {
     const semPercentis: FaixaPreco = {
       mediana: 10,

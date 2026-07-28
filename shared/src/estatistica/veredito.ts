@@ -43,8 +43,28 @@ export type Veredito = (typeof VEREDITOS)[number];
 export const LIMIARES_VEREDITO = {
   /** Abaixo disso, o veredito é exibido com ressalva de "poucos dados". */
   minObservacoesConfiavel: 3,
-  /** Banda ± em torno da mediana quando faltam os percentis (fallback degradado). */
-  bandaMedianaFallback: 0.05,
+  /**
+   * **Zona morta**: diferença mínima vs. a mediana para o app OPINAR.
+   * Dentro de ±5% do típico o veredito é sempre `na_media`.
+   *
+   * Existe porque o percentil sozinho não tem noção de magnitude: `< p25` é uma
+   * posição, não uma diferença. Num produto de preço homogêneo (refrigerante,
+   * onde toda loja cobra quase o mesmo) o p25 fica a ~1,5% da mediana — e o app
+   * estampava "BARATO" por R$ 0,10 num item de R$ 8. Como 25% da população está
+   * sempre abaixo do p25 **por definição**, o rótulo saía com essa frequência
+   * independentemente de a economia ser real.
+   *
+   * Os 5% cercam três coisas ao mesmo tempo:
+   *  • o ruído da própria agregação (janela de 180 dias com inflação de alimento
+   *    dentro, arredondamento da normalização por kg/L, mistura de embalagens);
+   *  • o limiar de percepção de diferença de preço em mercado (~5–10%);
+   *  • a relevância prática — 5% num item de R$ 10 é R$ 0,50; abaixo disso o
+   *    usuário não muda de decisão, e o veredito só gasta credibilidade.
+   *
+   * O corte é cirúrgico: rebaixa ~42% dos "barato" em produtos homogêneos
+   * (onde eram ruído) e só ~1% nos de preço disperso (onde eram sinal real).
+   */
+  diferencaMinimaRelevante: 0.05,
 } as const;
 
 /**
@@ -66,8 +86,18 @@ export interface FaixaPreco {
 
 /**
  * Classifica um preço de prateleira contra a faixa REGULAR.
- *  • Caminho principal: percentis — `< p25` barato, `> p75` caro, no meio média.
- *  • Fallback degradado: sem percentis, usa banda ± em torno da mediana.
+ *
+ * Duas perguntas, nesta ordem — o veredito só sai quando as duas concordam:
+ *  1. **A diferença importa?** `|preço − mediana| / mediana` precisa passar de
+ *     `diferencaMinimaRelevante`. É a zona morta: perto do típico, é típico.
+ *  2. **Para que lado?** Aí sim os percentis decidem — `< p25` barato,
+ *     `> p75` caro. A posição na distribuição respeita a dispersão REAL do
+ *     produto, que um % fixo sozinho não saberia (arroz varia muito mais que
+ *     refrigerante, e os dois estariam certos).
+ *
+ * Sem percentis (fallback degradado), a zona morta é a regra inteira: passou
+ * dos 5%, o lado vem do sinal da própria diferença.
+ *
  * Nunca compara contra `menorPromocional` (evita o falso "está caro" por causa
  * de uma promoção pontual antiga — docs/06).
  */
@@ -75,20 +105,19 @@ export function classificarPreco(precoPrateleira: number, faixa: FaixaPreco): Ve
   if (!Number.isFinite(precoPrateleira) || precoPrateleira <= 0) return 'sem_dados';
   if (faixa.nObservacoes <= 0) return 'sem_dados';
 
-  if (faixa.p25 != null && faixa.p75 != null) {
-    if (precoPrateleira < faixa.p25) return 'barato';
-    if (precoPrateleira > faixa.p75) return 'caro';
-    return 'na_media';
+  const temPercentis = faixa.p25 != null && faixa.p75 != null;
+  if (!temPercentis && faixa.mediana == null) return 'sem_dados';
+
+  // Zona morta (só quando há mediana p/ medir a diferença contra).
+  if (faixa.mediana != null && faixa.mediana > 0) {
+    const desvio = (precoPrateleira - faixa.mediana) / faixa.mediana;
+    if (Math.abs(desvio) < LIMIARES_VEREDITO.diferencaMinimaRelevante) return 'na_media';
+    if (!temPercentis) return desvio < 0 ? 'barato' : 'caro';
   }
 
-  if (faixa.mediana != null) {
-    const margem = faixa.mediana * LIMIARES_VEREDITO.bandaMedianaFallback;
-    if (precoPrateleira < faixa.mediana - margem) return 'barato';
-    if (precoPrateleira > faixa.mediana + margem) return 'caro';
-    return 'na_media';
-  }
-
-  return 'sem_dados';
+  if (precoPrateleira < faixa.p25!) return 'barato';
+  if (precoPrateleira > faixa.p75!) return 'caro';
+  return 'na_media';
 }
 
 /** `true` quando a base é pequena demais p/ confiar — UI sinaliza "poucos dados". */
