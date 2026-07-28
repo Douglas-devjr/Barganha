@@ -34,7 +34,7 @@ import { Anonimizador as AnonimizadorReal } from '../anonimizacao/anonimizador';
 import { type ConfigBackend, lerConfig } from '../config/env';
 import { PipelineEstatistica } from '../estatistica/pipeline';
 import { logDeJob } from '../observabilidade/log';
-import { sanitizarErro } from '../observabilidade/sanitizar';
+import { sanitizarErroInesperado } from '../observabilidade/sanitizar';
 import { RepositorioSupabase } from '../persistencia/repositorio-supabase';
 import { hashChavePool } from '../persistencia/tipos';
 import { criarClienteSupabase } from '../persistencia/supabase';
@@ -171,7 +171,8 @@ export async function rodarJobRepublicacao(
 // de saída para o operador detectar falha.
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   rodarJobRepublicacao().catch((erro) => {
-    logDeJob('republicar-pool').error({ erro: sanitizarErro(erro) }, 'Job falhou');
+    // Catch-all do job — com pilha (C10.4), ver nota em `recalculo-estatistica`.
+    logDeJob('republicar-pool').error({ erro: sanitizarErroInesperado(erro) }, 'Job falhou');
     process.exitCode = 1;
   });
 }

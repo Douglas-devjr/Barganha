@@ -24,7 +24,7 @@ import {
   formatarAlerta,
 } from '../observabilidade/alerta-parsing';
 import { logDeJob } from '../observabilidade/log';
-import { sanitizarErro } from '../observabilidade/sanitizar';
+import { sanitizarErro, sanitizarErroInesperado } from '../observabilidade/sanitizar';
 
 export async function main(): Promise<void> {
   const log = logDeJob('alerta-parsing');
@@ -68,7 +68,11 @@ export async function main(): Promise<void> {
 // Executado direto (não quando importado por um teste).
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   main().catch((erro) => {
-    logDeJob('alerta-parsing').fatal({ erro: sanitizarErro(erro) }, 'Job de alerta falhou');
+    // Catch-all do job — com pilha (C10.4), ver nota em `recalculo-estatistica`.
+    logDeJob('alerta-parsing').fatal(
+      { erro: sanitizarErroInesperado(erro) },
+      'Job de alerta falhou',
+    );
     process.exitCode = 1;
   });
 }

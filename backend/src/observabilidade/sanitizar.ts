@@ -10,6 +10,13 @@
  *
  *   NENHUM erro vai ao log cru. Sempre `sanitizarErro(erro)`.
  *
+ * QUAL DOS DOIS (C10.4):
+ *  • `sanitizarErro` — erro PREVISTO (de domínio): tipo + mensagem bastam, e a
+ *    pilha só faria o alerta inchar. É o caso da maioria absoluta das chamadas.
+ *  • `sanitizarErroInesperado` — o que não devia acontecer: o 500, o `fatal` de
+ *    boot, o job que explodiu. Traz a pilha (filtrada e redigida) e a cadeia de
+ *    `cause`, porque aí não há mensagem nossa dizendo o que houve.
+ *
  * Vale também para o que é PERSISTIDO como texto: `marcarFalha(cupomId, motivo)`
  * grava no banco, então o `motivo` passa por aqui antes (docs/04).
  *
@@ -17,4 +24,10 @@
  * (estrutura sem texto) — nunca a mensagem de erro.
  */
 
-export { type ErroSanitizado, redigirTexto, sanitizarErro } from '@barganha/shared';
+export {
+  type ErroInesperado,
+  type ErroSanitizado,
+  redigirTexto,
+  sanitizarErro,
+  sanitizarErroInesperado,
+} from '@barganha/shared';

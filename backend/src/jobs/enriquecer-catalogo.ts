@@ -16,7 +16,7 @@ import { criarClienteSupabase } from '../persistencia/supabase';
 
 import { parseRedesVtex } from '../fontes/redes';
 import { logDeJob } from '../observabilidade/log';
-import { sanitizarErro } from '../observabilidade/sanitizar';
+import { sanitizarErroInesperado } from '../observabilidade/sanitizar';
 import { ServicoEnriquecimentoCatalogo } from '../fontes/servico-enriquecimento-catalogo';
 import { ClienteVtex } from '../fontes/vtex/cliente-vtex';
 
@@ -55,7 +55,8 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   rodarJobEnriquecimento().catch((erro) => {
     // `error` e não `fatal`: o catálogo enriquecido é melhoria de exibição — o
     // veredito (que é o produto) continua funcionando sem ele.
-    logDeJob('enriquecer-catalogo').error({ erro: sanitizarErro(erro) }, 'Job falhou');
+    // Catch-all do job — com pilha (C10.4), ver nota em `recalculo-estatistica`.
+    logDeJob('enriquecer-catalogo').error({ erro: sanitizarErroInesperado(erro) }, 'Job falhou');
     process.exitCode = 1;
   });
 }

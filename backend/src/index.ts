@@ -9,7 +9,7 @@ import { montarBackend } from './composicao';
 import { lerConfig } from './config/env';
 import { construirServidor } from './http/servidor';
 import { log } from './observabilidade/log';
-import { sanitizarErro } from './observabilidade/sanitizar';
+import { sanitizarErro, sanitizarErroInesperado } from './observabilidade/sanitizar';
 
 export async function main(): Promise<void> {
   const config = lerConfig();
@@ -96,6 +96,12 @@ const LIMITE_RECUPERACAO_BOOT = 200;
 main().catch((erro) => {
   // `fatal`: o único nível acima de `error`. O processo não sobe — config
   // ausente ou porta ocupada. Nada aqui é recuperável em execução.
-  log.fatal({ action: 'boot.falhou', erro: sanitizarErro(erro) }, 'Falha ao iniciar o backend');
+  //
+  // Com pilha (C10.4): é o log que alguém lê às 3h com o serviço fora do ar, e
+  // "Cannot read properties of undefined" sem frame nenhum não diz onde olhar.
+  log.fatal(
+    { action: 'boot.falhou', erro: sanitizarErroInesperado(erro) },
+    'Falha ao iniciar o backend',
+  );
   process.exitCode = 1;
 });

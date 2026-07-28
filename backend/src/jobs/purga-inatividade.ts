@@ -34,7 +34,7 @@ import { fileURLToPath } from 'node:url';
 import { GerenciadorContaSupabase } from '../auth/gerenciador-conta';
 import { lerConfig } from '../config/env';
 import { logDeJob } from '../observabilidade/log';
-import { sanitizarErro } from '../observabilidade/sanitizar';
+import { sanitizarErroInesperado } from '../observabilidade/sanitizar';
 import { criarClienteSupabase } from '../persistencia/supabase';
 
 const DIA_MS = 24 * 60 * 60 * 1000;
@@ -304,7 +304,11 @@ function numeroOuPadrao(bruto: string | undefined, padrao: number): number {
 // Executado direto (não quando importado por um teste).
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   rodarJobPurga().catch((erro) => {
-    logDeJob('purga-inatividade').error({ erro: sanitizarErro(erro) }, 'Job de purga falhou');
+    // Catch-all do job — com pilha (C10.4), ver nota em `recalculo-estatistica`.
+    logDeJob('purga-inatividade').error(
+      { erro: sanitizarErroInesperado(erro) },
+      'Job de purga falhou',
+    );
     process.exitCode = 1;
   });
 }

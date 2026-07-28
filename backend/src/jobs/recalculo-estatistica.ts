@@ -22,7 +22,7 @@ import { fileURLToPath } from 'node:url';
 import { montarBackend } from '../composicao';
 import { type ConfigBackend, lerConfig } from '../config/env';
 import { logDeJob } from '../observabilidade/log';
-import { sanitizarErro } from '../observabilidade/sanitizar';
+import { sanitizarErroInesperado } from '../observabilidade/sanitizar';
 
 /** Porta mínima do pipeline usada pelo job — recalcula tudo (ou só o recente). */
 export interface PipelineRecalculavel {
@@ -87,7 +87,10 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   rodarJobRecalculo().catch((erro) => {
     // `fatal`: o job é a rede de segurança do recálculo best-effort da ingestão.
     // Ele falhar significa que a mediana do veredito para de ser atualizada.
-    logDeJob('recalculo-estatistica').fatal({ erro: sanitizarErro(erro) }, 'Job falhou');
+    // Catch-all do job: o que chega aqui é o não previsto, então vai com pilha
+    // (C10.4). O job roda por cron, sem ninguém olhando — o log é a única cena
+    // do crime que sobra.
+    logDeJob('recalculo-estatistica').fatal({ erro: sanitizarErroInesperado(erro) }, 'Job falhou');
     process.exitCode = 1;
   });
 }

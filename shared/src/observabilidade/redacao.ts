@@ -63,13 +63,87 @@ export interface ErroSanitizado {
 /**
  * Converte qualquer `unknown` capturado num objeto seguro para log.
  *
- * A pilha (`stack`) fica de fora de propósito: não agrega no diagnóstico destes
- * erros (são de domínio, com mensagem descritiva) e é o lugar clássico onde
- * argumentos com dado sensível vazam para o log.
+ * A pilha (`stack`) fica de fora de propósito: erro de DOMÍNIO já diz tudo na
+ * mensagem ("UF não suportada: MG") e a pilha só acrescentaria ruído — quem lê
+ * o alerta quer agrupar por tipo, não navegar frames. Para o erro INESPERADO,
+ * onde a pilha é a única pista, use `sanitizarErroInesperado`.
  */
 export function sanitizarErro(erro: unknown): ErroSanitizado {
   if (erro instanceof Error) {
     return { tipo: erro.name, mensagem: redigirTexto(erro.message) };
   }
   return { tipo: 'DesconhecidoError', mensagem: redigirTexto(String(erro)) };
+}
+
+/** Frames guardados por erro. O bastante para achar a origem, sem virar parede. */
+const MAX_FRAMES = 12;
+
+/** Profundidade da cadeia de `cause` — evita ciclo e log gigante. */
+const MAX_CAUSAS = 3;
+
+export interface ErroInesperado extends ErroSanitizado {
+  /**
+   * Frames já redigidos, um por item — array e não string única para o coletor
+   * conseguir indexar e o painel renderizar sem reparsear texto.
+   */
+  pilha: string[];
+  /** Cadeia de `Error.cause`, sanitizada igual. É onde mora a causa REAL. */
+  causa?: ErroInesperado;
+}
+
+/**
+ * C10.4 — Erro INESPERADO (o 500, o `fatal` de boot, o job que explodiu) com a
+ * pilha preservada.
+ *
+ * Aqui a pilha é obrigatória: um erro não previsto não tem mensagem descritiva
+ * escrita por nós — tipicamente é um `TypeError: Cannot read properties of
+ * undefined`, que sem os frames não localiza nada. Era o buraco de debug do
+ * backend: todo 500 registrava tipo e mensagem e nada sobre ONDE aconteceu.
+ *
+ * O que a pilha atravessa antes de virar log:
+ *  1. A primeira linha é DESCARTADA — ela repete "Tipo: mensagem", que já vai
+ *     nos campos próprios, e é o pedaço do `stack` que pode conter HTML de
+ *     portal ou dado pessoal vindo da mensagem.
+ *  2. Frames de `node_modules` e de módulos internos do Node saem: ruído que
+ *     empurra os nossos frames para fora do teto.
+ *  3. Cada frame sobrevivente passa por `redigirTexto`, porque caminho de
+ *     arquivo em máquina de desenvolvimento pode carregar nome/e-mail no
+ *     diretório de usuário.
+ */
+export function sanitizarErroInesperado(erro: unknown, profundidade = 0): ErroInesperado {
+  const base = sanitizarErro(erro);
+  if (!(erro instanceof Error)) return { ...base, pilha: [] };
+
+  const causa =
+    profundidade < MAX_CAUSAS && erro.cause != null
+      ? sanitizarErroInesperado(erro.cause, profundidade + 1)
+      : undefined;
+
+  return {
+    ...base,
+    pilha: extrairFrames(erro.stack),
+    ...(causa ? { causa } : {}),
+  };
+}
+
+/** `true` para frame de dependência ou do próprio Node — ruído, não pista. */
+const ehRuido = (frame: string): boolean =>
+  frame.includes('node_modules') || frame.includes('(node:') || frame.includes('at node:');
+
+function extrairFrames(stack: string | undefined): string[] {
+  if (!stack) return [];
+
+  const linhas = stack
+    .split('\n')
+    .map((l) => l.trim())
+    // Só linhas de frame: descarta de uma vez a primeira linha (tipo + mensagem)
+    // e qualquer texto que algum runtime enfie no meio.
+    .filter((l) => l.startsWith('at '));
+
+  const nossos = linhas.filter((l) => !ehRuido(l));
+  // Erro lançado do fundo de uma dependência não tem frame nosso nenhum. Ficar
+  // com a lista vazia seria pior que o ruído — guarda os primeiros como pista.
+  const escolhidos = nossos.length > 0 ? nossos : linhas.slice(0, 3);
+
+  return escolhidos.slice(0, MAX_FRAMES).map(redigirTexto);
 }

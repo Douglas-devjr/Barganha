@@ -17,7 +17,7 @@ import {
   LancamentoInvalidoError,
   PayloadQrInvalidoError,
 } from '../erros';
-import { sanitizarErro } from '../observabilidade/sanitizar';
+import { sanitizarErroInesperado } from '../observabilidade/sanitizar';
 
 export function tratarErro(erro: FastifyError, req: FastifyRequest, reply: FastifyReply) {
   // C10.4 — o id vai em TODO corpo de erro, não só no 500. Um 400 recorrente que
@@ -56,8 +56,11 @@ export function tratarErro(erro: FastifyError, req: FastifyRequest, reply: Fasti
     );
     return reply.code(422).send({ erro: erro.message, codigo: 'erro_portal', requestId });
   }
+  // C10.4 — AQUI a pilha entra. Este ramo é, por definição, o erro que ninguém
+  // previu: um `TypeError` de dentro de um serviço, o driver do Postgres
+  // estourando. Sem os frames, o log dizia o QUE quebrou e nunca ONDE.
   req.log.error(
-    { action: 'http.erro_nao_tratado', erro: sanitizarErro(erro) },
+    { action: 'http.erro_nao_tratado', requestId, erro: sanitizarErroInesperado(erro) },
     'Erro não tratado — respondendo 500',
   );
   // A mensagem segue genérica (ver nota no topo), mas agora acompanhada do id:
