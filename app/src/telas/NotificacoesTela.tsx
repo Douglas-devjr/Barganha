@@ -8,7 +8,7 @@
  */
 
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import { Pressable, StyleSheet, View } from 'react-native';
 
@@ -24,6 +24,7 @@ import {
 } from '@/componentes';
 import { notificacoes } from '@/dados';
 import type { Notificacao } from '@/dados/repositorio-notificacoes';
+import { comPiso } from '@/nucleo/ritmo';
 import { espaco, raio, useTema } from '@/tema';
 import type { RootStackParamList } from '@/navegacao/tipos';
 
@@ -61,12 +62,16 @@ export function NotificacoesTela({ navigation }: Props) {
   const { c } = useTema();
   const [lista, setLista] = useState<Notificacao[]>([]);
   const [carregado, setCarregado] = useState(false);
+  /** Só a primeira carga espera o piso — nas voltas a lista já está na tela. */
+  const primeiraCarga = useRef(true);
 
   useFocusEffect(
     useCallback(() => {
       let ativo = true;
-      void notificacoes.listar().then((l) => {
+      const leitura = notificacoes.listar();
+      void (primeiraCarga.current ? comPiso(leitura) : leitura).then((l) => {
         if (!ativo) return;
+        primeiraCarga.current = false;
         setLista(l);
         setCarregado(true);
       });

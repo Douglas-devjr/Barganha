@@ -15,13 +15,14 @@
 
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { CabecalhoVoltar, Cartao, Estado, IconeRecibo, Tela, Texto } from '@/componentes';
 import { cupons } from '@/dados';
 import type { EconomiaMensal, EconomiaPorProduto } from '@/dados/repositorio-cupom';
 import { moeda } from '@/nucleo/formato';
+import { comPiso } from '@/nucleo/ritmo';
 import { espaco, raio, tabular, useTema } from '@/tema';
 import type { RootStackParamList } from '@/navegacao/tipos';
 
@@ -54,12 +55,16 @@ export function DashboardTela({ navigation }: Props) {
   const [selecionado, setSelecionado] = useState<string | null>(null);
   const [porProduto, setPorProduto] = useState<EconomiaPorProduto[]>([]);
   const [carregado, setCarregado] = useState(false);
+  /** Só a primeira carga espera o piso — nas voltas o gráfico já está na tela. */
+  const primeiraCarga = useRef(true);
 
   useFocusEffect(
     useCallback(() => {
       let ativo = true;
-      void cupons.economiaPorMes(6).then((lista) => {
+      const leitura = cupons.economiaPorMes(6);
+      void (primeiraCarga.current ? comPiso(leitura) : leitura).then((lista) => {
         if (!ativo) return;
+        primeiraCarga.current = false;
         // `economiaPorMes` vem do mais recente para o mais antigo; o gráfico lê
         // da esquerda (antigo) para a direita (recente).
         setMeses([...lista].reverse());

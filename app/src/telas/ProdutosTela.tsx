@@ -43,6 +43,7 @@ import { clienteApi } from '@/api';
 import { lista as listaCompras } from '@/dados';
 import * as catalogo from '@/nucleo/catalogo';
 import { resolverLocalizacao } from '@/nucleo/localizacao';
+import { comPiso } from '@/nucleo/ritmo';
 import type { ProdutoLocal } from '@/nucleo/catalogo';
 import { espaco, raio, useTema } from '@/tema';
 import type { RootStackParamList } from '@/navegacao/tipos';
@@ -92,13 +93,17 @@ export function ProdutosTela({ navigation }: Props) {
   const [confirmando, setConfirmando] = useState<ProdutoLocal | null>(null);
   const [denunciando, setDenunciando] = useState<ProdutoLocal | null>(null);
   const montado = useRef(true);
+  /** Só a primeira carga mostra esqueleto — nas voltas o dado já está na tela. */
+  const primeiraCarga = useRef(true);
 
   useFocusEffect(
     useCallback(() => {
       montado.current = true;
       void (async () => {
-        const todos = await catalogo.carregarCatalogo();
+        const leitura = catalogo.carregarCatalogo();
+        const todos = primeiraCarga.current ? await comPiso(leitura) : await leitura;
         if (!montado.current) return;
+        primeiraCarga.current = false;
         setItens(todos);
         setCarregando(false);
       })();

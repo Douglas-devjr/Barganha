@@ -43,6 +43,7 @@ import type { AlertaPreco } from '@/dados/repositorio-alertas';
 import * as catalogo from '@/nucleo/catalogo';
 import type { CompraHistorico, ProdutoLocal } from '@/nucleo/catalogo';
 import { moeda as moedaFmt, parseMoeda } from '@/nucleo/formato';
+import { agora, completarPiso } from '@/nucleo/ritmo';
 import { resolverVeredito } from '@/nucleo/veredito-local';
 import { espaco, raio, useTema } from '@/tema';
 import type { RootStackParamList } from '@/navegacao/tipos';
@@ -112,6 +113,7 @@ export function ProdutoDetalheTela({ navigation, route }: Props) {
   useEffect(() => {
     let ativo = true;
     void (async () => {
+      const inicio = agora();
       const dados = await recarregar();
       if (!ativo) return;
       const p = dados?.produto ?? null;
@@ -136,6 +138,8 @@ export function ProdutoDetalheTela({ navigation, route }: Props) {
         });
         if (ativo) setTipicoRegional(r.hibrido.regional?.faixa.mediana ?? null);
       }
+      await completarPiso(inicio);
+      if (!ativo) return;
       setCarregando(false);
     })();
     return () => {
