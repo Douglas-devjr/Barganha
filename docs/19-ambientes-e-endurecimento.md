@@ -279,3 +279,41 @@ para um servidor que estava apenas subindo. Duas defesas, independentes:
 **Orçamento:** o free do Render dá 750 horas de instância por mês e um serviço
 acordado 24/7 consome ~730. Cabe, mas não sobra para um segundo serviço free —
 no dia em que existir um staging, este cron precisa ser reavaliado.
+
+---
+
+## 8. Cifrar as colunas privadas do Postgres (pendência **pré-beta**)
+
+**O que fica em claro hoje:** `cupom.chave_acesso` e as descrições de
+`item_cupom` — ambas amarradas ao `usuario_id`. Não são o dado mais sensível do
+sistema (o CPF já não entra em lugar nenhum: os parsers não o extraem e o QR é
+saneado ao concluir o cupom, docs/04), mas são o histórico de consumo de uma
+pessoa identificável, e um dump vazado hoje é legível de ponta a ponta.
+
+**Por que não foi feito junto com o resto do endurecimento de privacidade:**
+
+- Toca o caminho crítico inteiro da ingestão — a RPC `processar_cupom`, o índice
+  único `cupom_usuario_chave_uniq` (idempotência do upload) e o dedup por hash em
+  `chave_publicada`. Feito antes do produto estabilizar, cada migração e cada
+  consulta nova passa a carregar a criptografia junto.
+- O ganho pré-lançamento é próximo de zero: a base está praticamente vazia.
+- Errar a rotação da chave torna o histórico privado **irrecuperável**. Isso é
+  disciplina operacional, e ela tem que existir antes da cifra.
+
+**Desenho pretendido, para quando entrar:**
+
+- **Envelope**, com a chave fora do banco (variável de ambiente do backend, nunca
+  no repositório). Isso protege contra vazamento de *dump*; **não** protege
+  contra invasão do servidor — e a diferença precisa estar clara para ninguém
+  vender a cifra como garantia que ela não dá.
+- **Idempotência preservada:** o índice único passa a ser sobre o
+  **SHA-256** da chave de acesso (o `hashChavePool` já faz exatamente isso para o
+  pool); o valor cifrado vive numa coluna à parte, que ninguém consulta por
+  igualdade.
+- **A chave de acesso precisa continuar reversível** — o reprocessamento
+  retroativo (C2.5) consulta a SEFAZ a partir dela. Não pode virar só hash.
+- **Rotação escrita antes da primeira cifra:** procedimento, onde a chave antiga
+  fica durante a rotação, e como reverter. Sem isso, não ligar.
+
+**Gate:** entra na Fase 3 (gate do beta fechado, docs/15), junto com os demais
+itens que só passam a valer quando houver usuário real com dado real.

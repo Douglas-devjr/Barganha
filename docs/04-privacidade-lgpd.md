@@ -86,6 +86,33 @@ aqui, num aparelho novo ou após reinstalar — o app **reidrata** o histórico:
   > purga fica travada por construção (sem aviso, sem purga). Ligar de verdade
   > antes do beta aberto (docs/16). O número (24 meses) já vale para a política.
 
+## Dado em repouso (o que está cifrado, o que não está e por quê)
+
+Criptografia aqui é ferramenta, não dogma: ela protege o que é **pessoal**, e só
+tem sentido onde o dado não precisa ser somado, ordenado ou agrupado.
+
+| Onde | Estado hoje |
+|---|---|
+| Senha (`auth.users`) | **hash bcrypt** — Supabase gerido |
+| Email / identidade Google (`auth.users`) | claro, no esquema gerido; é o mínimo para autenticar |
+| Sessão no aparelho (access + **refresh token**) | **Keystore/Keychain** via `expo-secure-store` (`app/src/auth/armazenamento.ts`) |
+| Chave de acesso já publicada (`chave_publicada`) | **SHA-256** — a chave crua nunca chega lá |
+| Banco local (`barganha.db`) | claro, mas **fora do backup** — `android.allowBackup: false` |
+| `cupom.chave_acesso`, `item_cupom.*` | claro (ver abaixo) |
+| Pool compartilhado | claro **por decisão** — não é dado pessoal, e mediana/percentil não se calculam sobre texto cifrado |
+
+**Backup do aparelho.** O `allowBackup` do Android vem ligado por padrão no
+prebuild do Expo, o que mandava o histórico privado inteiro para o Google Drive
+do usuário — o vazamento mais provável do lado do dispositivo, e o único que sai
+do aparelho sozinho. Fica **desligado** em `app/app.json`. Como `android/` não é
+versionado, isto **tem que** morar no `app.json`: editar o `AndroidManifest.xml`
+some no próximo `expo prebuild`.
+
+**Cifrar colunas privadas do Postgres** (`chave_acesso`, descrições de item)
+protege contra vazamento de *dump* — não contra invasão do servidor, já que a
+chave viveria no ambiente do backend. É endurecimento **pré-beta**, com decisão
+de gestão de chave junto: ver docs/19 §8.
+
 ## Idade mínima
 - Uso restrito a **maiores de 18 anos** (declarado no onboarding e na política).
   Um histórico de compras **durável e reconstituível** é sensível demais para
