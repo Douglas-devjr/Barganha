@@ -1,0 +1,65 @@
+name: Alerta de anomalias
+
+# C10.4 — Vigilância das métricas de performance e da saúde do serviço.
+#
+# Complementa o `alerta-parsing`, que olha só a taxa de falha por UF a partir da
+# telemetria persistida. Aqui as regras são sobre o que vive na MEMÓRIA do
+# processo — latência, cache, memória, CPU — e por isso o job fala HTTP com a API
+# em vez de ler o banco.
+#
+# Segredos e variáveis (Settings → Secrets / Variables):
+#   • API_URL (variável)          — URL da API. Padrão: o Render atual.
+#   • CURADORIA_TOKEN (segredo)   — um dos `CURADORIA_TOKENS` do backend. Sem ele
+#     o job avalia só `/saude` (público) e avisa que está com meia visão.
+#   • ALERTA_WEBHOOK_URL (segredo)— Discord/Slack. Sem ele o alerta fica no log
+#     desta execução, que continua consultável aqui.
+#
+# Limiares são configuráveis por variável de repositório (ALERTA_*) — ver
+# `backend/src/observabilidade/regras-alerta.ts`. O número certo só aparece com
+# tráfego real, e limiar cravado no código significa um deploy para calibrar.
+
+on:
+  schedule:
+    # 20 min. Mais denso que o alerta de parsing (horário) porque estes sinais
+    # são transitórios: um pico de latência não fica esperando alguém olhar.
+    - cron: '*/20 * * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: alerta-anomalias
+  cancel-in-progress: true
+
+jobs:
+  anomalias:
+    name: Avaliar saúde e performance da API
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      API_URL: ${{ vars.API_URL || 'https://barganha-api.onrender.com' }}
+      CURADORIA_TOKEN: ${{ secrets.CURADORIA_TOKEN }}
+      ALERTA_WEBHOOK_URL: ${{ secrets.ALERTA_WEBHOOK_URL }}
+      # Limiares — deixe em branco para usar os padrões do código.
+      ALERTA_LATENCIA_HTTP_P95_MS: ${{ vars.ALERTA_LATENCIA_HTTP_P95_MS }}
+      ALERTA_LATENCIA_BANCO_P95_MS: ${{ vars.ALERTA_LATENCIA_BANCO_P95_MS }}
+      ALERTA_TAXA_ERRO_HTTP: ${{ vars.ALERTA_TAXA_ERRO_HTTP }}
+      ALERTA_TAXA_ACERTO_CACHE_MIN: ${{ vars.ALERTA_TAXA_ACERTO_CACHE_MIN }}
+      ALERTA_MEMORIA_RSS_MB: ${{ vars.ALERTA_MEMORIA_RSS_MB }}
+      ALERTA_CPU_PERCENTUAL: ${{ vars.ALERTA_CPU_PERCENTUAL }}
+      ALERTA_AMOSTRA_MINIMA: ${{ vars.ALERTA_AMOSTRA_MINIMA }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configura Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Instala dependências
+        run: npm ci
+
+      # Sai diferente de zero só em anomalia CRÍTICA — degradação fica verde com
+      # aviso no log. Alerta que fica vermelho por oscilação é alerta ignorado.
+      - name: Avalia anomalias
+        run: npm run job:alerta-anomalias --workspace @barganha/backend
