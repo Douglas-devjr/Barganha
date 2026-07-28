@@ -1,7 +1,7 @@
 /**
  * C12.1 + handoff 3a — "onde minha cesta sai mais barata?". O usuário monta uma
- * cesta buscando produtos (viram chips removíveis) e o app ranqueia os mercados
- * da região pela soma dessa cesta.
+ * cesta buscando produtos e o app ranqueia os mercados da região pela soma
+ * dessa cesta.
  *
  * O ranking vem do endpoint ANÔNIMO `/consulta/lista`: só ids canônicos e o
  * recorte de região viajam — nada identifica o usuário (docs/04). Cada total é
@@ -11,6 +11,12 @@
  * Cobertura importa mais que o total: uma loja que só tem 2 dos 6 itens somaria
  * menos por FALTA, não por ser barata. Por isso a lista mostra a cobertura e o
  * selo "MAIS BARATO" só sai quando a loja cobre a cesta inteira.
+ *
+ * A cesta é uma LISTA VERTICAL, não chips (mesma correção da Verificar): com uma
+ * cesta de compras de verdade os chips viravam um bloco de nomes cortados que
+ * empurrava o ranking para fora da tela. Cada linha diz em quantos mercados o
+ * item tem preço e qual o menor típico — é isso que explica por que uma loja
+ * cobre a cesta inteira e outra não, e qual item está furando a comparação.
  */
 
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -23,7 +29,9 @@ import { clienteApi } from '@/api';
 import {
   CabecalhoVoltar,
   Cartao,
+  CartaoLista,
   Estado,
+  Eyebrow,
   IconeBusca,
   IconeFechar,
   IconeGrafico,
@@ -49,6 +57,13 @@ import { espaco, raio, tabular, useTema } from '@/tema';
 /** Espera depois da última tecla antes de consultar a região (C7.6). */
 const DEBOUNCE_MS = 350;
 
+/**
+ * Itens da cesta mostrados antes do "ver todos". Com uma cesta de mercado (20+
+ * itens) a lista inteira empurraria o ranking — o motivo da tela — para fora da
+ * primeira dobra.
+ */
+const CESTA_VISIVEL = 5;
+
 type Props = NativeStackScreenProps<RootStackParamList, 'CompararMercados'>;
 
 export function CompararMercadosTela({ navigation }: Props) {
@@ -63,6 +78,8 @@ export function CompararMercadosTela({ navigation }: Props) {
   const [comparando, setComparando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [regiao, setRegiao] = useState<string | null>(null);
+  /** Cesta longa nasce recolhida (ver `CESTA_VISIVEL`). */
+  const [verTudo, setVerTudo] = useState(false);
 
   // A cesta nasce com a lista de compras: quem chega aqui pela Lista já quer
   // comparar aquilo, e quem chega pelo Início começa com algo em vez do vazio.
@@ -181,6 +198,24 @@ export function CompararMercadosTela({ navigation }: Props) {
   const lider = completas[0];
   const maiorTotal = Math.max(...lojas.map((l) => l.total), 0.01);
 
+  // Em quantos mercados cada item tem preço, e o menor típico entre eles. É o
+  // que a linha da cesta mostra: sem isso a cobertura parcial do ranking fica
+  // sem explicação ("qual item ninguém tem?").
+  const resumoItem = new Map<string, { mercados: number; menor: number }>();
+  for (const loja of lojas) {
+    for (const item of loja.itens) {
+      if (item.preco == null) continue;
+      const atual = resumoItem.get(item.produtoCanonicoId);
+      resumoItem.set(item.produtoCanonicoId, {
+        mercados: (atual?.mercados ?? 0) + 1,
+        menor: Math.min(atual?.menor ?? item.preco, item.preco),
+      });
+    }
+  }
+
+  const recolhida = !verTudo && cesta.length > CESTA_VISIVEL;
+  const cestaVisivel = recolhida ? cesta.slice(0, CESTA_VISIVEL) : cesta;
+
   return (
     <Tela>
       <CabecalhoVoltar
@@ -195,7 +230,7 @@ export function CompararMercadosTela({ navigation }: Props) {
         <TextInput
           value={busca}
           onChangeText={setBusca}
-          placeholder="Buscar produto… ex.: sabão"
+          placeholder="Buscar produto para comparar"
           placeholderTextColor={c.fraco}
           autoCorrect={false}
           style={[estilos.buscaInput, { color: c.tinta }]}
@@ -246,31 +281,40 @@ export function CompararMercadosTela({ navigation }: Props) {
         )
       ) : null}
 
-      {/* chips da cesta */}
+      {/* cesta */}
       {cesta.length > 0 ? (
         <>
-          <View style={estilos.chips}>
-            {cesta.map((p) => (
-              <View key={p.chave} style={[estilos.chip, { backgroundColor: c.teal }]}>
-                <Texto peso="semibold" cor="sobreTeal" numberOfLines={1} style={estilos.chipTexto}>
-                  {p.nome}
-                </Texto>
-                <Pressable
-                  onPress={() => tirar(p)}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Tirar ${p.nome} da cesta`}
-                  hitSlop={8}
-                >
-                  <IconeFechar tamanho={11} cor={c.sobreTeal} larguraTraco={2.5} />
-                </Pressable>
-              </View>
-            ))}
+          <View style={estilos.cabecalhoSecao}>
+            <Eyebrow>Sua cesta</Eyebrow>
+            <Texto cor="fraco" tamanho="xs" numerico>
+              {cesta.length} {cesta.length === 1 ? 'produto' : 'produtos'}
+            </Texto>
           </View>
 
-          <Texto cor="suave" tamanho="sm" style={estilos.legenda}>
-            Sua seleção — {cesta.length} {cesta.length === 1 ? 'produto' : 'produtos'} — custaria em
-            cada mercado:
-          </Texto>
+          <CartaoLista>
+            {cestaVisivel.map((p, idx) => (
+              <ItemCesta
+                key={p.chave}
+                produto={p}
+                resumo={resumoItem.get(p.produtoCanonicoId) ?? null}
+                mercados={lojas.length}
+                ultima={idx === cestaVisivel.length - 1 && !recolhida}
+                aoTirar={() => tirar(p)}
+              />
+            ))}
+
+            {recolhida ? (
+              <Pressable
+                onPress={() => setVerTudo(true)}
+                accessibilityRole="button"
+                style={({ pressed }) => [estilos.verTudo, pressed && { opacity: 0.6 }]}
+              >
+                <Texto peso="bold" tamanho="sm" style={{ color: c.tinta }}>
+                  Ver os {cesta.length} produtos
+                </Texto>
+              </Pressable>
+            ) : null}
+          </CartaoLista>
         </>
       ) : null}
 
@@ -294,22 +338,34 @@ export function CompararMercadosTela({ navigation }: Props) {
           </Texto>
         </Cartao>
       ) : (
-        <View style={estilos.ranking}>
-          {lojas.map((loja, idx) => (
-            <LinhaMercado
-              key={loja.lojaCnpj}
-              loja={loja}
-              posicao={idx + 1}
-              itensTotal={itensTotal}
-              /* só a líder de cobertura TOTAL ganha o selo (ver cabeçalho). */
-              melhor={lider != null && loja.lojaCnpj === lider.lojaCnpj}
-              diferenca={
-                lider && loja.itensCobertos === itensTotal ? loja.total - lider.total : null
-              }
-              largura={loja.total / maiorTotal}
-            />
-          ))}
-        </View>
+        <>
+          {/* sem loja nenhuma não há seção — o cabeçalho anunciaria um vazio. */}
+          {lojas.length > 0 ? (
+            <View style={estilos.cabecalhoSecao}>
+              <Eyebrow>Onde sai mais barato</Eyebrow>
+              <Texto cor="fraco" tamanho="xs" numerico>
+                {lojas.length} {lojas.length === 1 ? 'mercado' : 'mercados'}
+              </Texto>
+            </View>
+          ) : null}
+
+          <View style={estilos.ranking}>
+            {lojas.map((loja, idx) => (
+              <LinhaMercado
+                key={loja.lojaCnpj}
+                loja={loja}
+                posicao={idx + 1}
+                itensTotal={itensTotal}
+                /* só a líder de cobertura TOTAL ganha o selo (ver cabeçalho). */
+                melhor={lider != null && loja.lojaCnpj === lider.lojaCnpj}
+                diferenca={
+                  lider && loja.itensCobertos === itensTotal ? loja.total - lider.total : null
+                }
+                largura={loja.total / maiorTotal}
+              />
+            ))}
+          </View>
+        </>
       )}
 
       {cesta.length > 0 && lojas.length > 0 ? (
@@ -319,6 +375,75 @@ export function CompararMercadosTela({ navigation }: Props) {
         </Texto>
       ) : null}
     </Tela>
+  );
+}
+
+/**
+ * Linha da cesta. O subtítulo é o "porquê" da cobertura: em quantos mercados o
+ * item tem preço e o menor típico entre eles. Sem ranking ainda (offline, erro,
+ * cesta recém-montada) cai para o típico que o próprio produto trouxe.
+ */
+function ItemCesta({
+  produto,
+  resumo,
+  mercados,
+  ultima,
+  aoTirar,
+}: {
+  produto: ProdutoBuscavel;
+  resumo: { mercados: number; menor: number } | null;
+  /** Total de mercados no ranking; 0 quando ainda não há comparação. */
+  mercados: number;
+  ultima: boolean;
+  aoTirar: () => void;
+}) {
+  const { c } = useTema();
+  const sufixo = produto.unidadeBase ? `/${produto.unidadeBase}` : '';
+
+  let detalhe: string;
+  if (mercados === 0) {
+    detalhe =
+      produto.tipico == null
+        ? 'sem preço típico ainda'
+        : produto.origem === 'historico'
+          ? `seu típico ${moeda(produto.tipico)}${sufixo}`
+          : `típico na região ${moeda(produto.tipico)}${sufixo}`;
+  } else if (resumo == null) {
+    detalhe = 'nenhum mercado daqui tem preço deste';
+  } else {
+    detalhe = `${resumo.mercados} de ${mercados} mercados · menor ${moeda(resumo.menor)}`;
+  }
+
+  return (
+    <View style={[estilos.item, !ultima && { borderBottomWidth: 1, borderBottomColor: c.linha }]}>
+      <View style={estilos.itemTexto}>
+        <Texto peso="semibold" tamanho="sm" numberOfLines={2}>
+          {produto.nome}
+        </Texto>
+        <Texto
+          cor={resumo == null && mercados > 0 ? 'suave' : 'fraco'}
+          numerico
+          numberOfLines={1}
+          style={estilos.itemSub}
+        >
+          {detalhe}
+        </Texto>
+      </View>
+
+      <Pressable
+        onPress={aoTirar}
+        accessibilityRole="button"
+        accessibilityLabel={`Tirar ${produto.nome} da cesta`}
+        hitSlop={8}
+        style={({ pressed }) => [
+          estilos.tirar,
+          { backgroundColor: c.linha },
+          pressed && { opacity: 0.6 },
+        ]}
+      >
+        <IconeFechar tamanho={12} cor={c.fraco} larguraTraco={2.5} />
+      </Pressable>
+    </View>
   );
 }
 
@@ -431,19 +556,25 @@ const estilos = StyleSheet.create({
     justifyContent: 'center',
   },
   semSugestao: { marginTop: espaco.md },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: espaco.sm, marginTop: espaco.md },
-  chip: {
+  cabecalhoSecao: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    minHeight: 30,
-    paddingLeft: 12,
-    paddingRight: 8,
-    borderRadius: raio.pill,
-    maxWidth: '100%',
+    justifyContent: 'space-between',
+    gap: espaco.md,
+    marginTop: espaco.lg,
+    marginBottom: espaco.sm,
   },
-  chipTexto: { fontSize: 11.5, flexShrink: 1 },
-  legenda: { marginTop: espaco.lg, marginBottom: espaco.sm },
+  item: { flexDirection: 'row', alignItems: 'center', gap: espaco.md, paddingVertical: 13 },
+  itemTexto: { flex: 1 },
+  itemSub: { fontSize: 11.5, marginTop: 2 },
+  tirar: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  verTudo: { minHeight: 44, alignItems: 'center', justifyContent: 'center' },
   vazio: { marginTop: espaco.xl },
   erro: { marginTop: espaco.lg },
   erroTexto: { lineHeight: 19 },
