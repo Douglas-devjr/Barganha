@@ -14,5 +14,4 @@ package-lock.json
 *.md
 
 # Protótipos estáticos dos handoffs de design — fora do gate do Prettier.
-app/src/design_handoff_barganha_2a
-app/src/design_handoff_barganha_3a
+app/src/design_handoff_*

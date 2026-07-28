@@ -1,0 +1,1388 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous">
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:ital,wght@0,400;0,500;0,600;0,700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#DDDCD7;font-family:"Instrument Sans",system-ui,sans-serif}
+a{color:#1B1B19}a:hover{color:#000}
+@keyframes scrIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+@keyframes ovIn{from{opacity:0}to{opacity:1}}
+@keyframes scan{0%{top:14px}100%{top:220px}}
+@keyframes shimmer{0%{background-position:-200px 0}100%{background-position:200px 0}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes sheetUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+@keyframes toastIn{from{opacity:0;transform:translate(-50%,12px)}to{opacity:1;transform:translate(-50%,0)}}
+@keyframes popIn{from{opacity:0;transform:scale(.92)}to{opacity:1;transform:scale(1)}}
+@keyframes bStem{from{height:0}to{height:68%}}
+@keyframes bBowl{from{transform:scale(0);opacity:0}to{transform:scale(1);opacity:1}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important}}
+</style>
+</helmet>
+<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:36px 20px;box-sizing:border-box">
+<div style="{{ themeVars }};width:390px;height:844px;border-radius:38px;overflow:hidden;position:relative;background:var(--bg);color:var(--ink);box-shadow:0 40px 80px -30px rgba(0,0,0,.45);border:1px solid rgba(0,0,0,.12);display:flex;flex-direction:column">
+
+<div style="display:flex;justify-content:space-between;align-items:center;padding:14px 26px 4px;flex:none">
+<span style="font:700 13px 'Instrument Sans';color:var(--ink)">9:41</span>
+<div style="display:flex;gap:5px;align-items:center"><div style="width:16px;height:9px;border-radius:2px;background:var(--ink);opacity:.75"></div><div style="width:20px;height:10px;border:1.5px solid var(--ink);border-radius:3px;opacity:.6;position:relative"><div style="position:absolute;inset:2px;right:6px;background:var(--ink);border-radius:1px"></div></div></div>
+</div>
+
+<div style="flex:1;overflow-y:auto;overflow-x:hidden">
+
+<sc-if value="{{ isInicioCheia }}" hint-placeholder-val="{{ true }}">
+<div style="animation:scrIn .28s ease;padding-bottom:16px">
+<div style="padding:14px 20px 0;display:flex;justify-content:space-between;align-items:center">
+<div><div style="font:600 10.5px 'Instrument Sans';letter-spacing:1.3px;color:var(--faint)">SEG · 21 JUL · RIO DE JANEIRO</div><div style="font:700 26px 'Instrument Sans';color:var(--ink);letter-spacing:-.8px;margin-top:3px">Olá, Douglas</div></div>
+<div style="display:flex;align-items:center;gap:10px">
+<div onClick="{{ goNotificacoes }}" style="width:44px;height:44px;border-radius:999px;border:1px solid var(--line);background:var(--card);display:flex;align-items:center;justify-content:center;cursor:pointer;position:relative"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--ink)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9a6 6 0 0 1 12 0c0 5 2 6 2 6H4s2-1 2-6"></path><path d="M10 20a2 2 0 0 0 4 0"></path></svg><span style="position:absolute;top:9px;right:10px;width:8px;height:8px;border-radius:999px;background:var(--up);border:2px solid var(--card);box-sizing:border-box;opacity:{{ notifDot }}"></span></div>
+<div onClick="{{ goPerfil }}" style="width:44px;height:44px;border-radius:999px;border:1px solid var(--line);background:var(--card);display:flex;align-items:center;justify-content:center;font:700 16px 'Instrument Sans';color:var(--ink);cursor:pointer">D</div>
+</div>
+</div>
+<div onClick="{{ goDashboard }}" style="margin:16px 20px 0;background:var(--card);border-radius:16px;border:1px solid var(--line);padding:16px 18px 14px;cursor:pointer">
+<div style="display:flex;justify-content:space-between;align-items:center"><span style="font:600 10.5px 'Instrument Sans';letter-spacing:1.3px;color:var(--faint)">ECONOMIA · JULHO</span><span style="font:600 11.5px 'Instrument Sans';color:var(--ink)">Ver resumo →</span></div>
+<div style="font:700 40px 'Instrument Sans';color:var(--ink);letter-spacing:-2px;margin-top:6px;font-variant-numeric:tabular-nums">R$ 132,40</div>
+<div style="font:500 12.5px 'Instrument Sans';color:var(--sub);margin-top:2px">economizado em promoções este mês</div>
+<div style="border-top:1px solid var(--line);margin-top:12px;padding-top:10px;display:flex;justify-content:space-between">
+<span style="font:500 11px 'Instrument Sans';color:var(--sub);font-variant-numeric:tabular-nums">23 produtos</span><span style="font:500 11px 'Instrument Sans';color:var(--sub);font-variant-numeric:tabular-nums">4 mercados</span><span style="font:500 11px 'Instrument Sans';color:var(--sub);font-variant-numeric:tabular-nums">31 cupons</span>
+</div>
+</div>
+<div onClick="{{ goConquistas }}" style="margin:14px 20px 0;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:12px 14px;display:flex;align-items:center;gap:12px;cursor:pointer">
+<div style="width:38px;height:38px;border-radius:10px;background:var(--line2);display:flex;align-items:center;justify-content:center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--ink)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="5"></circle><path d="M8.5 12.5L7 21l5-3 5 3-1.5-8.5"></path></svg></div>
+<div style="flex:1"><div style="font:600 13px 'Instrument Sans';color:var(--ink)">Nova conquista: Caçador de Café</div><div style="font:400 11.5px 'Instrument Sans';color:var(--faint)">Você já economizou R$ 132 este mês</div></div>
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--faint)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"></path></svg>
+</div>
+<div onClick="{{ goMercados }}" style="margin:14px 20px 0;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:13px 15px;display:flex;align-items:center;gap:12px;cursor:pointer">
+<div style="width:38px;height:38px;border-radius:10px;background:var(--line2);display:flex;align-items:center;justify-content:center;flex:none"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--ink)" stroke-width="2" stroke-linecap="round"><path d="M4 20V10"></path><path d="M10 20V4"></path><path d="M16 20v-8"></path><path d="M22 20H2"></path></svg></div>
+<div style="flex:1"><div style="font:600 13px 'Instrument Sans';color:var(--ink)">Comparar mercados</div><div style="font:400 11.5px 'Instrument Sans';color:var(--faint)">Veja onde sua cesta sai mais barata</div></div>
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--faint)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex:none"><path d="M9 5l7 7-7 7"></path></svg>
+</div>
+<div style="margin:18px 20px 6px;display:flex;justify-content:space-between;align-items:baseline"><span style="font:700 16px 'Instrument Sans';color:var(--ink);letter-spacing:-.4px">Últimas compras</span><span onClick="{{ goCompras }}" style="font:600 12px 'Instrument Sans';color:var(--sub);text-decoration:underline;text-underline-offset:3px;cursor:pointer">Ver tudo</span></div>
+<div style="margin:0 20px;background:var(--card);border-radius:16px;border:1px solid var(--line);padding:4px 14px">
+<div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--line2);cursor:pointer" onClick="{{ goCompra }}"><div style="width:38px;height:38px;border-radius:10px;background:var(--line2);display:flex;align-items:center;justify-content:center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--ink)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9l1.4-5h13.2L20 9"></path><path d="M5 9v11h14V9"></path><path d="M9 20v-6h6v6"></path></svg></div><div style="flex:1"><div style="font:600 13px 'Instrument Sans';color:var(--ink)">Guanabara</div><div style="font:400 11.5px 'Instrument Sans';color:var(--faint)">Hoje · 12 itens</div></div><div style="text-align:right"><div style="font:700 13px 'Instrument Sans';color:var(--ink);font-variant-numeric:tabular-nums">R$ 187,32</div><div style="font:500 10.5px 'Instrument Sans';color:var(--sub);font-variant-numeric:tabular-nums">economia R$ 14,20</div></div></div>
+<div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--line2);cursor:pointer" onClick="{{ goCompra }}"><div style="width:38px;height:38px;border-radius:10px;background:var(--line2);display:flex;align-items:center;justify-content:center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--ink)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9l1.4-5h13.2L20 9"></path><path d="M5 9v11h14V9"></path><path d="M9 20v-6h6v6"></path></svg></div><div style="flex:1"><div style="font:600 13px 'Instrument Sans';color:var(--ink)">Assaí Atacadista</div><div style="font:400 11.5px 'Instrument Sans';color:var(--faint)">Ontem · 26 itens</div></div><div style="text-align:right"><div style="font:700 13px 'Instrument Sans';color:var(--ink);font-variant-numeric:tabular-nums">R$ 412,08</div><div style="font:500 10.5px 'Instrument Sans';color:var(--sub);font-variant-numeric:tabular-nums">economia R$ 31,55</div></div></div>
+<div style="display:flex;align-items:center;gap:12px;padding:12px 0;cursor:pointer" onClick="{{ goCompra }}"><div style="width:38px;height:38px;border-radius:10px;background:var(--line2);display:flex;align-items:center;justify-content:center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--ink)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9l1.4-5h13.2L20 9"></path><path d="M5 9v11h14V9"></path><path d="M9 20v-6h6v6"></path></svg></div><div style="flex:1"><div style="font:600 13px 'Instrument Sans';color:var(--ink)">Zona Sul</div><div style="font:400 11.5px 'Instrument Sans';color:var(--faint)">Quinta · 8 itens</div></div><div style="text-align:right"><div style="font:700 13px 'Instrument Sans';color:var(--ink);font-variant-numeric:tabular-nums">R$ 96,44</div><div style="font:500 10.5px 'Instrument Sans';color:var(--faint)">—</div></div></div>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isVerificar }}" hint-placeholder-val="{{ false }}">
+<div style="animation:scrIn .28s ease;padding-bottom:16px">
+<div style="padding:14px 20px 0"><div style="font:700 26px 'Instrument Sans';color:var(--ink);letter-spacing:-.8px">Verificar preço</div><div style="font:400 13px 'Instrument Sans';color:var(--sub);margin-top:4px">Compare com o típico da sua região antes de levar.</div></div>
+<div style="margin:14px 20px 0;height:50px;border:1px solid var(--line);border-radius:12px;display:flex;align-items:center;gap:10px;padding:0 8px 0 14px;background:var(--fld)">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--faint)" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg>
+<input value="{{ query }}" onInput="{{ onSearch }}" placeholder="Buscar produto…" style="flex:1;border:none;outline:none;background:transparent;font:500 13.5px 'Instrument Sans';color:var(--ink);min-width:0"></input>
+<div onClick="{{ goEscanear }}" style="width:36px;height:36px;border-radius:9px;background:var(--chip);display:flex;align-items:center;justify-content:center;cursor:pointer"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--chipink)" stroke-width="2" stroke-linecap="round"><path d="M4 7v10"></path><path d="M8 7v10"></path><path d="M11 7v10"></path><path d="M15 7v10"></path><path d="M20 7v10"></path></svg></div>
+</div>
+<div style="margin:10px 20px 0;display:flex;gap:8px;flex-wrap:wrap">
+<span onClick="{{ setLeite }}" style="height:30px;padding:0 12px;border-radius:999px;background:var(--chip);color:var(--chipink);font:600 11.5px 'Instrument Sans';display:inline-flex;align-items:center;cursor:pointer;white-space:nowrap;flex:none">Leite Italac</span>
+<span onClick="{{ setCafe }}" style="height:30px;padding:0 12px;border-radius:999px;border:1px solid var(--line);color:var(--sub);font:600 11.5px 'Instrument Sans';display:inline-flex;align-items:center;box-sizing:border-box;background:var(--card);cursor:pointer;white-space:nowrap;flex:none">Café Pilão</span>
+<span onClick="{{ setArroz }}" style="height:30px;padding:0 12px;border-radius:999px;border:1px solid var(--line);color:var(--sub);font:600 11.5px 'Instrument Sans';display:inline-flex;align-items:center;box-sizing:border-box;background:var(--card);cursor:pointer;white-space:nowrap;flex:none">Arroz 5 kg</span>
+</div>
+<sc-if value="{{ hasResult }}" hint-placeholder-val="{{ true }}">
+<div style="animation:scrIn .25s ease">
+<div style="margin:16px 20px 0;background:var(--card);border-radius:16px;border:1px solid var(--line);padding:18px 18px 14px">
+<div style="display:flex;justify-content:space-between;align-items:center"><div style="font:600 10.5px 'Instrument Sans';letter-spacing:1.3px;color:var(--faint)">{{ rLoja }}</div><div onClick="{{ openDenunciar }}" style="font:600 10.5px 'Instrument Sans';color:var(--faint);display:inline-flex;align-items:center;gap:4px;cursor:pointer"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21V4h13l-2 4 2 4H4"></path></svg>Denunciar</div></div>
+<div style="font:600 15px 'Instrument Sans';color:var(--ink);margin-top:8px">{{ rNome }}</div>
+<div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px;gap:10px">
+<div style="font:700 36px 'Instrument Sans';color:var(--ink);letter-spacing:-1.8px;white-space:nowrap;font-variant-numeric:tabular-nums">{{ rPreco }}</div>
+<span style="height:32px;padding:0 14px;border-radius:999px;background:{{ pillBg }};border:1.5px solid var(--ink);color:{{ pillInk }};font:700 13px 'Instrument Sans';display:inline-flex;align-items:center;box-sizing:border-box">{{ rVerdict }}</span>
+</div>
+<div style="font:500 12.5px 'Instrument Sans';color:var(--sub);margin-top:2px">{{ rMsg }}</div>
+<div style="margin:16px 2px 0;position:relative">
+<div style="height:3px;border-radius:999px;background:var(--line)"></div>
+<div style="position:absolute;top:-5.5px;left:{{ rPct }};width:14px;height:14px;border-radius:999px;background:var(--ink);border:3px solid var(--card);box-sizing:border-box;outline:1px solid var(--ink);transition:left .5s cubic-bezier(.3,1.2,.4,1)"></div>
+<div style="position:absolute;top:-3.5px;left:46%;width:1.5px;height:10px;background:var(--faint)"></div>
+</div>
+<div style="display:flex;justify-content:space-between;margin-top:10px">
+<span style="font:500 10.5px 'Instrument Sans';color:var(--faint);font-variant-numeric:tabular-nums">menor {{ rMenor }}</span><span style="font:600 10.5px 'Instrument Sans';color:var(--ink);font-variant-numeric:tabular-nums">típico {{ rTipico }}</span><span style="font:500 10.5px 'Instrument Sans';color:var(--faint);font-variant-numeric:tabular-nums">maior {{ rMaior }}</span>
+</div>
+<div style="border-top:1px solid var(--line);margin-top:12px;padding-top:9px;font:400 10.5px 'Instrument Sans';color:var(--faint)">{{ rCupons }} cupons na sua região · últimos 30 dias</div>
+</div>
+<div onClick="{{ goDetalhe }}" style="margin:12px 20px 0;font:600 12.5px 'Instrument Sans';color:var(--ink);text-decoration:underline;text-underline-offset:3px;cursor:pointer">Ver histórico e onde comprar →</div>
+<div onClick="{{ toggleAlerta }}" style="margin:14px 20px 0;height:50px;border-radius:12px;background:var(--chip);color:var(--chipink);font:700 14px 'Instrument Sans';display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--chipink)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9a6 6 0 0 1 12 0c0 5 2 6 2 6H4s2-1 2-6"></path><path d="M10 20a2 2 0 0 0 4 0"></path></svg>{{ alertaLabel }}</div>
+</div>
+</sc-if>
+<sc-if value="{{ noResult }}" hint-placeholder-val="{{ false }}">
+<div style="margin:40px 20px;text-align:center;font:500 13px 'Instrument Sans';color:var(--faint)">Digite ou escaneie um produto para ver se o preço vale a barganha.</div>
+</sc-if>
+</div>
+</sc-if>
+
+<sc-if value="{{ isInicioVazia }}" hint-placeholder-val="{{ false }}">
+<div style="animation:scrIn .28s ease;padding-bottom:16px">
+<div style="padding:14px 20px 0;display:flex;justify-content:space-between;align-items:center">
+<div><div style="font:600 10.5px 'Instrument Sans';letter-spacing:1.3px;color:var(--faint)">SEG · 21 JUL · RIO DE JANEIRO</div><div style="font:700 26px 'Instrument Sans';color:var(--ink);letter-spacing:-.8px;margin-top:2px">Olá, Douglas</div></div>
+<div style="display:flex;align-items:center;gap:10px">
+<div onClick="{{ goNotificacoes }}" style="width:44px;height:44px;border-radius:999px;border:1px solid var(--line);background:var(--card);display:flex;align-items:center;justify-content:center;cursor:pointer"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="var(--ink)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9a6 6 0 0 1 12 0c0 5 2 6 2 6H4s2-1 2-6"></path><path d="M10 20a2 2 0 0 0 4 0"></path></svg></div>
+<div onClick="{{ goPerfil }}" style="width:44px;height:44px;border-radius:999px;border:1px solid var(--line);background:var(--card);display:flex;align-items:center;justify-content:center;font:700 16px 'Instrument Sans';color:var(--chipink);background:var(--chip);cursor:pointer">D</div>
+</div>
+</div>
+<div style="margin:22px 20px 0;background:var(--ink);border-radius:20px;padding:24px 22px;position:relative;overflow:hidden">
+<div style="position:absolute;top:-50px;right:-50px;width:180px;height:180px;border-radius:999px;background:radial-gradient(circle,rgba(255,255,255,.08),rgba(255,255,255,0) 70%)"></div>
+<div style="width:52px;height:52px;border-radius:14px;background:var(--bg);display:flex;align-items:center;justify-content:center;position:relative"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="var(--ink)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8V5a1 1 0 0 1 1-1h3"></path><path d="M16 4h3a1 1 0 0 1 1 1v3"></path><path d="M20 16v3a1 1 0 0 1-1 1h-3"></path><path d="M8 20H5a1 1 0 0 1-1-1v-3"></path><path d="M4 12h16"></path></svg></div>
+<div style="font:700 21px 'Instrument Sans';color:var(--bg);letter-spacing:-.5px;margin-top:16px">Escaneie seu primeiro cupom</div>
+<div style="font:400 13px/1.5 'Instrument Sans';color:rgba(255,255,255,.7);margin-top:6px">Ao ler a NFC-e da sua compra, a gente começa a comparar preços da sua região pra você.</div>
+<div onClick="{{ goEscanear }}" style="height:48px;border-radius:12px;background:var(--bg);color:var(--ink);font:700 14px 'Instrument Sans';display:flex;align-items:center;justify-content:center;gap:8px;margin-top:18px;cursor:pointer"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--ink)" stroke-width="2" stroke-linecap="round"><path d="M4 8V5a1 1 0 0 1 1-1h3"></path><path d="M16 4h3a1 1 0 0 1 1 1v3"></path><path d="M20 16v3a1 1 0 0 1-1 1h-3"></path><path d="M8 20H5a1 1 0 0 1-1-1v-3"></path><path d="M4 12h16"></path></svg>Escanear cupom</div>
+</div>
+<div style="margin:18px 20px 6px;font:600 10.5px 'Instrument Sans';letter-spacing:1.3px;color:var(--faint)">COMO FUNCIONA</div>
+<div style="margin:0 20px;display:flex;flex-direction:column;gap:10px">
+<div style="background:var(--card);border:1px solid var(--line);border-radius:14px;padding:13px 15px;display:flex;align-items:center;gap:12px"><span style="width:26px;height:26px;border-radius:999px;background:var(--line2);color:var(--ink);font:700 12px 'Instrument Sans';display:inline-flex;align-items:center;justify-content:center;flex:none">1</span><span style="font:500 12.5px 'Instrument Sans';color:var(--sub)">Escaneie o QR Code do cupom fiscal</span></div>
+<div style="background:var(--card);border:1px solid var(--line);border-radius:14px;padding:13px 15px;display:flex;align-items:center;gap:12px"><span style="width:26px;height:26px;border-radius:999px;background:var(--line2);color:var(--ink);font:700 12px 'Instrument Sans';display:inline-flex;align-items:center;justify-content:center;flex:none">2</span><span style="font:500 12.5px 'Instrument Sans';color:var(--sub)">Veja se cada item tá barato pra sua região</span></div>
+<div style="background:var(--card);border:1px solid var(--line);border-radius:14px;padding:13px 15px;display:flex;align-items:center;gap:12px"><span style="width:26px;height:26px;border-radius:999px;background:var(--line2);color:var(--ink);font:700 12px 'Instrument Sans';display:inline-flex;align-items:center;justify-content:center;flex:none">3</span><span style="font:500 12.5px 'Instrument Sans';color:var(--sub)">Economize e acompanhe no resumo do mês</span></div>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isProdutosVazia }}" hint-placeholder-val="{{ false }}">
+<div style="animation:scrIn .28s ease;padding-bottom:16px">
+<div style="padding:14px 20px 0;display:flex;justify-content:space-between;align-items:center"><div style="font:700 26px 'Instrument Sans';color:var(--ink);letter-spacing:-.8px">Produtos</div><span style="font:500 11px 'Instrument Sans';color:var(--faint)">0 monitorados</span></div>
+<div style="display:flex;flex-direction:column;align-items:center;text-align:center;padding:60px 40px 0">
+<div style="width:76px;height:76px;border-radius:999px;background:var(--line2);display:flex;align-items:center;justify-content:center"><svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="var(--faint)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12l9-9h9v9l-9 9z"></path><circle cx="16.5" cy="7.5" r="1.6"></circle></svg></div>
+<div style="font:700 19px 'Instrument Sans';color:var(--ink);letter-spacing:-.4px;margin-top:20px">Nenhum produto ainda</div>
+<div style="font:400 13.5px/1.55 'Instrument Sans';color:var(--sub);margin-top:8px">Escaneie um cupom pra começar a monitorar os produtos que você compra e acompanhar os preços.</div>
+<div onClick="{{ goEscanear }}" style="height:50px;width:100%;max-width:250px;border-radius:12px;background:var(--chip);color:var(--chipink);font:700 14px 'Instrument Sans';display:flex;align-items:center;justify-content:center;margin-top:24px;cursor:pointer">Escanear cupom</div>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isListaVazia }}" hint-placeholder-val="{{ false }}">
+<div style="animation:scrIn .28s ease;padding-bottom:16px">
+<div style="display:flex;align-items:center;gap:12px;padding:14px 20px 0">
+<div style="flex:1"><div style="font:700 26px 'Instrument Sans';color:var(--ink);letter-spacing:-.8px">Lista de compras</div><div style="font:400 12.5px 'Instrument Sans';color:var(--sub);margin-top:2px">Monte a lista pra sua próxima compra</div></div>
+</div>
+<div style="display:flex;flex-direction:column;align-items:center;text-align:center;padding:50px 40px 0">
+<div style="width:76px;height:76px;border-radius:999px;background:var(--line2);display:flex;align-items:center;justify-content:center"><svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="var(--faint)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6h11"></path><path d="M9 12h11"></path><path d="M9 18h11"></path><path d="M4 5.5l1 1 2-2"></path><path d="M4 11.5l1 1 2-2"></path><path d="M4 17.5l1 1 2-2"></path></svg></div>
+<div style="font:700 19px 'Instrument Sans';color:var(--ink);letter-spacing:-.4px;margin-top:20px">Sua lista está vazia</div>
+<div style="font:400 13.5px/1.55 'Instrument Sans';color:var(--sub);margin-top:8px">Adicione os produtos que pretende comprar e a gente estima quanto vai custar na sua região.</div>
+<div onClick="{{ openAddItem }}" style="height:50px;width:100%;max-width:250px;border-radius:12px;background:var(--chip);color:var(--chipink);font:700 14px 'Instrument Sans';display:flex;align-items:center;justify-content:center;gap:8px;margin-top:24px;cursor:pointer"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--chipink)" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14"></path><path d="M5 12h14"></path></svg>Adicionar item</div>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isDashboardVazia }}" hint-placeholder-val="{{ false }}">
+<div style="animation:scrIn .28s ease;padding-bottom:16px">
+<div style="display:flex;align-items:center;gap:12px;padding:12px 20px 0"><div onClick="{{ back }}" style="width:40px;height:40px;border-radius:999px;background:var(--card);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;box-sizing:border-box;cursor:pointer"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--ink)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"></path></svg></div><div style="font:700 18px 'Instrument Sans';color:var(--ink);letter-spacing:-.4px">Resumo de economia</div></div>
+<div style="display:flex;flex-direction:column;align-items:center;text-align:center;padding:50px 40px 0">
+<div style="width:76px;height:76px;border-radius:999px;background:var(--line2);display:flex;align-items:center;justify-content:center"><svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="var(--faint)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10"></path><path d="M10 20V4"></path><path d="M16 20v-8"></path><path d="M22 20H2"></path></svg></div>
+<div style="font:700 19px 'Instrument Sans';color:var(--ink);letter-spacing:-.4px;margin-top:20px">Ainda sem dados</div>
+<div style="font:400 13.5px/1.55 'Instrument Sans';color:var(--sub);margin-top:8px">Seu resumo de economia aparece aqui depois do primeiro cupom escaneado. Bora começar?</div>
+<div onClick="{{ goEscanear }}" style="height:50px;width:100%;max-width:250px;border-radius:12px;background:var(--chip);color:var(--chipink);font:700 14px 'Instrument Sans';display:flex;align-items:center;justify-content:center;margin-top:24px;cursor:pointer">Escanear cupom</div>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isProdutosCheia }}" hint-placeholder-val="{{ false }}">
+<div style="animation:scrIn .28s ease;padding-bottom:16px">
+<div style="padding:14px 20px 0;display:flex;justify-content:space-between;align-items:center"><div style="font:700 26px 'Instrument Sans';color:var(--ink);letter-spacing:-.8px">Produtos</div><span style="font:500 11px 'Instrument Sans';color:var(--faint);font-variant-numeric:tabular-nums">23 monitorados</span></div>
+<div style="margin:14px 20px 0;display:flex;gap:10px">
+<div style="flex:1;height:46px;border:1px solid var(--line);border-radius:12px;display:flex;align-items:center;gap:10px;padding:0 14px;background:var(--fld)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--faint)" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg><input value="{{ prodQuery }}" onInput="{{ onProdSearch }}" placeholder="Buscar nos seus produtos" style="flex:1;border:none;outline:none;background:transparent;font:500 13.5px 'Instrument Sans';color:var(--ink);min-width:0"></input></div>
+<div onClick="{{ openFiltros }}" style="width:46px;height:46px;border:1px solid var(--line);border-radius:12px;background:var(--card);display:flex;align-items:center;justify-content:center;cursor:pointer;position:relative"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="var(--ink)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h18"></path><path d="M6 12h12"></path><path d="M10 19h4"></path></svg><span style="position:absolute;top:-5px;right:-5px;min-width:16px;height:16px;padding:0 3px;border-radius:999px;background:var(--ink);color:var(--bg);font:700 9px 'Instrument Sans';display:{{ filtroBadge }};align-items:center;justify-content:center;box-sizing:border-box">{{ filtroCount }}</span></div>
+</div>
+<div onClick="{{ goLista }}" style="margin:10px 20px 0;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:11px 14px;display:flex;align-items:center;gap:11px;cursor:pointer">
+<div style="width:34px;height:34px;border-radius:9px;background:var(--line2);display:flex;align-items:center;justify-content:center;flex:none"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--ink)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6h11"></path><path d="M9 12h11"></path><path d="M9 18h11"></path><path d="M4 5.5l1 1 2-2"></path><path d="M4 11.5l1 1 2-2"></path><path d="M4 17.5l1 1 2-2"></path></svg></div>
+<div style="flex:1"><div style="font:600 13px 'Instrument Sans';color:var(--ink)">Lista de compras</div><div style="font:400 11px 'Instrument Sans';color:var(--faint)">6 itens · monte pela próxima compra</div></div>
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--faint)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex:none"><path d="M9 5l7 7-7 7"></path></svg>
+</div>
+
+<sc-if value="{{ loading }}" hint-placeholder-val="{{ false }}">
+<div style="margin:14px 20px 0;background:var(--card);border-radius:16px;border:1px solid var(--line);padding:6px 14px">
+<sc-for list="{{ skeletons }}" as="s" hint-placeholder-count="5">
+<div style="display:flex;align-items:center;gap:12px;padding:14px 0;border-bottom:1px solid var(--line2)">
+<div style="flex:1"><div style="height:12px;width:62%;border-radius:6px;background:linear-gradient(90deg,var(--line2) 25%,var(--line) 50%,var(--line2) 75%);background-size:200px 100%;animation:shimmer 1.2s linear infinite"></div><div style="height:9px;width:40%;border-radius:6px;margin-top:8px;background:linear-gradient(90deg,var(--line2) 25%,var(--line) 50%,var(--line2) 75%);background-size:200px 100%;animation:shimmer 1.2s linear infinite"></div></div>
+<div style="height:16px;width:56px;border-radius:6px;background:linear-gradient(90deg,var(--line2) 25%,var(--line) 50%,var(--line2) 75%);background-size:200px 100%;animation:shimmer 1.2s linear infinite"></div>
+</div>
+</sc-for>
+</div>
+</sc-if>
+
+<sc-if value="{{ showList }}" hint-placeholder-val="{{ true }}">
+<div style="margin:14px 20px 0;background:var(--card);border-radius:16px;border:1px solid var(--line);padding:4px 14px">
+<sc-for list="{{ produtos }}" as="p" hint-placeholder-count="5">
+<div style="display:flex;align-items:center;gap:8px;padding:11px 0;border-bottom:1px solid var(--line2)">
+<div onClick="{{ p.openDet }}" style="flex:1;cursor:pointer"><div style="font:600 13.5px 'Instrument Sans';color:var(--ink)">{{ p.nome }}</div><div style="font:400 11px 'Instrument Sans';color:var(--faint);margin-top:2px;font-variant-numeric:tabular-nums">{{ p.sub }}</div></div>
+<div style="text-align:right"><div style="font:700 15px 'Instrument Sans';color:var(--ink);font-variant-numeric:tabular-nums">{{ p.preco }}</div>
+<sc-if value="{{ p.showMid }}" hint-placeholder-val="{{ false }}"><div style="font:700 10.5px 'Instrument Sans';color:var(--mid)">na média</div></sc-if>
+<sc-if value="{{ p.showDown }}" hint-placeholder-val="{{ false }}"><div style="display:inline-flex;align-items:center;gap:3px;font:700 10.5px 'Instrument Sans';color:var(--down);font-variant-numeric:tabular-nums"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"></path><path d="M6 13l6 6 6-6"></path></svg>{{ p.pctLabel }}</div></sc-if>
+<sc-if value="{{ p.showUp }}" hint-placeholder-val="{{ false }}"><div style="display:inline-flex;align-items:center;gap:3px;font:700 10.5px 'Instrument Sans';color:var(--up);font-variant-numeric:tabular-nums"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5"></path><path d="M6 11l6-6 6 6"></path></svg>{{ p.pctLabel }}</div></sc-if>
+</div>
+<div onClick="{{ p.open }}" style="width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;cursor:pointer"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--faint)" stroke-width="2.4" stroke-linecap="round"><circle cx="12" cy="5" r="1"></circle><circle cx="12" cy="12" r="1"></circle><circle cx="12" cy="19" r="1"></circle></svg></div>
+</div>
+</sc-for>
+</div>
+</sc-if>
+<sc-if value="{{ prodEmpty }}" hint-placeholder-val="{{ false }}">
+<div style="margin:40px 20px;text-align:center"><div style="font:600 14px 'Instrument Sans';color:var(--ink)">Nada encontrado</div><div style="font:400 12.5px 'Instrument Sans';color:var(--faint);margin-top:4px">Tente outro termo ou limpe os filtros.</div><div onClick="{{ limparBusca }}" style="margin-top:14px;display:inline-flex;height:38px;padding:0 16px;border-radius:10px;border:1px solid var(--line);align-items:center;font:600 12.5px 'Instrument Sans';color:var(--ink);cursor:pointer">Limpar busca</div></div>
+</sc-if>
+</div>
+</sc-if>
+
+<sc-if value="{{ isNotificacoes }}" hint-placeholder-val="{{ false }}">
+<div style="animation:scrIn .28s ease;padding-bottom:16px">
+<div style="display:flex;align-items:center;gap:12px;padding:12px 20px 0"><div onClick="{{ back }}" style="width:40px;height:40px;border-radius:999px;background:var(--card);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;box-sizing:border-box;cursor:pointer"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--ink)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"></path></svg></div><div style="flex:1;font:700 20px 'Instrument Sans';color:var(--ink);letter-spacing:-.5px">Notificações</div><span onClick="{{ marcarLidas }}" style="font:600 11.5px 'Instrument Sans';color:var(--ink);text-decoration:underline;text-underline-offset:3px;cursor:pointer">Marcar lidas</span></div>
+<div style="margin:16px 20px 0;font:600 10.5px 'Instrument Sans';letter-spacing:1.3px;color:var(--faint)">HOJE</div>
+<div style="margin:8px 20px 0;background:var(--card);border-radius:16px;border:1px solid var(--line);padding:4px 14px">
+<div style="display:flex;align-items:flex-start;gap:12px;padding:13px 0;border-bottom:1px solid var(--line2)"><div style="width:36px;height:36px;border-radius:10px;background:var(--line2);display:flex;align-items:center;justify-content:center;flex:none"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--down)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"></path><path d="M6 13l6 6 6-6"></path></svg></div><div style="flex:1"><div style="font:600 13px 'Instrument Sans';color:var(--ink)">Café Pilão baixou 24%</div><div style="font:400 11.5px 'Instrument Sans';color:var(--faint);margin-top:1px">Agora R$ 18,90 no Guanabara · há 2 h</div></div><span style="width:8px;height:8px;border-radius:999px;background:var(--up);margin-top:5px;opacity:{{ notifDot }}"></span></div>
+<div style="display:flex;align-items:flex-start;gap:12px;padding:13px 0;border-bottom:1px solid var(--line2)"><div style="width:36px;height:36px;border-radius:10px;background:var(--line2);display:flex;align-items:center;justify-content:center;flex:none"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--ink)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="5"></circle><path d="M8.5 12.5L7 21l5-3 5 3-1.5-8.5"></path></svg></div><div style="flex:1"><div style="font:600 13px 'Instrument Sans';color:var(--ink)">Conquista desbloqueada</div><div style="font:400 11.5px 'Instrument Sans';color:var(--faint);margin-top:1px">Caçador de Café · você economizou em 5 compras de café</div></div><span style="width:8px;height:8px;border-radius:999px;background:var(--up);margin-top:5px;opacity:{{ notifDot }}"></span></div>
+<div style="display:flex;align-items:flex-start;gap:12px;padding:13px 0"><div style="width:36px;height:36px;border-radius:10px;background:var(--line2);display:flex;align-items:center;justify-content:center;flex:none"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--ink)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6-7-11a7 7 0 0 1 14 0c0 5-7 11-7 11z"></path><circle cx="12" cy="10" r="2.5"></circle></svg></div><div style="flex:1"><div style="font:600 13px 'Instrument Sans';color:var(--ink)">Leite Italac perto de você</div><div style="font:400 11.5px 'Instrument Sans';color:var(--faint);margin-top:1px">R$ 4,59 no Assaí Maracanã · 2,1 km</div></div></div>
+</div>
+<div style="margin:18px 20px 0;font:600 10.5px 'Instrument Sans';letter-spacing:1.3px;color:var(--faint)">ESTA SEMANA</div>
+<div style="margin:8px 20px 0;background:var(--card);border-radius:16px;border:1px solid var(--line);padding:4px 14px">
+<div style="display:flex;align-items:flex-start;gap:12px;padding:13px 0"><div style="width:36px;height:36px;border-radius:10px;background:var(--line2);display:flex;align-items:center;justify-content:center;flex:none"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--ink)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"></path><path d="M7 15l4-4 3 3 5-6"></path></svg></div><div style="flex:1"><div style="font:600 13px 'Instrument Sans';color:var(--ink)">Seu resumo de julho está pronto</div><div style="font:400 11.5px 'Instrument Sans';color:var(--faint);margin-top:1px">Você economizou R$ 132,40 · toque para ver</div></div></div>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isConquistas }}" hint-placeholder-val="{{ false }}">
+<div style="animation:scrIn .28s ease;padding-bottom:16px">
+<div style="display:flex;align-items:center;gap:12px;padding:12px 20px 0"><div onClick="{{ back }}" style="width:40px;height:40px;border-radius:999px;background:var(--card);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;box-sizing:border-box;cursor:pointer"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--ink)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"></path></svg></div><div style="font:700 20px 'Instrument Sans';color:var(--ink);letter-spacing:-.5px">Conquistas e prêmios</div></div>
+<div style="margin:14px 20px 0;background:var(--card);border-radius:16px;border:1px solid var(--line);padding:16px 18px">
+<div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font:600 10.5px 'Instrument Sans';letter-spacing:1.3px;color:var(--faint)">NÍVEL 3 · CAÇADOR DE OFERTAS</span><span style="font:700 12px 'Instrument Sans';color:var(--ink)">4/6</span></div>
+<div style="margin-top:10px;height:8px;border-radius:999px;background:var(--line2)"><div style="width:66%;height:8px;border-radius:999px;background:var(--ink)"></div></div>
+<div style="font:400 11.5px 'Instrument Sans';color:var(--faint);margin-top:8px">Faltam 2 conquistas para o nível 4 e um cupom de R$ 10.</div>
+</div>
+<div style="margin:14px 20px 0;display:grid;grid-template-columns:1fr 1fr;gap:12px">
+<sc-for list="{{ conquistas }}" as="c" hint-placeholder-count="6">
+<div onClick="{{ c.on }}" style="background:var(--card);border:{{ c.border }};border-radius:16px;padding:14px;text-align:center;opacity:{{ c.op }};cursor:pointer">
+<div style="width:48px;height:48px;border-radius:999px;background:{{ c.iconBg }};display:flex;align-items:center;justify-content:center;margin:0 auto">{{ c.icon }}</div>
+<div style="font:700 12.5px 'Instrument Sans';color:var(--ink);margin-top:10px">{{ c.nome }}</div>
+<div style="font:400 10.5px 'Instrument Sans';color:var(--faint);margin-top:2px">{{ c.tag }}</div>
+</div>
+</sc-for>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isConquistaDet }}" hint-placeholder-val="{{ false }}">
+<div style="animation:scrIn .28s ease;padding-bottom:16px">
+<div style="display:flex;align-items:center;gap:12px;padding:12px 20px 0">
+<div onClick="{{ goConquistas }}" style="width:40px;height:40px;border-radius:999px;background:var(--card);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;box-sizing:border-box;cursor:pointer"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--ink)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"></path></svg></div>
+<div style="flex:1"><div style="font:600 10.5px 'Instrument Sans';letter-spacing:1.3px;color:var(--faint)">CONQUISTA</div><div style="font:700 18px 'Instrument Sans';color:var(--ink);letter-spacing:-.4px">Detalhe</div></div>
+</div>
+<div style="margin:20px 20px 0;background:var(--card);border:1px solid var(--line);border-radius:20px;padding:26px 22px;text-align:center">
+<div style="width:88px;height:88px;border-radius:999px;background:{{ cdIconBg }};display:flex;align-items:center;justify-content:center;margin:0 auto;transform:scale(1.15)">{{ cdIcon }}</div>
+<div style="font:700 22px 'Instrument Sans';color:var(--ink);letter-spacing:-.6px;margin-top:18px">{{ cdNome }}</div>
+<span style="display:inline-flex;height:26px;padding:0 12px;border-radius:999px;background:{{ cdStatusBg }};color:{{ cdStatusInk }};font:700 11px 'Instrument Sans';align-items:center;margin-top:10px">{{ cdStatus }}</span>
+<div style="font:400 13px/1.55 'Instrument Sans';color:var(--sub);margin-top:14px">{{ cdDesc }}</div>
+</div>
+<div style="margin:14px 20px 0;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px 18px">
+<div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font:600 12.5px 'Instrument Sans';color:var(--ink)">Progresso</span><span style="font:700 12px 'Instrument Sans';color:var(--ink)">{{ cdProg }}</span></div>
+<div style="margin-top:10px;height:8px;border-radius:999px;background:var(--line2)"><div style="width:{{ cdProgW }};height:8px;border-radius:999px;background:{{ cdProgBg }}"></div></div>
+<div style="font:400 11.5px 'Instrument Sans';color:var(--faint);margin-top:8px">{{ cdProgNota }}</div>
+</div>
+<div style="margin:14px 20px 0;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px 16px;display:flex;align-items:center;gap:12px">
+<div style="width:38px;height:38px;border-radius:10px;background:var(--line2);display:flex;align-items:center;justify-content:center;flex:none"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--ink)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h13a3 3 0 0 1 0 6h-1"></path><path d="M4 8v9a2 2 0 0 0 2 2h7a2 2 0 0 0 2-2V8z"></path></svg></div>
+<div style="flex:1"><div style="font:600 12.5px 'Instrument Sans';color:var(--ink)">Recompensa</div><div style="font:400 11.5px 'Instrument Sans';color:var(--faint)">{{ cdRecompensa }}</div></div>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isErro }}" hint-placeholder-val="{{ false }}">
+<div style="animation:scrIn .28s ease;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:0 40px">
+<div style="width:76px;height:76px;border-radius:999px;background:var(--line2);display:flex;align-items:center;justify-content:center"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="var(--up)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"></path><path d="M12 9v4"></path><circle cx="12" cy="17" r=".5" fill="var(--up)"></circle></svg></div>
+<div style="font:700 20px 'Instrument Sans';color:var(--ink);letter-spacing:-.4px;margin-top:20px">Não deu pra ler o cupom</div>
+<div style="font:400 13.5px/1.55 'Instrument Sans';color:var(--sub);margin-top:8px">O QR Code pode estar borrado ou a NFC-e não foi encontrada na SEFAZ. Verifique a conexão e tente de novo.</div>
+<div onClick="{{ retry }}" style="margin-top:24px;height:50px;width:100%;max-width:240px;border-radius:12px;background:var(--chip);color:var(--chipink);font:700 14px 'Instrument Sans';display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--chipink)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7"></path><path d="M21 3v5h-5"></path></svg>Tentar de novo</div>
+<div onClick="{{ goInicio }}" style="margin-top:10px;font:600 12.5px 'Instrument Sans';color:var(--sub);text-decoration:underline;text-underline-offset:3px;cursor:pointer">Voltar ao início</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isCompra }}" hint-placeholder-val="{{ false }}">
+<div style="animation:scrIn .28s ease;padding-bottom:16px">
+<div style="display:flex;align-items:center;gap:12px;padding:12px 20px 0">
+<div onClick="{{ back }}" style="width:40px;height:40px;border-radius:999px;background:var(--card);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;box-sizing:border-box;cursor:pointer"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--ink)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"></path></svg></div>
+<div><div style="font:600 10.5px 'Instrument Sans';letter-spacing:1.3px;color:var(--faint)">COMPRA · HOJE 10:42</div><div style="font:700 18px 'Instrument Sans';color:var(--ink);letter-spacing:-.4px">Guanabara · Tijuca</div></div>
+</div>
+<div style="margin:16px 20px 0;background:var(--card);border-radius:16px;border:1px solid var(--line);padding:16px 18px">
+<div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font:600 10.5px 'Instrument Sans';letter-spacing:1.3px;color:var(--faint)">TOTAL DA COMPRA</span><span style="font:600 11px 'Instrument Sans';color:var(--down)">economia R$ 14,20</span></div>
+<div style="font:700 34px 'Instrument Sans';color:var(--ink);letter-spacing:-1.6px;margin-top:4px;font-variant-numeric:tabular-nums">R$ 187,32</div>
+<div style="font:400 12px 'Instrument Sans';color:var(--sub);margin-top:2px">12 itens · pago no crédito · NFC-e validada</div>
+</div>
+<div style="margin:18px 20px 6px;font:700 15px 'Instrument Sans';color:var(--ink);letter-spacing:-.3px">Itens do cupom</div>
+<div style="margin:0 20px;background:var(--card);border-radius:16px;border:1px solid var(--line);padding:4px 14px">
+<div style="display:flex;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid var(--line2)"><div style="flex:1"><div style="font:600 13px 'Instrument Sans';color:var(--ink)">Leite integral Italac 1 L</div><div style="font:400 11px 'Instrument Sans';color:var(--faint)">2 un · R$ 4,79</div></div><div style="text-align:right"><div style="font:700 13px 'Instrument Sans';color:var(--ink);font-variant-numeric:tabular-nums">R$ 9,58</div><div style="display:inline-flex;align-items:center;gap:3px;font:700 10px 'Instrument Sans';color:var(--down)"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"></path><path d="M6 13l6 6 6-6"></path></svg>barato</div></div></div>
+<div style="display:flex;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid var(--line2)"><div style="flex:1"><div style="font:600 13px 'Instrument Sans';color:var(--ink)">Pão de forma Pullman</div><div style="font:400 11px 'Instrument Sans';color:var(--faint)">1 un · R$ 8,90</div></div><div style="text-align:right"><div style="font:700 13px 'Instrument Sans';color:var(--ink);font-variant-numeric:tabular-nums">R$ 8,90</div><div style="font:700 10px 'Instrument Sans';color:var(--mid)">na média</div></div></div>
+<div style="display:flex;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid var(--line2)"><div style="flex:1"><div style="font:600 13px 'Instrument Sans';color:var(--ink)">Café Pilão 500 g</div><div style="font:400 11px 'Instrument Sans';color:var(--faint)">1 un · R$ 24,90</div></div><div style="text-align:right"><div style="font:700 13px 'Instrument Sans';color:var(--ink);font-variant-numeric:tabular-nums">R$ 24,90</div><div style="display:inline-flex;align-items:center;gap:3px;font:700 10px 'Instrument Sans';color:var(--up)"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5"></path><path d="M6 11l6-6 6 6"></path></svg>caro</div></div></div>
+<div style="display:flex;align-items:center;gap:10px;padding:12px 0"><div style="flex:1"><div style="font:600 13px 'Instrument Sans';color:var(--ink)">Detergente Ypê 500 ml</div><div style="font:400 11px 'Instrument Sans';color:var(--faint)">3 un · R$ 2,49</div></div><div style="text-align:right"><div style="font:700 13px 'Instrument Sans';color:var(--ink);font-variant-numeric:tabular-nums">R$ 7,47</div><div style="display:inline-flex;align-items:center;gap:3px;font:700 10px 'Instrument Sans';color:var(--down)"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"></path><path d="M6 13l6 6 6-6"></path></svg>barato</div></div></div>
+</div>
+<div style="margin:12px 20px 0;text-align:center;font:500 11.5px 'Instrument Sans';color:var(--faint)">+ 8 outros itens neste cupom</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isCompras }}" hint-placeholder-val="{{ false }}">
+<div style="animation:scrIn .28s ease;padding-bottom:16px">
+<div style="display:flex;align-items:center;gap:12px;padding:12px 20px 0">
+<div onClick="{{ goInicio }}" style="width:40px;height:40px;border-radius:999px;background:var(--card);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;box-sizing:border-box;cursor:pointer"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--ink)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"></path></svg></div>
+<div style="flex:1"><div style="font:600 10.5px 'Instrument Sans';letter-spacing:1.3px;color:var(--faint)">HISTÓRICO</div><div style="font:700 18px 'Instrument Sans';color:var(--ink);letter-spacing:-.4px">Suas compras</div></div>
+<span style="height:26px;padding:0 11px;border-radius:999px;background:var(--line2);color:var(--sub);font:600 11px 'Instrument Sans';display:inline-flex;align-items:center;white-space:nowrap;flex:none">31 cupons</span>
+</div>
+<sc-for list="{{ comprasMeses }}" as="m" hint-placeholder-count="2">
+<div>
+<div style="margin:20px 20px 6px;display:flex;justify-content:space-between;align-items:baseline"><span style="font:600 11px 'Instrument Sans';letter-spacing:1.3px;color:var(--faint)">{{ m.mes }} · {{ m.n }}</span><span style="font:700 12px 'Instrument Sans';color:var(--sub);font-variant-numeric:tabular-nums">{{ m.total }}</span></div>
+<div style="margin:0 20px;background:var(--card);border-radius:16px;border:1px solid var(--line);padding:4px 14px">
+<sc-for list="{{ m.rows }}" as="c" hint-placeholder-count="3">
+<div onClick="{{ c.open }}" style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:{{ c.bd }};cursor:pointer">
+<div style="width:38px;height:38px;border-radius:10px;background:var(--line2);display:flex;align-items:center;justify-content:center;flex:none"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--ink)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9l1.4-5h13.2L20 9"></path><path d="M5 9v11h14V9"></path><path d="M9 20v-6h6v6"></path></svg></div>
+<div style="flex:1"><div style="font:600 13px 'Instrument Sans';color:var(--ink)">{{ c.nome }}</div><div style="font:400 11.5px 'Instrument Sans';color:var(--faint)">{{ c.sub }}</div></div>
+<div style="text-align:right"><div style="font:700 13px 'Instrument Sans';color:var(--ink);font-variant-numeric:tabular-nums">{{ c.total }}</div><div style="font:500 10.5px 'Instrument Sans';color:{{ c.econColor }};font-variant-numeric:tabular-nums">{{ c.econ }}</div></div>
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--faint)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex:none"><path d="M9 5l7 7-7 7"></path></svg>
+</div>
+</sc-for>
+</div>
+</div>
+</sc-for>
+<div style="margin:14px 20px 0;text-align:center;font:400 11px 'Instrument Sans';color:var(--faint)">Todos os cupons são anonimizados na base colaborativa</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isListaCheia }}" hint-placeholder-val="{{ false }}">
+<div style="animation:scrIn .28s ease;padding-bottom:16px">
+<div style="display:flex;align-items:center;gap:12px;padding:14px 20px 0">
+<div style="flex:1"><div style="font:700 26px 'Instrument Sans';color:var(--ink);letter-spacing:-.8px">Lista de compras</div><div style="font:400 12.5px 'Instrument Sans';color:var(--sub);margin-top:2px">Monte a lista pra sua próxima compra</div></div>
+<span style="height:26px;padding:0 11px;border-radius:999px;background:var(--line2);color:var(--sub);font:600 11px 'Instrument Sans';display:inline-flex;align-items:center;white-space:nowrap;flex:none">{{ listaCount }}</span>
+</div>
+<div style="margin:16px 20px 0;background:var(--card);border-radius:16px;border:1px solid var(--line);padding:14px 16px">
+<div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font:600 10.5px 'Instrument Sans';letter-spacing:1.3px;color:var(--faint)">ESTIMATIVA DA LISTA</span><span style="font:600 11px 'Instrument Sans';color:var(--down)">no Assaí sai por R$ 78,10</span></div>
+<div style="font:700 30px 'Instrument Sans';color:var(--ink);letter-spacing:-1.4px;margin-top:4px;font-variant-numeric:tabular-nums">R$ 84,74</div>
+<div style="font:400 12px 'Instrument Sans';color:var(--sub);margin-top:2px">pelos preços típicos da sua região</div>
+<sc-if value="{{ listaHasReal }}" hint-placeholder-val="{{ false }}">
+<div style="border-top:1px solid var(--line);margin-top:12px;padding-top:9px;display:flex;justify-content:space-between;align-items:baseline"><span style="font:600 10.5px 'Instrument Sans';letter-spacing:1.3px;color:var(--faint)">NA GÔNDOLA ATÉ AGORA</span><span style="font:700 14px 'Instrument Sans';color:var(--ink);font-variant-numeric:tabular-nums">{{ listaReal }}</span></div>
+</sc-if>
+</div>
+<div style="margin:16px 20px 0;background:var(--card);border-radius:16px;border:1px solid var(--line);padding:4px 14px">
+<sc-for list="{{ listaItens }}" as="i" hint-placeholder-count="6">
+<div style="display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:{{ i.bd }}">
+<div onClick="{{ i.on }}" style="width:22px;height:22px;border-radius:7px;border:1.5px solid {{ i.boxBd }};background:{{ i.boxBg }};display:flex;align-items:center;justify-content:center;box-sizing:border-box;flex:none;transition:background .15s;cursor:pointer"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--chipink)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="opacity:{{ i.checkOp }}"><path d="M5 13l4 4 10-11"></path></svg></div>
+<div onClick="{{ i.on }}" style="flex:1;cursor:pointer;min-width:0"><div style="font:600 13px 'Instrument Sans';color:{{ i.inkC }};text-decoration:{{ i.deco }}">{{ i.nome }}</div><div style="font:400 11px 'Instrument Sans';color:var(--faint)">{{ i.sub }}</div></div>
+<div style="text-align:right;flex:none">
+<div style="display:flex;align-items:center;gap:5px;height:34px;border:1px solid var(--line);border-radius:9px;background:var(--fld);padding:0 9px;box-sizing:border-box">
+<span style="font:600 11px 'Instrument Sans';color:var(--faint)">R$</span>
+<input value="{{ i.val }}" onInput="{{ i.onPreco }}" placeholder="{{ i.ph }}" inputMode="decimal" style="width:44px;border:none;outline:none;background:transparent;font:600 12.5px 'Instrument Sans';color:var(--ink);text-align:right;font-variant-numeric:tabular-nums"></input>
+</div>
+<div style="font:600 9.5px 'Instrument Sans';color:{{ i.vColor }};margin-top:3px;white-space:nowrap;min-height:12px">{{ i.vLabel }}</div>
+</div>
+</div>
+</sc-for>
+</div>
+<div onClick="{{ openAddItem }}" style="margin:12px 20px 0;border:1.5px dashed var(--line);border-radius:16px;padding:13px 14px;display:flex;align-items:center;gap:10px;cursor:pointer"><div style="width:32px;height:32px;border-radius:9px;background:var(--line2);display:flex;align-items:center;justify-content:center;font:700 17px 'Instrument Sans';color:var(--ink)">+</div><span style="font:600 12.5px 'Instrument Sans';color:var(--sub)">Adicionar item à lista</span></div>
+<div style="margin:14px 20px 0;text-align:center;font:400 11px 'Instrument Sans';color:var(--faint)">Marque o que já está no carrinho e digite o preço da gôndola pra conferir na hora</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isMercados }}" hint-placeholder-val="{{ false }}">
+<div style="animation:scrIn .28s ease;padding-bottom:16px">
+<div style="display:flex;align-items:center;gap:12px;padding:12px 20px 0">
+<div onClick="{{ goInicio }}" style="width:40px;height:40px;border-radius:999px;background:var(--card);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;box-sizing:border-box;cursor:pointer"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--ink)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"></path></svg></div>
+<div style="flex:1"><div style="font:600 10.5px 'Instrument Sans';letter-spacing:1.3px;color:var(--faint)">SUA REGIÃO</div><div style="font:700 18px 'Instrument Sans';color:var(--ink);letter-spacing:-.4px">Comparar mercados</div></div>
+<span style="height:26px;padding:0 11px;border-radius:999px;background:var(--line2);color:var(--sub);font:600 11px 'Instrument Sans';display:inline-flex;align-items:center;white-space:nowrap;flex:none">Tijuca · 3 km</span>
+</div>
+<div style="margin:14px 20px 0;height:50px;border:1px solid var(--line);border-radius:12px;display:flex;align-items:center;gap:10px;padding:0 14px;background:var(--fld)">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--faint)" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg>
+<input value="{{ mercQuery }}" onInput="{{ onMercQuery }}" placeholder="Buscar produto pra comparar… ex.: sabão" style="flex:1;border:none;outline:none;background:transparent;font:500 13.5px 'Instrument Sans';color:var(--ink);min-width:0"></input>
+</div>
+<sc-if value="{{ mercHasSugs }}" hint-placeholder-val="{{ false }}">
+<div style="margin:8px 20px 0;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:2px 14px;animation:scrIn .2s ease">
+<sc-for list="{{ mercSugs }}" as="sg" hint-placeholder-count="2">
+<div onClick="{{ sg.add }}" style="display:flex;align-items:center;gap:11px;padding:11px 0;border-bottom:{{ sg.bd }};cursor:pointer">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--faint)" stroke-width="2" stroke-linecap="round" style="flex:none"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg>
+<div style="flex:1;min-width:0"><div style="font:600 13px 'Instrument Sans';color:var(--ink)">{{ sg.label }}</div><div style="font:400 11px 'Instrument Sans';color:var(--faint)">{{ sg.sub }}</div></div>
+<div style="width:28px;height:28px;border-radius:8px;background:var(--chip);display:flex;align-items:center;justify-content:center;flex:none"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--chipink)" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14"></path><path d="M5 12h14"></path></svg></div>
+</div>
+</sc-for>
+</div>
+</sc-if>
+<sc-if value="{{ mercNoSugs }}" hint-placeholder-val="{{ false }}">
+<div style="margin:10px 20px 0;text-align:center;font:400 12px 'Instrument Sans';color:var(--faint)">Nenhum produto com esse nome na sua região</div>
+</sc-if>
+<sc-if value="{{ mercHasSel }}" hint-placeholder-val="{{ true }}">
+<div style="margin:12px 20px 0;display:flex;gap:8px;flex-wrap:wrap">
+<sc-for list="{{ mercTags }}" as="tg" hint-placeholder-count="3">
+<span style="height:30px;padding:0 6px 0 12px;border-radius:999px;background:var(--chip);color:var(--chipink);font:600 11.5px 'Instrument Sans';display:inline-flex;align-items:center;gap:6px;white-space:nowrap;flex:none">{{ tg.label }}<span onClick="{{ tg.rm }}" style="width:18px;height:18px;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;opacity:.75"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var(--chipink)" stroke-width="2.5" stroke-linecap="round"><path d="M6 6l12 12"></path><path d="M18 6L6 18"></path></svg></span></span>
+</sc-for>
+</div>
+<div style="margin:14px 20px 4px;font:400 12px 'Instrument Sans';color:var(--sub)">Sua seleção — <span style="font-weight:600;color:var(--ink)">{{ mercCount }}</span> — custaria em cada mercado:</div>
+</sc-if>
+<sc-if value="{{ mercNoSel }}" hint-placeholder-val="{{ false }}">
+<div style="margin:36px 20px;text-align:center"><div style="font:600 14px 'Instrument Sans';color:var(--ink)">Nenhum produto selecionado</div><div style="font:400 12.5px 'Instrument Sans';color:var(--faint);margin-top:4px">Busque acima e adicione produtos pra comparar os mercados.</div></div>
+</sc-if>
+<sc-if value="{{ mercHasSel }}" hint-placeholder-val="{{ true }}">
+<div style="margin:10px 20px 0;display:flex;flex-direction:column;gap:10px">
+<sc-for list="{{ mercados }}" as="m" hint-placeholder-count="4">
+<div style="background:var(--card);border:1px solid var(--line);border-radius:16px;padding:13px 15px">
+<div style="display:flex;align-items:center;gap:10px">
+<span style="width:24px;height:24px;border-radius:999px;background:var(--line2);color:var(--ink);font:700 11px 'Instrument Sans';display:inline-flex;align-items:center;justify-content:center;flex:none">{{ m.pos }}</span>
+<div style="flex:1"><span style="font:600 13.5px 'Instrument Sans';color:var(--ink)">{{ m.nome }}</span><span style="font:400 11.5px 'Instrument Sans';color:var(--faint)"> · {{ m.dist }}</span></div>
+<sc-if value="{{ m.showBadge }}" hint-placeholder-val="{{ false }}"><span style="height:22px;padding:0 9px;border-radius:999px;background:var(--card);border:1px solid var(--down);color:var(--down);font:700 9.5px 'Instrument Sans';letter-spacing:.8px;display:inline-flex;align-items:center;box-sizing:border-box;white-space:nowrap;flex:none">MAIS BARATO</span></sc-if>
+</div>
+<div style="display:flex;align-items:baseline;justify-content:space-between;margin-top:10px">
+<span style="font:700 20px 'Instrument Sans';color:var(--ink);letter-spacing:-.8px;font-variant-numeric:tabular-nums">{{ m.total }}</span>
+<span style="font:600 11.5px 'Instrument Sans';color:{{ m.diffColor }};font-variant-numeric:tabular-nums">{{ m.diff }}</span>
+</div>
+<div style="height:6px;border-radius:999px;background:var(--line2);margin-top:9px"><div style="height:6px;border-radius:999px;background:{{ m.barBg }};width:{{ m.barW }};transition:width .5s"></div></div>
+</div>
+</sc-for>
+</div>
+<div style="margin:14px 20px 0;text-align:center;font:400 11px 'Instrument Sans';color:var(--faint)">Preços médios dos últimos 30 dias na base colaborativa</div>
+</sc-if>
+</div>
+</sc-if>
+
+<sc-if value="{{ isDetalhe }}" hint-placeholder-val="{{ false }}">
+<div style="animation:scrIn .28s ease;padding-bottom:16px">
+<div style="display:flex;align-items:center;gap:12px;padding:12px 20px 0">
+<div onClick="{{ back }}" style="width:40px;height:40px;border-radius:999px;background:var(--card);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;box-sizing:border-box;cursor:pointer"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--ink)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"></path></svg></div>
+<div style="flex:1"><div style="font:600 10.5px 'Instrument Sans';letter-spacing:1.3px;color:var(--faint)">LATICÍNIOS</div><div style="font:700 18px 'Instrument Sans';color:var(--ink);letter-spacing:-.4px">Leite integral Italac 1 L</div></div>
+<div onClick="{{ openAcoesLeite }}" style="width:40px;height:40px;border-radius:999px;background:var(--card);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;box-sizing:border-box;cursor:pointer"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--ink)" stroke-width="2.4" stroke-linecap="round"><circle cx="12" cy="5" r="1"></circle><circle cx="12" cy="12" r="1"></circle><circle cx="12" cy="19" r="1"></circle></svg></div>
+</div>
+<div style="margin:16px 20px 0;background:var(--card);border-radius:16px;border:1px solid var(--line);padding:16px 18px">
+<div style="display:flex;justify-content:space-between;align-items:flex-start">
+<div><div style="font:600 10.5px 'Instrument Sans';letter-spacing:1.3px;color:var(--faint)">TÍPICO NA SUA REGIÃO</div><div style="font:700 36px 'Instrument Sans';color:var(--ink);letter-spacing:-1.8px;margin-top:4px;font-variant-numeric:tabular-nums">R$ 5,49</div></div>
+<span style="height:24px;padding:0 10px;border-radius:999px;border:1px solid var(--ink);color:var(--ink);font:600 11px 'Instrument Sans';display:inline-flex;align-items:center;gap:5px"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"></path><path d="M6 13l6 6 6-6"></path></svg>em queda</span>
+</div>
+<svg width="100%" height="88" viewBox="0 0 316 88" preserveAspectRatio="none" style="margin-top:10px"><path d="M0 30 L52 36 L105 28 L158 46 L211 42 L263 58 L316 64 L316 88 L0 88 Z" fill="rgba(120,120,110,.14)"></path><path d="M0 30 L52 36 L105 28 L158 46 L211 42 L263 58 L316 64" fill="none" stroke="var(--ink)" stroke-width="2" stroke-linejoin="round"></path><circle cx="316" cy="64" r="4" fill="var(--card)" stroke="var(--ink)" stroke-width="2.5"></circle></svg>
+<div style="display:flex;justify-content:space-between;margin-top:4px"><span style="font:500 10px 'Instrument Sans';color:var(--faint)">fev</span><span style="font:500 10px 'Instrument Sans';color:var(--faint)">mar</span><span style="font:500 10px 'Instrument Sans';color:var(--faint)">abr</span><span style="font:500 10px 'Instrument Sans';color:var(--faint)">mai</span><span style="font:500 10px 'Instrument Sans';color:var(--faint)">jun</span><span style="font:700 10px 'Instrument Sans';color:var(--ink)">jul</span></div>
+<div style="border-top:1px solid var(--line);margin-top:12px;padding-top:10px;display:flex;justify-content:space-between"><span style="font:500 10.5px 'Instrument Sans';color:var(--faint);font-variant-numeric:tabular-nums">menor 4,59</span><span style="font:600 10.5px 'Instrument Sans';color:var(--down)">-8% em 6 meses</span><span style="font:500 10.5px 'Instrument Sans';color:var(--faint);font-variant-numeric:tabular-nums">maior 6,29</span></div>
+</div>
+<div style="margin:18px 20px 6px;font:700 15px 'Instrument Sans';color:var(--ink);letter-spacing:-.3px">Onde comprar hoje</div>
+<div style="margin:0 20px;background:var(--card);border-radius:16px;border:1px solid var(--line);padding:4px 14px">
+<div style="display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid var(--line2)"><div style="flex:1"><div style="font:600 12.5px 'Instrument Sans';color:var(--ink)">Assaí Atacadista</div><div style="font:400 11px 'Instrument Sans';color:var(--faint)">Maracanã · ontem</div></div><span style="height:20px;padding:0 8px;border-radius:999px;border:1px solid var(--ink);color:var(--ink);font:700 9.5px 'Instrument Sans';display:inline-flex;align-items:center;letter-spacing:.5px">MENOR</span><span style="font:700 13px 'Instrument Sans';color:var(--ink);font-variant-numeric:tabular-nums">R$ 4,59</span></div>
+<div style="display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid var(--line2)"><div style="flex:1"><div style="font:600 12.5px 'Instrument Sans';color:var(--ink)">Guanabara</div><div style="font:400 11px 'Instrument Sans';color:var(--faint)">Tijuca · hoje</div></div><span style="font:700 13px 'Instrument Sans';color:var(--ink);font-variant-numeric:tabular-nums">R$ 4,79</span></div>
+<div style="display:flex;align-items:center;gap:10px;padding:11px 0"><div style="flex:1"><div style="font:600 12.5px 'Instrument Sans';color:var(--ink)">Zona Sul</div><div style="font:400 11px 'Instrument Sans';color:var(--faint)">Botafogo · há 5 dias</div></div><span style="font:700 13px 'Instrument Sans';color:var(--faint);font-variant-numeric:tabular-nums">R$ 5,49</span></div>
+</div>
+<div onClick="{{ toggleAlerta }}" style="margin:14px 20px 0;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:12px 14px;display:flex;align-items:center;gap:12px;cursor:pointer">
+<div style="flex:1"><div style="font:600 13px 'Instrument Sans';color:var(--ink)">Alerta de preço</div><div style="font:400 11.5px 'Instrument Sans';color:var(--faint)">Avisar abaixo de R$ 4,70</div></div>
+<div style="width:46px;height:28px;border-radius:999px;background:{{ alertaTrackBg }};position:relative;transition:background .2s"><div style="position:absolute;top:3px;left:{{ alertaKnob }};width:22px;height:22px;border-radius:999px;background:#fff;transition:left .2s"></div></div>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isDashboardCheia }}" hint-placeholder-val="{{ false }}">
+<div style="animation:scrIn .28s ease;padding-bottom:16px">
+<div style="display:flex;align-items:center;gap:12px;padding:12px 20px 0"><div onClick="{{ back }}" style="width:40px;height:40px;border-radius:999px;background:var(--card);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;box-sizing:border-box;cursor:pointer"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--ink)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"></path></svg></div><div style="font:700 20px 'Instrument Sans';color:var(--ink);letter-spacing:-.5px">Resumo de economia</div></div>
+<div style="margin:14px 20px 0;display:flex;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:4px;box-sizing:border-box">
+<span style="flex:1;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;font:500 12px 'Instrument Sans';color:var(--sub)">Maio</span><span style="flex:1;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;font:500 12px 'Instrument Sans';color:var(--sub)">Junho</span><span style="flex:1;height:34px;border-radius:9px;background:var(--chip);color:var(--chipink);display:flex;align-items:center;justify-content:center;font:600 12px 'Instrument Sans'">Julho</span>
+</div>
+<div style="margin:14px 20px 0;background:var(--card);border-radius:16px;border:1px solid var(--line);padding:16px 18px 14px">
+<span style="font:600 10.5px 'Instrument Sans';letter-spacing:1.3px;color:var(--faint)">VOCÊ ECONOMIZOU</span>
+<div style="font:700 40px 'Instrument Sans';color:var(--ink);letter-spacing:-2px;margin-top:6px;font-variant-numeric:tabular-nums">R$ 132,40</div>
+<div style="display:flex;align-items:flex-end;gap:10px;height:96px;margin-top:14px;padding:0 4px">
+<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px"><div style="width:100%;height:34px;border-radius:5px 5px 0 0;background:var(--line)"></div><span style="font:500 9px 'Instrument Sans';color:var(--faint)">fev</span></div>
+<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px"><div style="width:100%;height:45px;border-radius:5px 5px 0 0;background:var(--line)"></div><span style="font:500 9px 'Instrument Sans';color:var(--faint)">mar</span></div>
+<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px"><div style="width:100%;height:40px;border-radius:5px 5px 0 0;background:var(--line)"></div><span style="font:500 9px 'Instrument Sans';color:var(--faint)">abr</span></div>
+<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px"><div style="width:100%;height:56px;border-radius:5px 5px 0 0;background:var(--faint)"></div><span style="font:500 9px 'Instrument Sans';color:var(--faint)">mai</span></div>
+<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px"><div style="width:100%;height:64px;border-radius:5px 5px 0 0;background:var(--faint)"></div><span style="font:500 9px 'Instrument Sans';color:var(--faint)">jun</span></div>
+<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px"><div style="width:100%;height:84px;border-radius:5px 5px 0 0;background:var(--ink)"></div><span style="font:700 9px 'Instrument Sans';color:var(--ink)">jul</span></div>
+</div>
+</div>
+<div style="margin:18px 20px 6px;font:700 15px 'Instrument Sans';color:var(--ink);letter-spacing:-.3px">Onde você mais economizou</div>
+<div style="margin:0 20px;background:var(--card);border-radius:16px;border:1px solid var(--line);padding:12px 14px;display:flex;flex-direction:column;gap:11px">
+<div><div style="display:flex;justify-content:space-between"><span style="font:600 12.5px 'Instrument Sans';color:var(--ink)">Laticínios</span><span style="font:700 12px 'Instrument Sans';color:var(--ink);font-variant-numeric:tabular-nums">R$ 38,20</span></div><div style="height:6px;border-radius:999px;background:var(--line2);margin-top:5px"><div style="width:76%;height:6px;border-radius:999px;background:var(--ink)"></div></div></div>
+<div><div style="display:flex;justify-content:space-between"><span style="font:600 12.5px 'Instrument Sans';color:var(--ink)">Café</span><span style="font:700 12px 'Instrument Sans';color:var(--ink);font-variant-numeric:tabular-nums">R$ 29,10</span></div><div style="height:6px;border-radius:999px;background:var(--line2);margin-top:5px"><div style="width:58%;height:6px;border-radius:999px;background:var(--ink)"></div></div></div>
+<div><div style="display:flex;justify-content:space-between"><span style="font:600 12.5px 'Instrument Sans';color:var(--ink)">Grãos e cereais</span><span style="font:700 12px 'Instrument Sans';color:var(--ink);font-variant-numeric:tabular-nums">R$ 21,40</span></div><div style="height:6px;border-radius:999px;background:var(--line2);margin-top:5px"><div style="width:42%;height:6px;border-radius:999px;background:var(--ink)"></div></div></div>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isPerfil }}" hint-placeholder-val="{{ false }}">
+<div style="animation:scrIn .28s ease;padding-bottom:16px">
+<div style="padding:20px 20px 0;display:flex;align-items:center;gap:14px">
+<div style="width:64px;height:64px;border-radius:999px;background:var(--chip);display:flex;align-items:center;justify-content:center;font:700 24px 'Instrument Sans';color:var(--chipink)">D</div>
+<div style="flex:1"><div style="font:700 20px 'Instrument Sans';color:var(--ink);letter-spacing:-.5px">Douglas Santana</div><div style="font:400 12.5px 'Instrument Sans';color:var(--faint)">douglas.santana@gmail.com</div></div>
+</div>
+<div style="margin:16px 20px 0;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:12px 14px;display:flex;align-items:center;gap:12px;cursor:pointer" onClick="{{ goRegiao }}">
+<div style="width:38px;height:38px;border-radius:10px;background:var(--line2);display:flex;align-items:center;justify-content:center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--ink)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6-7-11a7 7 0 0 1 14 0c0 5-7 11-7 11z"></path><circle cx="12" cy="10" r="2.5"></circle></svg></div>
+<div style="flex:1"><div style="font:600 13px 'Instrument Sans';color:var(--ink)">Rio de Janeiro · Tijuca</div><div style="font:400 11.5px 'Instrument Sans';color:var(--faint)">Região usada nas comparações</div></div>
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--faint)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"></path></svg>
+</div>
+<div style="margin:14px 20px 0;background:var(--card);border-radius:16px;border:1px solid var(--line);padding:4px 14px">
+<div onClick="{{ goConquistas }}" style="display:flex;align-items:center;gap:12px;padding:13px 0;border-bottom:1px solid var(--line2);cursor:pointer"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--sub)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="5"></circle><path d="M8.5 12.5L7 21l5-3 5 3-1.5-8.5"></path></svg><span style="flex:1;font:500 13px 'Instrument Sans';color:var(--ink)">Conquistas e prêmios</span><span style="font:700 11px 'Instrument Sans';color:var(--faint)">4/6</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--faint)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"></path></svg></div>
+<div onClick="{{ goNotificacoes }}" style="display:flex;align-items:center;gap:12px;padding:13px 0;border-bottom:1px solid var(--line2);cursor:pointer"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--sub)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9a6 6 0 0 1 12 0c0 5 2 6 2 6H4s2-1 2-6"></path><path d="M10 20a2 2 0 0 0 4 0"></path></svg><span style="flex:1;font:500 13px 'Instrument Sans';color:var(--ink)">Notificações</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--faint)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"></path></svg></div>
+<div onClick="{{ goAlertas }}" style="display:flex;align-items:center;gap:12px;padding:13px 0;border-bottom:1px solid var(--line2);cursor:pointer">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--sub)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9a6 6 0 0 1 12 0c0 5 2 6 2 6H4s2-1 2-6"></path><path d="M10 20a2 2 0 0 0 4 0"></path></svg>
+<span style="flex:1;font:500 13px 'Instrument Sans';color:var(--ink)">Alertas de preço</span>
+<span style="font:600 11.5px 'Instrument Sans';color:var(--faint)">{{ alertasResumo }}</span>
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--faint)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"></path></svg>
+</div>
+<div style="display:flex;align-items:center;gap:12px;padding:13px 0;border-bottom:1px solid var(--line2)">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--sub)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2"></path><path d="M12 20v2"></path><path d="M4.9 4.9l1.4 1.4"></path><path d="M17.7 17.7l1.4 1.4"></path><path d="M2 12h2"></path><path d="M20 12h2"></path><path d="M4.9 19.1l1.4-1.4"></path><path d="M17.7 6.3l1.4-1.4"></path></svg>
+<span style="flex:1;font:500 13px 'Instrument Sans';color:var(--ink)">Tema</span>
+<div style="display:flex;background:var(--line2);border-radius:9px;padding:3px">
+<span onClick="{{ setClaro }}" style="height:26px;padding:0 12px;border-radius:7px;background:{{ segClaroBg }};font:600 11px 'Instrument Sans';color:{{ segClaroInk }};display:inline-flex;align-items:center;cursor:pointer">Claro</span>
+<span onClick="{{ setEscuro }}" style="height:26px;padding:0 12px;border-radius:7px;background:{{ segEscuroBg }};font:600 11px 'Instrument Sans';color:{{ segEscuroInk }};display:inline-flex;align-items:center;cursor:pointer">Escuro</span>
+</div>
+</div>
+<div onClick="{{ goConta }}" style="display:flex;align-items:center;gap:12px;padding:13px 0;border-bottom:1px solid var(--line2);cursor:pointer"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--sub)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"></circle><path d="M4 21c1.6-4 5.5-5 8-5s6.4 1 8 5"></path></svg><span style="flex:1;font:500 13px 'Instrument Sans';color:var(--ink)">Configurações da conta</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--faint)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"></path></svg></div>
+<div onClick="{{ goAjuda }}" style="display:flex;align-items:center;gap:12px;padding:13px 0"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--sub)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><path d="M9.2 9a2.8 2.8 0 0 1 5.4 1c0 2-2.6 2-2.6 4"></path><path d="M12 17.5v.01"></path></svg><span style="flex:1;font:500 13px 'Instrument Sans';color:var(--ink)">Ajuda e suporte</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--faint)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"></path></svg></div>
+</div>
+<div onClick="{{ askExcluirConta }}" style="margin:14px 20px 0;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px;display:flex;align-items:center;justify-content:center;gap:8px;box-sizing:border-box;cursor:pointer"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--up)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"></path><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"></path><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path></svg><span style="font:600 13.5px 'Instrument Sans';color:var(--up)">Excluir conta</span></div>
+<div style="margin:12px 0 0;text-align:center;font:500 10.5px 'Instrument Sans';color:var(--faint);letter-spacing:1px">BARGANHA V2.0.1 · BASE COLABORATIVA</div>
+<div style="margin:14px 20px 0;font:600 10.5px 'Instrument Sans';letter-spacing:1.3px;color:var(--faint)">ESTADOS (DEMO)</div>
+<div style="margin:8px 20px 0;background:var(--card);border-radius:16px;border:1px solid var(--line);padding:4px 14px">
+<div onClick="{{ demoDia1 }}" style="display:flex;align-items:center;gap:12px;padding:13px 0;border-bottom:1px solid var(--line2);cursor:pointer"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--sub)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path></svg><span style="flex:1;font:500 13px 'Instrument Sans';color:var(--ink)">Ver primeiro uso (dia 1)</span><span style="font:600 11px 'Instrument Sans';color:var(--faint)">{{ dia1Label }}</span></div>
+<div onClick="{{ goPermCam }}" style="display:flex;align-items:center;gap:12px;padding:13px 0;border-bottom:1px solid var(--line2);cursor:pointer"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--sub)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="18" height="13" rx="2"></rect><circle cx="12" cy="13.5" r="3"></circle><path d="M8 7l1.5-3h5L16 7"></path></svg><span style="flex:1;font:500 13px 'Instrument Sans';color:var(--ink)">Rever permissões</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--faint)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"></path></svg></div>
+<div onClick="{{ goOffline }}" style="display:flex;align-items:center;gap:12px;padding:13px 0;cursor:pointer"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--sub)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3l20 20"></path><path d="M8.5 16.5a4 4 0 0 1 6 0"></path><path d="M5 12.5a10 10 0 0 1 4-2.4"></path><path d="M12 20h.01"></path></svg><span style="flex:1;font:500 13px 'Instrument Sans';color:var(--ink)">Ver tela sem conexão</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--faint)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"></path></svg></div>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isAlertas }}" hint-placeholder-val="{{ false }}">
+<div style="animation:scrIn .28s ease;padding-bottom:16px">
+<div style="display:flex;align-items:center;gap:12px;padding:12px 20px 0">
+<div onClick="{{ goPerfil }}" style="width:40px;height:40px;border-radius:999px;background:var(--card);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;box-sizing:border-box;cursor:pointer"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--ink)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"></path></svg></div>
+<div style="flex:1"><div style="font:600 10.5px 'Instrument Sans';letter-spacing:1.3px;color:var(--faint)">PREFERÊNCIAS</div><div style="font:700 18px 'Instrument Sans';color:var(--ink);letter-spacing:-.4px">Alertas de preço</div></div>
+</div>
+<div style="margin:14px 20px 0;font:400 12.5px/1.5 'Instrument Sans';color:var(--sub)">Escolha quando quer ser avisado — os mesmos alertas que você configurou ao criar a conta.</div>
+<div style="margin:14px 20px 0;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:4px 16px">
+<sc-for list="{{ alertOpts }}" as="a" hint-placeholder-count="3">
+<div style="display:flex;align-items:center;gap:13px;padding:14px 0;border-bottom:{{ a.bd }}">
+<div style="width:36px;height:36px;border-radius:10px;background:var(--line2);display:flex;align-items:center;justify-content:center;flex:none">{{ a.icon }}</div>
+<div style="flex:1;min-width:0"><div style="font:600 13.5px 'Instrument Sans';color:var(--ink)">{{ a.titulo }}</div><div style="font:400 11.5px 'Instrument Sans';color:var(--faint);margin-top:1px">{{ a.desc }}</div></div>
+<div onClick="{{ a.toggle }}" style="width:46px;height:28px;border-radius:999px;background:{{ a.trackBg }};position:relative;cursor:pointer;flex:none;transition:background .2s"><div style="position:absolute;top:3px;left:{{ a.knob }};width:22px;height:22px;border-radius:999px;background:var(--card);transition:left .2s"></div></div>
+</div>
+</sc-for>
+</div>
+<div style="margin:14px 20px 0;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px 16px">
+<div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font:600 13.5px 'Instrument Sans';color:var(--ink)">Sensibilidade do alerta</span><span style="font:700 12px 'Instrument Sans';color:var(--ink)">{{ sensLabel }}</span></div>
+<div style="font:400 11.5px 'Instrument Sans';color:var(--faint);margin-top:2px">A partir de quanto abaixo do típico a gente te avisa</div>
+<div style="display:flex;gap:8px;margin-top:12px">
+<sc-for list="{{ sensOpts }}" as="s" hint-placeholder-count="3">
+<div onClick="{{ s.on }}" style="flex:1;height:38px;border-radius:10px;background:{{ s.bg }};border:1px solid {{ s.bd }};color:{{ s.ink }};font:600 12.5px 'Instrument Sans';display:flex;align-items:center;justify-content:center;cursor:pointer;box-sizing:border-box">{{ s.label }}</div>
+</sc-for>
+</div>
+</div>
+<div style="margin:16px 20px 0"><div onClick="{{ salvarAlertas }}" style="height:50px;border-radius:12px;background:var(--chip);color:var(--chipink);font:700 14px 'Instrument Sans';display:flex;align-items:center;justify-content:center;cursor:pointer">Salvar preferências</div></div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isConta }}" hint-placeholder-val="{{ false }}">
+<div style="animation:scrIn .28s ease;padding-bottom:16px">
+<div style="display:flex;align-items:center;gap:12px;padding:12px 20px 0">
+<div onClick="{{ goPerfil }}" style="width:40px;height:40px;border-radius:999px;background:var(--card);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;box-sizing:border-box;cursor:pointer"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--ink)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"></path></svg></div>
+<div style="flex:1"><div style="font:600 10.5px 'Instrument Sans';letter-spacing:1.3px;color:var(--faint)">PERFIL</div><div style="font:700 18px 'Instrument Sans';color:var(--ink);letter-spacing:-.4px">Configurações da conta</div></div>
+</div>
+<div style="margin:16px 20px 0;font:600 10.5px 'Instrument Sans';letter-spacing:1.3px;color:var(--faint)">DADOS PESSOAIS</div>
+<div style="margin:8px 20px 0;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:4px 16px">
+<div style="padding:12px 0;border-bottom:1px solid var(--line2)"><div style="font:400 11px 'Instrument Sans';color:var(--faint)">Nome</div><div style="font:600 14px 'Instrument Sans';color:var(--ink);margin-top:3px">Douglas Santana</div></div>
+<div style="padding:12px 0;border-bottom:1px solid var(--line2)"><div style="font:400 11px 'Instrument Sans';color:var(--faint)">E-mail</div><div style="font:600 14px 'Instrument Sans';color:var(--ink);margin-top:3px">douglas.santana@gmail.com</div></div>
+<div style="padding:12px 0"><div style="font:400 11px 'Instrument Sans';color:var(--faint)">Telefone</div><div style="font:600 14px 'Instrument Sans';color:var(--ink);margin-top:3px">(21) 98••••-••12</div></div>
+</div>
+<div style="margin:14px 20px 0;background:var(--card);border-radius:16px;border:1px solid var(--line);padding:4px 14px">
+<div onClick="{{ toastEditar }}" style="display:flex;align-items:center;gap:12px;padding:13px 0;border-bottom:1px solid var(--line2);cursor:pointer"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--sub)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"></path></svg><span style="flex:1;font:500 13px 'Instrument Sans';color:var(--ink)">Editar dados pessoais</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--faint)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"></path></svg></div>
+<div onClick="{{ toastEditar }}" style="display:flex;align-items:center;gap:12px;padding:13px 0;border-bottom:1px solid var(--line2);cursor:pointer"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--sub)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="10" rx="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg><span style="flex:1;font:500 13px 'Instrument Sans';color:var(--ink)">Alterar senha</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--faint)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"></path></svg></div>
+<div onClick="{{ toastEditar }}" style="display:flex;align-items:center;gap:12px;padding:13px 0"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--sub)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="11" rx="2"></rect><path d="M8 10V7a4 4 0 0 1 8 0v3"></path></svg><span style="flex:1;font:500 13px 'Instrument Sans';color:var(--ink)">Privacidade dos dados</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--faint)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"></path></svg></div>
+</div>
+<div style="margin:14px 20px 0;background:var(--card);border-radius:16px;border:1px solid var(--line);padding:4px 14px">
+<div onClick="{{ goEntrar2 }}" style="display:flex;align-items:center;gap:12px;padding:13px 0;border-bottom:1px solid var(--line2);cursor:pointer"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--sub)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><path d="M16 17l5-5-5-5"></path><path d="M21 12H9"></path></svg><span style="flex:1;font:500 13px 'Instrument Sans';color:var(--ink)">Sair da conta</span></div>
+<div onClick="{{ askExcluirConta }}" style="display:flex;align-items:center;gap:12px;padding:13px 0;cursor:pointer"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--up)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"></path><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"></path><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path></svg><span style="flex:1;font:600 13px 'Instrument Sans';color:var(--up)">Excluir conta</span></div>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isRegiao }}" hint-placeholder-val="{{ false }}">
+<div style="animation:scrIn .28s ease;padding-bottom:16px">
+<div style="display:flex;align-items:center;gap:12px;padding:12px 20px 0">
+<div onClick="{{ goPerfil }}" style="width:40px;height:40px;border-radius:999px;background:var(--card);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;box-sizing:border-box;cursor:pointer"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--ink)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"></path></svg></div>
+<div style="flex:1"><div style="font:600 10.5px 'Instrument Sans';letter-spacing:1.3px;color:var(--faint)">COMPARAÇÕES DE PREÇO</div><div style="font:700 18px 'Instrument Sans';color:var(--ink);letter-spacing:-.4px">Editar região</div></div>
+</div>
+<div style="margin:14px 20px 0;font:400 12.5px/1.5 'Instrument Sans';color:var(--sub)">Sua região define quais cupons entram nas comparações. Escaneamos cupons num raio a partir dela.</div>
+<div onClick="{{ usarLocalizacao }}" style="margin:14px 20px 0;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:13px 15px;display:flex;align-items:center;gap:12px;cursor:pointer">
+<div style="width:38px;height:38px;border-radius:10px;background:var(--chip);display:flex;align-items:center;justify-content:center;flex:none"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--chipink)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v3"></path><path d="M12 19v3"></path><path d="M2 12h3"></path><path d="M19 12h3"></path><circle cx="12" cy="12" r="4"></circle></svg></div>
+<div style="flex:1"><div style="font:600 13px 'Instrument Sans';color:var(--ink)">Usar minha localização</div><div style="font:400 11.5px 'Instrument Sans';color:var(--faint)">Detecta sua região pelo GPS do celular</div></div>
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--faint)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"></path></svg>
+</div>
+<div style="margin:16px 20px 6px;font:600 10.5px 'Instrument Sans';letter-spacing:1.3px;color:var(--faint)">OU BUSCAR MANUALMENTE</div>
+<div style="margin:0 20px;height:50px;border:1px solid var(--line);border-radius:12px;display:flex;align-items:center;gap:10px;padding:0 14px;background:var(--fld)">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--faint)" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg>
+<input value="{{ regQuery }}" onInput="{{ onRegQuery }}" placeholder="Buscar bairro ou cidade…" style="flex:1;border:none;outline:none;background:transparent;font:500 13.5px 'Instrument Sans';color:var(--ink);min-width:0"></input>
+</div>
+<sc-if value="{{ regHasResults }}" hint-placeholder-val="{{ false }}">
+<div style="margin:12px 20px 0;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:4px 14px;animation:scrIn .2s ease">
+<sc-for list="{{ regioes }}" as="rg" hint-placeholder-count="4">
+<div onClick="{{ rg.on }}" style="display:flex;align-items:center;gap:12px;padding:13px 0;border-bottom:{{ rg.bd }};cursor:pointer">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--sub)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex:none"><path d="M12 21s-7-6-7-11a7 7 0 0 1 14 0c0 5-7 11-7 11z"></path><circle cx="12" cy="10" r="2.5"></circle></svg>
+<div style="flex:1;min-width:0"><div style="font:600 13px 'Instrument Sans';color:var(--ink)">{{ rg.nome }}</div><div style="font:400 11px 'Instrument Sans';color:var(--faint)">{{ rg.sub }}</div></div>
+<div style="width:20px;height:20px;border-radius:999px;border:1.5px solid {{ rg.ringBd }};background:{{ rg.ringBg }};display:flex;align-items:center;justify-content:center;box-sizing:border-box;flex:none"><div style="width:8px;height:8px;border-radius:999px;background:var(--chipink);opacity:{{ rg.dotOp }}"></div></div>
+</div>
+</sc-for>
+</div>
+</sc-if>
+<sc-if value="{{ regNoResults }}" hint-placeholder-val="{{ false }}">
+<div style="margin:12px 20px 0;text-align:center;font:400 12px 'Instrument Sans';color:var(--faint)">Nenhum bairro ou cidade com esse nome</div>
+</sc-if>
+<div style="margin:14px 20px 0;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px 16px">
+<div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font:600 13.5px 'Instrument Sans';color:var(--ink)">Raio das comparações</span><span style="font:700 12px 'Instrument Sans';color:var(--ink)">{{ raioLabel }}</span></div>
+<div style="display:flex;gap:8px;margin-top:12px">
+<sc-for list="{{ raioOpts }}" as="ro" hint-placeholder-count="3">
+<div onClick="{{ ro.on }}" style="flex:1;height:38px;border-radius:10px;background:{{ ro.bg }};border:1px solid {{ ro.bd }};color:{{ ro.ink }};font:600 12.5px 'Instrument Sans';display:flex;align-items:center;justify-content:center;cursor:pointer;box-sizing:border-box">{{ ro.label }}</div>
+</sc-for>
+</div>
+</div>
+<div style="margin:16px 20px 0"><div onClick="{{ salvarRegiao }}" style="height:50px;border-radius:12px;background:var(--chip);color:var(--chipink);font:700 14px 'Instrument Sans';display:flex;align-items:center;justify-content:center;cursor:pointer">Salvar região</div></div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isAjuda }}" hint-placeholder-val="{{ false }}">
+<div style="animation:scrIn .28s ease;padding-bottom:16px">
+<div style="display:flex;align-items:center;gap:12px;padding:12px 20px 0">
+<div onClick="{{ goPerfil }}" style="width:40px;height:40px;border-radius:999px;background:var(--card);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;box-sizing:border-box;cursor:pointer"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--ink)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"></path></svg></div>
+<div style="flex:1"><div style="font:600 10.5px 'Instrument Sans';letter-spacing:1.3px;color:var(--faint)">CENTRAL</div><div style="font:700 18px 'Instrument Sans';color:var(--ink);letter-spacing:-.4px">Ajuda e suporte</div></div>
+</div>
+<div style="margin:14px 20px 0;height:50px;border:1px solid var(--line);border-radius:12px;display:flex;align-items:center;gap:10px;padding:0 14px;background:var(--fld)">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--faint)" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg>
+<span style="font:500 13.5px 'Instrument Sans';color:var(--faint)">Buscar na central de ajuda</span>
+</div>
+<div style="margin:16px 20px 0;font:600 10.5px 'Instrument Sans';letter-spacing:1.3px;color:var(--faint)">PERGUNTAS FREQUENTES</div>
+<div style="margin:8px 20px 0;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:4px 16px">
+<sc-for list="{{ faqs }}" as="q" hint-placeholder-count="4">
+<div onClick="{{ q.on }}" style="padding:13px 0;border-bottom:{{ q.bd }};cursor:pointer">
+<div style="display:flex;align-items:center;gap:10px"><span style="flex:1;font:600 13px 'Instrument Sans';color:var(--ink)">{{ q.pergunta }}</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--faint)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex:none;transform:{{ q.chevron }}"><path d="M6 9l6 6 6-6"></path></svg></div>
+<div style="font:400 12px/1.5 'Instrument Sans';color:var(--sub);margin-top:8px;display:{{ q.bodyShow }}">{{ q.resposta }}</div>
+</div>
+</sc-for>
+</div>
+<div style="margin:16px 20px 0;font:600 10.5px 'Instrument Sans';letter-spacing:1.3px;color:var(--faint)">FALE COM A GENTE</div>
+<div style="margin:8px 20px 0;background:var(--card);border-radius:16px;border:1px solid var(--line);padding:4px 14px">
+<div onClick="{{ toastSuporte }}" style="display:flex;align-items:center;gap:12px;padding:13px 0;border-bottom:1px solid var(--line2);cursor:pointer"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--sub)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg><span style="flex:1;font:500 13px 'Instrument Sans';color:var(--ink)">Falar com o suporte</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--faint)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"></path></svg></div>
+<div onClick="{{ toastSuporte }}" style="display:flex;align-items:center;gap:12px;padding:13px 0;border-bottom:1px solid var(--line2);cursor:pointer"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--sub)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v12H5.2L4 17.2z"></path></svg><span style="flex:1;font:500 13px 'Instrument Sans';color:var(--ink)">Enviar sugestão</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--faint)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"></path></svg></div>
+<div onClick="{{ toastSuporte }}" style="display:flex;align-items:center;gap:12px;padding:13px 0"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--sub)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21V4h13l-2 4 2 4H4"></path></svg><span style="flex:1;font:500 13px 'Instrument Sans';color:var(--ink)">Reportar um problema</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--faint)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"></path></svg></div>
+</div>
+<div style="margin:12px 0 0;text-align:center;font:500 10.5px 'Instrument Sans';color:var(--faint);letter-spacing:1px">BARGANHA V2.0.1 · suporte@barganha.app</div>
+</div>
+</sc-if>
+
+</div>
+
+<div style="flex:none;background:var(--card);border-top:1px solid var(--line);display:flex;align-items:flex-end;justify-content:space-around;padding:8px 8px 20px;position:relative;z-index:2">
+<div onClick="{{ goInicio }}" style="display:flex;flex-direction:column;align-items:center;gap:3px;width:64px;cursor:pointer"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="{{ navInicio }}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5L12 4l9 6.5"></path><path d="M5 9.5V20h14V9.5"></path></svg><span style="font:700 10px 'Instrument Sans';color:{{ navInicio }}">Início</span></div>
+<div onClick="{{ goVerificar }}" style="display:flex;flex-direction:column;align-items:center;gap:3px;width:64px;cursor:pointer"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="{{ navVerificar }}" stroke-width="2.2" stroke-linecap="round"><path d="M4 6v12"></path><path d="M8 6v12"></path><path d="M12 6v12"></path><path d="M17 6v12"></path><path d="M20 6v12"></path></svg><span style="font:700 10px 'Instrument Sans';color:{{ navVerificar }}">Verificar</span></div>
+<div style="width:64px;display:flex;justify-content:center"><div onClick="{{ goEscanear }}" style="width:56px;height:56px;border-radius:999px;background:var(--ink);display:flex;align-items:center;justify-content:center;margin-top:-30px;border:4px solid var(--bg);cursor:pointer"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--bg)" stroke-width="2.2" stroke-linecap="round"><path d="M4 8V5a1 1 0 0 1 1-1h3"></path><path d="M16 4h3a1 1 0 0 1 1 1v3"></path><path d="M20 16v3a1 1 0 0 1-1 1h-3"></path><path d="M8 20H5a1 1 0 0 1-1-1v-3"></path><path d="M4 12h16"></path></svg></div></div>
+<div onClick="{{ goLista }}" style="display:flex;flex-direction:column;align-items:center;gap:3px;width:64px;cursor:pointer"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="{{ navLista }}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6h11"></path><path d="M9 12h11"></path><path d="M9 18h11"></path><path d="M4 5.5l1 1 2-2"></path><path d="M4 11.5l1 1 2-2"></path><path d="M4 17.5l1 1 2-2"></path></svg><span style="font:700 10px 'Instrument Sans';color:{{ navLista }}">Lista</span></div>
+<div onClick="{{ goPerfil }}" style="display:flex;flex-direction:column;align-items:center;gap:3px;width:64px;cursor:pointer"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="{{ navPerfil }}" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="8" r="4"></circle><path d="M4 21c1.6-4 5.5-5 8-5s6.4 1 8 5"></path></svg><span style="font:700 10px 'Instrument Sans';color:{{ navPerfil }}">Perfil</span></div>
+</div>
+
+<sc-if value="{{ isOnboarding }}" hint-placeholder-val="{{ true }}">
+<div style="position:absolute;inset:0;z-index:8;background:var(--bg);display:flex;flex-direction:column;animation:ovIn .25s ease">
+<div style="display:flex;justify-content:space-between;align-items:center;padding:14px 26px 4px"><span style="font:700 13px 'Instrument Sans';color:var(--ink)">9:41</span><span onClick="{{ onbSkip }}" style="font:600 12.5px 'Instrument Sans';color:var(--sub);cursor:pointer">Pular</span></div>
+<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:0 40px">
+<div style="width:96px;height:96px;border-radius:28px;background:var(--chip);display:flex;align-items:center;justify-content:center">
+<sc-if value="{{ isOnb0 }}" hint-placeholder-val="{{ true }}"><svg width="46" height="46" viewBox="0 0 24 24" fill="none" stroke="var(--chipink)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8V5a1 1 0 0 1 1-1h3"></path><path d="M16 4h3a1 1 0 0 1 1 1v3"></path><path d="M20 16v3a1 1 0 0 1-1 1h-3"></path><path d="M8 20H5a1 1 0 0 1-1-1v-3"></path><path d="M4 12h16"></path></svg></sc-if>
+<sc-if value="{{ isOnb1 }}" hint-placeholder-val="{{ false }}"><svg width="46" height="46" viewBox="0 0 24 24" fill="none" stroke="var(--chipink)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="8" width="18" height="8" rx="2"></rect><path d="M7 8v3"></path><path d="M11 8v4"></path><path d="M15 8v3"></path></svg></sc-if>
+<sc-if value="{{ isOnb2 }}" hint-placeholder-val="{{ false }}"><svg width="46" height="46" viewBox="0 0 24 24" fill="none" stroke="var(--chipink)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="5"></circle><path d="M8.5 12.5L7 21l5-3 5 3-1.5-8.5"></path></svg></sc-if>
+</div>
+<div style="font:700 25px 'Instrument Sans';color:var(--ink);letter-spacing:-.6px;margin-top:28px">{{ onbTitle }}</div>
+<div style="font:400 14px/1.55 'Instrument Sans';color:var(--sub);margin-top:10px">{{ onbText }}</div>
+</div>
+<div style="padding:0 28px 34px">
+<div style="display:flex;justify-content:center;gap:7px;margin-bottom:22px"><span style="width:8px;height:8px;border-radius:999px;background:var(--ink);opacity:{{ onbD0 }}"></span><span style="width:8px;height:8px;border-radius:999px;background:var(--ink);opacity:{{ onbD1 }}"></span><span style="width:8px;height:8px;border-radius:999px;background:var(--ink);opacity:{{ onbD2 }}"></span></div>
+<div onClick="{{ onbNext }}" style="height:52px;border-radius:12px;background:var(--chip);color:var(--chipink);font:700 15px 'Instrument Sans';display:flex;align-items:center;justify-content:center;cursor:pointer">{{ onbCta }}</div>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isRecuperar }}" hint-placeholder-val="{{ false }}">
+<div style="position:absolute;inset:0;z-index:7;background:var(--bg);display:flex;flex-direction:column;animation:ovIn .25s ease">
+<div style="display:flex;justify-content:space-between;align-items:center;padding:14px 26px 4px"><span style="font:700 13px 'Instrument Sans';color:var(--ink)">9:41</span><div style="display:flex;gap:5px;align-items:center"><div style="width:16px;height:9px;border-radius:2px;background:var(--ink);opacity:.75"></div><div style="width:20px;height:10px;border:1.5px solid var(--ink);border-radius:3px;opacity:.6;position:relative"><div style="position:absolute;inset:2px;right:6px;background:var(--ink);border-radius:1px"></div></div></div></div>
+<div style="padding:8px 28px 0"><div onClick="{{ goLogin }}" style="width:40px;height:40px;border-radius:999px;background:var(--card);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;box-sizing:border-box;cursor:pointer"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--ink)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"></path></svg></div></div>
+<div style="padding:26px 28px 0">
+<div style="font:700 27px 'Instrument Sans';color:var(--ink);letter-spacing:-.8px">Recuperar senha</div>
+<div style="font:400 14px/1.55 'Instrument Sans';color:var(--sub);margin-top:8px">Enviamos um link de redefinição para o seu e-mail cadastrado.</div>
+<div style="font:600 12px 'Instrument Sans';color:var(--sub);margin:26px 0 6px">E-mail</div>
+<div style="height:50px;border:1.5px solid var(--ink);border-radius:12px;background:var(--card);display:flex;align-items:center;padding:0 14px;font:500 14px 'Instrument Sans';color:var(--ink)">douglas.santana@gmail.com</div>
+<div onClick="{{ enviarLink }}" style="height:52px;border-radius:12px;background:var(--chip);color:var(--chipink);font:700 15px 'Instrument Sans';display:flex;align-items:center;justify-content:center;margin-top:22px;cursor:pointer">Enviar link de redefinição</div>
+<div onClick="{{ goLogin }}" style="margin-top:14px;text-align:center;font:600 13px 'Instrument Sans';color:var(--sub);cursor:pointer">Voltar para o login</div>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isEditar }}" hint-placeholder-val="{{ false }}">
+<div style="position:absolute;inset:0;z-index:7;background:var(--bg);display:flex;flex-direction:column;animation:ovIn .25s ease">
+<div style="display:flex;justify-content:space-between;align-items:center;padding:14px 26px 4px"><span style="font:700 13px 'Instrument Sans';color:var(--ink)">9:41</span><div style="display:flex;gap:5px;align-items:center"><div style="width:16px;height:9px;border-radius:2px;background:var(--ink);opacity:.75"></div><div style="width:20px;height:10px;border:1.5px solid var(--ink);border-radius:3px;opacity:.6;position:relative"><div style="position:absolute;inset:2px;right:6px;background:var(--ink);border-radius:1px"></div></div></div></div>
+<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 20px 0"><span onClick="{{ back }}" style="font:600 14px 'Instrument Sans';color:var(--sub);cursor:pointer">Cancelar</span><span style="font:700 16px 'Instrument Sans';color:var(--ink)">Editar produto</span><span onClick="{{ salvarEdicao }}" style="font:700 14px 'Instrument Sans';color:var(--ink);cursor:pointer">Salvar</span></div>
+<div style="padding:22px 20px 0">
+<div style="font:600 12px 'Instrument Sans';color:var(--sub);margin-bottom:6px">Nome do produto</div>
+<div style="height:50px;border:1px solid var(--line);border-radius:12px;background:var(--card);display:flex;align-items:center;padding:0 14px;font:500 14px 'Instrument Sans';color:var(--ink)">{{ selNome }}</div>
+<div style="font:600 12px 'Instrument Sans';color:var(--sub);margin:16px 0 6px">Categoria</div>
+<div style="display:flex;gap:8px;flex-wrap:wrap">
+<span style="height:34px;padding:0 14px;border-radius:999px;background:var(--chip);color:var(--chipink);font:600 12px 'Instrument Sans';display:inline-flex;align-items:center">Laticínios</span>
+<span style="height:34px;padding:0 14px;border-radius:999px;border:1px solid var(--line);color:var(--sub);font:600 12px 'Instrument Sans';display:inline-flex;align-items:center;box-sizing:border-box;background:var(--card)">Café</span>
+<span style="height:34px;padding:0 14px;border-radius:999px;border:1px solid var(--line);color:var(--sub);font:600 12px 'Instrument Sans';display:inline-flex;align-items:center;box-sizing:border-box;background:var(--card)">Grãos</span>
+</div>
+<div style="font:600 12px 'Instrument Sans';color:var(--sub);margin:16px 0 6px">Avisar abaixo de</div>
+<div style="height:50px;border:1px solid var(--line);border-radius:12px;background:var(--card);display:flex;align-items:center;padding:0 14px;font:600 14px 'Instrument Sans';color:var(--ink);font-variant-numeric:tabular-nums">R$ 4,70</div>
+<div style="margin-top:16px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;display:flex;align-items:center;gap:12px">
+<div style="flex:1"><div style="font:600 13px 'Instrument Sans';color:var(--ink)">Monitorar este produto</div><div style="font:400 11.5px 'Instrument Sans';color:var(--faint)">Aparece na sua lista e no resumo</div></div>
+<div style="width:46px;height:28px;border-radius:999px;background:var(--chip);position:relative"><div style="position:absolute;top:3px;left:21px;width:22px;height:22px;border-radius:999px;background:#fff"></div></div>
+</div>
+<div onClick="{{ askExcluir }}" style="margin-top:18px;height:48px;border-radius:12px;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;gap:8px;font:600 13.5px 'Instrument Sans';color:var(--up);cursor:pointer"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--up)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"></path><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"></path><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path></svg>Excluir da lista</div>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isLogin }}" hint-placeholder-val="{{ false }}">
+<div style="position:absolute;inset:0;z-index:7;background:var(--ink);display:flex;flex-direction:column;animation:ovIn .25s ease">
+<div style="position:absolute;top:-60px;right:-60px;width:220px;height:220px;border-radius:999px;background:radial-gradient(circle,rgba(255,255,255,.09),rgba(255,255,255,0) 70%)"></div>
+<div style="display:flex;justify-content:space-between;align-items:center;padding:14px 26px 4px;position:relative"><span style="font:700 13px 'Instrument Sans';color:var(--bg)">9:41</span><div style="display:flex;gap:5px;align-items:center"><div style="width:16px;height:9px;border-radius:2px;background:var(--bg);opacity:.75"></div><div style="width:20px;height:10px;border:1.5px solid var(--bg);border-radius:3px;opacity:.6;position:relative"><div style="position:absolute;inset:2px;right:6px;background:var(--bg);border-radius:1px"></div></div></div></div>
+<div style="padding:56px 28px 0;position:relative">
+<div style="width:60px;height:60px;border-radius:16px;background:var(--bg);display:flex;align-items:center;justify-content:center;font:800 28px 'Instrument Sans';color:var(--ink)">B</div>
+<div style="font:700 36px/1.12 'Instrument Sans';color:var(--bg);letter-spacing:-1.4px;margin-top:22px">Saiba se o preço<br>vale a barganha.</div>
+</div>
+<div style="margin-top:36px;background:var(--bg);border-radius:28px 28px 0 0;flex:1;padding:28px 28px 0;display:flex;flex-direction:column">
+<div style="font:600 12px 'Instrument Sans';color:var(--sub);margin-bottom:6px">E-mail</div>
+<div style="height:50px;border:1px solid var(--line);border-radius:12px;background:var(--card);display:flex;align-items:center;padding:0 14px;font:500 14px 'Instrument Sans';color:var(--ink)">douglas.santana@gmail.com</div>
+<div style="font:600 12px 'Instrument Sans';color:var(--sub);margin:14px 0 6px">Senha</div>
+<div style="height:50px;border:1.5px solid var(--ink);border-radius:12px;background:var(--card);display:flex;align-items:center;justify-content:space-between;padding:0 14px"><span style="font:700 16px 'Instrument Sans';color:var(--ink);letter-spacing:3px">••••••••</span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--faint)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"></path><circle cx="12" cy="12" r="3"></circle></svg></div>
+<div style="font:600 12.5px 'Instrument Sans';color:var(--ink);margin-top:10px;align-self:flex-end;text-decoration:underline;text-underline-offset:3px;cursor:pointer" onClick="{{ goRecuperar }}">Esqueci a senha</div>
+<div onClick="{{ goEntrar }}" style="height:52px;border-radius:12px;background:var(--chip);color:var(--chipink);font:700 15px 'Instrument Sans';display:flex;align-items:center;justify-content:center;margin-top:20px;cursor:pointer">Entrar</div>
+<div style="display:flex;align-items:center;gap:10px;margin:16px 0"><div style="flex:1;border-top:1px solid var(--line)"></div><span style="font:600 11px 'Instrument Sans';color:var(--faint)">OU</span><div style="flex:1;border-top:1px solid var(--line)"></div></div>
+<div onClick="{{ goEntrar }}" style="height:52px;border-radius:12px;background:var(--card);border:1px solid var(--line);color:var(--ink);font:600 14px 'Instrument Sans';display:flex;align-items:center;justify-content:center;gap:10px;box-sizing:border-box;cursor:pointer"><span style="width:20px;height:20px;border-radius:999px;border:1px solid var(--line);display:inline-flex;align-items:center;justify-content:center;font:800 11px 'Instrument Sans';color:var(--ink)">G</span>Continuar com Google</div>
+<div onClick="{{ goCriar }}" style="margin-top:auto;padding:16px 0 26px;text-align:center;font:500 13px 'Instrument Sans';color:var(--sub);cursor:pointer">Primeira vez aqui? <span style="font-weight:700;color:var(--ink);text-decoration:underline;text-underline-offset:3px">Criar conta grátis</span></div>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isCriar }}" hint-placeholder-val="{{ false }}">
+<div style="position:absolute;inset:0;z-index:7;background:var(--ink);display:flex;flex-direction:column;animation:ovIn .25s ease">
+<div style="position:absolute;top:-60px;right:-60px;width:220px;height:220px;border-radius:999px;background:radial-gradient(circle,rgba(255,255,255,.09),rgba(255,255,255,0) 70%)"></div>
+<div style="display:flex;justify-content:space-between;align-items:center;padding:14px 26px 4px;position:relative"><span style="font:700 13px 'Instrument Sans';color:var(--bg)">9:41</span><div style="display:flex;gap:5px;align-items:center"><div style="width:16px;height:9px;border-radius:2px;background:var(--bg);opacity:.75"></div><div style="width:20px;height:10px;border:1.5px solid var(--bg);border-radius:3px;opacity:.6;position:relative"><div style="position:absolute;inset:2px;right:6px;background:var(--bg);border-radius:1px"></div></div></div></div>
+<div style="padding:28px 28px 0;position:relative;display:flex;align-items:center;gap:14px">
+<div style="width:44px;height:44px;border-radius:12px;background:var(--bg);display:flex;align-items:center;justify-content:center;font:800 20px 'Instrument Sans';color:var(--ink)">B</div>
+<div style="font:700 28px/1.1 'Instrument Sans';color:var(--bg);letter-spacing:-1px">Crie sua conta grátis.</div>
+</div>
+<div style="margin-top:26px;background:var(--bg);border-radius:28px 28px 0 0;flex:1;padding:26px 28px 0;display:flex;flex-direction:column">
+<div style="font:600 12px 'Instrument Sans';color:var(--sub);margin-bottom:6px">Nome</div>
+<div style="height:50px;border:1px solid var(--line);border-radius:12px;background:var(--card);display:flex;align-items:center;padding:0 14px;font:500 14px 'Instrument Sans';color:var(--faint)">Como devemos te chamar?</div>
+<div style="font:600 12px 'Instrument Sans';color:var(--sub);margin:14px 0 6px">E-mail</div>
+<div style="height:50px;border:1px solid var(--line);border-radius:12px;background:var(--card);display:flex;align-items:center;padding:0 14px;font:500 14px 'Instrument Sans';color:var(--faint)">seu@email.com</div>
+<div style="font:600 12px 'Instrument Sans';color:var(--sub);margin:14px 0 6px">Senha</div>
+<div style="height:50px;border:1px solid var(--line);border-radius:12px;background:var(--card);display:flex;align-items:center;justify-content:space-between;padding:0 14px"><span style="font:500 14px 'Instrument Sans';color:var(--faint)">Mínimo de 8 caracteres</span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--faint)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"></path><circle cx="12" cy="12" r="3"></circle></svg></div>
+<div onClick="{{ criarConta }}" style="height:52px;border-radius:12px;background:var(--chip);color:var(--chipink);font:700 15px 'Instrument Sans';display:flex;align-items:center;justify-content:center;margin-top:20px;cursor:pointer">Criar conta</div>
+<div style="display:flex;align-items:center;gap:10px;margin:16px 0"><div style="flex:1;border-top:1px solid var(--line)"></div><span style="font:600 11px 'Instrument Sans';color:var(--faint)">OU</span><div style="flex:1;border-top:1px solid var(--line)"></div></div>
+<div onClick="{{ criarConta }}" style="height:52px;border-radius:12px;background:var(--card);border:1px solid var(--line);color:var(--ink);font:600 14px 'Instrument Sans';display:flex;align-items:center;justify-content:center;gap:10px;box-sizing:border-box;cursor:pointer"><span style="width:20px;height:20px;border-radius:999px;border:1px solid var(--line);display:inline-flex;align-items:center;justify-content:center;font:800 11px 'Instrument Sans';color:var(--ink)">G</span>Continuar com Google</div>
+<div style="margin-top:12px;text-align:center;font:400 11px/1.5 'Instrument Sans';color:var(--faint)">Ao criar a conta você concorda com os Termos de Uso e a Política de Privacidade. Seus cupons são sempre anonimizados.</div>
+<div onClick="{{ goLogin }}" style="margin-top:auto;padding:16px 0 26px;text-align:center;font:500 13px 'Instrument Sans';color:var(--sub);cursor:pointer">Já tem conta? <span style="font-weight:700;color:var(--ink);text-decoration:underline;text-underline-offset:3px">Entrar</span></div>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isBemVindo }}" hint-placeholder-val="{{ false }}">
+<div style="position:absolute;inset:0;z-index:7;background:var(--bg);display:flex;flex-direction:column;animation:ovIn .25s ease">
+<div style="display:flex;justify-content:space-between;align-items:center;padding:14px 26px 4px"><span style="font:700 13px 'Instrument Sans';color:var(--ink)">9:41</span><div style="display:flex;gap:5px;align-items:center"><div style="width:16px;height:9px;border-radius:2px;background:var(--ink);opacity:.75"></div><div style="width:20px;height:10px;border:1.5px solid var(--ink);border-radius:3px;opacity:.6;position:relative"><div style="position:absolute;inset:2px;right:6px;background:var(--ink);border-radius:1px"></div></div></div></div>
+<div style="flex:1;overflow-y:auto;padding:20px 28px 0">
+<div style="width:60px;height:60px;border-radius:16px;background:var(--chip);display:flex;align-items:center;justify-content:center"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="var(--chipink)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"></path></svg></div>
+<div style="font:700 30px/1.1 'Instrument Sans';color:var(--ink);letter-spacing:-1.2px;margin-top:20px">Bem-vindo, Douglas!</div>
+<div style="font:400 14px/1.55 'Instrument Sans';color:var(--sub);margin-top:8px">Sua conta está pronta. Escolha como quer ser avisado quando os preços mexerem — dá pra mudar tudo depois em Perfil.</div>
+<div style="font:600 10.5px 'Instrument Sans';letter-spacing:1.3px;color:var(--faint);margin:24px 0 10px">CONFIGURAR ALERTAS</div>
+<div style="background:var(--card);border:1px solid var(--line);border-radius:16px;padding:4px 16px">
+<sc-for list="{{ alertOpts }}" as="a" hint-placeholder-count="3">
+<div style="display:flex;align-items:center;gap:13px;padding:14px 0;border-bottom:{{ a.bd }}">
+<div style="width:36px;height:36px;border-radius:10px;background:var(--line2);display:flex;align-items:center;justify-content:center;flex:none"><span style="opacity:{{ a.iconOp }}">{{ a.icon }}</span></div>
+<div style="flex:1;min-width:0"><div style="font:600 13.5px 'Instrument Sans';color:var(--ink)">{{ a.titulo }}</div><div style="font:400 11.5px 'Instrument Sans';color:var(--faint);margin-top:1px">{{ a.desc }}</div></div>
+<div onClick="{{ a.toggle }}" style="width:46px;height:28px;border-radius:999px;background:{{ a.trackBg }};position:relative;cursor:pointer;flex:none;transition:background .2s"><div style="position:absolute;top:3px;left:{{ a.knob }};width:22px;height:22px;border-radius:999px;background:var(--card);transition:left .2s"></div></div>
+</div>
+</sc-for>
+</div>
+<div style="margin-top:14px;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px 16px">
+<div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font:600 13.5px 'Instrument Sans';color:var(--ink)">Sensibilidade do alerta</span><span style="font:700 12px 'Instrument Sans';color:var(--ink)">{{ sensLabel }}</span></div>
+<div style="font:400 11.5px 'Instrument Sans';color:var(--faint);margin-top:2px">A partir de quanto abaixo do típico a gente te avisa</div>
+<div style="display:flex;gap:8px;margin-top:12px">
+<sc-for list="{{ sensOpts }}" as="s" hint-placeholder-count="3">
+<div onClick="{{ s.on }}" style="flex:1;height:38px;border-radius:10px;background:{{ s.bg }};border:1px solid {{ s.bd }};color:{{ s.ink }};font:600 12.5px 'Instrument Sans';display:flex;align-items:center;justify-content:center;cursor:pointer;box-sizing:border-box">{{ s.label }}</div>
+</sc-for>
+</div>
+</div>
+</div>
+<div style="padding:14px 28px 26px">
+<div onClick="{{ concluirBemVindo }}" style="height:52px;border-radius:12px;background:var(--chip);color:var(--chipink);font:700 15px 'Instrument Sans';display:flex;align-items:center;justify-content:center;cursor:pointer">Tudo pronto, começar</div>
+<div onClick="{{ concluirBemVindo }}" style="margin-top:12px;text-align:center;font:600 12.5px 'Instrument Sans';color:var(--sub);cursor:pointer">Configurar depois</div>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isEscanear }}" hint-placeholder-val="{{ false }}">
+<div style="position:absolute;inset:0;z-index:5;background:#111110;display:flex;flex-direction:column;animation:ovIn .25s ease">
+<div style="display:flex;justify-content:space-between;align-items:center;padding:14px 26px 4px"><span style="font:700 13px 'Instrument Sans';color:#fff">9:41</span><div style="display:flex;gap:5px;align-items:center"><div style="width:16px;height:9px;border-radius:2px;background:#fff;opacity:.75"></div><div style="width:20px;height:10px;border:1.5px solid #fff;border-radius:3px;opacity:.6;position:relative"><div style="position:absolute;inset:2px;right:6px;background:#fff;border-radius:1px"></div></div></div></div>
+<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 20px 0"><div onClick="{{ back }}" style="width:40px;height:40px;border-radius:999px;background:rgba(255,255,255,.1);display:flex;align-items:center;justify-content:center;cursor:pointer"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12"></path><path d="M18 6L6 18"></path></svg></div><span style="font:700 16px 'Instrument Sans';color:#fff">Escanear cupom</span><div style="width:40px;height:40px;border-radius:999px;background:rgba(255,255,255,.1);display:flex;align-items:center;justify-content:center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L4 14h6l-1 8 9-12h-6z"></path></svg></div></div>
+<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative">
+<div style="position:absolute;inset:0;background:radial-gradient(ellipse at 50% 42%,rgba(255,255,255,.06),rgba(0,0,0,.4))"></div>
+<div style="width:250px;height:250px;position:relative">
+<div style="position:absolute;top:0;left:0;width:44px;height:44px;border-top:3px solid #fff;border-left:3px solid #fff;border-top-left-radius:12px"></div>
+<div style="position:absolute;top:0;right:0;width:44px;height:44px;border-top:3px solid #fff;border-right:3px solid #fff;border-top-right-radius:12px"></div>
+<div style="position:absolute;bottom:0;left:0;width:44px;height:44px;border-bottom:3px solid #fff;border-left:3px solid #fff;border-bottom-left-radius:12px"></div>
+<div style="position:absolute;bottom:0;right:0;width:44px;height:44px;border-bottom:3px solid #fff;border-right:3px solid #fff;border-bottom-right-radius:12px"></div>
+<div style="position:absolute;left:14px;right:14px;height:2px;background:linear-gradient(90deg,transparent,#fff,transparent);border-radius:2px;animation:scan 1.8s ease-in-out infinite alternate;top:14px"></div>
+<div style="position:absolute;inset:26px;border-radius:10px;background:rgba(255,255,255,.05);display:flex;align-items:center;justify-content:center"><svg width="72" height="72" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.25)" stroke-width="1.4"><rect x="3" y="3" width="7" height="7" rx="1"></rect><rect x="14" y="3" width="7" height="7" rx="1"></rect><rect x="3" y="14" width="7" height="7" rx="1"></rect><path d="M14 14h3v3h-3z"></path><path d="M18 18h3v3h-3z"></path></svg></div>
+</div>
+<div style="margin-top:26px;font:600 15px 'Instrument Sans';color:#fff;position:relative">Aponte para o QR Code do cupom</div>
+<div style="margin-top:6px;font:400 12.5px 'Instrument Sans';color:rgba(255,255,255,.55);position:relative">O código fica no rodapé da NFC-e</div>
+</div>
+<div style="padding:0 20px 30px;display:flex;flex-direction:column;gap:10px">
+<div onClick="{{ scanOk }}" style="height:50px;border-radius:12px;background:#fff;color:#111110;font:700 13.5px 'Instrument Sans';display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer">Simular leitura do cupom</div>
+<div onClick="{{ scanErro }}" style="height:46px;border-radius:12px;background:transparent;border:1px solid rgba(255,255,255,.24);color:rgba(255,255,255,.85);font:600 12.5px 'Instrument Sans';display:flex;align-items:center;justify-content:center;gap:8px;box-sizing:border-box;cursor:pointer">Simular cupom inválido</div>
+<div onClick="{{ goChave }}" style="height:46px;border-radius:12px;background:rgba(255,255,255,.09);color:#fff;font:600 12.5px 'Instrument Sans';display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><rect x="3" y="7" width="18" height="10" rx="2"></rect><path d="M7 15h10"></path></svg>Digitar chave de acesso</div>
+<div style="text-align:center;font:400 11px 'Instrument Sans';color:rgba(255,255,255,.45)">Não consegue ler o QR Code? Digite os 44 números da chave.</div>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isChave }}" hint-placeholder-val="{{ false }}">
+<div style="position:absolute;inset:0;z-index:6;background:var(--bg);display:flex;flex-direction:column;animation:ovIn .25s ease">
+<div style="display:flex;justify-content:space-between;align-items:center;padding:14px 26px 4px"><span style="font:700 13px 'Instrument Sans';color:var(--ink)">9:41</span><div style="display:flex;gap:5px;align-items:center"><div style="width:16px;height:9px;border-radius:2px;background:var(--ink);opacity:.75"></div><div style="width:20px;height:10px;border:1.5px solid var(--ink);border-radius:3px;opacity:.6;position:relative"><div style="position:absolute;inset:2px;right:6px;background:var(--ink);border-radius:1px"></div></div></div></div>
+<div style="display:flex;align-items:center;gap:12px;padding:12px 20px 0">
+<div onClick="{{ retry }}" style="width:40px;height:40px;border-radius:999px;background:var(--card);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;box-sizing:border-box;cursor:pointer"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--ink)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"></path></svg></div>
+<div><div style="font:600 10.5px 'Instrument Sans';letter-spacing:1.3px;color:var(--faint)">SEM LEITURA DO QR CODE</div><div style="font:700 18px 'Instrument Sans';color:var(--ink);letter-spacing:-.4px">Digitar chave</div></div>
+</div>
+<div style="padding:18px 20px 0;display:flex;flex-direction:column">
+<div style="font:700 24px 'Instrument Sans';color:var(--ink);letter-spacing:-.7px">Digite a chave de acesso</div>
+<div style="font:400 13px/1.5 'Instrument Sans';color:var(--sub);margin-top:6px">São os 44 números impressos no rodapé do cupom, logo abaixo do QR Code.</div>
+<div style="display:flex;justify-content:space-between;align-items:baseline;margin:18px 0 6px"><span style="font:600 10.5px 'Instrument Sans';letter-spacing:1.3px;color:var(--faint)">CHAVE DE ACESSO · NFC-E</span><span style="font:600 11px 'Instrument Sans';color:var(--faint);font-variant-numeric:tabular-nums">{{ chaveCount }}</span></div>
+<textarea value="{{ chaveVal }}" onChange="{{ onChave }}" placeholder="0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000" style="width:100%;height:92px;box-sizing:border-box;border:1.5px solid var(--line);border-radius:12px;background:var(--fld);color:var(--ink);padding:12px 14px;font:600 15px/1.6 'Instrument Sans';letter-spacing:1.5px;font-variant-numeric:tabular-nums;resize:none;outline:none" style-focus="border-color:var(--ink)"></textarea>
+<div style="margin-top:12px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:11px 13px;display:flex;gap:10px;align-items:flex-start">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--sub)" stroke-width="2" stroke-linecap="round" style="flex:none;margin-top:1px"><circle cx="12" cy="12" r="9"></circle><path d="M12 11v5"></path><circle cx="12" cy="8" r=".5" fill="var(--sub)"></circle></svg>
+<span style="font:400 12px/1.5 'Instrument Sans';color:var(--sub)">A chave também aparece no e-mail da nota fiscal. Digite só os números — pontos e espaços são ignorados.</span>
+</div>
+<div onClick="{{ validarChave }}" style="height:52px;border-radius:12px;background:{{ chaveBtnBg }};color:{{ chaveBtnInk }};font:700 15px 'Instrument Sans';display:flex;align-items:center;justify-content:center;margin-top:18px;cursor:pointer;transition:background .2s,color .2s">Validar chave</div>
+<div onClick="{{ retry }}" style="text-align:center;font:600 12.5px 'Instrument Sans';color:var(--sub);text-decoration:underline;text-underline-offset:3px;margin-top:16px;cursor:pointer">Voltar para a câmera</div>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isProcessando }}" hint-placeholder-val="{{ false }}">
+<div style="position:absolute;inset:0;z-index:6;background:#111110;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;animation:ovIn .2s ease">
+<div style="width:54px;height:54px;border-radius:999px;border:4px solid rgba(255,255,255,.18);border-top-color:#fff;animation:spin .8s linear infinite"></div>
+<div style="font:600 15px 'Instrument Sans';color:#fff">Lendo cupom…</div>
+<div style="font:400 12.5px 'Instrument Sans';color:rgba(255,255,255,.5)">Anonimizando e comparando com a região</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isSucesso }}" hint-placeholder-val="{{ false }}">
+<div style="position:absolute;inset:0;z-index:6;background:var(--bg);display:flex;flex-direction:column;animation:ovIn .25s ease">
+<div style="display:flex;justify-content:space-between;align-items:center;padding:14px 26px 4px"><span style="font:700 13px 'Instrument Sans';color:var(--ink)">9:41</span><div style="display:flex;gap:5px;align-items:center"><div style="width:16px;height:9px;border-radius:2px;background:var(--ink);opacity:.75"></div><div style="width:20px;height:10px;border:1.5px solid var(--ink);border-radius:3px;opacity:.6;position:relative"><div style="position:absolute;inset:2px;right:6px;background:var(--ink);border-radius:1px"></div></div></div></div>
+<div style="flex:1;overflow-y:auto;display:flex;flex-direction:column;align-items:center;padding:24px 28px 0;text-align:center">
+<div style="width:84px;height:84px;border-radius:999px;background:var(--chip);display:flex;align-items:center;justify-content:center;animation:popIn .4s cubic-bezier(.2,1.3,.4,1)"><svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="var(--chipink)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"></path></svg></div>
+<div style="font:700 24px 'Instrument Sans';color:var(--ink);letter-spacing:-.8px;margin-top:20px">Cupom lido com sucesso!</div>
+<div style="font:400 13.5px/1.55 'Instrument Sans';color:var(--sub);margin-top:8px">12 itens do Guanabara entraram no seu histórico e já estão comparados com a sua região.</div>
+<div style="width:100%;margin-top:22px;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px 18px;text-align:left">
+<div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font:600 10.5px 'Instrument Sans';letter-spacing:1.3px;color:var(--faint)">GUANABARA · TIJUCA · HOJE 10:42</span></div>
+<div style="display:flex;align-items:baseline;justify-content:space-between;margin-top:6px"><span style="font:700 30px 'Instrument Sans';color:var(--ink);letter-spacing:-1.4px;font-variant-numeric:tabular-nums">R$ 187,32</span><span style="height:26px;padding:0 11px;border-radius:999px;background:var(--card);border:1px solid var(--down);color:var(--down);font:700 11px 'Instrument Sans';display:inline-flex;align-items:center">-R$ 14,20</span></div>
+<div style="border-top:1px solid var(--line2);margin-top:12px;padding-top:10px;display:flex;justify-content:space-between">
+<div><div style="font:700 15px 'Instrument Sans';color:var(--down);font-variant-numeric:tabular-nums">4</div><div style="font:400 10.5px 'Instrument Sans';color:var(--faint)">baratos</div></div>
+<div><div style="font:700 15px 'Instrument Sans';color:var(--mid);font-variant-numeric:tabular-nums">6</div><div style="font:400 10.5px 'Instrument Sans';color:var(--faint)">na média</div></div>
+<div><div style="font:700 15px 'Instrument Sans';color:var(--up);font-variant-numeric:tabular-nums">2</div><div style="font:400 10.5px 'Instrument Sans';color:var(--faint)">caros</div></div>
+<div><div style="font:700 15px 'Instrument Sans';color:var(--ink);font-variant-numeric:tabular-nums">+3</div><div style="font:400 10.5px 'Instrument Sans';color:var(--faint)">conquista</div></div>
+</div>
+</div>
+</div>
+<div style="padding:14px 28px 26px;display:flex;flex-direction:column;gap:10px">
+<div onClick="{{ verCompraScan }}" style="height:52px;border-radius:12px;background:var(--chip);color:var(--chipink);font:700 15px 'Instrument Sans';display:flex;align-items:center;justify-content:center;cursor:pointer">Ver detalhes do cupom</div>
+<div onClick="{{ goInicio }}" style="height:48px;border-radius:12px;border:1px solid var(--line);color:var(--ink);font:700 13.5px 'Instrument Sans';display:flex;align-items:center;justify-content:center;box-sizing:border-box;cursor:pointer">Voltar ao início</div>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isSplash }}" hint-placeholder-val="{{ true }}">
+<div onClick="{{ splashGo }}" style="position:absolute;inset:0;z-index:12;background:#111110;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;animation:ovIn .3s ease;cursor:pointer">
+<div style="position:absolute;top:-80px;right:-70px;width:260px;height:260px;border-radius:999px;background:radial-gradient(circle,rgba(255,255,255,.1),rgba(255,255,255,0) 70%)"></div>
+<div style="position:absolute;bottom:-90px;left:-70px;width:260px;height:260px;border-radius:999px;background:radial-gradient(circle,rgba(255,255,255,.07),rgba(255,255,255,0) 70%)"></div>
+<div style="width:96px;height:96px;position:relative">
+<div style="position:absolute;left:24%;top:16%;width:15%;background:#F0F0EE;animation:bStem .42s cubic-bezier(.3,.9,.3,1) both"></div>
+<div style="position:absolute;left:39%;top:16%;width:22.5%;height:32%;transform-origin:left center;animation:bBowl .38s cubic-bezier(.25,1.5,.4,1) .34s both"><svg width="100%" height="100%" viewBox="0 0 22.5 32" preserveAspectRatio="none"><path d="M0 0h6.5a16 16 0 0 1 0 32H0z" fill="#F0F0EE"></path></svg></div>
+<div style="position:absolute;left:39%;top:50%;width:34%;height:34%;transform-origin:left center;animation:bBowl .38s cubic-bezier(.25,1.5,.4,1) .52s both"><svg width="100%" height="100%" viewBox="0 0 34 34" preserveAspectRatio="none"><path d="M0 0h17a17 17 0 0 1 0 34H0z" fill="#F0F0EE"></path></svg></div>
+</div>
+<div style="font:700 30px 'Instrument Sans';color:#F0F0EE;letter-spacing:-1px;animation:popIn .5s ease .74s both">Barganha</div>
+<div style="position:absolute;bottom:40px;left:0;right:0;text-align:center;font:500 12px 'Instrument Sans';color:rgba(255,255,255,.5)">Saiba se o preço vale a barganha</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ sheetOpen }}" hint-placeholder-val="{{ false }}">
+<div onClick="{{ closeSheet }}" style="position:absolute;inset:0;z-index:8;background:rgba(0,0,0,.45);animation:ovIn .2s ease"></div>
+<div style="position:absolute;left:0;right:0;bottom:0;z-index:9;background:var(--card);border-radius:22px 22px 0 0;padding:8px 20px 26px;animation:sheetUp .28s cubic-bezier(.2,.9,.3,1);box-shadow:0 -20px 50px -20px rgba(0,0,0,.4)">
+<div style="width:40px;height:4px;border-radius:999px;background:var(--line);margin:6px auto 14px"></div>
+
+<sc-if value="{{ sheetAcoes }}" hint-placeholder-val="{{ true }}">
+<div>
+<div style="font:700 16px 'Instrument Sans';color:var(--ink);letter-spacing:-.3px">{{ selNome }}</div>
+<div style="font:400 12px 'Instrument Sans';color:var(--faint);margin-top:2px">Escolha uma ação</div>
+<div style="margin-top:14px;display:flex;flex-direction:column;gap:2px">
+<div onClick="{{ editar }}" style="display:flex;align-items:center;gap:14px;padding:14px 4px;cursor:pointer"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--ink)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"></path></svg><span style="font:600 14px 'Instrument Sans';color:var(--ink)">Editar produto</span></div>
+<div onClick="{{ openDenunciar }}" style="display:flex;align-items:center;gap:14px;padding:14px 4px;border-top:1px solid var(--line2);cursor:pointer"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--ink)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21V4h13l-2 4 2 4H4"></path></svg><span style="font:600 14px 'Instrument Sans';color:var(--ink)">Denunciar preço incorreto</span></div>
+<div onClick="{{ askExcluir }}" style="display:flex;align-items:center;gap:14px;padding:14px 4px;border-top:1px solid var(--line2);cursor:pointer"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--up)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"></path><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"></path><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path></svg><span style="font:600 14px 'Instrument Sans';color:var(--up)">Excluir da lista</span></div>
+</div>
+<div onClick="{{ closeSheet }}" style="margin-top:12px;height:50px;border-radius:12px;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font:700 14px 'Instrument Sans';color:var(--ink);cursor:pointer">Cancelar</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ sheetAddItem }}" hint-placeholder-val="{{ false }}">
+<div>
+<div style="font:700 16px 'Instrument Sans';color:var(--ink);letter-spacing:-.3px">Adicionar à lista</div>
+<div style="font:400 12px 'Instrument Sans';color:var(--faint);margin-top:2px">Busque o produto e toque para adicionar</div>
+<div style="margin-top:14px;height:48px;border:1px solid var(--line);border-radius:12px;display:flex;align-items:center;gap:10px;padding:0 14px;background:var(--fld)">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--faint)" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg>
+<input value="{{ addQuery }}" onInput="{{ onAddQuery }}" placeholder="ex.: sabão, café, arroz…" style="flex:1;border:none;outline:none;background:transparent;font:500 13.5px 'Instrument Sans';color:var(--ink);min-width:0"></input>
+</div>
+<div style="margin-top:10px;max-height:230px;overflow-y:auto">
+<sc-if value="{{ addHasSugs }}" hint-placeholder-val="{{ true }}">
+<sc-for list="{{ addSugs }}" as="sg" hint-placeholder-count="4">
+<div onClick="{{ sg.add }}" style="display:flex;align-items:center;gap:11px;padding:12px 2px;border-bottom:{{ sg.bd }};cursor:pointer">
+<div style="width:34px;height:34px;border-radius:9px;background:var(--line2);display:flex;align-items:center;justify-content:center;flex:none"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--ink)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9l1.4-5h13.2L20 9"></path><path d="M5 9v11h14V9"></path><path d="M9 20v-6h6v6"></path></svg></div>
+<div style="flex:1;min-width:0"><div style="font:600 13px 'Instrument Sans';color:var(--ink)">{{ sg.label }}</div><div style="font:400 11px 'Instrument Sans';color:var(--faint)">{{ sg.sub }}</div></div>
+<div style="width:28px;height:28px;border-radius:8px;background:var(--chip);display:flex;align-items:center;justify-content:center;flex:none"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--chipink)" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14"></path><path d="M5 12h14"></path></svg></div>
+</div>
+</sc-for>
+</sc-if>
+<sc-if value="{{ addNoSugs }}" hint-placeholder-val="{{ false }}">
+<div style="padding:28px 0;text-align:center;font:400 12.5px 'Instrument Sans';color:var(--faint)">Nenhum produto com esse nome na sua região</div>
+</sc-if>
+</div>
+<div onClick="{{ closeSheet }}" style="margin-top:12px;height:50px;border-radius:12px;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font:700 14px 'Instrument Sans';color:var(--ink);cursor:pointer">Concluir</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ sheetFiltros }}" hint-placeholder-val="{{ false }}">
+<div>
+<div style="display:flex;justify-content:space-between;align-items:baseline"><div style="font:700 16px 'Instrument Sans';color:var(--ink);letter-spacing:-.3px">Filtrar e ordenar</div><span onClick="{{ limparFiltros }}" style="font:600 12px 'Instrument Sans';color:var(--sub);text-decoration:underline;text-underline-offset:3px;cursor:pointer">Limpar</span></div>
+<div style="font:600 10.5px 'Instrument Sans';letter-spacing:1.3px;color:var(--faint);margin:16px 0 8px">CATEGORIA</div>
+<div style="display:flex;flex-wrap:wrap;gap:8px">
+<sc-for list="{{ categorias }}" as="c" hint-placeholder-count="6"><span onClick="{{ c.on }}" style="height:34px;padding:0 14px;border-radius:999px;background:{{ c.bg }};border:1px solid var(--line);color:{{ c.ink }};font:600 12px 'Instrument Sans';display:inline-flex;align-items:center;box-sizing:border-box;cursor:pointer">{{ c.label }}</span></sc-for>
+</div>
+<div style="font:600 10.5px 'Instrument Sans';letter-spacing:1.3px;color:var(--faint);margin:18px 0 8px">ORDENAR POR</div>
+<div style="display:flex;flex-direction:column;gap:2px">
+<sc-for list="{{ ordens }}" as="o" hint-placeholder-count="4"><div onClick="{{ o.on }}" style="display:flex;align-items:center;justify-content:space-between;padding:12px 2px;border-top:1px solid var(--line2);cursor:pointer"><span style="font:500 13.5px 'Instrument Sans';color:var(--ink)">{{ o.label }}</span><span style="width:18px;height:18px;display:flex;align-items:center;justify-content:center;opacity:{{ o.check }}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--ink)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"></path></svg></span></div></sc-for>
+</div>
+<div onClick="{{ aplicarFiltros }}" style="margin-top:16px;height:52px;border-radius:12px;background:var(--chip);color:var(--chipink);display:flex;align-items:center;justify-content:center;font:700 14px 'Instrument Sans';cursor:pointer">Ver resultados</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ sheetDenunciar }}" hint-placeholder-val="{{ false }}">
+<div>
+<div style="font:700 16px 'Instrument Sans';color:var(--ink);letter-spacing:-.3px">Denunciar preço</div>
+<div style="font:400 12px 'Instrument Sans';color:var(--faint);margin-top:2px">O que está errado com este preço?</div>
+<div style="margin-top:14px;display:flex;flex-direction:column;gap:2px">
+<sc-for list="{{ motivos }}" as="m" hint-placeholder-count="4"><div onClick="{{ m.on }}" style="display:flex;align-items:center;justify-content:space-between;padding:13px 2px;border-top:1px solid var(--line2);cursor:pointer"><span style="font:500 13.5px 'Instrument Sans';color:var(--ink)">{{ m.label }}</span><span style="width:20px;height:20px;border-radius:999px;border:2px solid {{ m.ring }};display:flex;align-items:center;justify-content:center"><span style="width:10px;height:10px;border-radius:999px;background:var(--ink);opacity:{{ m.dot }}"></span></span></div></sc-for>
+</div>
+<div onClick="{{ enviarDenuncia }}" style="margin-top:16px;height:52px;border-radius:12px;background:var(--chip);color:var(--chipink);display:flex;align-items:center;justify-content:center;font:700 14px 'Instrument Sans';cursor:pointer">Enviar denúncia</div>
+<div onClick="{{ closeSheet }}" style="margin-top:8px;height:44px;display:flex;align-items:center;justify-content:center;font:600 13px 'Instrument Sans';color:var(--sub);cursor:pointer">Cancelar</div>
+</div>
+</sc-if>
+
+</div>
+</sc-if>
+
+<sc-if value="{{ isPermCam }}" hint-placeholder-val="{{ false }}">
+<div style="position:absolute;inset:0;z-index:9;background:var(--bg);display:flex;flex-direction:column;animation:ovIn .25s ease">
+<div style="display:flex;justify-content:space-between;align-items:center;padding:14px 26px 4px"><span style="font:700 13px 'Instrument Sans';color:var(--ink)">9:41</span><div style="display:flex;gap:5px;align-items:center"><div style="width:16px;height:9px;border-radius:2px;background:var(--ink);opacity:.75"></div><div style="width:20px;height:10px;border:1.5px solid var(--ink);border-radius:3px;opacity:.6;position:relative"><div style="position:absolute;inset:2px;right:6px;background:var(--ink);border-radius:1px"></div></div></div></div>
+<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:0 36px">
+<div style="width:100px;height:100px;border-radius:28px;background:{{ camIconBg }};display:flex;align-items:center;justify-content:center">
+<svg width="46" height="46" viewBox="0 0 24 24" fill="none" stroke="{{ camIconInk }}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8V5a1 1 0 0 1 1-1h3"></path><path d="M16 4h3a1 1 0 0 1 1 1v3"></path><path d="M20 16v3a1 1 0 0 1-1 1h-3"></path><path d="M8 20H5a1 1 0 0 1-1-1v-3"></path><rect x="8.5" y="9.5" width="7" height="5" rx="1"></rect></svg>
+</div>
+<div style="font:700 24px 'Instrument Sans';color:var(--ink);letter-spacing:-.6px;margin-top:26px">{{ camTitle }}</div>
+<div style="font:400 14px/1.55 'Instrument Sans';color:var(--sub);margin-top:10px">{{ camText }}</div>
+</div>
+<div style="padding:0 28px 34px;display:flex;flex-direction:column;gap:10px">
+<div onClick="{{ camPrimary }}" style="height:52px;border-radius:12px;background:var(--chip);color:var(--chipink);font:700 15px 'Instrument Sans';display:flex;align-items:center;justify-content:center;cursor:pointer">{{ camPrimaryLabel }}</div>
+<div onClick="{{ camSecondary }}" style="height:46px;display:flex;align-items:center;justify-content:center;font:600 13px 'Instrument Sans';color:var(--sub);cursor:pointer">{{ camSecondaryLabel }}</div>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isPermLoc }}" hint-placeholder-val="{{ false }}">
+<div style="position:absolute;inset:0;z-index:9;background:var(--bg);display:flex;flex-direction:column;animation:ovIn .25s ease">
+<div style="display:flex;justify-content:space-between;align-items:center;padding:14px 26px 4px"><span style="font:700 13px 'Instrument Sans';color:var(--ink)">9:41</span><div style="display:flex;gap:5px;align-items:center"><div style="width:16px;height:9px;border-radius:2px;background:var(--ink);opacity:.75"></div><div style="width:20px;height:10px;border:1.5px solid var(--ink);border-radius:3px;opacity:.6;position:relative"><div style="position:absolute;inset:2px;right:6px;background:var(--ink);border-radius:1px"></div></div></div></div>
+<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:0 36px">
+<div style="width:100px;height:100px;border-radius:28px;background:{{ locIconBg }};display:flex;align-items:center;justify-content:center">
+<svg width="46" height="46" viewBox="0 0 24 24" fill="none" stroke="{{ locIconInk }}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6-7-11a7 7 0 0 1 14 0c0 5-7 11-7 11z"></path><circle cx="12" cy="10" r="2.5"></circle></svg>
+</div>
+<div style="font:700 24px 'Instrument Sans';color:var(--ink);letter-spacing:-.6px;margin-top:26px">{{ locTitle }}</div>
+<div style="font:400 14px/1.55 'Instrument Sans';color:var(--sub);margin-top:10px">{{ locText }}</div>
+</div>
+<div style="padding:0 28px 34px;display:flex;flex-direction:column;gap:10px">
+<div onClick="{{ locPrimary }}" style="height:52px;border-radius:12px;background:var(--chip);color:var(--chipink);font:700 15px 'Instrument Sans';display:flex;align-items:center;justify-content:center;cursor:pointer">{{ locPrimaryLabel }}</div>
+<div onClick="{{ locSecondary }}" style="height:46px;display:flex;align-items:center;justify-content:center;font:600 13px 'Instrument Sans';color:var(--sub);cursor:pointer">{{ locSecondaryLabel }}</div>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isOffline }}" hint-placeholder-val="{{ false }}">
+<div style="position:absolute;inset:0;z-index:9;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:0 40px;animation:ovIn .25s ease">
+<div style="width:88px;height:88px;border-radius:999px;background:var(--line2);display:flex;align-items:center;justify-content:center"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--faint)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3l20 20"></path><path d="M5 12.5a10 10 0 0 1 4-2.4"></path><path d="M2 8.8a16 16 0 0 1 5-3"></path><path d="M16.7 13.3A6 6 0 0 0 12 12"></path><path d="M8.5 16.5a4 4 0 0 1 6 0"></path><path d="M12 20h.01"></path></svg></div>
+<div style="font:700 21px 'Instrument Sans';color:var(--ink);letter-spacing:-.5px;margin-top:22px">Você está sem conexão</div>
+<div style="font:400 13.5px/1.55 'Instrument Sans';color:var(--sub);margin-top:8px">A Barganha precisa de internet pra comparar preços com a base colaborativa. Verifique o Wi-Fi ou os dados móveis.</div>
+<div onClick="{{ tentarConexao }}" style="height:50px;width:100%;max-width:240px;border-radius:12px;background:var(--chip);color:var(--chipink);font:700 14px 'Instrument Sans';display:flex;align-items:center;justify-content:center;gap:8px;margin-top:24px;cursor:pointer"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--chipink)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 15-6.7L21 8"></path><path d="M21 3v5h-5"></path><path d="M21 12a9 9 0 0 1-15 6.7L3 16"></path><path d="M3 21v-5h5"></path></svg>Tentar de novo</div>
+<div style="font:400 11.5px 'Instrument Sans';color:var(--faint);margin-top:16px">Seus cupons já escaneados ficam salvos e sincronizam quando voltar a conexão.</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ dialogOpen }}" hint-placeholder-val="{{ false }}">
+<div onClick="{{ cancelDialog }}" style="position:absolute;inset:0;z-index:10;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;padding:32px;animation:ovIn .2s ease">
+<div style="width:100%;background:var(--card);border-radius:20px;padding:22px 20px;animation:popIn .22s cubic-bezier(.2,1.2,.4,1)">
+<div style="width:48px;height:48px;border-radius:999px;background:var(--line2);display:flex;align-items:center;justify-content:center;margin:0 auto"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--up)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"></path><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"></path><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path></svg></div>
+<div style="font:700 17px 'Instrument Sans';color:var(--ink);text-align:center;margin-top:14px;letter-spacing:-.3px">{{ dialogTitle }}</div>
+<div style="font:400 12.5px/1.5 'Instrument Sans';color:var(--sub);text-align:center;margin-top:6px">{{ dialogMsg }}</div>
+<div style="display:flex;gap:10px;margin-top:20px">
+<div onClick="{{ cancelDialog }}" style="flex:1;height:48px;border-radius:12px;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font:700 13.5px 'Instrument Sans';color:var(--ink);cursor:pointer">Cancelar</div>
+<div onClick="{{ confirmDialog }}" style="flex:1;height:48px;border-radius:12px;background:var(--up);display:flex;align-items:center;justify-content:center;font:700 13.5px 'Instrument Sans';color:#fff;cursor:pointer">{{ dialogOk }}</div>
+</div>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ hasToast }}" hint-placeholder-val="{{ false }}">
+<div style="position:absolute;left:50%;bottom:104px;z-index:20;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:11px 18px;border-radius:999px;font:600 12.5px 'Instrument Sans';box-shadow:0 12px 30px -10px rgba(0,0,0,.5);animation:toastIn .25s ease;white-space:nowrap;max-width:340px;overflow:hidden;text-overflow:ellipsis">{{ toastMsg }}</div>
+</sc-if>
+
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:430,&quot;height&quot;:916},&quot;theme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;escuro&quot;,&quot;options&quot;:[&quot;claro&quot;,&quot;escuro&quot;],&quot;tsType&quot;:&quot;'claro'|'escuro'&quot;,&quot;section&quot;:&quot;Aparência&quot;}}">
+class Component extends DCLogic {
+  state = {
+    route:'splash', theme:(this.props.theme||'claro'), query:'leite italac', alerta:true, prev:'inicio',
+    prodQuery:'', cat:'Todos', sort:'Padrão', sheet:null, dialog:null, loading:false, toast:null, sel:'', motivo:0, notifLidas:false, onb:0
+  };
+
+  db(){ return [
+    { keys:['leite','italac'], nome:'Leite integral Italac 1 L', loja:'GUANABARA · TIJUCA · AGORA', preco:'R$ 4,79', valor:4.79, tipico:5.49, menor:4.59, maior:6.29, cupons:214 },
+    { keys:['café','cafe','pilão','pilao'], nome:'Café Pilão 500 g', loja:'ASSAÍ · MARACANÃ · AGORA', preco:'R$ 24,90', valor:24.90, tipico:20.90, menor:18.90, maior:25.50, cupons:187 },
+    { keys:['arroz','tio joão','tio joao'], nome:'Arroz Tio João 5 kg', loja:'MUNDIAL · VILA ISABEL · AGORA', preco:'R$ 27,90', valor:27.90, tipico:27.50, menor:24.90, maior:31.90, cupons:96 },
+  ]; }
+  match(){ const q=(this.state.query||'').toLowerCase().trim(); if(!q) return null; return this.db().find(p=>p.keys.some(k=>q.includes(k)))||null; }
+  fmt(v){ return v.toFixed(2).replace('.',','); }
+
+  allProdutos(){ return [
+    {nome:'Leite integral Italac 1 L', cat:'Laticínios', sub:'típico R$ 5,49 · 214 cupons', preco:'R$ 4,79', dir:'down', pct:'13%', valor:4.79},
+    {nome:'Café Pilão 500 g', cat:'Café', sub:'típico R$ 20,90 · 187 cupons', preco:'R$ 24,90', dir:'up', pct:'19%', valor:24.90},
+    {nome:'Arroz Tio João 5 kg', cat:'Grãos', sub:'típico R$ 27,50 · 96 cupons', preco:'R$ 27,90', dir:'mid', pct:'', valor:27.90},
+    {nome:'Azeite Gallo 500 ml', cat:'Mercearia', sub:'típico R$ 33,50 · 54 cupons', preco:'R$ 39,90', dir:'up', pct:'19%', valor:39.90},
+    {nome:'Sabão Omo 1,6 kg', cat:'Limpeza', sub:'típico R$ 22,90 · 71 cupons', preco:'R$ 19,90', dir:'down', pct:'13%', valor:19.90},
+  ]; }
+  produtosView(){
+    let a=this.allProdutos();
+    const q=this.state.prodQuery.toLowerCase().trim();
+    if(q) a=a.filter(p=>p.nome.toLowerCase().includes(q));
+    if(this.state.cat!=='Todos') a=a.filter(p=>p.cat===this.state.cat);
+    const s=this.state.sort;
+    if(s==='Menor preço') a=[...a].sort((x,y)=>x.valor-y.valor);
+    else if(s==='Maior preço') a=[...a].sort((x,y)=>y.valor-x.valor);
+    else if(s==='A–Z') a=[...a].sort((x,y)=>x.nome.localeCompare(y.nome));
+    return a;
+  }
+
+  fmtChave(v){ return v.replace(/(\d{4})(?=\d)/g,'$1 '); }
+  comprasView(){ return [
+    {mes:'JULHO', n:'5 cupons', total:'R$ 1.012,21', rows:[
+      {nome:'Guanabara', sub:'Hoje · 12 itens', total:'R$ 187,32', econ:'economia R$ 14,20'},
+      {nome:'Assaí Atacadista', sub:'Ontem · 26 itens', total:'R$ 412,08', econ:'economia R$ 31,55'},
+      {nome:'Zona Sul', sub:'Quinta · 8 itens', total:'R$ 96,44', econ:'—'},
+      {nome:'Mundial', sub:'12 jul · 15 itens', total:'R$ 203,77', econ:'economia R$ 9,80'},
+      {nome:'Guanabara', sub:'5 jul · 9 itens', total:'R$ 112,60', econ:'economia R$ 6,15'},
+    ]},
+    {mes:'JUNHO', n:'3 cupons', total:'R$ 762,18', rows:[
+      {nome:'Assaí Atacadista', sub:'28 jun · 31 itens', total:'R$ 489,90', econ:'economia R$ 22,40'},
+      {nome:'Zona Sul', sub:'19 jun · 6 itens', total:'R$ 74,25', econ:'—'},
+      {nome:'Guanabara', sub:'11 jun · 14 itens', total:'R$ 198,03', econ:'economia R$ 11,70'},
+    ]},
+  ].map(m=>({ ...m, rows:m.rows.map((c,i,a)=>({ ...c, bd:i<a.length-1?'1px solid var(--line2)':'none', econColor:c.econ==='—'?'var(--faint)':'var(--sub)', open:()=>this.go('compra') })) })); }
+
+  mercCatalog(){ return [
+    {label:'Leite integral Italac 1 L', ps:[4.59,4.79,5.19,5.49]},
+    {label:'Leite desnatado Piracanjuba 1 L', ps:[4.79,4.99,5.29,5.69]},
+    {label:'Café Pilão 500 g', ps:[23.90,18.90,21.50,25.50]},
+    {label:'Café Melitta 500 g', ps:[26.90,25.50,27.80,29.90]},
+    {label:'Arroz Tio João 5 kg', ps:[24.90,27.90,28.50,31.90]},
+    {label:'Feijão Camil 1 kg', ps:[7.90,8.49,8.99,9.79]},
+    {label:'Azeite Gallo 500 ml', ps:[29.90,32.90,35.20,39.90]},
+    {label:'Sabão Omo 1,6 kg', ps:[18.90,19.90,21.40,22.90]},
+    {label:'Sabão líquido Ypê 5 L', ps:[42.90,44.50,46.80,49.90]},
+    {label:'Papel higiênico Neve 12 rolos', ps:[21.90,23.90,24.50,26.90]},
+  ]; }
+  mercSelNames(){ return this.state.mercSelNames||['Leite integral Italac 1 L','Café Pilão 500 g','Arroz Tio João 5 kg']; }
+  mercadosView(){
+    const cat=this.mercCatalog();
+    const sel=this.mercSelNames().map(n=>cat.find(c=>c.label===n)).filter(Boolean);
+    if(!sel.length) return [];
+    const mkts=[{nome:'Assaí Atacadista',dist:'2,1 km'},{nome:'Guanabara',dist:'1,2 km'},{nome:'Mundial',dist:'3,0 km'},{nome:'Zona Sul',dist:'5,4 km'}];
+    const rows=mkts.map((m,mi)=>({...m, val:sel.reduce((s,p)=>s+p.ps[mi],0)})).sort((a,b)=>a.val-b.val);
+    const min=rows[0].val, max=rows[rows.length-1].val;
+    return rows.map((m,i)=>({ pos:String(i+1), nome:m.nome, dist:m.dist, total:'R$ '+this.fmt(m.val),
+      diff:i===0?'sua seleção mais barata':'+R$ '+this.fmt(m.val-min),
+      diffColor:i===0?'var(--down)':(i===rows.length-1?'var(--up)':'var(--sub)'),
+      barW:(max>0?Math.round(m.val/max*100):0)+'%', barBg:i===0?'var(--ink)':'var(--faint)', showBadge:i===0 }));
+  }
+
+  conquistasData(){ return [
+    {nome:'Primeira barganha', tag:'Escaneou o 1º cupom', paths:['M20 6L9 17l-5-5'], locked:false, desc:'Você escaneou seu primeiro cupom fiscal e entrou pra base colaborativa de preços. É daqui que tudo começa.', prog:'1/1', progW:'100%', progNota:'Conquista desbloqueada em 5 jul', recompensa:'Selo de fundador no perfil'},
+    {nome:'R$ 100 salvos', tag:'Economizou R$ 100', raw:'R$', locked:false, desc:'A soma das suas compras abaixo do preço típico já passou de R$ 100. Continue comparando antes de levar.', prog:'R$ 132 / R$ 100', progW:'100%', progNota:'Conquista desbloqueada em 18 jul', recompensa:'Cupom de R$ 5 em parceiros'},
+    {nome:'Caçador de café', tag:'5 compras de café', paths:['M4 8h13a3 3 0 0 1 0 6h-1','M4 8v9a2 2 0 0 0 2 2h7a2 2 0 0 0 2-2V8z'], locked:false, desc:'Cinco compras de café registradas — você sabe onde o pó custa menos na sua região.', prog:'5/5', progW:'100%', progNota:'Conquista desbloqueada em 20 jul', recompensa:'Destaque na categoria Café'},
+    {nome:'10 cupons', tag:'Enviou 10 cupons', paths:['M8 2v4','M16 2v4','M3 10h18'], locked:false, desc:'Dez cupons enviados pra base. Cada um deixa os preços da sua região mais precisos pra todo mundo.', prog:'10/10', progW:'100%', progNota:'Conquista desbloqueada em 21 jul', recompensa:'+50 pontos de nível'},
+    {nome:'R$ 500 salvos', tag:'R$ 368 restantes', paths:['M5 11h14v10H5z','M8 11V7a4 4 0 0 1 8 0v4'], locked:true, desc:'Chegue a R$ 500 em economia acumulada comparando preços antes de comprar. Falta pouco!', prog:'R$ 132 / R$ 500', progW:'26%', progNota:'Faltam R$ 368 para desbloquear', recompensa:'Cupom de R$ 25 em parceiros'},
+    {nome:'30 dias seguidos', tag:'18/30 dias', paths:['M5 11h14v10H5z','M8 11V7a4 4 0 0 1 8 0v4'], locked:true, desc:'Use o app por 30 dias seguidos verificando preços. A constância é o que mais economiza no fim do mês.', prog:'18/30 dias', progW:'60%', progNota:'Faltam 12 dias para desbloquear', recompensa:'Selo raro de Maratonista'},
+  ]; }
+
+  go(r){ this.setState(s=>({ prev:(['detalhe','dashboard','escanear','notificacoes','conquistas','conquistadet','erro','processando','editar','compra','compras','lista','mercados','alertas','conta','regiao','ajuda'].includes(r))?s.route:s.prev, route:r, sheet:null, dialog:null })); }
+  componentDidMount(){ if(this.state.route==='splash'){ this._sp=setTimeout(()=>{ if(this.state.route==='splash') this.setState({route:'onboarding'}); },1900); } try{ window.__go=(r,extra)=>{ clearTimeout(this._sp); this.setState(Object.assign({route:r},extra||{})); }; }catch(e){} }
+  componentWillUnmount(){ clearTimeout(this._sp); clearTimeout(this._s); clearTimeout(this._l); clearTimeout(this._t); }
+  toast(msg){ this.setState({toast:msg}); clearTimeout(this._t); this._t=setTimeout(()=>this.setState({toast:null}),2400); }
+
+  renderVals(){
+    const r=this.state.route, dark=this.state.theme==='escuro';
+    const p=this.match();
+    const v=p?(p.valor-p.tipico)/p.tipico:0;
+    let verdict='Na média',kind='mid',msg='Dentro da faixa típica da sua região';
+    if(p&&v<=-0.05){verdict='Barato';kind='down';msg=Math.round(-v*100)+'% abaixo do típico da sua região';}
+    else if(p&&v>=0.05){verdict='Caro';kind='up';msg=Math.round(v*100)+'% acima do típico da sua região';}
+    let pct=50; if(p) pct=Math.max(6,Math.min(94,(p.valor-p.menor)/(p.maior-p.menor)*100));
+    const nav=t=>(r===t?'var(--ink)':'var(--faint)');
+    const view=this.produtosView();
+    const produtos=view.map(pr=>({
+      nome:pr.nome, sub:pr.sub, preco:pr.preco, pctLabel:pr.pct,
+      showDown:pr.dir==='down', showUp:pr.dir==='up', showMid:pr.dir==='mid',
+      openDet:()=> pr.nome.indexOf('Leite')===0 ? this.go('detalhe') : this.openAcoes(pr.nome),
+      open:()=>this.openAcoes(pr.nome),
+    }));
+    const cats=['Todos','Laticínios','Café','Grãos','Mercearia','Limpeza'].map(c=>({label:c,active:c===this.state.cat,bg:c===this.state.cat?'var(--chip)':'var(--card)',ink:c===this.state.cat?'var(--chipink)':'var(--sub)',on:()=>this.setState({cat:c})}));
+    const ords=['Padrão','Menor preço','Maior preço','A–Z'].map(o=>({label:o,check:o===this.state.sort?1:0,on:()=>this.setState({sort:o})}));
+    const motivosArr=['Preço maior que o real','Produto errado','Mercado errado','Cupom duplicado'].map((m,i)=>({label:m,ring:i===this.state.motivo?'var(--ink)':'var(--line)',dot:i===this.state.motivo?1:0,on:()=>this.setState({motivo:i})}));
+    const nFiltros=(this.state.cat!=='Todos'?1:0)+(this.state.sort!=='Padrão'?1:0);
+    const contaDialog=this.state.dialog==='conta';
+    return {
+      themeVars: dark
+        ? '--bg:#111110;--card:#191918;--ink:#F0F0EE;--sub:#8F8F8A;--faint:#8F8F8A;--line:rgba(255,255,255,.12);--line2:rgba(255,255,255,.08);--chip:#F0F0EE;--chipink:#111110;--fld:#191918;--up:#F87171;--down:#4ADE80;--mid:#E8A33C'
+        : '--bg:#F7F7F5;--card:#ffffff;--ink:#1B1B19;--sub:#6B6B66;--faint:#A3A39D;--line:#E7E7E3;--line2:#F0F0EC;--chip:#1B1B19;--chipink:#ffffff;--fld:#ffffff;--up:#DC2626;--down:#16A34A;--mid:#D97706',
+      isInicio:r==='inicio', isVerificar:r==='verificar', isProdutos:r==='produtos', isDetalhe:r==='detalhe',
+      isDashboard:r==='dashboard', isPerfil:r==='perfil', isEscanear:r==='escanear', isProcessando:r==='processando',
+      isNotificacoes:r==='notificacoes', isConquistas:r==='conquistas', isErro:r==='erro', isLogin:r==='login',
+      isOnboarding:r==='onboarding', isRecuperar:r==='recuperar', isEditar:r==='editar', isCompra:r==='compra',
+      isChave:r==='chave', isCompras:r==='compras',
+      isCriar:r==='criar', isLista:r==='lista', isMercados:r==='mercados', isBemVindo:r==='bemvindo',
+      isAlertas:r==='alertas', isConta:r==='conta', isRegiao:r==='regiao', isAjuda:r==='ajuda', isConquistaDet:r==='conquistadet',
+      isSucesso:r==='sucesso', isSplash:r==='splash',
+      isPermCam:r==='permcam', isPermLoc:r==='permloc', isOffline:r==='offline',
+      isInicioCheia:r==='inicio'&&!this.state.primeiroUso, isInicioVazia:r==='inicio'&&this.state.primeiroUso,
+      isProdutosCheia:r==='produtos'&&!this.state.primeiroUso, isProdutosVazia:r==='produtos'&&this.state.primeiroUso,
+      isListaCheia:r==='lista'&&!this.state.primeiroUso, isListaVazia:r==='lista'&&this.state.primeiroUso,
+      isDashboardCheia:r==='dashboard'&&!this.state.primeiroUso, isDashboardVazia:r==='dashboard'&&this.state.primeiroUso,
+      camIconBg:this.state.camNeg?'var(--line2)':'var(--chip)', camIconInk:this.state.camNeg?'var(--faint)':'var(--chipink)',
+      camTitle:this.state.camNeg?'Câmera bloqueada':'Precisamos da câmera',
+      camText:this.state.camNeg?'Sem acesso à câmera não dá pra ler o QR Code dos cupons. Você pode liberar nos ajustes do celular.':'É com a câmera que a Barganha lê o QR Code da NFC-e. Usamos só durante o escaneamento — nada é gravado.',
+      camPrimaryLabel:this.state.camNeg?'Abrir ajustes':'Permitir câmera',
+      camSecondaryLabel:this.state.camNeg?'Digitar chave manualmente':'Agora não',
+      locIconBg:this.state.locNeg?'var(--line2)':'var(--chip)', locIconInk:this.state.locNeg?'var(--faint)':'var(--chipink)',
+      locTitle:this.state.locNeg?'Localização desativada':'Ative sua localização',
+      locText:this.state.locNeg?'Sem localização a gente não sabe quais mercados ficam perto. Você pode escolher sua região manualmente.':'Usamos sua localização pra comparar preços com os mercados da sua região e achar ofertas por perto.',
+      locPrimaryLabel:this.state.locNeg?'Escolher região manual':'Usar minha localização',
+      locSecondaryLabel:this.state.locNeg?'Agora não':'Escolher manualmente',
+      dia1Label:this.state.primeiroUso?'ativo':'',
+      isOnb0:this.state.onb===0, isOnb1:this.state.onb===1, isOnb2:this.state.onb===2,
+      onbD0:this.state.onb===0?1:0.25, onbD1:this.state.onb===1?1:0.25, onbD2:this.state.onb===2?1:0.25,
+      onbTitle:['Escaneie seus cupons','Veja se vale a barganha','Economize todo mês'][this.state.onb],
+      onbText:['Cada cupom fiscal (NFC-e) vira dado de preço da sua região, de forma anônima.','Compare o preço da gôndola com o típico da região antes de pôr no carrinho.','Receba alertas quando um produto baixa e ganhe conquistas pela sua economia.'][this.state.onb],
+      onbCta:this.state.onb<2?'Próximo':'Começar',
+      navInicio:nav('inicio'), navVerificar:nav('verificar'), navProdutos:nav('produtos'), navLista:(r==='lista'?'var(--ink)':'var(--faint)'), navPerfil:nav('perfil'),
+      notifDot: this.state.notifLidas?0:1,
+      query:this.state.query, hasResult:!!p, noResult:!p,
+      rNome:p?p.nome:'', rLoja:p?p.loja:'', rPreco:p?p.preco:'',
+      rMenor:p?this.fmt(p.menor):'', rTipico:p?this.fmt(p.tipico):'', rMaior:p?this.fmt(p.maior):'',
+      rCupons:p?p.cupons:'', rVerdict:verdict, rMsg:msg, rPct:pct+'%',
+      pillBg:kind==='down'?'var(--ink)':'transparent', pillInk:kind==='down'?'var(--card)':'var(--ink)',
+      alertaLabel:this.state.alerta?'Alerta de preço ativado ✓':'Avisar quando baixar',
+      alertaTrackBg:this.state.alerta?'var(--chip)':'var(--faint)', alertaKnob:this.state.alerta?'21px':'3px',
+      segClaroBg:!dark?'var(--card)':'transparent', segClaroInk:!dark?'var(--ink)':'var(--faint)',
+      segEscuroBg:dark?'#000':'transparent', segEscuroInk:dark?'#fff':'var(--faint)',
+      prodQuery:this.state.prodQuery, produtos, skeletons:[1,2,3,4,5],
+      loading:this.state.loading, showList:!this.state.loading && view.length>0, prodEmpty:!this.state.loading && view.length===0,
+      filtroCount:nFiltros, filtroBadge:nFiltros>0?'flex':'none',
+      categorias:cats, ordens:ords, motivos:motivosArr,
+      sheetOpen:!!this.state.sheet, sheetAcoes:this.state.sheet==='acoes', sheetFiltros:this.state.sheet==='filtros', sheetDenunciar:this.state.sheet==='denunciar', sheetAddItem:this.state.sheet==='addItem',
+      openAddItem:()=>this.setState({sheet:'addItem', addQuery:''}),
+      addQuery:this.state.addQuery||'',
+      onAddQuery:(e)=>this.setState({addQuery:e.target.value}),
+      addSugs:(()=>{const q=(this.state.addQuery||'').toLowerCase().trim();
+        const base=this.mercCatalog();
+        const src=q?base.filter(c=>c.label.toLowerCase().includes(q)):base;
+        return src.slice(0,6).map((c,i,a)=>({label:c.label, sub:'típico R$ '+this.fmt(c.ps.reduce((s,x)=>s+x,0)/c.ps.length), bd:i<a.length-1?'1px solid var(--line2)':'none',
+          add:()=>this.toast('“'+c.label+'” adicionado à lista')}));})(),
+      addHasSugs:(()=>{const q=(this.state.addQuery||'').toLowerCase().trim(); if(!q) return true; return this.mercCatalog().some(c=>c.label.toLowerCase().includes(q));})(),
+      addNoSugs:(()=>{const q=(this.state.addQuery||'').toLowerCase().trim(); if(!q) return false; return !this.mercCatalog().some(c=>c.label.toLowerCase().includes(q));})(),
+      selNome:this.state.sel,
+      dialogOpen:!!this.state.dialog,
+      dialogTitle: contaDialog?'Excluir sua conta?':('Remover da lista?'),
+      dialogMsg: contaDialog?'Isso apaga seus cupons e histórico permanentemente. Não dá pra desfazer.':('“'+this.state.sel+'” sai dos seus produtos monitorados.'),
+      dialogOk: contaDialog?'Excluir conta':'Excluir',
+      hasToast:!!this.state.toast, toastMsg:this.state.toast||'',
+      goInicio:()=>this.go('inicio'), goVerificar:()=>this.go('verificar'), goProdutos:()=>this.go('produtos'),
+      goPerfil:()=>this.go('perfil'), goEscanear:()=>this.go('escanear'), goDetalhe:()=>this.go('detalhe'),
+      goDashboard:()=>this.go('dashboard'), goNotificacoes:()=>{this.setState({notifLidas:false});this.go('notificacoes');}, goConquistas:()=>this.go('conquistas'),
+      back:()=>this.setState(s=>({route:s.prev, sheet:null, dialog:null})),
+      onSearch:(e)=>this.setState({query:e.target.value}),
+      onProdSearch:(e)=>this.setState({prodQuery:e.target.value}),
+      setLeite:()=>this.setState({query:'leite italac'}), setCafe:()=>this.setState({query:'café pilão'}), setArroz:()=>this.setState({query:'arroz tio joão'}),
+      limparBusca:()=>this.setState({prodQuery:'',cat:'Todos',sort:'Padrão'}),
+      toggleAlerta:()=>{const n=!this.state.alerta;this.setState({alerta:n});this.toast(n?'Alerta ativado':'Alerta desativado');},
+      setClaro:()=>this.setState({theme:'claro'}), setEscuro:()=>this.setState({theme:'escuro'}),
+      openFiltros:()=>this.setState({sheet:'filtros'}),
+      limparFiltros:()=>this.setState({cat:'Todos',sort:'Padrão'}),
+      aplicarFiltros:()=>this.setState({sheet:null}),
+      openAcoesLeite:()=>this.openAcoes('Leite integral Italac 1 L'),
+      closeSheet:()=>this.setState({sheet:null}),
+      editar:()=>this.go('editar'),
+      salvarEdicao:()=>{this.setState(s=>({route:s.prev}));this.toast('Alterações salvas');},
+      onbNext:()=>{if(this.state.onb<2)this.setState(s=>({onb:s.onb+1}));else this.setState({route:'login'});},
+      onbSkip:()=>this.setState({route:'login'}),
+      goRecuperar:()=>this.setState({route:'recuperar'}),
+      goLogin:()=>this.setState({route:'login'}),
+      enviarLink:()=>{this.setState({route:'login'});this.toast('Link de redefinição enviado');},
+      goCompra:()=>this.go('compra'),
+      openDenunciar:()=>this.setState({sheet:'denunciar', sel:this.state.sel||'este preço'}),
+      enviarDenuncia:()=>{this.setState({sheet:null});this.toast('Preço denunciado. Obrigado!');},
+      askExcluir:()=>this.setState({sheet:null, dialog:'produto'}),
+      askExcluirConta:()=>this.setState({dialog:'conta'}),
+      cancelDialog:()=>this.setState({dialog:null}),
+      confirmDialog:()=>{const c=this.state.dialog==='conta';const n=this.state.sel;this.setState({dialog:null});this.toast(c?'Conta excluída':('“'+n+'” removido da lista'));},
+      scanOk:()=>{this.go('processando');clearTimeout(this._s);this._s=setTimeout(()=>{this.setState({route:'sucesso'});},1700);},
+      verCompraScan:()=>this.setState({route:'compra', prev:'inicio'}),
+      splashGo:()=>this.setState({route:'onboarding'}),
+      scanErro:()=>{this.go('processando');clearTimeout(this._s);this._s=setTimeout(()=>this.setState({route:'erro'}),1700);},
+      marcarLidas:()=>{this.setState({notifLidas:true});this.toast('Notificações marcadas como lidas');},
+      retry:()=>this.go('escanear'),
+      goEntrar:()=>this.setState({route:'permcam', camNeg:false}),
+      goPermCam:()=>this.setState({route:'permcam', camNeg:false, prev:'perfil'}),
+      goOffline:()=>this.setState({route:'offline', prev:'perfil'}),
+      tentarConexao:()=>{this.setState({route:'inicio', prev:'inicio'});this.toast('Conexão restabelecida');},
+      demoDia1:()=>{this.setState(s=>({primeiroUso:!s.primeiroUso, route:'inicio', prev:'inicio'}));},
+      camPrimary:()=>{ if(this.state.camNeg){this.toast('Abrindo ajustes do sistema…');return;} this.setState({route:'permloc', locNeg:false}); },
+      camSecondary:()=>{ if(this.state.camNeg){this.setState({route:'chave', prev:'inicio'});return;} this.setState({camNeg:true}); },
+      locPrimary:()=>{ if(this.state.locNeg){this.setState({route:'regiao', prev:'inicio'});return;} this.setState({route:'inicio', prev:'inicio'});this.toast('Tudo pronto — bem-vindo!'); },
+      locSecondary:()=>{ if(this.state.locNeg){this.setState({route:'inicio', prev:'inicio'});return;} this.setState({locNeg:true}); },
+      goCompras:()=>this.go('compras'),
+      goChave:()=>this.go('chave'),
+      goCriar:()=>this.setState({route:'criar'}),
+      criarConta:()=>this.setState({route:'bemvindo'}),
+      concluirBemVindo:()=>{this.setState({route:'permcam', camNeg:false});},
+      goAlertas:()=>this.go('alertas'), goConta:()=>this.go('conta'), goRegiao:()=>this.go('regiao'), goAjuda:()=>this.go('ajuda'),
+      salvarAlertas:()=>{this.setState(s=>({route:s.prev||'perfil'}));this.toast('Preferências de alerta salvas');},
+      alertasResumo:(()=>{const a=this.state.bvAlertas||{queda:true,perto:true,resumo:false};const n=Object.values(a).filter(Boolean).length;return n===0?'desligados':(n+' ativos');})(),
+      toastEditar:()=>this.toast('Edição disponível na versão final'),
+      goEntrar2:()=>this.setState({route:'login'}),
+      regQuery:this.state.regQuery||'',
+      onRegQuery:(e)=>this.setState({regQuery:e.target.value}),
+      regHasResults:(()=>{const q=(this.state.regQuery||'').toLowerCase().trim(); if(!q) return false;
+        return [{n:'tijuca'},{n:'vila isabel'},{n:'maracanã'},{n:'botafogo'},{n:'copacabana'},{n:'niterói · centro'}].some(r=>r.n.includes(q));})(),
+      regNoResults:(()=>{const q=(this.state.regQuery||'').toLowerCase().trim(); if(!q) return false;
+        return !['tijuca','vila isabel','maracanã','botafogo','copacabana','niterói · centro'].some(n=>n.includes(q));})(),
+      regioes:(()=>{const cur=this.state.regiaoSel||'Tijuca';const q=(this.state.regQuery||'').toLowerCase().trim(); if(!q) return [];
+        const all=[{nome:'Tijuca',sub:'Rio de Janeiro · RJ'},{nome:'Vila Isabel',sub:'Rio de Janeiro · RJ'},{nome:'Maracanã',sub:'Rio de Janeiro · RJ'},{nome:'Botafogo',sub:'Rio de Janeiro · RJ'},{nome:'Copacabana',sub:'Rio de Janeiro · RJ'},{nome:'Niterói · Centro',sub:'Niterói · RJ'}];
+        const f=all.filter(r=>r.nome.toLowerCase().includes(q));
+        return f.map((r,i,a)=>({nome:r.nome, sub:r.sub, bd:i<a.length-1?'1px solid var(--line2)':'none',
+          ringBd:cur===r.nome?'var(--chip)':'var(--faint)', ringBg:cur===r.nome?'var(--chip)':'transparent', dotOp:cur===r.nome?1:0,
+          on:()=>this.setState({regiaoSel:r.nome})}));})(),
+      usarLocalizacao:()=>{this.setState({regiaoSel:'Tijuca', regQuery:''});this.toast('Localização detectada — Tijuca, Rio de Janeiro');},
+      raioLabel:(this.state.regRaio||'3 km'),
+      raioOpts:(()=>{const cur=this.state.regRaio||'3 km';return ['1 km','3 km','5 km'].map(v=>({label:v, on:()=>this.setState({regRaio:v}),
+        bg:cur===v?'var(--chip)':'var(--card)', bd:cur===v?'var(--chip)':'var(--line)', ink:cur===v?'var(--chipink)':'var(--sub)'}));})(),
+      salvarRegiao:()=>{this.setState(s=>({route:s.prev||'perfil'}));this.toast('Região atualizada — '+(this.state.regiaoSel||'Tijuca'));},
+      faqs:(()=>{const open=this.state.faqOpen;const defs=[
+        {q:'Como o app sabe se o preço tá bom?',a:'Comparamos o preço que você vê com a média dos cupons NFC-e da sua região nos últimos 30 dias.'},
+        {q:'Meus cupons ficam privados?',a:'Sim. Os dados são anonimizados antes de entrar na base colaborativa — ninguém vê suas compras individuais.'},
+        {q:'Preciso escanear todo cupom?',a:'Não é obrigatório, mas quanto mais gente escaneia, mais precisa fica a média de preços da região.'},
+        {q:'Posso usar em outra cidade?',a:'Sim — é só trocar a região em Perfil › Editar região. As comparações passam a usar os mercados de lá.'},
+      ];return defs.map((d,i,arr)=>({pergunta:d.q, resposta:d.a, bd:i<arr.length-1?'1px solid var(--line2)':'none',
+        bodyShow:open===i?'block':'none', chevron:open===i?'rotate(180deg)':'rotate(0deg)',
+        on:()=>this.setState(s=>({faqOpen:s.faqOpen===i?null:i}))}));})(),
+      toastSuporte:()=>this.toast('Abrindo canal de suporte…'),
+      ...(()=>{const h=React.createElement;const cd=this.conquistasData()[this.state.conquistaSel||0]||this.conquistasData()[0];
+        const ic=(paths,color,w)=>h('svg',{width:w,height:w,viewBox:'0 0 24 24',fill:'none',stroke:color,strokeWidth:2,strokeLinecap:'round',strokeLinejoin:'round'},paths.map((d,k)=>h('path',{key:k,d})));
+        return {
+          cdNome:cd.nome, cdDesc:cd.desc, cdProg:cd.prog, cdProgW:cd.progW, cdProgNota:cd.progNota, cdRecompensa:cd.recompensa,
+          cdIconBg:cd.locked?'var(--line2)':'var(--chip)',
+          cdIcon:cd.raw?h('span',{style:{font:'800 30px "Instrument Sans"',color:cd.locked?'var(--faint)':'var(--chipink)'}},cd.raw):ic(cd.paths,cd.locked?'var(--faint)':'var(--chipink)',38),
+          cdStatus:cd.locked?'Bloqueada':'Desbloqueada', cdStatusBg:cd.locked?'var(--line2)':'var(--chip)', cdStatusInk:cd.locked?'var(--sub)':'var(--chipink)',
+          cdProgBg:cd.locked?'var(--faint)':'var(--ink)',
+        };})(),
+      conquistas:(()=>{const h=React.createElement;const ic=(paths,color,extra)=>h('svg',{width:(extra&&extra.w)||24,height:(extra&&extra.w)||24,viewBox:'0 0 24 24',fill:'none',stroke:color,strokeWidth:2,strokeLinecap:'round',strokeLinejoin:'round'},paths.map((d,k)=>h('path',{key:k,d})));
+        const defs=this.conquistasData();
+        return defs.map((c,i)=>({
+          nome:c.nome, tag:c.tag,
+          border:c.locked?'1px dashed var(--line)':'1px solid var(--line)', op:c.locked?0.55:1,
+          iconBg:c.locked?'var(--line2)':'var(--chip)',
+          icon:c.raw?h('span',{style:{font:'800 18px "Instrument Sans"',color:c.locked?'var(--faint)':'var(--chipink)'}},c.raw):ic(c.paths,c.locked?'var(--faint)':'var(--chipink)',{w:c.locked?20:22}),
+          on:()=>this.setState({route:'conquistadet',prev:'conquistas',conquistaSel:i}),
+        }));})(),
+      alertOpts:(()=>{const a=this.state.bvAlertas||{queda:true,perto:true,resumo:false};
+        const defs=[
+          {key:'queda', icon:'▼', iconOp:1, titulo:'Quando um produto baixar', desc:'Aviso quando um item da sua lista cai de preço'},
+          {key:'perto', icon:'◎', iconOp:1, titulo:'Ofertas perto de você', desc:'Preços baixos em mercados a até 5 km'},
+          {key:'resumo', icon:'✦', iconOp:1, titulo:'Resumo mensal de economia', desc:'Um recap do quanto você economizou no mês'},
+        ];
+        return defs.map((d,i,arr)=>({icon:d.icon, iconOp:d.iconOp, titulo:d.titulo, desc:d.desc,
+          bd:i<arr.length-1?'1px solid var(--line2)':'none',
+          trackBg:a[d.key]?'var(--chip)':'var(--faint)', knob:a[d.key]?'21px':'3px',
+          toggle:()=>this.setState(s=>{const n={...(s.bvAlertas||{queda:true,perto:true,resumo:false})};n[d.key]=!n[d.key];return {bvAlertas:n};}),
+        }));})(),
+      sensOpts:(()=>{const cur=this.state.bvSens||'5%';return ['3%','5%','10%'].map(v=>({label:v, on:()=>this.setState({bvSens:v}),
+        bg:cur===v?'var(--chip)':'var(--card)', bd:cur===v?'var(--chip)':'var(--line)', ink:cur===v?'var(--chipink)':'var(--sub)'}));})(),
+      sensLabel:(this.state.bvSens||'5%')+' abaixo',
+      goLista:()=>this.go('lista'),
+      goMercados:()=>this.go('mercados'),
+      listaCount:(()=>{const m=this.state.listaMarcados||{};const n=Object.values(m).filter(Boolean).length;return n+' de 6 no carrinho';})(),
+      listaItens:[
+        {nome:'Leite integral Italac 1 L', sub:'2 un · típico R$ 4,79', un:4.79, qtd:2},
+        {nome:'Café Pilão 500 g', sub:'1 un · típico R$ 24,90', un:24.90, qtd:1},
+        {nome:'Arroz Tio João 5 kg', sub:'1 un · típico R$ 27,90', un:27.90, qtd:1},
+        {nome:'Pão de forma Pullman', sub:'1 un · típico R$ 8,90', un:8.90, qtd:1},
+        {nome:'Detergente Ypê 500 ml', sub:'3 un · típico R$ 2,49', un:2.49, qtd:3},
+        {nome:'Banana prata 1 kg', sub:'1 un · típico R$ 5,99', un:5.99, qtd:1},
+      ].map((it,i,a)=>{const m=this.state.listaMarcados||{};const ck=!!m[i];
+        const raw=(this.state.listaPrecos||{})[i]||'';
+        const pv=parseFloat(raw.replace(/[^\d,.]/g,'').replace(',','.'));
+        const has=!isNaN(pv)&&pv>0;
+        const d=has?(pv-it.un)/it.un:0;
+        return {...it, val:raw, ph:this.fmt(it.un),
+        bd:i<a.length-1?'1px solid var(--line2)':'none',
+        boxBg:ck?'var(--chip)':'transparent', boxBd:ck?'var(--chip)':'var(--faint)', checkOp:ck?1:0,
+        deco:ck?'line-through':'none', inkC:ck?'var(--faint)':'var(--ink)',
+        vLabel:has?(d<=-0.05?'abaixo do típico':(d>=0.05?'acima do típico':'na média')):'',
+        vColor:has?(d<=-0.05?'var(--down)':(d>=0.05?'var(--up)':'var(--mid)')):'var(--faint)',
+        onPreco:(e)=>{const v=e.target.value;this.setState(s=>({listaPrecos:{...(s.listaPrecos||{}),[i]:v}}));},
+        on:()=>this.setState(s=>{const mm={...(s.listaMarcados||{})};mm[i]=!mm[i];return {listaMarcados:mm};}),
+      };}),
+      listaHasReal:(()=>{const p=this.state.listaPrecos||{};return Object.values(p).some(v=>{const n=parseFloat(String(v).replace(/[^\d,.]/g,'').replace(',','.'));return !isNaN(n)&&n>0;});})(),
+      listaReal:(()=>{const qtds=[2,1,1,1,3,1];const p=this.state.listaPrecos||{};let t=0;
+        Object.keys(p).forEach(k=>{const n=parseFloat(String(p[k]).replace(/[^\d,.]/g,'').replace(',','.'));if(!isNaN(n)&&n>0)t+=n*qtds[k];});
+        return 'R$ '+this.fmt(t);})(),
+      mercados:this.mercadosView(),
+      mercCount:(()=>{const n=this.mercSelNames().length;return n+(n===1?' produto':' produtos');})(),
+      mercQuery:this.state.mercQuery||'',
+      onMercQuery:(e)=>this.setState({mercQuery:e.target.value}),
+      mercSugs:(()=>{const q=(this.state.mercQuery||'').toLowerCase().trim(); if(!q) return [];
+        const sel=this.mercSelNames();
+        return this.mercCatalog().filter(c=>c.label.toLowerCase().includes(q)&&!sel.includes(c.label)).slice(0,4).map((c,i,a)=>({
+          label:c.label, sub:'típico R$ '+this.fmt(c.ps.reduce((s,x)=>s+x,0)/c.ps.length), bd:i<a.length-1?'1px solid var(--line2)':'none',
+          add:()=>this.setState(s=>({mercSelNames:[...(s.mercSelNames||this.mercSelNames()),c.label], mercQuery:''})),
+        }));})(),
+      mercHasSugs:(()=>{const q=(this.state.mercQuery||'').toLowerCase().trim(); if(!q) return false;
+        const sel=this.mercSelNames(); return this.mercCatalog().some(c=>c.label.toLowerCase().includes(q)&&!sel.includes(c.label));})(),
+      mercNoSugs:(()=>{const q=(this.state.mercQuery||'').toLowerCase().trim(); if(!q) return false;
+        const sel=this.mercSelNames(); return !this.mercCatalog().some(c=>c.label.toLowerCase().includes(q)&&!sel.includes(c.label));})(),
+      mercTags:this.mercSelNames().map(n=>({label:n, rm:()=>this.setState(s=>({mercSelNames:(s.mercSelNames||this.mercSelNames()).filter(x=>x!==n)}))})),
+      mercHasSel:this.mercSelNames().length>0,
+      mercNoSel:this.mercSelNames().length===0,
+      comprasMeses:this.comprasView(),
+      chaveVal:this.fmtChave(this.state.chave||''),
+      chaveCount:((this.state.chave||'').length)+'/44',
+      chaveBtnBg:(this.state.chave||'').length===44?'var(--chip)':'var(--line)',
+      chaveBtnInk:(this.state.chave||'').length===44?'var(--chipink)':'var(--faint)',
+      onChave:(e)=>this.setState({chave:e.target.value.replace(/\D/g,'').slice(0,44)}),
+      validarChave:()=>{ if((this.state.chave||'').length<44){this.toast('Chave incompleta — são 44 dígitos');return;} this.go('processando');clearTimeout(this._s);this._s=setTimeout(()=>{this.setState({route:'produtos',loading:true,chave:''});this.toast('Cupom validado · 12 itens adicionados');clearTimeout(this._l);this._l=setTimeout(()=>this.setState({loading:false}),1200);},1700);},
+    };
+  }
+  openAcoes(nome){ this.setState({sheet:'acoes', sel:nome}); }
+}
+</script>
+</body>
+</html>

@@ -13,8 +13,9 @@ export default tseslint.config(
       'supabase/**',
       '**/*.config.{js,cjs,mjs,ts}',
       // Protótipos estáticos dos handoffs de design (não são código do app).
-      'app/src/design_handoff_barganha_2a/**',
-      'app/src/design_handoff_barganha_3a/**',
+      // Glob por prefixo: cada handoff novo traz o mesmo `support.js` de
+      // browser, e listar um a um só era lembrado quando o lint quebrava.
+      'app/src/design_handoff_*/**',
     ],
   },
   js.configs.recommended,
