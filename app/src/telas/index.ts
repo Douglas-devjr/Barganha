@@ -23,4 +23,6 @@ export { ConfiguracoesContaTela } from './ConfiguracoesContaTela';
 export { AjudaTela } from './AjudaTela';
 export { SemConexaoTela } from './SemConexaoTela';
 export { OnboardingTela } from './OnboardingTela';
+export { SplashTela, DURACAO_ABERTURA } from './SplashTela';
+export type { SplashTelaProps } from './SplashTela';
 export { AberturaFluxo } from './abertura/AberturaFluxo';

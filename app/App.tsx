@@ -5,8 +5,10 @@
  *   3. LOGIN (C4.3.1) — sessão do Supabase Auth; obrigatório para usar o app;
  *   4. APP — abas + fluxos; drena a fila de upload e sincroniza em background.
  *
- * Enquanto fonte/banco não estão prontos (ou a sessão é carregada), exibe uma
- * splash simples com a marca.
+ * Enquanto fonte/banco não estão prontos (ou a sessão é carregada), exibe a
+ * ABERTURA (`SplashTela`) — a marca se construindo, por no mínimo 1,9 s. As
+ * esperas curtas de dentro do gate repetem a mesma tela já pronta
+ * (`animar={false}`), para não reiniciar a construção no meio do caminho.
  */
 
 import {
@@ -19,18 +21,19 @@ import {
 import { NavigationContainer } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, AppState, StyleSheet, View } from 'react-native';
+import { AppState } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { AuthProvider, useAuth } from '@/auth';
-import { ProvedorToast, Texto } from '@/componentes';
+import { ProvedorToast } from '@/componentes';
 import { inicializarBd, meta } from '@/dados';
 import { AuthNavegador, RaizNavegador } from '@/navegacao';
 import { sincronizar } from '@/nucleo/sincronizador';
 import { AberturaFluxo } from '@/telas/abertura/AberturaFluxo';
 import { OnboardingTela } from '@/telas/OnboardingTela';
+import { SplashTela } from '@/telas/SplashTela';
 import { RedefinirSenhaTela } from '@/telas/auth/RedefinirSenhaTela';
-import { ProvedorTema, cores, useTema } from '@/tema';
+import { ProvedorTema, useTema } from '@/tema';
 
 export default function App() {
   const [fontesProntas] = useFonts({
@@ -41,6 +44,8 @@ export default function App() {
   });
   const [bdPronto, setBdPronto] = useState(false);
   const [consentidoInicial, setConsentidoInicial] = useState<boolean | null>(null);
+  /** A abertura cumpriu os 1,9 s do handoff (ou o usuário tocou para pular). */
+  const [aberturaVista, setAberturaVista] = useState(false);
 
   useEffect(() => {
     let ativo = true;
@@ -65,7 +70,14 @@ export default function App() {
           {/* O toast fica acima de tudo: é global e aparece sobre a tab bar. */}
           <ProvedorToast>
             <BarraStatus />
-            {pronto ? <Conteudo consentidoInicial={consentidoInicial!} /> : <Splash />}
+            {/* A abertura sai quando o boot terminou E ela já foi vista por
+                inteiro — o que vier primeiro espera pelo outro. Fica no mesmo
+                slot para não remontar (remontar reiniciaria a construção). */}
+            {pronto && aberturaVista ? (
+              <Conteudo consentidoInicial={consentidoInicial!} />
+            ) : (
+              <SplashTela aoConcluir={() => setAberturaVista(true)} />
+            )}
           </ProvedorToast>
         </SafeAreaProvider>
       </AuthProvider>
@@ -122,7 +134,7 @@ function Conteudo({ consentidoInicial }: { consentidoInicial: boolean }) {
     return <OnboardingTela aoConcordar={() => setConsentido(true)} />;
   }
   if (carregando) {
-    return <Splash />;
+    return <SplashTela animar={false} />;
   }
   // Chegou pelo link de "esqueci a senha": troca a senha antes de liberar o app.
   if (recuperandoSenha) {
@@ -140,7 +152,7 @@ function Conteudo({ consentidoInicial }: { consentidoInicial: boolean }) {
   // Há sessão: espera saber o estado da abertura antes de decidir (evita piscar
   // as abas por um frame antes de mandar para a abertura).
   if (aberturaFeita === null) {
-    return <Splash />;
+    return <SplashTela animar={false} />;
   }
   if (!aberturaFeita) {
     return <AberturaFluxo aoConcluir={() => setAberturaFeita(true)} />;
@@ -152,19 +164,3 @@ function Conteudo({ consentidoInicial }: { consentidoInicial: boolean }) {
     </NavigationContainer>
   );
 }
-
-/** Splash na tinta (painel `chip` do 3a): fundo tinta, marca e spinner por cima. */
-function Splash() {
-  return (
-    <View style={estilos.splash}>
-      <Texto cor="sobreTeal" peso="bold" tamanho="titulo">
-        Barganha
-      </Texto>
-      <ActivityIndicator color={cores.sobreTeal} style={{ marginTop: 16 }} />
-    </View>
-  );
-}
-
-const estilos = StyleSheet.create({
-  splash: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: cores.tinta },
-});
