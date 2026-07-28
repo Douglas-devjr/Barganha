@@ -11,6 +11,13 @@
  *  • Veredito resolvido do CACHE LOCAL primeiro (offline) e refinado online.
  *  • Promoção ("menor visto") sempre numa linha à parte — nunca colapsa no
  *    veredito (decisão travada; a inteligência mora em `@barganha/shared`).
+ *
+ * A escolha do produto é uma LISTA VERTICAL (o mesmo cartão-com-divisórias de
+ * Produtos), não um carrossel de chips: com dezenas de itens o carrossel esconde
+ * quase tudo fora da tela, corta nomes longos e obriga a arrastar de lado com o
+ * carrinho na mão. A lista mostra nome + típico + nº de compras, e some assim
+ * que o produto é escolhido — a tela passa a ser só o veredito, com "Trocar"
+ * para voltar a escolher.
  */
 
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
@@ -19,17 +26,20 @@ import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { type FaixaPreco, normalizarDescricao } from '@barganha/shared';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, TextInput, View } from 'react-native';
 
 import {
   BarraPreco,
   Botao,
-  Cartao,
+  CartaoLista,
+  Estado,
   Eyebrow,
   FolhaDenuncia,
   IconeBandeira,
   IconeBarras,
   IconeBusca,
+  IconeCheck,
+  IconeChevron,
   IconeSino,
   Tela,
   Texto,
@@ -79,6 +89,8 @@ export function VerificarTela({ navigation }: Props) {
   const [lista, setLista] = useState<ProdutoLocal[]>([]);
   const [busca, setBusca] = useState('');
   const [selecionado, setSelecionado] = useState<ProdutoLocal | null>(null);
+  /** Volta para a lista com um produto já escolhido ("Trocar" / nova busca). */
+  const [trocando, setTrocando] = useState(false);
   const [preco, setPreco] = useState('');
   const [resultado, setResultado] = useState<ResultadoVeredito | null>(null);
   const [refinando, setRefinando] = useState(false);
@@ -126,6 +138,9 @@ export function VerificarTela({ navigation }: Props) {
   function escolher(p: ProdutoLocal) {
     setSelecionado(p);
     setResultado(null);
+    // Escolheu: a lista sai de cena e a busca zera para o próximo uso.
+    setTrocando(false);
+    setBusca('');
     void (async () => {
       if (p.produtoCanonicoId) {
         const existente = await alertas.obter(p.produtoCanonicoId);
@@ -185,6 +200,8 @@ export function VerificarTela({ navigation }: Props) {
   const filtrados = alvoBusca
     ? lista.filter((p) => normalizarDescricao(p.nome).includes(alvoBusca))
     : lista;
+  /** Modo escolha: sem produto selecionado, ou o usuário pediu para trocar. */
+  const escolhendo = selecionado == null || trocando;
 
   const hibrido = resultado?.hibrido;
   const destaque = hibrido ? (hibrido.regional ?? hibrido.pessoal) : undefined;
@@ -216,7 +233,11 @@ export function VerificarTela({ navigation }: Props) {
         <IconeBusca tamanho={18} cor={c.fraco} />
         <TextInput
           value={busca}
-          onChangeText={setBusca}
+          onChangeText={(t) => {
+            setBusca(t);
+            // Digitar é pedir a lista de volta, mesmo com um produto aberto.
+            if (t) setTrocando(true);
+          }}
           placeholder="Buscar produto…"
           placeholderTextColor={c.fraco}
           style={[estilos.buscaInput, { color: c.tinta }]}
@@ -231,51 +252,50 @@ export function VerificarTela({ navigation }: Props) {
         </Pressable>
       </View>
 
-      {/* chips rápidos */}
-      {lista.length > 0 ? (
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={estilos.chips}
-        >
-          {filtrados.map((p) => {
-            const ativo = selecionado?.chave === p.chave;
-            return (
-              <Pressable
-                key={p.chave}
-                onPress={() => escolher(p)}
-                accessibilityRole="button"
-                accessibilityState={ativo ? { selected: true } : {}}
-                style={[
-                  estilos.chip,
-                  {
-                    backgroundColor: ativo ? c.tinta : c.cartao,
-                    borderColor: ativo ? c.tinta : c.borda,
-                  },
-                ]}
-              >
-                <Texto
-                  tamanho="sm"
-                  peso={ativo ? 'bold' : 'semibold'}
-                  cor={ativo ? 'sobreTeal' : 'suave'}
-                >
-                  {p.nome}
-                </Texto>
-              </Pressable>
-            );
-          })}
-        </ScrollView>
-      ) : null}
-
-      {selecionado == null ? (
-        <Cartao style={estilos.vazio}>
-          <Texto cor="suave" tamanho="sm" centralizado>
-            {lista.length === 0
-              ? 'Escaneie cupons para montar seu histórico — ou use o código de barras na gôndola.'
-              : 'Escolha um produto acima (ou escaneie o código de barras) para comparar o preço.'}
-          </Texto>
-        </Cartao>
-      ) : (
+      {escolhendo ? (
+        lista.length === 0 ? (
+          <View style={estilos.vazio}>
+            <Estado
+              icone={<IconeBarras tamanho={30} cor={c.tinta} />}
+              titulo="Nenhum produto ainda"
+              texto="Escaneie cupons para montar seu histórico — ou use o código de barras na gôndola."
+              acao={{
+                titulo: 'Escanear código de barras',
+                onPress: () => navigation.navigate('EscanearBarras'),
+              }}
+            />
+          </View>
+        ) : filtrados.length === 0 ? (
+          <View style={estilos.vazio}>
+            <Estado
+              icone={<IconeBusca tamanho={30} cor={c.tinta} />}
+              titulo="Nada encontrado"
+              texto="Nenhum produto seu bate com esta busca. Tente o código de barras da gôndola."
+              acao={{ titulo: 'Limpar busca', onPress: () => setBusca(''), variante: 'secundario' }}
+            />
+          </View>
+        ) : (
+          <>
+            <View style={estilos.cabecalhoLista}>
+              <Eyebrow>{alvoBusca ? 'Resultados' : 'Seus produtos'}</Eyebrow>
+              <Texto cor="fraco" tamanho="xs" numerico>
+                {filtrados.length} {filtrados.length === 1 ? 'produto' : 'produtos'}
+              </Texto>
+            </View>
+            <CartaoLista>
+              {filtrados.map((p, idx) => (
+                <ItemProduto
+                  key={p.chave}
+                  produto={p}
+                  ativo={selecionado?.chave === p.chave}
+                  ultima={idx === filtrados.length - 1}
+                  aoTocar={() => escolher(p)}
+                />
+              ))}
+            </CartaoLista>
+          </>
+        )
+      ) : selecionado == null ? null : (
         <>
           {/* card do veredito ⭐ — o preço grande é o próprio input */}
           <View style={[estilos.painel, { backgroundColor: c.cartao, borderColor: c.cartaoBorda }]}>
@@ -302,9 +322,26 @@ export function VerificarTela({ navigation }: Props) {
               ) : null}
             </View>
 
-            <Texto peso="semibold" style={estilos.nomeProduto} numberOfLines={2}>
-              {selecionado.nome}
-            </Texto>
+            <View style={estilos.linhaNome}>
+              <Texto peso="semibold" style={estilos.nomeProduto} numberOfLines={2}>
+                {selecionado.nome}
+              </Texto>
+              {/* Sem catálogo (produto só escaneado), voltar à lista levaria a
+                  um vazio sem saída — o "Trocar" só existe com o que escolher. */}
+              {lista.length > 0 ? (
+                <Pressable
+                  onPress={() => setTrocando(true)}
+                  accessibilityRole="button"
+                  accessibilityLabel="Trocar de produto"
+                  hitSlop={8}
+                  style={({ pressed }) => [estilos.trocar, pressed && { opacity: 0.6 }]}
+                >
+                  <Texto tamanho="sm" peso="bold" style={{ color: c.tinta }}>
+                    Trocar
+                  </Texto>
+                </Pressable>
+              ) : null}
+            </View>
 
             <View style={estilos.linhaPreco}>
               <View style={estilos.campoPreco}>
@@ -432,6 +469,55 @@ export function VerificarTela({ navigation }: Props) {
   );
 }
 
+/**
+ * Linha da lista de escolha. Traz o típico PESSOAL e o nº de compras para o
+ * usuário reconhecer o item antes de tocar — o veredito regional só aparece
+ * depois, com o preço da gôndola digitado.
+ */
+function ItemProduto({
+  produto,
+  ativo,
+  ultima,
+  aoTocar,
+}: {
+  produto: ProdutoLocal;
+  ativo: boolean;
+  ultima: boolean;
+  aoTocar: () => void;
+}) {
+  const { c } = useTema();
+  const tipico = produto.faixaPessoal?.mediana;
+  const sufixo = produto.unidadeBase ? `/${produto.unidadeBase}` : '';
+  const compras = `${produto.nObservacoes} ${produto.nObservacoes === 1 ? 'compra' : 'compras'}`;
+
+  return (
+    <Pressable
+      onPress={aoTocar}
+      accessibilityRole="button"
+      accessibilityState={ativo ? { selected: true } : {}}
+      style={({ pressed }) => [
+        estilos.item,
+        !ultima && { borderBottomWidth: 1, borderBottomColor: c.linha },
+        pressed && { opacity: 0.6 },
+      ]}
+    >
+      <View style={estilos.itemTexto}>
+        <Texto peso={ativo ? 'bold' : 'semibold'} tamanho="sm" numberOfLines={1}>
+          {produto.nome}
+        </Texto>
+        <Texto cor="fraco" numerico style={estilos.itemSub}>
+          {tipico != null ? `típico ${moeda(tipico)}${sufixo} · ${compras}` : compras}
+        </Texto>
+      </View>
+      {ativo ? (
+        <IconeCheck tamanho={18} cor={c.tinta} />
+      ) : (
+        <IconeChevron tamanho={16} cor={c.fraco} />
+      )}
+    </Pressable>
+  );
+}
+
 const estilos = StyleSheet.create({
   subtitulo: { fontSize: 13, marginTop: 4, marginBottom: 14 },
   busca: {
@@ -452,28 +538,32 @@ const estilos = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  chips: { gap: espaco.sm, paddingVertical: espaco.md, paddingRight: espaco.md },
-  chip: {
-    paddingHorizontal: espaco.md,
-    paddingVertical: espaco.sm,
-    borderRadius: raio.pill,
-    borderWidth: 1,
-    minHeight: 36,
-    justifyContent: 'center',
+  cabecalhoLista: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: espaco.md,
+    marginTop: espaco.lg,
+    marginBottom: espaco.sm,
   },
-  vazio: { marginTop: espaco.md },
+  item: { flexDirection: 'row', alignItems: 'center', gap: espaco.md, paddingVertical: 13 },
+  itemTexto: { flex: 1 },
+  itemSub: { fontSize: 11.5, marginTop: 2 },
+  vazio: { marginTop: espaco.lg },
   painel: {
     borderRadius: raio.cartao,
     borderWidth: 1,
     paddingHorizontal: 18,
     paddingTop: 16,
     paddingBottom: 14,
-    marginTop: espaco.xs,
+    marginTop: espaco.lg,
   },
   painelTopo: { flexDirection: 'row', alignItems: 'center', gap: espaco.sm },
   denunciar: { flexDirection: 'row', alignItems: 'center', gap: 5, minHeight: 24 },
   denunciarTexto: { fontSize: 11 },
-  nomeProduto: { fontSize: 15, marginTop: 10 },
+  linhaNome: { flexDirection: 'row', alignItems: 'flex-start', gap: espaco.sm, marginTop: 10 },
+  nomeProduto: { flex: 1, fontSize: 15 },
+  trocar: { minHeight: 24, justifyContent: 'center' },
   linhaPreco: {
     flexDirection: 'row',
     alignItems: 'center',
