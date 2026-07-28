@@ -23,6 +23,7 @@ import { ServicoIngestao } from './ingestao/servico-ingestao';
 import { ServicoDenuncia } from './moderacao/servico-denuncia';
 import { ServicoModeracao } from './moderacao/servico-moderacao';
 import { log, logDeCupom } from './observabilidade/log';
+import { MetricasMemoria } from './observabilidade/metricas';
 import { sanitizarErro } from './observabilidade/sanitizar';
 import { MonitorSaude } from './observabilidade/saude';
 import { sondaBanco, sondaFila, sondaParsers, sondaTelemetria } from './observabilidade/sondas';
@@ -32,6 +33,7 @@ import { ParserMg } from './parsers/mg';
 import { RegistroParsers } from './parsers/registro';
 import { ParserRj } from './parsers/rj';
 import { ParserSp } from './parsers/sp';
+import { instrumentarRepositorio } from './persistencia/instrumentar';
 import { RepositorioSupabase } from './persistencia/repositorio-supabase';
 import { criarClienteSupabase } from './persistencia/supabase';
 import { ProcessadorCupom } from './processamento/processador-cupom';
@@ -76,11 +78,19 @@ export interface Backend {
   guardaCuradoria: GuardaCuradoria;
   /** Health check detalhado (C10.4) — fonte de `/saude` e do gate de deploy. */
   saude: MonitorSaude;
+  /** Latência de banco/HTTP, acerto de cache e custo do processo (C10.4). */
+  metricasPerformance: MetricasMemoria;
 }
 
 export function montarBackend(config: ConfigBackend): Backend {
   const db = criarClienteSupabase(config.supabaseUrl, config.supabaseServiceRoleKey);
-  const repo = new RepositorioSupabase(db);
+
+  // C10.4 — coletor único de performance. Montado antes de tudo porque o
+  // repositório já nasce instrumentado: envolver aqui, na raiz de composição, é
+  // o que faz TODO acesso ao banco ser cronometrado sem que nenhum serviço do
+  // domínio saiba que existe medição acontecendo.
+  const metricasPerformance = new MetricasMemoria();
+  const repo = instrumentarRepositorio(new RepositorioSupabase(db), metricasPerformance);
 
   const cliente = new ClienteSefazHttp();
   const registro = new RegistroParsers([
@@ -164,7 +174,12 @@ export function montarBackend(config: ConfigBackend): Backend {
   // nota revalidava o mesmo token dezenas de vezes/min). Só memoriza sucesso, e
   // por no máximo 60s — a revogação continua valendo, com esse atraso.
   const autenticacao = new AutenticadorSupabase(
-    new VerificadorTokenCache(new VerificadorTokenSupabase(db)),
+    new VerificadorTokenCache(
+      new VerificadorTokenSupabase(db),
+      undefined,
+      undefined,
+      metricasPerformance,
+    ),
   );
   const gerenciadorConta = new GerenciadorContaSupabase(db);
 
@@ -193,6 +208,7 @@ export function montarBackend(config: ConfigBackend): Backend {
 
   return {
     saude,
+    metricasPerformance,
     servicoIngestao,
     reprocessador,
     registro,

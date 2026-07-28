@@ -14,6 +14,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 import { log } from '../observabilidade/log';
+import { type Metricas, metricasNulas } from '../observabilidade/metricas';
 import { sanitizarErro } from '../observabilidade/sanitizar';
 
 export interface VerificadorToken {
@@ -58,6 +59,9 @@ export class VerificadorTokenSupabase implements VerificadorToken {
   }
 }
 
+/** Nome do cache nas métricas — chave estável de painel e de alerta. */
+const NOME_CACHE = 'token-auth';
+
 /** Janela máxima que um token verificado fica em cache. */
 const TTL_CACHE_MS = 60_000;
 /** Teto de entradas — o cache é uma otimização, não pode virar vazamento. */
@@ -94,12 +98,23 @@ export class VerificadorTokenCache implements VerificadorToken {
     private readonly interno: VerificadorToken,
     private readonly ttlMs: number = TTL_CACHE_MS,
     private readonly agora: () => number = Date.now,
+    /**
+     * C10.4 — hit/miss. Sem esta medida não havia como saber se o cache estava
+     * cumprindo o que promete: a taxa de acerto é a diferença entre economizar
+     * uma ida ao GoTrue por request e gastar memória para nada. Uma taxa que
+     * despenca também denuncia app com token novo a cada chamada.
+     */
+    private readonly metricas: Metricas = metricasNulas,
   ) {}
 
   async verificar(token: string): Promise<string | undefined> {
     const t = this.agora();
     const emCache = this.cache.get(token);
-    if (emCache && emCache.expiraEm > t) return emCache.usuarioId;
+    if (emCache && emCache.expiraEm > t) {
+      this.metricas.observarCache(NOME_CACHE, 'hit');
+      return emCache.usuarioId;
+    }
+    this.metricas.observarCache(NOME_CACHE, 'miss');
     // Expirou: fora do mapa antes de revalidar (se falhar, não fica lixo).
     if (emCache) this.cache.delete(token);
 

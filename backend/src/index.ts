@@ -29,6 +29,7 @@ export async function main(): Promise<void> {
     reprocessador,
     matcherTexto,
     saude,
+    metricasPerformance,
   } = montarBackend(config);
   const app = construirServidor({
     servicoIngestao,
@@ -40,6 +41,7 @@ export async function main(): Promise<void> {
     gerenciadorConta,
     metricas: telemetria,
     saude,
+    metricasPerformance,
     // C11 — expansão: lançamento manual + moderação + enriquecimento + reprocesso
     // + sugestões de casamento por texto (C3.5) para a curadoria.
     servicoModeracao,

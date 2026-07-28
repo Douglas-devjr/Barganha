@@ -94,6 +94,18 @@ export function construirServidor(deps: DependenciasHttp): FastifyInstance {
     done();
   });
 
+  // C10.4 — tempo de resposta por ROTA. `elapsedTime` é do Fastify e mede o
+  // ciclo inteiro. A chave é o template da rota, nunca a URL concreta: com
+  // `/cupom/:id` em URL crua, cada cupom viraria uma série de métrica própria.
+  const metricasPerf = deps.metricasPerformance;
+  if (metricasPerf) {
+    app.addHook('onResponse', (req, reply, done) => {
+      const rota = `${req.method} ${req.routeOptions?.url ?? 'desconhecida'}`;
+      metricasPerf.observarHttp(rota, reply.elapsedTime, reply.statusCode);
+      done();
+    });
+  }
+
   // Consulta e sync compartilham o MESMO limitador: um teto único de "leitura
   // pública" por IP. Os privados têm DOIS tetos, em ordem: por IP antes de
   // autenticar (barato, segura flood anônimo) e por CONTA depois (o que vale).

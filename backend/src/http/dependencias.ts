@@ -21,6 +21,7 @@ import type { MatcherTexto } from '../estatistica/casamento-texto';
 import type { ServicoIngestao } from '../ingestao/servico-ingestao';
 import type { ServicoDenuncia } from '../moderacao/servico-denuncia';
 import type { ServicoModeracao } from '../moderacao/servico-moderacao';
+import type { FonteResumoMetricas, Metricas } from '../observabilidade/metricas';
 import type { MonitorSaude } from '../observabilidade/saude';
 import type { FonteMetricas } from '../observabilidade/telemetria';
 import type { ReprocessadorRetroativo } from '../processamento/reprocessamento';
@@ -102,6 +103,12 @@ export interface DependenciasHttp {
    * do Render por um motivo que nada tem a ver com a saúde dele.
    */
   saude?: MonitorSaude;
+  /**
+   * Métricas de performance (C10.4) — latência HTTP/banco, cache e processo.
+   * Escrita e leitura vêm juntas porque é o mesmo coletor: o hook `onResponse`
+   * grava e `GET /metricas` lê. Omitido → o servidor não instrumenta.
+   */
+  metricasPerformance?: Metricas & FonteResumoMetricas;
   /** Tetos de taxa (C9.3.2). Omitido → `LIMITES_PADRAO`. */
   limites?: LimitesTaxa;
   /** Confia no `X-Forwarded-For` atrás de proxy/LB (C10) — IP real p/ rate-limit. */

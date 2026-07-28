@@ -46,13 +46,22 @@ export function registrarRotasCuradoria(app: FastifyInstance, ctx: ContextoRotas
   ) => exigeCuradoria(autorizacaoCuradoria, req, reply);
   const opcoes = { onRequest: ctx.guardaCuradoriaIp };
 
-  // ── Métricas de parsing por estado (C10.2) ──────────────────────────
+  // ── Métricas (C10.2 + C10.4) ────────────────────────────────────────
   // Agregadas (contadores por UF, sem dado de cupom), mas NÃO públicas: expõem
   // volume por estado e a taxa de falha dos portais — inteligência operacional
-  // que não precisa estar aberta.
+  // que não precisa estar aberta. A partir da C10.4 vêm junto latência de
+  // banco/HTTP, acerto de cache e o custo do processo (memória e CPU).
+  //
+  // `performance` fica ausente quando o coletor não foi injetado, em vez de vir
+  // zerado: zero e "não medido" são diagnósticos opostos e não podem parecer
+  // iguais para quem lê o painel.
   app.get('/metricas', opcoes, (req, reply) => {
     if (!autorizado(req, reply)) return reply;
-    return reply.send(ctx.metricas.snapshot());
+    const performance = ctx.deps.metricasPerformance?.resumo();
+    return reply.send({
+      ...ctx.metricas.snapshot(),
+      ...(performance ? { performance } : {}),
+    });
   });
 
   if (servicoModeracao) {
