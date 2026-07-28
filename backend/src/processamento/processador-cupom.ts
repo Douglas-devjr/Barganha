@@ -14,7 +14,7 @@
  * Cada desfecho é registrado na telemetria por estado (C10.2).
  */
 
-import type { NotaEstruturada } from '@barganha/shared';
+import { sanearQrPayload, type NotaEstruturada } from '@barganha/shared';
 
 import {
   ChaveAcessoInvalidaError,
@@ -231,6 +231,11 @@ export class ProcessadorCupom {
       // C9.2.1 — dedup global do pool: a mesma chave (outra conta) não publica
       // duas vezes. O histórico privado do usuário existe normalmente.
       ...(cupom.chaveAcesso ? { chaveHash: hashChavePool(cupom.chaveAcesso) } : {}),
+      // A nota já foi consultada na SEFAZ; daqui em diante o QR guardado não
+      // precisa mais do `cDest` (CPF do consumidor, só na versão 1 do QR). Sai
+      // na MESMA transação do `processado` — se fosse um UPDATE à parte, uma
+      // falha entre os dois deixaria o CPF no banco sem ninguém saber.
+      qrPayloadSaneado: sanearQrPayload(cupom.qrPayload),
     });
     this.telemetria.registrarParsing(uf, 'processado');
     if (!poolPublicado && resultado.observacoes.length > 0) {

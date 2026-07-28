@@ -6,7 +6,7 @@
  * estruturada vêm do backend e chegam depois via `aplicarProcessamento`.
  */
 
-import type { StatusCupom, TipicoNaCompra } from '@barganha/shared';
+import { sanearQrPayload, type StatusCupom, type TipicoNaCompra } from '@barganha/shared';
 
 import { agoraIso, gerarIdLocal } from '@/nucleo/id';
 
@@ -246,6 +246,55 @@ export async function restaurarCupons(lista: CupomRestaurado[]): Promise<number>
   return inseridos;
 }
 
+/**
+ * QR do cupom já sem o CPF do consumidor, ou `null` se não havia nada a tirar.
+ * Devolver `null` (em vez do payload igual) é o que evita uma escrita à toa no
+ * caso normal — a versão 2 do QR, que é a atual, nunca tem PII.
+ */
+async function qrPayloadSaneadoDe(cupomLocalId: string): Promise<string | null> {
+  const linha = await getBd().getFirstAsync<{ qr_payload: string }>(
+    `SELECT qr_payload FROM cupom_local WHERE id = ?`,
+    [cupomLocalId],
+  );
+  if (!linha) return null;
+  const saneado = sanearQrPayload(linha.qr_payload);
+  return saneado === linha.qr_payload ? null : saneado;
+}
+
+/**
+ * Limpeza retroativa do CPF nos QRs já espelhados neste aparelho (docs/04).
+ *
+ * Cupons processados ANTES do saneamento existir guardam o `cDest` (CPF, só na
+ * versão 1 do QR) para sempre — o `aplicarProcessamento` só alcança os que
+ * concluem daqui em diante. Roda uma vez por boot, é best-effort e devolve
+ * quantos foram reescritos.
+ *
+ * O `LIKE` é só uma peneira grossa (o SQLite não tem regex): ele reduz o que
+ * sai do banco, e quem decide de fato é o `sanearQrPayload` de cada linha, que
+ * devolve o payload intocado quando não há PII. Só `processado` — os demais
+ * ainda serão consultados na SEFAZ e precisam do payload íntegro.
+ */
+export async function sanearQrsProcessados(): Promise<number> {
+  const db = getBd();
+  const candidatos = await db.getAllAsync<{ id: string; qr_payload: string }>(
+    `SELECT id, qr_payload FROM cupom_local
+      WHERE status = 'processado'
+        AND (qr_payload LIKE '%|1|%'
+             OR qr_payload LIKE '%7C1%7C%'
+             OR qr_payload LIKE '%cDest=%'
+             OR qr_payload LIKE '%cpf=%')`,
+  );
+
+  let reescritos = 0;
+  for (const c of candidatos) {
+    const saneado = sanearQrPayload(c.qr_payload);
+    if (saneado === c.qr_payload) continue;
+    await db.runAsync(`UPDATE cupom_local SET qr_payload = ? WHERE id = ?`, [saneado, c.id]);
+    reescritos++;
+  }
+  return reescritos;
+}
+
 /** Dados que o backend devolve após processar a nota (preenche a nota local). */
 export interface ResultadoProcessamento {
   cupomIdServidor: string;
@@ -270,6 +319,11 @@ export async function aplicarProcessamento(
 ): Promise<void> {
   const db = getBd();
   const agora = agoraIso();
+
+  // Lido ANTES da transação (o saneamento precisa do valor atual) e só quando o
+  // cupom conclui. `null` = nada a reescrever, e a coluna fica intocada — nunca
+  // gravar string vazia aqui, o espelho local tem `qr_payload NOT NULL`.
+  const qrSaneado = r.status === 'processado' ? await qrPayloadSaneadoDe(cupomLocalId) : null;
 
   // `withExclusiveTransactionAsync`, NUNCA `withTransactionAsync`: a versão não
   // exclusiva do expo-sqlite compartilha a conexão, então dois BEGIN/COMMIT
@@ -302,6 +356,17 @@ export async function aplicarProcessamento(
         cupomLocalId,
       ],
     );
+    // A nota já foi consultada na SEFAZ — o QR guardado não precisa mais do
+    // `cDest` (CPF do consumidor, só na versão 1 do QR). Espelha o que o backend
+    // faz ao concluir o cupom; aqui vale para a captura feita NESTE aparelho,
+    // que nunca passa pelo restore. Só depois de `processado`: em v1 o hash do
+    // QR inclui o CPF, e sanear antes quebraria a consulta (docs/04).
+    if (qrSaneado != null) {
+      await txn.runAsync(`UPDATE cupom_local SET qr_payload = ? WHERE id = ?`, [
+        qrSaneado,
+        cupomLocalId,
+      ]);
+    }
     await txn.runAsync(`DELETE FROM item_cupom_local WHERE cupom_local_id = ?`, [cupomLocalId]);
     for (const item of r.itens) {
       await txn.runAsync(

@@ -364,6 +364,9 @@ export class RepositorioMemoria
     cupom.lojaCnpj = dados.loja.cnpj;
     cupom.emitidoEm = dados.emitidoEm;
     cupom.uf = dados.uf;
+    // Espelha o `coalesce` da RPC: o QR saneado (sem o CPF da v1) substitui o
+    // cru assim que a nota já foi consultada (docs/04).
+    if (dados.qrPayloadSaneado) cupom.qrPayload = dados.qrPayloadSaneado;
     if (dados.total) {
       cupom.descontoTotal = dados.total.desconto;
       cupom.valorPago = dados.total.pago;

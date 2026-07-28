@@ -519,6 +519,7 @@ export class RepositorioSupabase
       p_valor_pago: dados.total?.pago ?? null,
       p_sobrescrever_processado: opcoes?.sobrescreverProcessado ?? false,
       p_chave_hash: dados.chaveHash ?? null,
+      p_qr_payload: dados.qrPayloadSaneado ?? null,
     });
     if (r.error) falhar('processamento transacional do cupom', r.error);
     // A RPC devolve false quando as observações foram RETIDAS pelo dedup

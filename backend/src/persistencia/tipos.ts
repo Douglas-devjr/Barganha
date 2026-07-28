@@ -70,6 +70,17 @@ export interface DadosNotaProcessada {
    * mas o pool não recebe de novo.
    */
   chaveHash?: string;
+  /**
+   * QR cru já SANEADO (`sanearQrPayload`) — substitui `cupom.qr_payload` na
+   * mesma transação que conclui o cupom. O QR da versão 1 carrega o CPF do
+   * consumidor no campo `cDest`, e ele ficaria guardado para sempre (docs/04,
+   * decisão travada nº3).
+   *
+   * Só aqui, e não na ingestão: em v1 o hash do QR é calculado sobre a cadeia
+   * COM o `cDest`, então sanear antes quebraria a consulta na SEFAZ. Depois de
+   * `processado` a consulta já foi feita. Ausente = mantém o payload atual.
+   */
+  qrPayloadSaneado?: string;
 }
 
 /** Desfecho do `marcarProcessado` do ponto de vista do POOL. */

@@ -26,7 +26,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { AuthProvider, useAuth } from '@/auth';
 import { ProvedorToast } from '@/componentes';
-import { inicializarBd, meta } from '@/dados';
+import { cupons, inicializarBd, meta } from '@/dados';
 import { AuthNavegador, RaizNavegador } from '@/navegacao';
 import { sincronizar } from '@/nucleo/sincronizador';
 import { AberturaFluxo } from '@/telas/abertura/AberturaFluxo';
@@ -55,6 +55,10 @@ export default function App() {
       if (!ativo) return;
       setConsentidoInicial(consent != null);
       setBdPronto(true);
+      // Limpeza retroativa do CPF nos QRs espelhados (docs/04). Best-effort e
+      // DEPOIS de liberar a tela: é higiene de dado antigo, não pode segurar o
+      // boot nem derrubar o app se falhar.
+      void cupons.sanearQrsProcessados().catch(() => {});
     })();
     return () => {
       ativo = false;

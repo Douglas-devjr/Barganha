@@ -13,6 +13,9 @@
 
 ## Regras de anonimização (aplicadas no backend, sempre)
 1. **CPF é descartado no parsing.** Nunca é salvo nem transmitido. Some na fronteira de entrada.
+   > **O QR também carrega CPF — e por isso é saneado.** A regra acima vale para o HTML da nota, mas a especificação **antiga** do QR Code da NFC-e (versão 1) traz o campo `cDest` — o CPF de quem pediu a nota no CPF — na 4ª posição do parâmetro `p`. Como o QR é guardado **cru** desde o dia 1 (decisão travada nº2), ele entrava em `cupom.qr_payload` em texto puro, ao lado do `usuario_id`. Fonte única do saneamento: `shared/src/anonimizacao/qr-payload.ts`.
+   >
+   > **O saneamento só acontece depois de `processado`**, nunca na ingestão: em v1 o `cHashQRCode` é calculado sobre a cadeia que **inclui** o `cDest`, então remover o campo antes da consulta faz o portal da SEFAZ rejeitar a URL e mata o reprocessamento retroativo. Cupom em `qr_capturado` ou `falha` continua íntegro — os dois ainda são alvo do retro (C2.5). A escrita vai na **mesma transação** que conclui o cupom (RPC `processar_cupom`), para que uma falha entre os dois passos não deixe o CPF guardado. O QR da versão 2 (atual) não tem o campo e sai byte a byte igual.
 2. **Itens entram "soltos" no pool.** Cada `observacao_preco` é independente — **não** ficam amarrados como "fulano comprou estes 30 itens juntos, neste horário". Isso quebra a *impressão digital da cesta*, que poderia re-identificar a pessoa.
 3. **Chave de acesso não vai ao pool compartilhado.** Ela permite vincular a nota a um CPF via SEFAZ; fica só no lado privado.
 4. **Sem vínculo usuário↔observação.** `observacao_preco` não tem `usuario_id` nem `cupom_id`.
@@ -98,6 +101,7 @@ aqui, num aparelho novo ou após reinstalar — o app **reidrata** o histórico:
 - [ ] Não introduz CPF/nome/contato em nenhuma tabela compartilhada.
 - [ ] Nenhum caminho liga `observacao_preco` a um usuário ou a uma cesta.
 - [ ] `chave_acesso` não cruzou para o lado compartilhado.
+- [ ] Nada guarda **payload cru de terceiros** (QR, HTML, resposta de portal) sem saneamento — PII se esconde em campo técnico, como o `cDest` do QR v1.
 - [ ] O dado de **login** (email/identidade Google) não saiu de `auth.users`/lado privado.
 - [ ] Coleta o mínimo necessário; há base legal/consentimento para o que coleta.
 - [ ] O usuário consegue apagar seus dados (inclui apagar a conta de auth).

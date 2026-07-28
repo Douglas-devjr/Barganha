@@ -13,6 +13,7 @@ export * from './dominio/entidades';
 export * from './dominio/url-consulta';
 export * from './anonimizacao/gate';
 export * from './anonimizacao/exposicao';
+export * from './anonimizacao/qr-payload';
 export * from './api/dtos';
 export * from './estatistica/veredito';
 export * from './estatistica/normalizacao';

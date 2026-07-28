@@ -252,6 +252,39 @@ describe('Fluxo de captura C2 (ingestão → parse → anonimização → pool)'
     expect(cupom?.valorPago).toBe(44.66);
   });
 
+  it('apaga o CPF do consumidor do QR guardado ao concluir o cupom (docs/04)', async () => {
+    // QR da versão 1: o 4º campo de `p` é o `cDest` — o CPF de quem pediu a nota
+    // no CPF. Ele nunca é extraído do HTML pelos parsers, mas vinha junto no
+    // payload cru e ficava guardado para sempre ao lado do `usuario_id`.
+    const CPF = '12345678909';
+    const qrV1 = `https://www.fazenda.rj.gov.br/nfce/qrcode?p=33260612345678000199650010000000011000000016|1|1|${CPF}|2026-06-27T12:00:00-03:00|100.00|10.00|abc|1|hash`;
+    const { repo, servico, fila } = montar((c) => [new ParserRj(c), new ParserSp(c)], clienteRjSp);
+
+    const res = await servico.ingerir('user-1', { qrPayload: qrV1, ...CAPTURA });
+    // ANTES de processar o payload continua íntegro: em v1 o hash do QR é
+    // calculado sobre a cadeia COM o cDest, e saneá-lo aqui quebraria a consulta.
+    expect((await repo.obterParaProcessamento(res.cupomId))?.qrPayload).toContain(CPF);
+
+    await fila.ociosa();
+    expect(repo.statusDoCupom(res.cupomId)).toBe('processado');
+
+    const depois = (await repo.obterParaProcessamento(res.cupomId))!.qrPayload;
+    expect(depois).not.toContain(CPF);
+    // A chave de acesso sobrevive — é dela que o reprocessamento retroativo vive.
+    expect(depois).toContain('33260612345678000199650010000000011000000016');
+  });
+
+  it('não altera o QR da versão 2, que não carrega CPF', async () => {
+    // Regressão: a v2 é a atual e CONTINUA sendo consultada na SEFAZ com o
+    // payload guardado. Qualquer reescrita aqui (nem que fosse reescapar o `|`)
+    // quebraria o reprocessamento retroativo.
+    const { repo, servico, fila } = montar((c) => [new ParserRj(c), new ParserSp(c)], clienteRjSp);
+    const res = await servico.ingerir('user-1', { qrPayload: QR_RJ, ...CAPTURA });
+    await fila.ociosa();
+
+    expect((await repo.obterParaProcessamento(res.cupomId))?.qrPayload).toBe(QR_RJ);
+  });
+
   it('rejeita nota cujo CNPJ não bate com a chave de acesso (anti-envenenamento)', async () => {
     // Cliente devolve a nota de SP (CNPJ 61585865000151) para um QR do RJ
     // (chave com CNPJ 12345678000199): página errada ou HTML forjado.
