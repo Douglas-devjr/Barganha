@@ -60,6 +60,11 @@ design/code/support.js
 # Tooling local (assistente/IDE) — não versionar
 .agents/
 .claude/settings.local.json
+.claude/settings.json
 .claude/skills/
+.claude/CLAUDE.md
 .mcp.json
 skills-lock.json
+
+# Grafo de conhecimento gerado pelo graphify
+graphify-out/
