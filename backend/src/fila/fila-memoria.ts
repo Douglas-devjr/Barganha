@@ -75,6 +75,16 @@ export class FilaMemoria implements FilaProcessamento {
     return Promise.resolve();
   }
 
+  /**
+   * Profundidade da fila agora — fonte da sonda de saúde (C10.4). A fila é
+   * in-process, então este número é a única evidência de represamento: um cupom
+   * esperando aqui está parado em "Processando" na tela do usuário sem gerar
+   * uma única linha de log.
+   */
+  estado(): { pendentes: number; emCurso: number } {
+    return { pendentes: this.pendentes.length, emCurso: this.emCurso.size };
+  }
+
   /** Resolve quando a fila esvazia e nada está em processamento (testes). */
   async ociosa(): Promise<void> {
     // Laço: uma tarefa enfileirada enquanto os consumidores terminavam precisa

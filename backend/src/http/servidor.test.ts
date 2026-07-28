@@ -72,10 +72,13 @@ afterAll(async () => {
 const auth = () => ({ authorization: `Bearer ${usuarioId}` });
 
 describe('Servidor HTTP', () => {
-  it('GET /saude responde ok', async () => {
+  // C10.4 — `/saude` deixou de ser `{ ok: true }` e passou a trazer o relatório
+  // detalhado. `ok` sobrevive por compatibilidade com sondas antigas; o contrato
+  // completo das duas rotas de saúde é testado em `saude.e2e.test.ts`.
+  it('GET /saude responde ok e traz o relatório', async () => {
     const r = await app.inject({ method: 'GET', url: '/saude' });
     expect(r.statusCode).toBe(200);
-    expect(r.json()).toEqual({ ok: true });
+    expect(r.json()).toMatchObject({ ok: true, status: 'ok' });
   });
 
   it('POST /conta/anonima cria conta (201) com usuarioId', async () => {

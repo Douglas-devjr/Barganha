@@ -28,6 +28,7 @@ export async function main(): Promise<void> {
     guardaCuradoria,
     reprocessador,
     matcherTexto,
+    saude,
   } = montarBackend(config);
   const app = construirServidor({
     servicoIngestao,
@@ -38,6 +39,7 @@ export async function main(): Promise<void> {
     autenticacao,
     gerenciadorConta,
     metricas: telemetria,
+    saude,
     // C11 — expansão: lançamento manual + moderação + enriquecimento + reprocesso
     // + sugestões de casamento por texto (C3.5) para a curadoria.
     servicoModeracao,
@@ -55,6 +57,9 @@ export async function main(): Promise<void> {
       action: 'boot.pronto',
       porta: config.porta,
       ambiente: config.nodeEnv,
+      // Carimba a versão no boot: é a linha que amarra "o que subiu" ao resto do
+      // log daquela instância, sem depender de ninguém chamar `/saude`.
+      versao: config.versao,
       ufsHabilitadas: config.ufsHabilitadas,
     },
     'Backend no ar',

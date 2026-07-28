@@ -18,7 +18,13 @@ services:
     # Com NODE_ENV=production o npm poda devDependencies (tsx é dependência).
     buildCommand: npm ci --omit=dev -w @barganha/shared -w @barganha/backend
     startCommand: npm run start -w @barganha/backend
-    healthCheckPath: /saude
+    # C10.4 — PRONTIDÃO, não liveness. O Render só direciona tráfego para o
+    # deploy novo depois que esta rota responde 200; enquanto ela devolver 503 a
+    # versão ANTERIOR continua servindo. É esse comportamento que dá rollback de
+    # graça quando a versão nova é incompatível com o banco (migração não
+    # aplicada, UF habilitada sem parser) — ver `backend/src/observabilidade/saude.ts`.
+    # `/saude` continua existindo para liveness e para inspeção humana.
+    healthCheckPath: /saude/pronto
     autoDeployTrigger: commit
     envVars:
       - key: NODE_VERSION

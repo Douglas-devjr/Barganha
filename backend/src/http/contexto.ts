@@ -11,6 +11,7 @@
 import type { FastifyReply, FastifyRequest } from 'fastify';
 
 import type { AutorizacaoCuradoria } from '../auth/curadoria';
+import type { MonitorSaude } from '../observabilidade/saude';
 import type { FonteMetricas } from '../observabilidade/telemetria';
 import type { DependenciasHttp } from './dependencias';
 import type { GuardaTaxa } from './rate-limit';
@@ -18,6 +19,8 @@ import type { GuardaTaxa } from './rate-limit';
 export interface ContextoRotas {
   deps: DependenciasHttp;
   metricas: FonteMetricas;
+  /** Health check detalhado (C10.4) — fonte de `/saude` e `/saude/pronto`. */
+  saude: MonitorSaude;
   /** Criação de conta anônima — por IP. */
   guardaConta: GuardaTaxa;
   /** Leitura pública (consulta + sync) — por IP. */

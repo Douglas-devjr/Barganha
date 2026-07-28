@@ -1,0 +1,121 @@
+name: Verificar deploy
+
+# C10.4 — Rede de segurança do deploy, DEPOIS do gate do Render.
+#
+# O Render já não promove um deploy cujo `/saude/pronto` responde 503: a versão
+# anterior segue servindo. Isso cobre o caso "a versão nova nem sobe direito".
+# O que ele NÃO cobre é a regressão que só aparece depois: a versão passa no
+# health check no minuto zero e degrada no minuto três (esquema meio aplicado,
+# telemetria parando de gravar, fila represando).
+#
+# Este job acompanha a janela pós-deploy e, se o serviço ficar `falho`, reverte
+# para o deploy anterior pela API do Render.
+#
+# Segredos (Settings → Secrets):
+#   • RENDER_API_KEY    — chave da conta (Account Settings → API Keys).
+#   • RENDER_SERVICE_ID — id `srv-...` do serviço barganha-api.
+# Sem eles o job ainda VERIFICA e falha ruidosamente; só não reverte sozinho.
+# Nada aqui custa dinheiro: API do Render e Actions de repositório público.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  # Nunca dois rollbacks concorrentes: sem isto, dois pushes seguidos podiam
+  # reverter um ao outro e deixar em produção uma versão que ninguém escolheu.
+  group: verificar-deploy
+  cancel-in-progress: false
+
+jobs:
+  verificar:
+    name: Acompanhar a subida e reverter se regredir
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      API_URL: ${{ vars.API_URL || 'https://barganha-api.onrender.com' }}
+      RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+      RENDER_SERVICE_ID: ${{ secrets.RENDER_SERVICE_ID }}
+      SHA: ${{ github.sha }}
+    steps:
+      # O Render leva alguns minutos entre o push e o serviço novo atender. Antes
+      # disso quem responde é a versão ANTIGA — e checá-la aprovaria o deploy
+      # errado. Por isso o critério é a versão no corpo bater com este commit.
+      - name: Esperar a versão nova assumir
+        id: subida
+        run: |
+          curto="${SHA:0:12}"
+          echo "Esperando /saude reportar versao=$curto"
+          assumiu=nao
+          for i in $(seq 1 60); do
+            corpo=$(curl --silent --max-time 90 "$API_URL/saude" || echo '{}')
+            versao=$(echo "$corpo" | jq -r '.versao // empty')
+            status=$(echo "$corpo" | jq -r '.status // empty')
+            echo "[$i] versao=$versao status=$status"
+            if [ "$versao" = "$curto" ]; then
+              assumiu=sim
+              break
+            fi
+            sleep 15
+          done
+          echo "assumiu=$assumiu" >> "$GITHUB_OUTPUT"
+          # Não assumir em 15 min normalmente é o gate do Render tendo REPROVADO
+          # a versão nova — ou seja, o rollback já aconteceu sozinho.
+          if [ "$assumiu" = "nao" ]; then
+            echo "::warning::A versão $curto não assumiu em 15 min — o gate do Render provavelmente a reprovou."
+          fi
+
+      # Estabilidade: `falho` momentâneo durante o aquecimento não é regressão.
+      # Só conta como regressão se persistir por três leituras seguidas.
+      - name: Vigiar a janela pós-deploy
+        id: vigilancia
+        run: |
+          falhas=0
+          for i in $(seq 1 10); do
+            corpo=$(curl --silent --max-time 90 "$API_URL/saude" || echo '{}')
+            status=$(echo "$corpo" | jq -r '.status // "sem-resposta"')
+            echo "[$i] status=$status"
+            echo "$corpo" | jq -c '.verificacoes[]? | select(.estado != "ok")' || true
+            case "$status" in
+              falho|sem-resposta) falhas=$((falhas + 1)) ;;
+              *) falhas=0 ;;
+            esac
+            if [ "$falhas" -ge 3 ]; then
+              echo "regrediu=sim" >> "$GITHUB_OUTPUT"
+              echo "::error::Serviço em '$status' por 3 leituras seguidas — regressão de deploy."
+              break
+            fi
+            sleep 20
+          done
+
+      - name: Reverter para o deploy anterior
+        if: steps.vigilancia.outputs.regrediu == 'sim' && env.RENDER_API_KEY != '' && env.RENDER_SERVICE_ID != ''
+        run: |
+          base="https://api.render.com/v1/services/$RENDER_SERVICE_ID"
+          auth="Authorization: Bearer $RENDER_API_KEY"
+
+          # O deploy anterior BEM-SUCEDIDO — não simplesmente "o penúltimo".
+          # Reverter para um deploy que também falhou só troca uma versão
+          # quebrada por outra.
+          anterior=$(curl --silent --fail -H "$auth" "$base/deploys?limit=20" \
+            | jq -r '[.[].deploy | select(.status == "live")] | .[1].id // empty')
+
+          if [ -z "$anterior" ]; then
+            echo "::error::Nenhum deploy anterior 'live' encontrado — rollback manual necessário."
+            exit 1
+          fi
+
+          echo "Revertendo para o deploy $anterior"
+          curl --silent --fail -X POST -H "$auth" -H 'Content-Type: application/json' \
+               -d "{\"deployId\": \"$anterior\"}" "$base/rollback"
+          echo "::warning::Rollback disparado para $anterior. Investigue $SHA antes de repromover."
+
+      - name: Avisar que o rollback automático não está configurado
+        if: steps.vigilancia.outputs.regrediu == 'sim' && (env.RENDER_API_KEY == '' || env.RENDER_SERVICE_ID == '')
+        run: |
+          echo "::error::Regressão detectada e SEM rollback automático — configure RENDER_API_KEY e RENDER_SERVICE_ID."
+
+      - name: Reprovar o job quando houve regressão
+        if: steps.vigilancia.outputs.regrediu == 'sim'
+        run: exit 1

@@ -21,6 +21,7 @@ import type { MatcherTexto } from '../estatistica/casamento-texto';
 import type { ServicoIngestao } from '../ingestao/servico-ingestao';
 import type { ServicoDenuncia } from '../moderacao/servico-denuncia';
 import type { ServicoModeracao } from '../moderacao/servico-moderacao';
+import type { MonitorSaude } from '../observabilidade/saude';
 import type { FonteMetricas } from '../observabilidade/telemetria';
 import type { ReprocessadorRetroativo } from '../processamento/reprocessamento';
 import type { ServicoSync } from '../sync/servico-sync';
@@ -94,6 +95,13 @@ export interface DependenciasHttp {
   autorizacaoCuradoria?: AutorizacaoCuradoria;
   /** Fonte de métricas de parsing por estado (C10.2) — exposta em `GET /metricas`. */
   metricas?: FonteMetricas;
+  /**
+   * Health check detalhado (C10.4). Omitido → o servidor monta um monitor SEM
+   * sondas, que responde `ok`. É o único lugar onde "nega fechado" não vale: uma
+   * rota de saúde que some quando mal configurada tira o serviço do ar no gate
+   * do Render por um motivo que nada tem a ver com a saúde dele.
+   */
+  saude?: MonitorSaude;
   /** Tetos de taxa (C9.3.2). Omitido → `LIMITES_PADRAO`. */
   limites?: LimitesTaxa;
   /** Confia no `X-Forwarded-For` atrás de proxy/LB (C10) — IP real p/ rate-limit. */

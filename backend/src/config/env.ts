@@ -24,6 +24,13 @@ export interface ConfigBackend {
    * `0` (ou negativo) → recálculo COMPLETO. Padrão: 180 (3h).
    */
   recalculoLookbackMinutos: number;
+  /**
+   * SHA do commit no ar, exposto em `/saude` (C10.4). Sem ele, diante de um
+   * incidente não há como saber QUAL versão está rodando — e a verificação
+   * pós-deploy não consegue distinguir "a nova subiu" de "a antiga continua".
+   * O Render injeta `RENDER_GIT_COMMIT` sozinho; fora dele, `desenvolvimento`.
+   */
+  versao: string;
 }
 
 export function lerConfig(env: NodeJS.ProcessEnv = process.env): ConfigBackend {
@@ -47,6 +54,7 @@ export function lerConfig(env: NodeJS.ProcessEnv = process.env): ConfigBackend {
     trustProxy: env.TRUST_PROXY === 'true',
     curadoriaTokens: parseCuradoriaTokens(env.CURADORIA_TOKENS),
     recalculoLookbackMinutos: parseLookbackMinutos(env.RECALCULO_LOOKBACK_MINUTES),
+    versao: (env.RENDER_GIT_COMMIT ?? env.APP_VERSAO ?? 'desenvolvimento').slice(0, 12),
   };
 }
 

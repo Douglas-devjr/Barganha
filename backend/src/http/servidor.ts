@@ -22,6 +22,7 @@
 import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest } from 'fastify';
 
 import { opcoesLogFastify } from '../observabilidade/log';
+import { MonitorSaude } from '../observabilidade/saude';
 import type { FonteMetricas } from '../observabilidade/telemetria';
 import type { ContextoRotas } from './contexto';
 import { type DependenciasHttp, LIMITES_PADRAO } from './dependencias';
@@ -32,6 +33,7 @@ import { registrarRotasConta } from './rotas/conta';
 import { registrarRotasContribuicao } from './rotas/contribuicao';
 import { registrarRotasCuradoria } from './rotas/curadoria';
 import { registrarRotasIngestao } from './rotas/ingestao';
+import { registrarRotasSaude } from './rotas/saude';
 
 export { type DependenciasHttp, LIMITES_PADRAO, type LimitesTaxa } from './dependencias';
 
@@ -46,6 +48,13 @@ declare module 'fastify' {
 const SEM_METRICAS: FonteMetricas = {
   snapshot: () => ({ geradoEm: new Date().toISOString(), totais: {}, porUf: {} }),
 };
+
+/**
+ * Monitor sem sondas — usado quando ninguém injetou um (testes e2e em memória).
+ * Reporta `ok`, que é honesto: não há dependência externa para estar quebrada.
+ */
+const semSondas = (): MonitorSaude =>
+  new MonitorSaude([], { versao: 'desconhecida', ambiente: 'teste', cacheMs: 0 });
 
 export function construirServidor(deps: DependenciasHttp): FastifyInstance {
   const app = Fastify({
@@ -94,6 +103,7 @@ export function construirServidor(deps: DependenciasHttp): FastifyInstance {
   const ctx: ContextoRotas = {
     deps,
     metricas: deps.metricas ?? SEM_METRICAS,
+    saude: deps.saude ?? semSondas(),
     guardaConta: guardaDeTaxa(new LimitadorJanelaFixa(limites.conta)),
     guardaLeitura: guardaDeTaxa(new LimitadorJanelaFixa(limites.leituraPublica)),
     guardaPrivadoIp: guardaDeTaxa(new LimitadorJanelaFixa(limites.privadoIp)),
@@ -101,9 +111,8 @@ export function construirServidor(deps: DependenciasHttp): FastifyInstance {
     contaDoRequest,
   };
 
-  // Sonda de liveness do balanceador/plataforma — a única rota sem gate algum.
-  app.get('/saude', () => ({ ok: true }));
-
+  // Sondas da plataforma — as únicas rotas sem gate algum (ver `rotas/saude.ts`).
+  registrarRotasSaude(app, ctx);
   registrarRotasConta(app, ctx);
   registrarRotasIngestao(app, ctx);
   registrarRotasConsulta(app, ctx);

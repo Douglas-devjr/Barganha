@@ -24,6 +24,8 @@ import { ServicoDenuncia } from './moderacao/servico-denuncia';
 import { ServicoModeracao } from './moderacao/servico-moderacao';
 import { log, logDeCupom } from './observabilidade/log';
 import { sanitizarErro } from './observabilidade/sanitizar';
+import { MonitorSaude } from './observabilidade/saude';
+import { sondaBanco, sondaFila, sondaParsers, sondaTelemetria } from './observabilidade/sondas';
 import type { FonteMetricas, Telemetria } from './observabilidade/telemetria';
 import { TelemetriaPersistente } from './observabilidade/telemetria-persistente';
 import { ParserMg } from './parsers/mg';
@@ -72,6 +74,8 @@ export interface Backend {
   servicoCuradoria: ServicoCuradoria;
   /** Autorização dos endpoints de curadoria (C11) — token estático do ambiente. */
   guardaCuradoria: GuardaCuradoria;
+  /** Health check detalhado (C10.4) — fonte de `/saude` e do gate de deploy. */
+  saude: MonitorSaude;
 }
 
 export function montarBackend(config: ConfigBackend): Backend {
@@ -173,7 +177,22 @@ export function montarBackend(config: ConfigBackend): Backend {
   const servicoCuradoria = new ServicoCuradoria(repo);
   const guardaCuradoria = new GuardaCuradoria(config.curadoriaTokens);
 
+  // C10.4 — health check detalhado. A ordem das sondas é a do relatório; as
+  // CRÍTICAS (banco, parsers) são as que reprovam o deploy — ver `saude.ts`.
+  // A consulta da sonda de banco é a mais barata que existe aqui: uma linha por
+  // índice primário, numa tabela que sempre existe.
+  const saude = new MonitorSaude(
+    [
+      sondaBanco(() => db.from('produto_canonico').select('id').limit(1)),
+      sondaParsers(rollout, (uf) => registro.suporta(uf)),
+      sondaTelemetria(telemetria),
+      sondaFila(() => fila.estado()),
+    ],
+    { versao: config.versao, ambiente: config.nodeEnv },
+  );
+
   return {
+    saude,
     servicoIngestao,
     reprocessador,
     registro,
