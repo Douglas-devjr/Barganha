@@ -14,7 +14,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Modal, Pressable, StyleSheet, TextInput, View } from 'react-native';
 
 import { clienteApi, ErroApi } from '@/api';
-import type { Veredito } from '@barganha/shared';
+import { urlConsultaConfiavel, type Veredito } from '@barganha/shared';
 import {
   Botao,
   Cartao,
@@ -239,19 +239,20 @@ export function NotaFiscalTela({ navigation, route }: Props) {
 
   const processado = cupom?.status === 'processado';
   const falhou = cupom?.status === 'falha';
+  // O QR é entrada não confiável: só abrimos o coletor quando o payload aponta
+  // para um portal público (`urlConsultaConfiavel`). Antes bastava começar com
+  // `http`, e qualquer QR de gôndola abria o site do atacante DENTRO do app.
+  const urlColeta = urlConsultaConfiavel(cupom?.qrPayload ?? '');
   const precisaColetar =
     cupom != null &&
     cupom.status === 'qr_capturado' &&
     cupom.cupomIdServidor != null &&
-    /^https?:/i.test(cupom.qrPayload);
+    urlColeta != null;
   /** Já existe no servidor → a exclusão precisa ir lá também, não só no espelho. */
   const jaSubiu = cupom?.cupomIdServidor != null;
   // Sem totais = `valor_pago` nulo (o parse novo sempre grava, mesmo desconto 0).
   const semTotais =
-    processado &&
-    cupom?.valorPago == null &&
-    cupom?.cupomIdServidor != null &&
-    /^https?:/i.test(cupom?.qrPayload ?? '');
+    processado && cupom?.valorPago == null && cupom?.cupomIdServidor != null && urlColeta != null;
   const total = itens.reduce((s, i) => s + i.valorTotal, 0);
   const descontoCupom = cupom?.descontoTotal ?? 0;
   const temDesconto = descontoCupom > 0;

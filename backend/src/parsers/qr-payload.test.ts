@@ -35,4 +35,29 @@ describe('parseQrNfce (C2.1)', () => {
       PayloadQrInvalidoError,
     );
   });
+
+  it('promove a consulta a https (a chave de acesso não vai em texto puro)', () => {
+    const qr = parseQrNfce(`http://www.fazenda.rj.gov.br/nfce/qrcode?p=${CHAVE_RJ}|2|1`);
+    expect(qr.urlConsulta?.startsWith('https://')).toBe(true);
+  });
+
+  it('não expõe URL de host de terceiro, mesmo com chave válida (SSRF)', () => {
+    // O payload é 100% escolhido por quem imprimiu o QR. Com uma chave válida
+    // colada na query, o parse SEGUE (a chave é boa), mas a URL não vem junto —
+    // é ela que o `ClienteSefazHttp` buscaria.
+    const alvos = [
+      `http://169.254.169.254/latest/meta-data/?p=${CHAVE_RJ}|2|1`,
+      `http://10.0.0.5/?p=${CHAVE_RJ}|2|1`,
+      `http://localhost:3000/?p=${CHAVE_RJ}|2|1`,
+      `https://atacante.example/?p=${CHAVE_RJ}|2|1`,
+      `https://www.fazenda.rj.gov.br@atacante.example/?p=${CHAVE_RJ}|2|1`,
+    ];
+    for (const alvo of alvos) {
+      const qr = parseQrNfce(alvo);
+      expect(qr.chave.valor).toBe(CHAVE_RJ);
+      expect(qr.urlConsulta, alvo).toBeUndefined();
+      // O QR cru continua guardado — reprocessamento retroativo não perde nada.
+      expect(qr.payloadCru).toBe(alvo);
+    }
+  });
 });

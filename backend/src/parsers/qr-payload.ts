@@ -10,6 +10,8 @@
  * Tolerante a variações de layout entre estados (por isso vários fallbacks).
  */
 
+import { urlConsultaConfiavel } from '@barganha/shared';
+
 import { PayloadQrInvalidoError } from '../erros';
 import { apenasDigitos, parseChaveAcesso, type ChaveAcesso } from './chave-acesso';
 
@@ -18,7 +20,13 @@ export interface QrNfce {
   chave: ChaveAcesso;
   /** UF do emitente (conveniência; espelha `chave.uf`). */
   uf?: string;
-  /** URL de consulta na SEFAZ, quando o payload é uma URL. */
+  /**
+   * URL de consulta na SEFAZ — presente só quando o payload é uma URL de um
+   * portal público (`urlConsultaConfiavel`). Ausente tanto no QR que traz só a
+   * chave quanto no payload que aponta para um host de terceiro: é este campo
+   * que o `ClienteSefazHttp` busca, e ele nunca pode carregar um endereço
+   * escolhido por quem imprimiu o QR (SSRF).
+   */
   urlConsulta?: string;
   /** Payload original cru (o que o app capturou). */
   payloadCru: string;
@@ -74,12 +82,15 @@ export function parseQrNfce(payload: string): QrNfce {
 
   const chave = parseChaveAcesso(chaveCrua);
 
-  let urlConsulta: string | undefined;
-  try {
-    urlConsulta = new URL(payload.trim()).toString();
-  } catch {
-    urlConsulta = undefined;
-  }
+  // A chave já saiu do payload acima — o que se decide aqui é só se vale
+  // BUSCAR nesta URL. Host de terceiro vira `undefined`: o cupom segue com a
+  // chave (e o QR cru guardado), mas ninguém faz requisição para o endereço que
+  // o atacante escolheu. Ver `urlConsultaConfiavel`.
+  //
+  // A URL também sai PROMOVIDA a https. O backend consultava no esquema que o
+  // QR trouxesse, e boa parte dos emissores ainda grava `http://` — o que põe a
+  // chave de acesso (dado do mundo privado, docs/04) em texto puro na rede.
+  const urlConsulta = urlConsultaConfiavel(payload) ?? undefined;
 
   return { chave, uf: chave.uf, urlConsulta, payloadCru: payload.trim() };
 }

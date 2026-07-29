@@ -16,6 +16,12 @@
  * `react-native-webview` é módulo NATIVO: carregamos de forma preguiçosa e
  * tolerante para um dev build ANTIGO (ainda sem o módulo) não derrubar o app —
  * nesse caso avisamos o pai (`aoDesistir`) para pedir um novo build.
+ *
+ * SEGURANÇA: a `url` vem do QR, que é ENTRADA NÃO CONFIÁVEL (qualquer pessoa
+ * imprime um QR e cola na gôndola). Só carregamos portal público, e só ele pode
+ * navegar — ver `urlConsultaConfiavel` e `navegacaoPermitida`. Sem isso, este
+ * componente é uma janela de phishing: tela cheia, sem barra de endereço e com o
+ * título "Confirme sua nota" acima do site do atacante.
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -23,7 +29,7 @@ import { ActivityIndicator, Modal, Pressable, StyleSheet, View } from 'react-nat
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { WebViewMessageEvent } from 'react-native-webview';
 
-import { redigirTexto, urlConsultaSegura } from '@barganha/shared';
+import { redigirTexto, urlConsultaConfiavel, urlConsultaSegura } from '@barganha/shared';
 
 import { log } from '@/nucleo/log';
 import { claro as paletaClara, espaco, raio, useTema } from '@/tema';
@@ -93,12 +99,51 @@ const MAX_UPGRADES_HTTPS = 6;
 const UA_CHROME_MOBILE =
   'Mozilla/5.0 (Linux; Android 14; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Mobile Safari/537.36';
 
+/**
+ * Hosts que NÃO são da SEFAZ mas o portal precisa alcançar para o reCAPTCHA
+ * renderizar. Sem eles o desafio nunca aparece e o usuário fica preso para
+ * sempre na página de verificação — a porta de segurança teria quebrado a função.
+ */
+const HOSTS_APOIO = ['google.com', 'gstatic.com', 'recaptcha.net'];
+
+const hostDeApoio = (host: string): boolean =>
+  HOSTS_APOIO.some((base) => host === base || host.endsWith(`.${base}`));
+
+/**
+ * Portão de navegação do WebView. O `source` inicial vem do QR — entrada de
+ * quem imprimiu o papel — e a página da SEFAZ pode mandar o WebView para
+ * qualquer lugar depois. Sem este filtro, um QR colado na gôndola carrega o
+ * site do atacante DENTRO do app: tela cheia, sem barra de endereço, sob o
+ * título "Confirme sua nota" — o cenário perfeito para pedir a senha do
+ * Barganha ou imitar a tela de login do Google.
+ *
+ * Só o documento PRINCIPAL é barrado. Subrecurso/iframe (`isTopFrame === false`,
+ * que no iOS chega aqui) é o caso do próprio desafio do reCAPTCHA; barrá-lo
+ * quebraria a verificação sem fechar nada — quem engana o usuário é a página
+ * que ele VÊ na barra inexistente, não um iframe interno. Quando o campo não
+ * vem preenchido, tratamos como principal (fecha por padrão).
+ */
+function navegacaoPermitida(url: string, isTopFrame?: boolean): boolean {
+  if (isTopFrame === false) return true;
+  if (url === 'about:blank') return true;
+  if (urlConsultaConfiavel(url)) return true;
+  try {
+    return hostDeApoio(new URL(url).hostname.replace(/\.$/, ''));
+  } catch {
+    return false; // Nem URL é — não navega.
+  }
+}
+
 export function ColetorNotaWeb({ url, enviarHtml, aoProcessar, aoDesistir }: ColetorNotaWebProps) {
   const { c } = useTema();
   // O QR do cupom vem com `http://` e o portal do RJ fechou a porta 80 — carregar
   // o payload cru dá `ERR_CONNECTION_REFUSED` na primeira tentativa. Ver
   // `urlConsultaSegura`. O `qrPayload` guardado segue cru.
-  const urlSegura = urlConsultaSegura(url);
+  //
+  // `null` = o payload não aponta para um portal público. O pai já filtra, mas
+  // este componente NÃO confia em quem o chama: é ele que monta o WebView, e uma
+  // regressão na tela não pode virar phishing dentro do app.
+  const urlSegura = urlConsultaConfiavel(url);
   const webRef = useRef<WebViewInstancia>(null);
   const enviando = useRef(false);
   const concluido = useRef(false);
@@ -113,10 +158,10 @@ export function ColetorNotaWeb({ url, enviarHtml, aoProcessar, aoDesistir }: Col
   const [avisoPortal, setAvisoPortal] = useState<string | null>(null);
   // Página EXIBIDA no WebView. Começa na consulta do QR, mas muda sempre que
   // precisamos refazer em https uma navegação que o portal mandou em http.
-  const [uri, setUri] = useState(urlSegura);
+  const [uri, setUri] = useState(urlSegura ?? '');
 
   useEffect(() => {
-    setUri(urlConsultaSegura(url));
+    setUri(urlConsultaConfiavel(url) ?? '');
   }, [url]);
 
   /**
@@ -157,6 +202,19 @@ export function ColetorNotaWeb({ url, enviarHtml, aoProcessar, aoDesistir }: Col
       );
     }
   }, [aoDesistir]);
+
+  // Payload fora dos portais públicos: não abre nada. Pode ser um QR de outro
+  // formato (offline, só a chave) ou um QR forjado — nos dois casos o caminho é
+  // devolver o controle ao pai, nunca carregar o endereço.
+  useEffect(() => {
+    if (WebViewNativo && !urlSegura) {
+      log.warn(
+        { action: 'coletor.url_recusada', url: redigirTexto(url) },
+        'QR não aponta para um portal público da SEFAZ — coletor não abriu',
+      );
+      aoDesistir('Este QR não aponta para o portal da SEFAZ. Tente escanear a nota de novo.');
+    }
+  }, [urlSegura, url, aoDesistir]);
 
   const encerrar = useCallback((fn: () => void) => {
     concluido.current = true;
@@ -205,9 +263,14 @@ export function ColetorNotaWeb({ url, enviarHtml, aoProcessar, aoDesistir }: Col
           setAvisoPortal(
             `A SEFAZ recusou a verificação (tentativa ${recargasPortal.current} de ${MAX_RECARGAS_PORTAL}). Recarregando — toque em “Consultar” quando a página voltar.`,
           );
-          webRef.current?.injectJavaScript(
-            `window.location.replace(${JSON.stringify(urlSegura)});true;`,
-          );
+          // `urlSegura` só é nula quando o componente nem renderizou o WebView
+          // (early return abaixo), mas o destino de um `location.replace` é o
+          // último lugar onde vale confiar num valor sem olhar.
+          if (urlSegura) {
+            webRef.current?.injectJavaScript(
+              `window.location.replace(${JSON.stringify(urlSegura)});true;`,
+            );
+          }
           return;
         }
         // 'erro' = falha real do backend (não 422). Tolera alguns e só então
@@ -225,7 +288,9 @@ export function ColetorNotaWeb({ url, enviarHtml, aoProcessar, aoDesistir }: Col
     [enviarHtml, aoProcessar, aoDesistir, encerrar, urlSegura],
   );
 
-  if (!WebViewNativo) return null; // o pai mostra a mensagem via aoDesistir.
+  // Sem módulo nativo, ou payload fora dos portais públicos: o pai mostra a
+  // mensagem via `aoDesistir` (efeitos acima). Nada de WebView nos dois casos.
+  if (!WebViewNativo || !urlSegura) return null;
 
   return (
     <Modal visible animationType="slide" onRequestClose={cancelar}>
@@ -263,9 +328,34 @@ export function ColetorNotaWeb({ url, enviarHtml, aoProcessar, aoDesistir }: Col
           <WebViewNativo
             ref={webRef}
             source={{ uri }}
-            // Barra a navegação em http ANTES de ela sair: é o portal que
-            // aponta para si mesmo em texto puro, e a porta 80 está fechada.
-            onShouldStartLoadWithRequest={(req) => !forcarHttps(req.url)}
+            // Portão ÚNICO de navegação, com dois trabalhos, nesta ordem:
+            //  1. host fora dos portais públicos → recusa (`navegacaoPermitida`);
+            //  2. http → refaz a MESMA navegação em https e aborta a original (o
+            //     portal aponta para si mesmo em texto puro e a porta 80 está
+            //     fechada).
+            //
+            // O host vem PRIMEIRO de propósito: o item 2 promove qualquer http a
+            // https e mexe na `uri`, então deixá-lo na frente faria uma URL
+            // hostil gastar orçamento de upgrade e virar estado do componente
+            // antes de ser recusada na volta. Um host permitido em http continua
+            // sendo promovido — `navegacaoPermitida` avalia a forma https.
+            onShouldStartLoadWithRequest={(req) => {
+              if (!navegacaoPermitida(req.url, req.isTopFrame)) {
+                log.warn(
+                  { action: 'coletor.navegacao_recusada', url: redigirTexto(req.url) },
+                  'WebView tentou sair para um host que não é portal público',
+                );
+                return false;
+              }
+              return !forcarHttps(req.url);
+            }}
+            // `['*']` é DELIBERADO, não desleixo: no `react-native-webview` a
+            // whitelist é avaliada ANTES do `onShouldStartLoadWithRequest`, e o
+            // que ela recusa vai para o navegador do sistema via `Linking.openURL`
+            // (ver `WebViewShared`). Apertar aqui, então, faria o OPOSTO do que
+            // parece — mandaria a URL recusada para FORA do app, levando a chave
+            // de acesso na query (docs/04), e ainda pularia o item 1 acima.
+            // Quem filtra é o handler; a whitelist precisa deixar tudo chegar nele.
             originWhitelist={['*']}
             userAgent={UA_CHROME_MOBILE}
             javaScriptEnabled

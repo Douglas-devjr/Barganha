@@ -7,6 +7,8 @@
  * cabeçalhos/URL; por isso o cliente é injetável e os parsers, versionados.
  */
 
+import { urlConsultaConfiavel } from '@barganha/shared';
+
 import { FalhaBuscaSefazError, PayloadQrInvalidoError } from '../erros';
 import { pareceDefesaAntiBot } from '../parsers/html';
 import type { QrNfce } from '../parsers/qr-payload';
@@ -57,10 +59,19 @@ export class ClienteSefazHttp implements ClienteSefaz {
       throw new PayloadQrInvalidoError('QR sem URL de consulta — não é possível buscar na SEFAZ.');
     }
 
+    // Segunda camada da MESMA regra do `parseQrNfce`. `QrNfce` é uma interface:
+    // qualquer chamador pode montar uma à mão e chegar aqui sem passar pelo
+    // parse. Como é ESTA linha que faz a requisição de rede, é aqui que a porta
+    // precisa estar fechada de verdade — o custo é uma comparação de string.
+    const urlSegura = urlConsultaConfiavel(qr.urlConsulta);
+    if (!urlSegura) {
+      throw new PayloadQrInvalidoError('URL de consulta fora dos portais públicos da SEFAZ.');
+    }
+
     const controle = new AbortController();
     const timer = setTimeout(() => controle.abort(), this.timeoutMs);
     try {
-      const resposta = await this.fetchFn(qr.urlConsulta, {
+      const resposta = await this.fetchFn(urlSegura, {
         headers: {
           'user-agent': this.userAgent,
           accept: 'text/html,application/xhtml+xml',
