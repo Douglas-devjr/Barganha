@@ -1,6 +1,6 @@
 /**
- * Handoff "3k Construção" (`design_handoff_barganha_marca/HANDOFF-LOADING.md`) —
- * a tela de abertura do app.
+ * Handoff "3k Construção" (`design/design_handoff_barganha_marca/HANDOFF-LOADING.md`)
+ * — a tela de abertura do app.
  *
  * Não é um spinner: a marca SE CONSTRÓI. A haste cresce, os dois bojos brotam
  * dela em sequência e o conjunto termina no monograma inteiro (ícone "3b

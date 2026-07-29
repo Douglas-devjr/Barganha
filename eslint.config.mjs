@@ -9,13 +9,13 @@ export default tseslint.config(
       '**/dist/**',
       '**/coverage/**',
       '**/.expo/**',
+      // Inclui os handoffs de design (`design/design_handoff_*`): protótipos
+      // estáticos de browser, com `support.js` cheio de `innerHTML`/`new
+      // Function`. Vivem AQUI, e não em `app/src`, justamente para não se
+      // parecerem com código do app numa auditoria — nada no bundle os importa.
       'design/**',
       'supabase/**',
       '**/*.config.{js,cjs,mjs,ts}',
-      // Protótipos estáticos dos handoffs de design (não são código do app).
-      // Glob por prefixo: cada handoff novo traz o mesmo `support.js` de
-      // browser, e listar um a um só era lembrado quando o lint quebrava.
-      'app/src/design_handoff_*/**',
     ],
   },
   js.configs.recommended,

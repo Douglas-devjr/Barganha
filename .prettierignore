@@ -12,6 +12,3 @@ package-lock.json
 
 # Documentação em prosa — formatação manual, fora do gate do Prettier.
 *.md
-
-# Protótipos estáticos dos handoffs de design — fora do gate do Prettier.
-app/src/design_handoff_*
