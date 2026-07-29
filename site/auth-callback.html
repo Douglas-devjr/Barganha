@@ -4,6 +4,18 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="robots" content="noindex" />
+    <!--
+      CSP em <meta> porque o GitHub Pages não deixa configurar cabeçalho HTTP.
+      Esta página participa do fluxo de AUTENTICAÇÃO (recebe o `?code=` que vira
+      sessão), então vale prender o que ela pode fazer: nada de rede, nada de
+      script externo, nada de iframe. `unsafe-inline` é necessário porque o
+      estilo e o script desta página são inline de propósito (zero dependência) —
+      o que a política garante é que NENHUMA outra origem entra aqui.
+    -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; base-uri 'none'; form-action 'none'"
+    />
     <title>Barganha — abrindo o app</title>
     <!--
       Página-ponte de autenticação (docs/19 §5).
