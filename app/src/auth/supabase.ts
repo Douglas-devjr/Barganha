@@ -1,8 +1,12 @@
 /**
  * C4.3.1 — Cliente Supabase do APP (login real). Usa a ANON KEY (pública) e
- * persiste a sessão no SQLite local (`armazenamentoSessao`, sobre `expo-sqlite`,
- * que já é nativo no app — nenhum módulo nativo novo só para isso). O access
- * token (JWT) desta sessão é o Bearer dos endpoints PRIVADOS do backend.
+ * persiste a sessão via `armazenamentoSessao`, que a guarda no ARMAZENAMENTO
+ * SEGURO do sistema (Keystore no Android, Keychain no iOS) — nunca em
+ * `localStorage`/`AsyncStorage`, e não mais em texto puro no SQLite: a sessão
+ * carrega o refresh token, que é de longa duração e vale uma conta. O SQLite
+ * sobrevive só como fallback para build sem o módulo nativo, e essa degradação é
+ * logada como `error` (ver `armazenamento.ts`). O access token (JWT) desta sessão
+ * é o Bearer dos endpoints PRIVADOS do backend.
  *
  * `flowType: 'pkce'` habilita o OAuth nativo (Google) com troca segura de código.
  * `react-native-url-polyfill` é JS puro e dá um `URL` completo (usado pelo
