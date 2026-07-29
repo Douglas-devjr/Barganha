@@ -18,7 +18,6 @@
  * SQLite, sessão) e segura o mínimo de 1,9 s.
  */
 
-import { isLoaded } from 'expo-font';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useId, useRef } from 'react';
 import { Animated, Easing, Pressable, StyleSheet, View, type ViewStyle } from 'react-native';
@@ -26,7 +25,6 @@ import Svg, { Defs, Path, RadialGradient, Rect, Stop } from 'react-native-svg';
 
 import { Texto } from '@/componentes';
 import { useReduzirMovimento } from '@/componentes/movimento';
-import { fontes } from '@/tema';
 
 /** §3 do handoff — literais fixos: a abertura não acompanha o tema. */
 const FUNDO = '#111110';
@@ -134,17 +132,6 @@ export function SplashTela({ aoConcluir, animar = true }: SplashTelaProps) {
   const opacidade = (valor: Animated.Value) =>
     valor.interpolate({ inputRange: [0, 1], outputRange: [0, 1], extrapolate: 'clamp' });
 
-  // Esta tela é montada ANTES de a Instrument Sans terminar de carregar — é
-  // justamente uma das esperas que ela cobre (`App.tsx`: `pronto` só é true com
-  // `fontesProntas`). No primeiro render o wordmark é medido com a fonte do
-  // sistema; quando a fonte real chega, o Android NÃO remede o texto, porque as
-  // props do `Text` não mudaram. A caixa fica com a largura antiga — mais
-  // estreita que a Instrument Sans Bold — e o wrapper, que encolhe até essa
-  // medida, corta a última letra ao meio. Trocar a `key` remonta o texto e
-  // força a medição com a fonte certa. Só o `Text` remonta: a animação vive na
-  // `Animated.View` de fora e não é reiniciada.
-  const fonteDaMarcaPronta = isLoaded(fontes.bold);
-
   return (
     // `accessible={false}`: o toque é um atalho para pular a espera, não um
     // controle rotulado — o leitor de tela deve ler a marca e a tagline.
@@ -222,7 +209,7 @@ export function SplashTela({ aoConcluir, animar = true }: SplashTelaProps) {
               ],
             }}
           >
-            <Texto key={String(fonteDaMarcaPronta)} peso="bold" style={estilos.wordmark}>
+            <Texto peso="bold" style={estilos.wordmark}>
               Barganha
             </Texto>
           </Animated.View>
@@ -295,12 +282,7 @@ const estilos = StyleSheet.create({
     transformOrigin: 'left center',
   },
 
-  // O `paddingHorizontal` não é respiro de layout: com `letterSpacing`
-  // negativo o Android desconta o espaçamento também DEPOIS do último glifo, e
-  // a caixa fica ~1 px mais estreita que o desenho. Como o wrapper encolhe até
-  // a medida do texto, essa sobra vira corte. É simétrico para não deslocar o
-  // wordmark do centro. Não remover sem também zerar o `letterSpacing`.
-  wordmark: { fontSize: 30, letterSpacing: -1, color: MARCA, paddingHorizontal: 4 },
+  wordmark: { fontSize: 30, letterSpacing: -1, color: MARCA },
   tagline: {
     position: 'absolute',
     left: 0,
