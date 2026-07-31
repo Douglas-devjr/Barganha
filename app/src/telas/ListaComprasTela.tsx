@@ -9,7 +9,9 @@
  *      que dispara o veredito na hora (abaixo / na média / acima do típico).
  *
  * A caixa de seleção marca o que já está no carrinho (persistida). O preço
- * digitado NÃO persiste: é da ida ao mercado, envelhece em horas.
+ * digitado NÃO persiste: é da ida ao mercado, envelhece em horas. A quantidade
+ * persiste e multiplica tudo — estimativa, "na gôndola" e a cesta que vai ao
+ * ranking por loja: quem leva 5 caixas de leite precisa do total de 5, não de 1.
  *
  * Tudo offline: a lista é local e os típicos vêm do `cache_estatistica` baixado
  * pelo delta sync. Só o ranking por loja ("no Assaí sai por…") precisa de rede,
@@ -20,8 +22,10 @@ import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { CompositeScreenProps } from '@react-navigation/native';
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { Pressable, StyleSheet, TextInput, View } from 'react-native';
+
+import { classificarPreco, dadoRecente, idadeEmDias } from '@barganha/shared';
 
 import {
   Cartao,
@@ -46,7 +50,7 @@ import type { RootStackParamList, TabParamList } from '@/navegacao/tipos';
 import type { ProdutoBuscavel } from '@/nucleo/busca-produtos';
 import * as catalogo from '@/nucleo/catalogo';
 import type { ProdutoLocal } from '@/nucleo/catalogo';
-import { moeda, parseMoeda } from '@/nucleo/formato';
+import { idadeTexto, moeda, parseMoeda } from '@/nucleo/formato';
 import { resolverLocalizacao } from '@/nucleo/localizacao';
 import { sincronizarEstatisticas } from '@/nucleo/sincronizador';
 import { tipicosDaRegiao, type TipicoRegional } from '@/nucleo/tipico-regional';
@@ -57,20 +61,40 @@ type Props = CompositeScreenProps<
   NativeStackScreenProps<RootStackParamList>
 >;
 
+type Veredito = 'abaixo' | 'media' | 'acima' | 'sem_veredito';
+
 /**
- * Faixa em que o preço da gôndola conta como "na média". É o mesmo ±5% que o
- * protótipo usa no veredito de Verificar — dentro dela a diferença é ruído da
- * amostra, não barganha.
+ * Veredito do preço da gôndola contra o típico — pela engine de
+ * `@barganha/shared`, a MESMA da Verificar.
+ *
+ * Antes esta tela tinha a sua própria tolerância de ±5% copiada. A cópia não
+ * conhecia a zona morta que cresce com a idade do dado nem a janela da agregação,
+ * então o mesmo produto pelo mesmo preço podia sair "abaixo do típico" aqui e "na
+ * média" na Verificar, no mesmo minuto — sem nada no log para explicar.
+ *
+ * A faixa daqui não tem percentis (o cache regional resolvido traz a mediana), e
+ * a engine trata esse caso: a zona morta decide o lado.
  */
-const TOLERANCIA = 0.05;
-
-type Veredito = 'abaixo' | 'media' | 'acima';
-
-function classificar(preco: number, tipico: number): Veredito {
-  const v = (preco - tipico) / tipico;
-  if (v <= -TOLERANCIA) return 'abaixo';
-  if (v >= TOLERANCIA) return 'acima';
-  return 'media';
+function classificar(preco: number, tipico: TipicoRegional, referencia: Date): Veredito {
+  const v = classificarPreco(
+    preco,
+    {
+      mediana: tipico.mediana,
+      nObservacoes: tipico.nObservacoes,
+      unidadeBase: tipico.unidadeBase,
+      atualizadoEm: tipico.atualizadoEm,
+      ...(tipico.observadoEmMaisRecente
+        ? { observadoEmMaisRecente: tipico.observadoEmMaisRecente }
+        : {}),
+    },
+    referencia,
+  );
+  if (v === 'barato') return 'abaixo';
+  if (v === 'caro') return 'acima';
+  if (v === 'na_media') return 'media';
+  // 'sem_dados' — típico fora da janela da agregação: sem rótulo, e o item mostra
+  // a idade ao lado do nome dizendo por quê.
+  return 'sem_veredito';
 }
 
 export function ListaComprasTela({ navigation }: Props) {
@@ -84,8 +108,16 @@ export function ListaComprasTela({ navigation }: Props) {
   const [precos, setPrecos] = useState<Record<string, string>>({});
   const [adicionando, setAdicionando] = useState(false);
   const [removendo, setRemovendo] = useState<ItemLista | null>(null);
+  const [limpando, setLimpando] = useState(false);
   /** Total da cesta na loja mais barata da região; `null` = sem rede/sem dado. */
   const [melhorLoja, setMelhorLoja] = useState<{ nome: string; total: number } | null>(null);
+  /**
+   * Sequência do pedido de ranking em voo. Mexer na quantidade dispara um pedido
+   * por toque, e cinco toques rápidos no "+" viram cinco pedidos: sem isto, uma
+   * resposta antiga chegando depois da nova estampa o total de 3 caixas embaixo
+   * de uma lista que já tem 5.
+   */
+  const pedidoLoja = useRef(0);
 
   const recarregar = useCallback(async () => {
     const atual = await listaRepo.listar();
@@ -105,6 +137,7 @@ export function ListaComprasTela({ navigation }: Props) {
    * a estimativa pelos típicos já responde a pergunta principal offline.
    */
   const buscarMelhorLoja = useCallback(async (atuais: ItemLista[]) => {
+    const meu = ++pedidoLoja.current;
     if (atuais.length === 0) return setMelhorLoja(null);
     try {
       const local = await resolverLocalizacao();
@@ -116,22 +149,34 @@ export function ListaComprasTela({ navigation }: Props) {
         ...(local?.municipio ? { municipio: local.municipio } : {}),
         ...(local?.uf ? { uf: local.uf } : {}),
       });
+      if (meu !== pedidoLoja.current) return; // resposta velha: a cesta já mudou
       const primeira = r.lojas[0];
       // Só vale como "sai por" se a loja cobre a lista inteira; cobertura
       // parcial daria um total menor por FALTA de itens, não por ser barata.
+      //
+      // E só com dado RECENTE — a mesma trava do selo da tela Comparar mercados
+      // (`dadoRecente`). Sem isto esta linha afirmaria "no Assaí sai por R$ 180"
+      // com preço de meses atrás enquanto a outra tela, olhando os mesmos dados,
+      // se recusa a recomendar a loja.
       setMelhorLoja(
-        primeira && primeira.itensCobertos === r.itensTotal
+        primeira &&
+          primeira.itensCobertos === r.itensTotal &&
+          dadoRecente(primeira.observadoEmMaisAntigo, new Date())
           ? { nome: primeira.nome ?? 'mercado da região', total: primeira.total }
           : null,
       );
     } catch {
-      setMelhorLoja(null);
+      if (meu === pedidoLoja.current) setMelhorLoja(null);
     }
   }, []);
 
+  // A MESMA cesta que a tela Comparar mercados usa: a lista menos o que foi
+  // excluído da comparação (`fora_comparacao`, v9). Sem esse recorte as duas
+  // telas mostrariam totais diferentes — e às vezes vencedores diferentes —
+  // para a mesma pessoa no mesmo minuto.
   useFocusEffect(
     useCallback(() => {
-      if (itens) void buscarMelhorLoja(itens);
+      if (itens) void buscarMelhorLoja(listaRepo.cestaComparavel(itens));
     }, [itens, buscarMelhorLoja]),
   );
 
@@ -143,6 +188,24 @@ export function ListaComprasTela({ navigation }: Props) {
           i.produtoCanonicoId === item.produtoCanonicoId ? { ...i, marcado: !i.marcado } : i,
         ) ?? null,
     );
+  }
+
+  /**
+   * Quantidade — otimista como o `marcado`: o toque tem de responder no dedo, e o
+   * banco local é a cópia, não a fonte da tela. O piso é 1 (`definirQuantidade`
+   * também garante); para zerar existe tirar da lista. O teto de 99 é só contra o
+   * dedo preso no "+".
+   */
+  async function mudarQuantidade(item: ItemLista, delta: number) {
+    const nova = Math.max(1, Math.min(99, item.quantidade + delta));
+    if (nova === item.quantidade) return;
+    setItens(
+      (atual) =>
+        atual?.map((i) =>
+          i.produtoCanonicoId === item.produtoCanonicoId ? { ...i, quantidade: nova } : i,
+        ) ?? null,
+    );
+    await listaRepo.definirQuantidade(item.produtoCanonicoId, nova);
   }
 
   /**
@@ -170,6 +233,21 @@ export function ListaComprasTela({ navigation }: Props) {
     });
     await recarregar();
     toast(`“${item.nome}” saiu da lista`);
+  }
+
+  /**
+   * Esvaziar a lista inteira — a saída para quem terminou a compra e vai montar
+   * a próxima. Sempre passa pelo diálogo: é destrutivo e não tem desfazer.
+   */
+  async function limparTudo() {
+    const quantos = itens?.length ?? 0;
+    await listaRepo.removerTodos();
+    setLimpando(false);
+    // Os preços digitados eram daquela ida ao mercado; deixá-los aqui faria o
+    // "na gôndola até agora" ressuscitar no primeiro item da lista seguinte.
+    setPrecos({});
+    await recarregar();
+    toast(quantos === 1 ? 'A lista está vazia' : `${quantos} itens saíram da lista`);
   }
 
   // ---- somatórios -----------------------------------------------------------
@@ -203,9 +281,23 @@ export function ListaComprasTela({ navigation }: Props) {
       titulo="Lista de compras"
       direita={
         itens && itens.length > 0 ? (
-          <Texto peso="semibold" cor="suave" numerico style={estilos.contador}>
-            {itens.length} {itens.length === 1 ? 'item' : 'itens'}
-          </Texto>
+          <View style={estilos.tituloAcoes}>
+            <Texto peso="semibold" cor="suave" numerico style={estilos.contador}>
+              {itens.length} {itens.length === 1 ? 'item' : 'itens'}
+            </Texto>
+            <Pressable
+              onPress={() => setLimpando(true)}
+              accessibilityRole="button"
+              accessibilityLabel="Limpar a lista de compras"
+              hitSlop={12}
+              style={({ pressed }) => [estilos.limpar, pressed && { opacity: 0.6 }]}
+            >
+              <IconeLixeira tamanho={13} cor={c.fraco} />
+              <Texto peso="semibold" cor="suave" style={estilos.limparTexto}>
+                Limpar
+              </Texto>
+            </Pressable>
+          </View>
         ) : undefined
       }
     />
@@ -299,6 +391,7 @@ export function ListaComprasTela({ navigation }: Props) {
             precoTexto={precos[item.produtoCanonicoId] ?? ''}
             ultima={idx === itens.length - 1}
             aoMarcar={() => void alternarMarcado(item)}
+            aoMudarQuantidade={(delta) => void mudarQuantidade(item, delta)}
             aoDigitarPreco={(texto) =>
               setPrecos((atual) => ({ ...atual, [item.produtoCanonicoId]: texto }))
             }
@@ -357,6 +450,21 @@ export function ListaComprasTela({ navigation }: Props) {
         aoConfirmar={() => removendo && void remover(removendo)}
         aoCancelar={() => setRemovendo(null)}
       />
+
+      <Dialogo
+        visivel={limpando}
+        titulo="Limpar a lista?"
+        mensagem={
+          (itens.length === 1
+            ? 'O item sai da sua lista de compras. '
+            : `Os ${itens.length} itens saem da sua lista de compras de uma vez. `) +
+          'O histórico de preços continua intacto.'
+        }
+        rotuloConfirmar="Limpar lista"
+        icone={<IconeLixeira tamanho={24} cor={c.caro} />}
+        aoConfirmar={() => void limparTudo()}
+        aoCancelar={() => setLimpando(false)}
+      />
     </Tela>
   );
 }
@@ -367,6 +475,7 @@ function ItemDaLista({
   precoTexto,
   ultima,
   aoMarcar,
+  aoMudarQuantidade,
   aoDigitarPreco,
   aoRemover,
 }: {
@@ -375,23 +484,54 @@ function ItemDaLista({
   precoTexto: string;
   ultima: boolean;
   aoMarcar: () => void;
+  aoMudarQuantidade: (delta: number) => void;
   aoDigitarPreco: (texto: string) => void;
   aoRemover: () => void;
 }) {
   const { c } = useTema();
 
+  // Um "agora" por item: as duas leituras de idade abaixo têm de concordar.
+  const agora = new Date();
   const digitado = parseMoeda(precoTexto);
-  const veredito = digitado != null && tipico ? classificar(digitado, tipico.mediana) : null;
+  const veredito = digitado != null && tipico ? classificar(digitado, tipico, agora) : null;
 
   const rotuloVeredito =
     veredito === 'abaixo'
       ? 'abaixo do típico'
       : veredito === 'acima'
         ? 'acima do típico'
-        : 'na média';
-  const corVeredito = veredito === 'abaixo' ? c.barato : veredito === 'acima' ? c.caro : c.medio;
+        : veredito === 'sem_veredito'
+          ? 'sem base atual'
+          : 'na média';
+  const corVeredito =
+    veredito === 'abaixo'
+      ? c.barato
+      : veredito === 'acima'
+        ? c.caro
+        : veredito === 'sem_veredito'
+          ? c.fraco
+          : c.medio;
 
   const sufixo = tipico ? `/${tipico.unidadeBase}` : '';
+
+  /**
+   * A idade só aparece quando o típico está VELHO. Estampar "há 3 dias" em cada
+   * item da lista inteira viraria ruído e ninguém leria mais nada; a exceção é o
+   * que precisa de atenção — é contra esse típico que o veredito da gôndola ao
+   * lado está sendo dado.
+   */
+  const tipicoVelho = tipico != null && !dadoRecente(tipico.observadoEmMaisRecente, agora);
+  const idade = idadeTexto(idadeEmDias(tipico?.observadoEmMaisRecente, agora));
+
+  /**
+   * Subtotal do item: preço da gôndola × quantidade. Só aparece com quantidade
+   * acima de 1 — com 1 unidade ele repetiria o número que está no campo ao lado.
+   *
+   * Quando aparece, ele TOMA o lugar do "típico R$ x/kg" nesta linha em vez de
+   * disputar largura com ele: quem já digitou o preço tem o veredito ao lado
+   * dizendo se está bom, e o que falta saber é quanto vai sair no caixa.
+   */
+  const subtotal = digitado != null && item.quantidade > 1 ? digitado * item.quantidade : null;
 
   return (
     <View style={[estilos.item, !ultima && { borderBottomWidth: 1, borderBottomColor: c.linha }]}>
@@ -412,26 +552,46 @@ function ItemDaLista({
         {item.marcado ? <IconeCheck tamanho={13} cor={c.sobreTeal} larguraTraco={3} /> : null}
       </Pressable>
 
-      <Pressable
-        onPress={aoRemover}
-        onLongPress={aoRemover}
-        accessibilityRole="button"
-        accessibilityLabel={`Tirar ${item.nome} da lista`}
-        style={estilos.itemTexto}
-      >
-        <Texto
-          peso="semibold"
-          tamanho="sm"
-          numberOfLines={1}
-          cor={item.marcado ? 'fraco' : 'tinta'}
-          style={item.marcado ? estilos.riscado : undefined}
+      <View style={estilos.itemTexto}>
+        <Pressable
+          onPress={aoRemover}
+          onLongPress={aoRemover}
+          accessibilityRole="button"
+          accessibilityLabel={`Tirar ${item.nome} da lista`}
         >
-          {item.nome}
-        </Texto>
-        <Texto cor="fraco" tamanho="xs" numerico>
-          {tipico ? `típico ${moeda(tipico.mediana)}${sufixo}` : 'sem preço na sua região'}
-        </Texto>
-      </Pressable>
+          <Texto
+            peso="semibold"
+            tamanho="sm"
+            numberOfLines={1}
+            cor={item.marcado ? 'fraco' : 'tinta'}
+            style={item.marcado ? estilos.riscado : undefined}
+          >
+            {item.nome}
+          </Texto>
+        </Pressable>
+
+        <View style={estilos.linhaQuantidade}>
+          <PassoQuantidade
+            nome={item.nome}
+            quantidade={item.quantidade}
+            aoMudar={aoMudarQuantidade}
+          />
+          <Texto
+            peso={subtotal != null ? 'semibold' : 'medium'}
+            cor={subtotal != null ? 'tinta' : tipicoVelho ? 'suave' : 'fraco'}
+            tamanho="xs"
+            numerico
+            numberOfLines={1}
+            style={estilos.subinfo}
+          >
+            {subtotal != null
+              ? `= ${moeda(subtotal)}`
+              : tipico
+                ? `típico ${moeda(tipico.mediana)}${sufixo}${tipicoVelho ? ` · ${idade}` : ''}`
+                : 'sem preço na região'}
+          </Texto>
+        </View>
+      </View>
 
       <View style={estilos.itemDireita}>
         <View style={[estilos.campoPreco, { backgroundColor: c.superficie, borderColor: c.borda }]}>
@@ -456,8 +616,86 @@ function ItemDaLista({
   );
 }
 
+/**
+ * Stepper de quantidade — o que faz o total da lista ser o total da COMPRA.
+ *
+ * Mora na segunda linha do item, e não ao lado do campo de preço, por largura: os
+ * dois na mesma linha comprimiriam o nome do produto a ~100dp, e nome de produto
+ * cortado numa lista de compras é pior do que um toque a mais.
+ *
+ * No 1 o "−" fica apagado e inerte: para zerar existe tirar da lista (toque no
+ * nome). Um "−" que às vezes apaga o item seria uma armadilha.
+ */
+function PassoQuantidade({
+  nome,
+  quantidade,
+  aoMudar,
+}: {
+  nome: string;
+  quantidade: number;
+  aoMudar: (delta: number) => void;
+}) {
+  const { c } = useTema();
+  const noPiso = quantidade <= 1;
+  // Os dois botões têm 22px de lado, abaixo dos 44 de alvo mínimo: o hitSlop
+  // completa. Só 6px na horizontal para as duas áreas não se encostarem no meio.
+  const alvo = { top: 11, bottom: 11, left: 6, right: 6 };
+
+  return (
+    <View style={estilos.passo}>
+      <Pressable
+        onPress={() => aoMudar(-1)}
+        disabled={noPiso}
+        accessibilityRole="button"
+        accessibilityLabel={`Diminuir a quantidade de ${nome}`}
+        accessibilityState={{ disabled: noPiso }}
+        hitSlop={alvo}
+        style={({ pressed }) => [
+          estilos.passoBotao,
+          { borderColor: c.borda },
+          noPiso && { opacity: 0.35 },
+          pressed && !noPiso && { backgroundColor: c.linha },
+        ]}
+      >
+        <Texto peso="semibold" cor="suave" style={estilos.passoSinal}>
+          −
+        </Texto>
+      </Pressable>
+
+      <Texto
+        peso="bold"
+        numerico
+        centralizado
+        accessibilityLabel={`Quantidade: ${quantidade}`}
+        style={estilos.passoValor}
+      >
+        {quantidade}
+      </Texto>
+
+      <Pressable
+        onPress={() => aoMudar(1)}
+        accessibilityRole="button"
+        accessibilityLabel={`Aumentar a quantidade de ${nome}`}
+        hitSlop={alvo}
+        style={({ pressed }) => [
+          estilos.passoBotao,
+          { borderColor: c.borda },
+          pressed && { backgroundColor: c.linha },
+        ]}
+      >
+        <Texto peso="semibold" cor="suave" style={estilos.passoSinal}>
+          +
+        </Texto>
+      </Pressable>
+    </View>
+  );
+}
+
 const estilos = StyleSheet.create({
+  tituloAcoes: { flexDirection: 'row', alignItems: 'center', gap: espaco.md },
   contador: { fontSize: 11 },
+  limpar: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  limparTexto: { fontSize: 12 },
   subtitulo: { marginTop: -espaco.md, marginBottom: espaco.lg },
   cartaoEstimativa: { marginBottom: espaco.md },
   estimativaTopo: {
@@ -496,6 +734,19 @@ const estilos = StyleSheet.create({
   },
   itemTexto: { flex: 1, minWidth: 0 },
   riscado: { textDecorationLine: 'line-through' },
+  linhaQuantidade: { flexDirection: 'row', alignItems: 'center', gap: espaco.sm, marginTop: 4 },
+  subinfo: { flexShrink: 1 },
+  passo: { flexDirection: 'row', alignItems: 'center', gap: 2 },
+  passoBotao: {
+    width: 22,
+    height: 22,
+    borderRadius: 7,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  passoSinal: { fontSize: 14, lineHeight: 17 },
+  passoValor: { minWidth: 18, fontSize: 12.5 },
   itemDireita: { alignItems: 'flex-end' },
   campoPreco: {
     flexDirection: 'row',
