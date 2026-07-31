@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { dataCurta, moeda, parseMoeda } from './formato';
+import { dataCurta, idadeTexto, moeda, parseMoeda, vezesCompradas } from './formato';
 
 describe('parseMoeda (valor digitado na prateleira/desconto)', () => {
   it('lê vírgula decimal (teclado pt-BR)', () => {
@@ -48,5 +48,36 @@ describe('moeda / dataCurta', () => {
   it('dataCurta devolve null para entrada inválida', () => {
     expect(dataCurta(null)).toBeNull();
     expect(dataCurta('não-é-data')).toBeNull();
+  });
+});
+
+describe('idadeTexto (idade do preço na comparação de mercados)', () => {
+  it('fala em dias, não em datas', () => {
+    expect(idadeTexto(0)).toBe('de hoje');
+    expect(idadeTexto(0.4)).toBe('de hoje');
+    expect(idadeTexto(1)).toBe('de ontem');
+    expect(idadeTexto(1.9)).toBe('de ontem');
+    expect(idadeTexto(12.3)).toBe('há 12 dias');
+    expect(idadeTexto(43.6)).toBe('há 44 dias');
+  });
+
+  it('sem data NÃO vira "de hoje" — desconhecido não é frescor', () => {
+    expect(idadeTexto(undefined)).toBe('sem data');
+  });
+});
+
+describe('vezesCompradas (evidência do típico nas listas de produto)', () => {
+  it('sai como frase com verbo, nunca como "N compras" solto', () => {
+    expect(vezesCompradas(3)).toBe('comprou 3 vezes');
+    expect(vezesCompradas(12)).toBe('comprou 12 vezes');
+  });
+
+  it('concorda no singular', () => {
+    expect(vezesCompradas(1)).toBe('comprou 1 vez');
+  });
+
+  it('sem compra não vira "comprou 0 vezes"', () => {
+    expect(vezesCompradas(0)).toBe('sem compra sua ainda');
+    expect(vezesCompradas(-1)).toBe('sem compra sua ainda');
   });
 });

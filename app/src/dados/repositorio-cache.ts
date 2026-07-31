@@ -21,6 +21,7 @@ interface LinhaCache {
   maximo: number | null;
   menor_promocional: number | null;
   n_observacoes: number;
+  observado_em_max: string | null;
   atualizado_em: string;
 }
 
@@ -37,6 +38,8 @@ function mapear(l: LinhaCache): CacheEstatistica {
     maximo: l.maximo,
     menorPromocional: l.menor_promocional,
     nObservacoes: l.n_observacoes,
+    // `?? null` e não `!`: linha gravada antes da v10 vem sem a coluna.
+    observadoEmMaisRecente: l.observado_em_max ?? null,
     atualizadoEm: l.atualizado_em,
   };
 }
@@ -51,8 +54,9 @@ export async function salvarEstatisticas(estatisticas: PrecoEstatistica[]): Prom
       await txn.runAsync(
         `INSERT OR REPLACE INTO cache_estatistica
            (produto_canonico_id, escopo, escopo_id, unidade_base, mediana, p25, p75,
-            minimo, maximo, menor_promocional, n_observacoes, atualizado_em)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            minimo, maximo, menor_promocional, n_observacoes, observado_em_max,
+            atualizado_em)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           e.produtoCanonicoId,
           e.escopo,
@@ -65,6 +69,9 @@ export async function salvarEstatisticas(estatisticas: PrecoEstatistica[]): Prom
           e.maximo ?? null,
           e.menorPromocional ?? null,
           e.nObservacoes,
+          // Backend anterior a esta coluna não manda o campo — fica nulo, e a UI
+          // diz "sem data" em vez de fingir frescor.
+          e.observadoEmMaisRecente ?? null,
           e.atualizadoEm,
         ],
       );

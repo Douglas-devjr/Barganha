@@ -89,6 +89,34 @@ export interface CacheEstatistica {
   maximo: number | null;
   menorPromocional: number | null;
   nObservacoes: number;
+  /**
+   * Data da observação mais recente por trás da mediana — a idade do PREÇO.
+   * `null` nas linhas em cache antes da coluna existir (v10): leia como idade
+   * DESCONHECIDA, nunca como recente.
+   *
+   * Não confundir com `atualizadoEm`, que é quando o SERVIDOR recalculou: um
+   * recálculo completo carimba hoje em dado de meses atrás.
+   */
+  observadoEmMaisRecente: string | null;
+  atualizadoEm: string;
+}
+
+/**
+ * Linha do cache de catálogo (C4.5) — os dados de EXIBIÇÃO do produto, baixados
+ * por `POST /sync/produtos`. É o que dá nome, offline, ao id que o cache de
+ * estatística conhece só pelo preço.
+ *
+ * Campos de curadoria (C11.5) são `null` enquanto o produto não foi enriquecido
+ * no servidor; a `unidadeBase` vem sempre (é do catálogo, não da curadoria).
+ */
+export interface CacheProduto {
+  produtoCanonicoId: string;
+  nomeExibicao: string | null;
+  marca: string | null;
+  categoria: string | null;
+  imagemUrl: string | null;
+  unidadeBase: UnidadeBase;
+  /** Quando ESTE aparelho baixou o resumo — base da revalidação. */
   atualizadoEm: string;
 }
 

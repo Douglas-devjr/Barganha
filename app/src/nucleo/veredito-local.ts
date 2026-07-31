@@ -105,6 +105,9 @@ function comoFaixa(e: CacheEstatistica): FaixaPreco {
     nObservacoes: e.nObservacoes,
     unidadeBase: e.unidadeBase,
     atualizadoEm: e.atualizadoEm,
+    // Idade do PREÇO, separada do recálculo (v10 do cache local). Nulo em linha
+    // baixada antes da coluna: a UI mostra "sem data" em vez de fingir frescor.
+    ...(e.observadoEmMaisRecente ? { observadoEmMaisRecente: e.observadoEmMaisRecente } : {}),
   };
 }
 

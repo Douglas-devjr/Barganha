@@ -17,6 +17,8 @@ export interface VeredictoBadgeProps {
   veredito: Veredito;
   /** Sinaliza base pequena demais para confiar (ressalva de "poucos dados"). */
   poucosDados?: boolean;
+  /** Típico velho ou de idade desconhecida — ressalva de "pode estar desatualizado". */
+  dadoVelho?: boolean;
   /** Versão compacta (para uso inline ao lado de um título). */
   pequeno?: boolean;
 }
@@ -24,11 +26,20 @@ export interface VeredictoBadgeProps {
 export function VeredictoBadge({
   veredito,
   poucosDados = false,
+  dadoVelho = false,
   pequeno = false,
 }: VeredictoBadgeProps) {
   const { c } = useTema();
   const v = mapaVeredito(c)[veredito];
-  const rotulo = poucosDados ? `${v.rotulo} · poucos dados` : v.rotulo;
+
+  /**
+   * UMA ressalva por vez, e a mais grave primeiro: a pílula tem que caber ao lado
+   * do preço, e "poucos dados · desatualizado" empilhado viraria um parágrafo que
+   * ninguém lê. Base pequena vence porque ali o número pode ser a compra de uma
+   * pessoa só — problema maior que ser antigo.
+   */
+  const ressalva = poucosDados ? 'poucos dados' : dadoVelho ? 'pode estar desatualizado' : null;
+  const rotulo = ressalva ? `${v.rotulo} · ${ressalva}` : v.rotulo;
 
   return (
     <View

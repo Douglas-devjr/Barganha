@@ -24,7 +24,7 @@ import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { CompositeScreenProps } from '@react-navigation/native';
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { type FaixaPreco, normalizarDescricao } from '@barganha/shared';
+import { dadoRecente, type FaixaPreco, idadeEmDias, normalizarDescricao } from '@barganha/shared';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, TextInput, View } from 'react-native';
 
@@ -51,7 +51,7 @@ import { clienteApi } from '@/api';
 import { alertas } from '@/dados';
 import * as catalogo from '@/nucleo/catalogo';
 import type { ProdutoLocal } from '@/nucleo/catalogo';
-import { parseMoeda } from '@/nucleo/formato';
+import { idadeTexto, parseMoeda, vezesCompradas } from '@/nucleo/formato';
 import { type LocalizacaoEfetiva, resolverLocalizacao } from '@/nucleo/localizacao';
 import { consumirEanEscaneado } from '@/nucleo/scan-pendente';
 import {
@@ -212,11 +212,32 @@ export function VerificarTela({ navigation }: Props) {
   const base = faixaDestaque?.unidadeBase;
   const fmt = (v: number) => `${moeda(v)}${base ? `/${base}` : ''}`;
 
+  /**
+   * Idade do típico que está sendo exibido, e se ela ainda descreve a gôndola de
+   * hoje (mesma regra da tela Comparar mercados — `dadoRecente`, do shared).
+   *
+   * A idade vem de `observadoEmMaisRecente`, nunca de `atualizadoEm`: no ângulo
+   * REGIONAL aquele campo é o carimbo do recálculo no servidor, e um recálculo
+   * geral deixaria um típico de meses atrás parecendo recém-saído do forno.
+   */
+  const idadeTipico = idadeEmDias(faixaDestaque?.observadoEmMaisRecente, new Date());
+  const tipicoVelho =
+    faixaDestaque != null && !dadoRecente(faixaDestaque.observadoEmMaisRecente, new Date());
+
   /** "13% abaixo do típico da sua região" — a mensagem sob o preço. */
   const mensagem = (() => {
     if (!hibrido || !destaque) return null;
     const tip = faixaDestaque?.mediana;
     const origem = hibrido.regional ? 'da sua região' : 'do seu histórico';
+    // A engine se recusou a opinar (típico fora da janela da agregação): a tela
+    // não pode inventar uma direção. Sem este ramo, o `!== 'na_media'` abaixo
+    // levava `sem_dados` para o lado do "acima do típico" — afirmando justamente
+    // o que a engine disse que não sabe.
+    if (hibrido.veredito === 'sem_dados') {
+      return tip != null
+        ? `O típico ${origem} é antigo demais para comparar`
+        : `Ainda sem base ${origem}`;
+    }
     if (tip != null && hibrido.veredito !== 'na_media' && valor != null) {
       const d = Math.round((Math.abs(valor - tip) / tip) * 100);
       return `${d}% ${hibrido.veredito === 'barato' ? 'abaixo' : 'acima'} do típico ${origem}`;
@@ -366,6 +387,7 @@ export function VerificarTela({ navigation }: Props) {
                 <VeredictoBadge
                   veredito={hibrido.veredito}
                   poucosDados={destaque?.poucosDados ?? false}
+                  dadoVelho={destaque?.dadoVelho ?? false}
                 />
               ) : null}
             </View>
@@ -377,7 +399,12 @@ export function VerificarTela({ navigation }: Props) {
                   : 'Digite o preço da prateleira para comparar.')}
             </Texto>
 
-            {faixaDestaque && valor != null ? (
+            {/*
+              Sem veredito, sem régua: a barra POSICIONA o preço contra a faixa, o
+              que é a mesma afirmação que a engine acabou de recusar. Desenhá-la sob
+              a frase "o típico é antigo demais para comparar" seria desmenti-la.
+            */}
+            {faixaDestaque && valor != null && hibrido?.veredito !== 'sem_dados' ? (
               <View style={{ marginTop: espaco.lg }}>
                 {(() => {
                   const r = referencias(faixaDestaque, valor);
@@ -408,15 +435,27 @@ export function VerificarTela({ navigation }: Props) {
               </View>
             ) : null}
 
-            <Texto cor="fraco" numerico style={[estilos.rodape, { borderTopColor: c.cartaoBorda }]}>
+            {/*
+              Rodapé = a EVIDÊNCIA do veredito: quantos cupons o sustentam e de
+              quando é o preço mais novo deles. Sem a idade, um típico de abril e
+              um de ontem apareciam idênticos — e é o de abril que faz a pessoa
+              chegar na gôndola e a conta não bater.
+            */}
+            <Texto
+              cor={tipicoVelho ? 'suave' : 'fraco'}
+              numerico
+              style={[estilos.rodape, { borderTopColor: c.cartaoBorda }]}
+            >
               {refinando
                 ? 'Buscando preços da sua região…'
                 : hibrido?.regional
                   ? `${hibrido.regional.faixa.nObservacoes} ${
                       hibrido.regional.faixa.nObservacoes === 1 ? 'cupom' : 'cupons'
-                    } na sua região`
+                    } na sua região · típico ${idadeTexto(idadeTipico)}${
+                      tipicoVelho ? ' — confira na gôndola' : ''
+                    }`
                   : hibrido?.pessoal
-                    ? 'Base do seu histórico — ainda sem preços da sua região'
+                    ? `Base do seu histórico (última compra ${idadeTexto(idadeTipico)}) — ainda sem preços da sua região`
                     : 'Sem base regional ainda'}
             </Texto>
           </View>
@@ -473,9 +512,16 @@ export function VerificarTela({ navigation }: Props) {
 }
 
 /**
- * Linha da lista de escolha. Traz o típico PESSOAL e o nº de compras para o
- * usuário reconhecer o item antes de tocar — o veredito regional só aparece
- * depois, com o preço da gôndola digitado.
+ * Linha da lista de escolha. Traz o típico PESSOAL e quantas compras o
+ * sustentam, para o usuário reconhecer o item antes de tocar — o veredito
+ * regional só aparece depois, com o preço da gôndola digitado.
+ *
+ * O típico mora numa COLUNA à direita, sob o rótulo "seu típico", e a contagem
+ * de compras vira frase sob o nome. Antes os dois dividiam uma única linha de
+ * 11,5px separados por "·" ("típico R$ 5,49/L · 3 compras"), e o preço colado à
+ * contagem se lia como quantidade do produto: 3 unidades por R$ 5,49. São dois
+ * fatos de naturezas diferentes — um preço e a evidência dele —, então cada um
+ * fica no seu lugar, e só o preço ocupa a posição de valor.
  */
 function ItemProduto({
   produto,
@@ -491,13 +537,17 @@ function ItemProduto({
   const { c } = useTema();
   const tipico = produto.faixaPessoal?.mediana;
   const sufixo = produto.unidadeBase ? `/${produto.unidadeBase}` : '';
-  const compras = `${produto.nObservacoes} ${produto.nObservacoes === 1 ? 'compra' : 'compras'}`;
 
   return (
     <Pressable
       onPress={aoTocar}
       accessibilityRole="button"
       accessibilityState={ativo ? { selected: true } : {}}
+      accessibilityLabel={
+        tipico != null
+          ? `${produto.nome}, seu típico ${moeda(tipico)}${sufixo}, ${vezesCompradas(produto.nObservacoes)}`
+          : `${produto.nome}, ${vezesCompradas(produto.nObservacoes)}`
+      }
       style={({ pressed }) => [
         estilos.item,
         !ultima && { borderBottomWidth: 1, borderBottomColor: c.linha },
@@ -509,9 +559,19 @@ function ItemProduto({
           {produto.nome}
         </Texto>
         <Texto cor="fraco" numerico style={estilos.itemSub}>
-          {tipico != null ? `típico ${moeda(tipico)}${sufixo} · ${compras}` : compras}
+          {vezesCompradas(produto.nObservacoes)}
         </Texto>
       </View>
+      {tipico != null ? (
+        <View style={estilos.itemValor}>
+          <Texto cor="fraco" style={estilos.itemRotulo}>
+            seu típico
+          </Texto>
+          <Texto peso="bold" tamanho="sm" numerico style={estilos.itemTipico}>
+            {`${moeda(tipico)}${sufixo}`}
+          </Texto>
+        </View>
+      ) : null}
       {ativo ? (
         <IconeCheck tamanho={18} cor={c.tinta} />
       ) : (
@@ -549,9 +609,13 @@ const estilos = StyleSheet.create({
     marginTop: espaco.lg,
     marginBottom: espaco.sm,
   },
-  item: { flexDirection: 'row', alignItems: 'center', gap: espaco.md, paddingVertical: 13 },
+  item: { flexDirection: 'row', alignItems: 'center', gap: espaco.sm, paddingVertical: 13 },
   itemTexto: { flex: 1 },
   itemSub: { fontSize: 11.5, marginTop: 2 },
+  /** Coluna do valor: o preço alinhado à direita, sob o rótulo que o nomeia. */
+  itemValor: { alignItems: 'flex-end' },
+  itemRotulo: { fontSize: 10 },
+  itemTipico: { marginTop: 1 },
   vazio: { marginTop: espaco.lg },
   painel: {
     borderRadius: raio.cartao,

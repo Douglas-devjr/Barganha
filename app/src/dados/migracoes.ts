@@ -173,4 +173,59 @@ export const MIGRACOES: string[] = [
   `
   ALTER TABLE cupom_local ADD COLUMN loja_municipio TEXT;
   `,
+  // v9 — "não conta na comparação de mercados", por item da lista.
+  //
+  // Existe porque tirar um item do ranking e apagá-lo da lista de compras são
+  // duas intenções diferentes. Quem tira o frango para ver como o ranking fica
+  // sem ele NÃO quer perder o frango da compra de sábado. Antes desta coluna a
+  // exclusão só vivia no estado da tela: bastava sair e voltar para o item (e o
+  // mercado que ele trazia junto) reaparecer — o bug que originou isto.
+  //
+  // Fica na `lista_compras` de propósito, e não numa tabela à parte: a cesta
+  // comparada É a lista, com um recorte. Duas listas separadas dariam vencedores
+  // diferentes na aba Lista e na tela Comparar mercados para a mesma pessoa.
+  `
+  ALTER TABLE lista_compras ADD COLUMN fora_comparacao INTEGER NOT NULL DEFAULT 0;
+  `,
+  // v10 — idade do PREÇO no cache local, espelhando `preco_estatistica.
+  // observado_em_max` do backend.
+  //
+  // `atualizado_em` já estava aqui, mas ele é o carimbo do RECÁLCULO no servidor:
+  // uma varredura completa (deploy, recalibração do decaimento) reescreve tudo
+  // com a data de hoje e o app passaria a jurar que todo típico é fresco. Esta
+  // coluna é a data da observação mais recente que sustenta a mediana — o que a
+  // Verificar precisa para dizer "típico de há 40 dias" em vez de calar.
+  //
+  // Nula até o próximo delta sync trazer a linha de novo; quem lê trata a
+  // ausência como idade DESCONHECIDA (nunca como recente).
+  `
+  ALTER TABLE cache_estatistica ADD COLUMN observado_em_max TEXT;
+  `,
+  // v11 — cache do CATÁLOGO compartilhado (C4.5): nome/marca/categoria por
+  // produto, baixados por `POST /sync/produtos`.
+  //
+  // O delta de estatística desce preço por `produto_canonico_id` e nada mais.
+  // Resultado: o app sabia quanto custa um produto que ele não sabe nomear — e
+  // caía na descrição crua do cupom ("ARR TP1 TIO J 5KG"), ou em nada, quando o
+  // produto entrou pela lista vindo do catálogo regional (C7.6).
+  //
+  // Derivado do servidor e ANÔNIMO como o cache de estatística: é o lado
+  // compartilhado (docs/04), não tem observação nem dono. Por isso NÃO é apagado
+  // ao trocar de região — o nome do arroz não muda de cidade —, mas sai inteiro
+  // em `redefinirAppLocal` (logout), junto com o resto do que veio da rede.
+  //
+  // `atualizado_em` é o carimbo do DOWNLOAD (não do servidor): é ele que diz
+  // quando revalidar o resumo, para um produto enriquecido pela curadoria depois
+  // do primeiro sync não ficar sem nome para sempre.
+  `
+  CREATE TABLE cache_produto (
+    produto_canonico_id TEXT PRIMARY KEY NOT NULL,
+    nome_exibicao       TEXT,
+    marca               TEXT,
+    categoria           TEXT,
+    imagem_url          TEXT,
+    unidade_base        TEXT NOT NULL,
+    atualizado_em       TEXT NOT NULL
+  );
+  `,
 ];

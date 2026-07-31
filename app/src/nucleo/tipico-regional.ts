@@ -25,6 +25,17 @@ export interface TipicoRegional {
   /** Menor preço visto na região (inclui promoção) — informativo, fora do total. */
   menorVisto?: number;
   nObservacoes: number;
+  /**
+   * Data da observação mais recente por trás desta mediana (ISO). Ausente = idade
+   * desconhecida (linha em cache antes da v10, ou backend antigo) — a UI diz
+   * "sem data", nunca assume que é de hoje.
+   *
+   * É a idade do PREÇO, não do sync: `atualizadoEm` do cache é quando o servidor
+   * recalculou, e um recálculo geral zera essa idade sem o preço ter mudado.
+   */
+  observadoEmMaisRecente?: string;
+  /** Quando o SERVIDOR recalculou esta faixa — não é a idade do preço (ver acima). */
+  atualizadoEm: string;
 }
 
 /**
@@ -55,6 +66,10 @@ export async function tipicosDaRegiao(
       unidadeBase: regional.unidadeBase,
       ...(candidatos.length > 0 ? { menorVisto: Math.min(...candidatos) } : {}),
       nObservacoes: regional.nObservacoes,
+      ...(regional.observadoEmMaisRecente
+        ? { observadoEmMaisRecente: regional.observadoEmMaisRecente }
+        : {}),
+      atualizadoEm: regional.atualizadoEm,
     });
   }
 

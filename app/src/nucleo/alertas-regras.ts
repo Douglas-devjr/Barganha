@@ -4,7 +4,7 @@
  * alerta dispara. A orquestração (SQLite/localização) fica em `alertas.ts`.
  */
 
-import { chaveMunicipio, MIN_OBSERVACOES_CONFIAVEL } from '@barganha/shared';
+import { chaveMunicipio, dadoRecente, MIN_OBSERVACOES_CONFIAVEL } from '@barganha/shared';
 
 import type { CacheEstatistica } from '../dados/tipos';
 
@@ -44,12 +44,29 @@ export function escolherEstatisticaRegional(
   return confiaveis.find((e) => e.escopo === 'uf' && e.escopoId === ufAlvo) ?? null;
 }
 
-/** Avalia UM alerta contra a estatística regional resolvida. */
+/**
+ * Avalia UM alerta contra a estatística regional resolvida.
+ *
+ * Exige dado RECENTE para disparar. O alerta não é uma informação passiva numa
+ * tela: ele vira notificação dizendo "baixou, aproveite", e a pessoa se desloca
+ * por causa dele. Disparar sobre um típico de três meses atrás manda alguém ao
+ * mercado atrás de um preço que não existe mais — e é o app que fica sem crédito.
+ *
+ * A idade vem de `observadoEmMaisRecente`, nunca de `atualizadoEm`: aquele é o
+ * carimbo do recálculo no servidor, então um `recalcularTodos` faria TODO alerta
+ * velho voltar a ser considerado fresco de uma vez.
+ *
+ * Sem data (cache anterior à v10) o alerta espera: a próxima sincronização traz a
+ * data, e não disparar hoje custa um atraso — disparar errado custa confiança.
+ */
 export function avaliarAlerta(
   alerta: { produtoCanonicoId: string; nome: string; precoAlvo: number },
   estatistica: CacheEstatistica | null,
+  /** "Agora" injetável (testes determinísticos), como no motor de agregação. */
+  referencia: Date = new Date(),
 ): AlertaDisparado | null {
   if (!estatistica) return null;
+  if (!dadoRecente(estatistica.observadoEmMaisRecente ?? undefined, referencia)) return null;
   const mediana = estatistica.mediana ?? undefined;
   const candidatos = [estatistica.minimo, estatistica.menorPromocional].filter(
     (v): v is number => v != null,
