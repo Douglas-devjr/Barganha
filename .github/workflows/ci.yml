@@ -38,3 +38,9 @@ jobs:
 
       - name: Testes (Vitest)
         run: npm test
+
+      # O painel (painel/index.html) é gerado de painel/mapa.mjs. Este passo não
+      # regera nada: só confere se o mapa ainda descreve o código de verdade —
+      # evidência que sumiu, rota/tela nova sem dono, referência interna quebrada.
+      - name: Painel em sincronia com o código
+        run: npm run painel:conferir

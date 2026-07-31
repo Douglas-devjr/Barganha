@@ -20,5 +20,12 @@ export default tseslint.config(
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,
+  {
+    // Ferramentas que rodam no Node por linha de comando (gerador do painel).
+    files: ['painel/**/*.mjs'],
+    languageOptions: {
+      globals: { process: 'readonly', console: 'readonly', Buffer: 'readonly' },
+    },
+  },
   prettier,
 );

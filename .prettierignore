@@ -12,3 +12,6 @@ package-lock.json
 
 # Documentação em prosa — formatação manual, fora do gate do Prettier.
 *.md
+
+# Painel gerado por `npm run painel` — a fonte é painel/mapa.mjs.
+painel/index.html

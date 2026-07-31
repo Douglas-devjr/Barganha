@@ -21,7 +21,10 @@
     "typecheck": "npm run typecheck --workspaces --if-present",
     "test": "vitest run",
     "test:watch": "vitest",
-    "check": "npm run format:check && npm run lint && npm run typecheck && npm test",
+    "check": "npm run format:check && npm run lint && npm run typecheck && npm test && npm run painel:conferir",
+    "painel": "node painel/gerar.mjs",
+    "painel:conferir": "node painel/gerar.mjs --conferir",
+    "painel:abrir": "powershell -NoProfile -Command \"Start-Process (Resolve-Path painel/index.html)\"",
     "publicar:site": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/publicar-site.ps1",
     "grafo": "powershell -NoProfile -Command \"Start-Process (Resolve-Path graphify-out/graph.html)\""
   },
