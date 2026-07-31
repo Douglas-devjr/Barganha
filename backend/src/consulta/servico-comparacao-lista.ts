@@ -17,6 +17,11 @@
  *  • Piso de exposição por célula (loja × produto): abaixo de
  *    `MIN_OBSERVACOES_EXPOR_LOJA` o item não entra na cesta daquela loja
  *    (docs/04). Loja que fica sem nenhum item coberto some do ranking.
+ *  • Cada loja volta com a EVIDÊNCIA do seu total: quantas observações o
+ *    sustentam, a data do preço mais velho que entrou na conta e quantos itens
+ *    têm promoção fora dela. Um total sozinho é um oráculo; com a evidência o
+ *    usuário (e a UI) sabem quanto confiar — e é o que impede o selo de "mais
+ *    barato" de sair para uma loja cujo preço é de meses atrás.
  */
 
 import type {
@@ -67,9 +72,13 @@ export class ServicoComparacaoLista {
 
     const lojas: LojaComparacao[] = [];
     for (const [cnpj, itensDaLoja] of porLoja) {
+      // Linhas que de fato entraram no total — a base da evidência. Só elas:
+      // item não coberto não tem preço somado, logo não tem idade nem peso aqui.
+      const linhasCobertas: EstatisticaLojaLinha[] = [];
       const itens: ItemComparacaoLoja[] = produtoIds.map((id) => {
         const linha = itensDaLoja.get(id);
         if (!linha || linha.mediana == null) return { produtoCanonicoId: id };
+        linhasCobertas.push(linha);
         const preco = arredondar(linha.mediana * (quantidades.get(id) ?? 1));
         return {
           produtoCanonicoId: id,
@@ -87,11 +96,38 @@ export class ServicoComparacaoLista {
         total: arredondar(cobertos.reduce((soma, i) => soma + (i.preco ?? 0), 0)),
         itensCobertos: cobertos.length,
         itens,
+        nObservacoes: linhasCobertas.reduce((soma, l) => soma + l.nObservacoes, 0),
+        ...this.frescorDa(linhasCobertas),
+        itensComPromocao: cobertos.filter((i) => i.menorPromocional != null).length,
       });
     }
 
     lojas.sort((a, b) => b.itensCobertos - a.itensCobertos || a.total - b.total);
     return { itensTotal: produtoIds.length, lojas: lojas.slice(0, MAX_LOJAS) };
+  }
+
+  /**
+   * Data do preço mais VELHO entre os itens que entraram no total — o elo fraco
+   * da conta. Se QUALQUER item coberto não tem data (linha anterior à coluna
+   * `observado_em_max`), a resposta é a ausência: um "há 2 dias" calculado
+   * ignorando o item sem data seria uma garantia que ninguém pode dar.
+   */
+  private frescorDa(linhas: readonly EstatisticaLojaLinha[]): { observadoEmMaisAntigo?: string } {
+    let maisAntigo: string | undefined;
+    let maisAntigoMs = Number.POSITIVE_INFINITY;
+    for (const l of linhas) {
+      if (!l.observadoEmMaisRecente) return {};
+      // Comparação por INSTANTE, não por texto: o `timestamptz` do Postgres chega
+      // como `...+00:00` e o do pipeline como `...Z` — ordenar essas duas formas
+      // como string dá resultado errado.
+      const ms = Date.parse(l.observadoEmMaisRecente);
+      if (Number.isNaN(ms)) return {};
+      if (ms < maisAntigoMs) {
+        maisAntigoMs = ms;
+        maisAntigo = l.observadoEmMaisRecente;
+      }
+    }
+    return maisAntigo != null ? { observadoEmMaisAntigo: maisAntigo } : {};
   }
 
   /** Município (chave normalizada) quando informado; senão UF; senão tudo. */

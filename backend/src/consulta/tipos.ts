@@ -27,6 +27,11 @@ export interface EstatisticaLojaLinha {
   mediana?: number;
   menorPromocional?: number;
   nObservacoes: number;
+  /**
+   * `observado_em` da observação mais recente que sustenta a mediana (ISO). É a
+   * idade do PREÇO; ausente nas linhas gravadas antes da coluna existir.
+   */
+  observadoEmMaisRecente?: string;
 }
 
 /** Fonte das estatísticas por loja para a comparação de lista (C12.1). */

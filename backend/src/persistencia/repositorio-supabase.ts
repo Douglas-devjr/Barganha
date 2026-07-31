@@ -816,7 +816,9 @@ export class RepositorioSupabase
     if (produtoCanonicoIds.length === 0) return [];
     const r = await this.db
       .from('preco_estatistica')
-      .select('produto_canonico_id, escopo_id, mediana, menor_promocional, n_observacoes')
+      .select(
+        'produto_canonico_id, escopo_id, mediana, menor_promocional, n_observacoes, observado_em_max',
+      )
       .eq('escopo', 'loja')
       .in('produto_canonico_id', [...produtoCanonicoIds]);
     if (r.error) falhar('consulta de estatísticas por loja (C12.1)', r.error);
@@ -847,6 +849,9 @@ export class RepositorioSupabase
         ...(mediana != null ? { mediana } : {}),
         ...(menorPromocional != null ? { menorPromocional } : {}),
         nObservacoes: Number(e.n_observacoes),
+        // Ausente nas linhas gravadas antes da coluna existir: o consumidor lê
+        // isso como idade DESCONHECIDA e nega o selo, nunca como "novo".
+        ...(e.observado_em_max ? { observadoEmMaisRecente: e.observado_em_max as string } : {}),
       };
     });
   }

@@ -17,6 +17,11 @@ import { ProcessadorCupom } from '../processamento/processador-cupom';
 import { ServicoSync } from '../sync/servico-sync';
 import { construirServidor } from './servidor';
 
+/** Datas do pool semeado — relativas a "agora" para o frescor não expirar. */
+const DIA_MS = 86_400_000;
+const ARROZ_A_EM = new Date(Date.now() - 2 * DIA_MS).toISOString();
+const FEIJAO_A_EM = new Date(Date.now() - 9 * DIA_MS).toISOString();
+
 const repo = new RepositorioMemoria();
 const registro = new RegistroParsers([]);
 const processador = new ProcessadorCupom(repo, registro, new Anonimizador(repo));
@@ -59,6 +64,7 @@ beforeAll(async () => {
       escopoId: '11111111000101',
       mediana: 10,
       nObservacoes: 8,
+      observadoEmMaisRecente: ARROZ_A_EM,
     },
     {
       ...base,
@@ -66,6 +72,9 @@ beforeAll(async () => {
       escopoId: '11111111000101',
       mediana: 9,
       nObservacoes: 6,
+      // Mais velho que o arroz — é ele que define a idade do Mercado A.
+      observadoEmMaisRecente: FEIJAO_A_EM,
+      menorPromocional: 7,
     },
     {
       ...base,
@@ -73,6 +82,7 @@ beforeAll(async () => {
       escopoId: '22222222000102',
       mediana: 7,
       nObservacoes: 5,
+      observadoEmMaisRecente: ARROZ_A_EM,
     },
     {
       ...base,
@@ -80,6 +90,7 @@ beforeAll(async () => {
       escopoId: '33333333000103',
       mediana: 5,
       nObservacoes: 5,
+      observadoEmMaisRecente: ARROZ_A_EM,
     },
   ]);
 });
@@ -106,6 +117,45 @@ describe('POST /consulta/lista (C12.1)', () => {
     expect(corpo.lojas.map((l: { nome: string }) => l.nome)).toEqual(['Mercado A', 'Mercado B']);
     expect(corpo.lojas[0]).toMatchObject({ total: 19, itensCobertos: 2 });
     expect(corpo.lojas[1]).toMatchObject({ total: 7, itensCobertos: 1 });
+  });
+
+  it('devolve a evidência do total: nº de preços, idade do elo fraco e promoções fora', async () => {
+    const r = await app.inject({
+      method: 'POST',
+      url: '/consulta/lista',
+      payload: {
+        itens: [{ produtoCanonicoId: 'arroz' }, { produtoCanonicoId: 'feijao' }],
+        municipio: 'rio de janeiro',
+        uf: 'RJ',
+      },
+    });
+
+    expect(r.statusCode).toBe(200);
+    expect(r.json().lojas[0]).toMatchObject({
+      nome: 'Mercado A',
+      nObservacoes: 14, // 8 do arroz + 6 do feijão
+      observadoEmMaisAntigo: FEIJAO_A_EM,
+      itensComPromocao: 1, // o feijão — desconto que NÃO entrou no total
+    });
+  });
+
+  it('honra a quantidade de cada item — cesta real não é "1 de cada"', async () => {
+    const r = await app.inject({
+      method: 'POST',
+      url: '/consulta/lista',
+      payload: {
+        itens: [
+          { produtoCanonicoId: 'arroz', quantidade: 5 },
+          { produtoCanonicoId: 'feijao', quantidade: 2 },
+        ],
+        municipio: 'rio de janeiro',
+        uf: 'RJ',
+      },
+    });
+
+    expect(r.statusCode).toBe(200);
+    // 10×5 + 9×2 = 68 (com quantidade 1 daria 19 e o ranking mudaria de sentido).
+    expect(r.json().lojas[0]).toMatchObject({ nome: 'Mercado A', total: 68 });
   });
 
   it('valida o corpo: lista vazia é 400', async () => {

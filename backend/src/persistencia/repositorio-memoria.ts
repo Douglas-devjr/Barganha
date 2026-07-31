@@ -556,6 +556,7 @@ export class RepositorioMemoria
           ...(e.mediana != null ? { mediana: e.mediana } : {}),
           ...(e.menorPromocional != null ? { menorPromocional: e.menorPromocional } : {}),
           nObservacoes: e.nObservacoes,
+          ...(e.observadoEmMaisRecente ? { observadoEmMaisRecente: e.observadoEmMaisRecente } : {}),
         };
       });
     return Promise.resolve(r);

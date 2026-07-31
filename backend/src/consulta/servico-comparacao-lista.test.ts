@@ -108,4 +108,127 @@ describe('ServicoComparacaoLista (C12.1)', () => {
 
     expect(r).toEqual({ itensTotal: 1, lojas: [] });
   });
+
+  describe('evidência do total (o que impede o ranking de virar oráculo)', () => {
+    it('soma as observações só dos itens que entraram na conta', async () => {
+      const servico = new ServicoComparacaoLista(
+        fonte([
+          linha({ produtoCanonicoId: 'arroz', mediana: 10, nObservacoes: 40 }),
+          linha({ produtoCanonicoId: 'feijao', mediana: 20, nObservacoes: 12 }),
+          // Não pedido na cesta: não pode inflar a evidência do total.
+          linha({ produtoCanonicoId: 'cafe', mediana: 30, nObservacoes: 999 }),
+        ]),
+      );
+      const r = await servico.comparar({
+        itens: [{ produtoCanonicoId: 'arroz' }, { produtoCanonicoId: 'feijao' }],
+      });
+
+      expect(r.lojas[0]?.nObservacoes).toBe(52);
+    });
+
+    it('a idade da loja é a do item mais VELHO da conta (o elo fraco)', async () => {
+      const servico = new ServicoComparacaoLista(
+        fonte([
+          linha({
+            produtoCanonicoId: 'arroz',
+            observadoEmMaisRecente: '2026-07-28T00:00:00.000Z',
+          }),
+          linha({
+            produtoCanonicoId: 'feijao',
+            mediana: 20,
+            observadoEmMaisRecente: '2026-04-02T00:00:00.000Z',
+          }),
+        ]),
+      );
+      const r = await servico.comparar({
+        itens: [{ produtoCanonicoId: 'arroz' }, { produtoCanonicoId: 'feijao' }],
+      });
+
+      // Não adianta o arroz ser de ontem se o feijão da mesma soma é de abril.
+      expect(r.lojas[0]?.observadoEmMaisAntigo).toBe('2026-04-02T00:00:00.000Z');
+    });
+
+    it('compara datas por INSTANTE, não por texto (`+00:00` do Postgres vs. `Z`)', async () => {
+      const servico = new ServicoComparacaoLista(
+        fonte([
+          // Mesmo instante em dois formatos; o mais antigo de verdade é o `Z`.
+          linha({
+            produtoCanonicoId: 'arroz',
+            observadoEmMaisRecente: '2026-07-28T12:00:00+00:00',
+          }),
+          linha({
+            produtoCanonicoId: 'feijao',
+            mediana: 20,
+            observadoEmMaisRecente: '2026-07-28T09:00:00.000Z',
+          }),
+        ]),
+      );
+      const r = await servico.comparar({
+        itens: [{ produtoCanonicoId: 'arroz' }, { produtoCanonicoId: 'feijao' }],
+      });
+
+      // Ordenado como string, '2026-07-28T09:00:00.000Z' > '2026-07-28T12:00:00+00:00'
+      // seria falso e a resposta viria trocada.
+      expect(r.lojas[0]?.observadoEmMaisAntigo).toBe('2026-07-28T09:00:00.000Z');
+    });
+
+    it('um item sem data deixa a loja SEM idade — não finge frescor com o resto', async () => {
+      const servico = new ServicoComparacaoLista(
+        fonte([
+          linha({
+            produtoCanonicoId: 'arroz',
+            observadoEmMaisRecente: '2026-07-28T00:00:00.000Z',
+          }),
+          // Linha gravada antes da coluna `observado_em_max` existir.
+          linha({ produtoCanonicoId: 'feijao', mediana: 20 }),
+        ]),
+      );
+      const r = await servico.comparar({
+        itens: [{ produtoCanonicoId: 'arroz' }, { produtoCanonicoId: 'feijao' }],
+      });
+
+      expect(r.lojas[0]?.observadoEmMaisAntigo).toBeUndefined();
+    });
+
+    it('conta os itens com promoção fora do total (para a loja não parecer cara à toa)', async () => {
+      const servico = new ServicoComparacaoLista(
+        fonte([
+          linha({ produtoCanonicoId: 'arroz', mediana: 10, menorPromocional: 6 }),
+          linha({ produtoCanonicoId: 'feijao', mediana: 20 }),
+        ]),
+      );
+      const r = await servico.comparar({
+        itens: [{ produtoCanonicoId: 'arroz' }, { produtoCanonicoId: 'feijao' }],
+      });
+
+      expect(r.lojas[0]).toMatchObject({ total: 30, itensComPromocao: 1 });
+    });
+
+    it('item suprimido pelo piso não empresta evidência ao total', async () => {
+      const servico = new ServicoComparacaoLista(
+        fonte([
+          linha({
+            produtoCanonicoId: 'arroz',
+            mediana: 10,
+            nObservacoes: 5,
+            observadoEmMaisRecente: '2026-07-28T00:00:00.000Z',
+          }),
+          // n=1: fica fora do total, então sua data e seu `n` também ficam.
+          linha({
+            produtoCanonicoId: 'feijao',
+            mediana: 20,
+            nObservacoes: 1,
+            observadoEmMaisRecente: '2020-01-01T00:00:00.000Z',
+          }),
+        ]),
+      );
+      const r = await servico.comparar({
+        itens: [{ produtoCanonicoId: 'arroz' }, { produtoCanonicoId: 'feijao' }],
+      });
+
+      expect(r.lojas[0]?.nObservacoes).toBe(5);
+      // O feijão de 2020 não entrou na soma — não pode envelhecer a loja.
+      expect(r.lojas[0]?.observadoEmMaisAntigo).toBe('2026-07-28T00:00:00.000Z');
+    });
+  });
 });

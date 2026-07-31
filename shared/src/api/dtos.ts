@@ -218,6 +218,27 @@ export interface LojaComparacao {
   /** Quantos itens da lista têm preço nesta loja (cobertura). */
   itensCobertos: number;
   itens: ItemComparacaoLoja[];
+  /**
+   * Total de observações que sustentam este total (soma dos itens cobertos). É a
+   * evidência por trás do número: sem ela a tela mostra um total confiante sem
+   * dizer se ele veio de 6 cupons ou de 600.
+   */
+  nObservacoes: number;
+  /**
+   * Data (ISO) do preço mais VELHO da conta — entre os itens cobertos, a mais
+   * antiga das "observações mais recentes". É o elo fraco: de nada adianta o
+   * arroz ter preço de ontem se o café que entrou no mesmo total é de abril.
+   *
+   * Ausente quando algum item coberto não tem data conhecida (linha anterior à
+   * coluna `observado_em_max`) — leia como idade desconhecida, não como recente.
+   */
+  observadoEmMaisAntigo?: string;
+  /**
+   * Quantos itens cobertos têm promoção vista nesta loja. A promoção NÃO entra
+   * no total (decisão travada nº6) — este número existe para a tela poder dizer
+   * que há desconto fora da conta, em vez de deixar a loja parecer cara à toa.
+   */
+  itensComPromocao: number;
 }
 
 /** Lojas ordenadas por cobertura (desc) e total (asc). */
