@@ -48,6 +48,11 @@ export interface EntradaVeredito {
    * carne por KG, etc.
    */
   unidadeVenda?: string;
+  /**
+   * Nome/descrição do produto. Usada só para ler a contagem de um multipack
+   * (C3.4): sem ela, um preço em CX/FD não normaliza — mesma regra do backend.
+   */
+  descricao?: string;
 }
 
 const ESPECIFICIDADE: Record<EscopoGeo, number> = ESCOPO_GEO.reduce(
@@ -108,9 +113,14 @@ function normalizarPrateleira(
   preco: number,
   unidadeBase: UnidadeBase | undefined,
   unidadeVenda: string | undefined,
+  descricao: string | undefined,
 ): number | null {
   const unidade = unidadeVenda ?? (unidadeBase ? unidadePadraoDaBase(unidadeBase) : 'UN');
-  const norm = normalizarPreco({ unidade, valorUnitario: preco });
+  const norm = normalizarPreco({
+    unidade,
+    valorUnitario: preco,
+    ...(descricao ? { descricao } : {}),
+  });
   return norm?.precoNormalizado ?? null;
 }
 
@@ -133,6 +143,7 @@ export async function resolverVeredito(entrada: EntradaVeredito): Promise<Result
     entrada.precoPrateleira,
     unidadeBase,
     entrada.unidadeVenda,
+    entrada.descricao,
   );
 
   const hibrido = montarVeredito({

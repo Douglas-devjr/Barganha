@@ -2,9 +2,11 @@ import { describe, expect, it } from 'vitest';
 
 import {
   chaveMunicipio,
+  itensPorEmbalagem,
   normalizarDescricao,
   normalizarPreco,
   precoUnitarioEfetivo,
+  resolverUnidade,
   unidadePadraoDaBase,
 } from './normalizacao';
 
@@ -72,21 +74,156 @@ describe('normalizarPreco (shared)', () => {
     });
   });
 
-  it('trata embalagens unitárias (BJ/EV/FR/PT) como R$/un', () => {
-    for (const unidade of ['BJ', 'EV', 'FR', 'PT']) {
-      expect(normalizarPreco({ unidade, valorUnitario: 9.98 })).toEqual({
+  it('trata embalagens de UM volume (bandeja, pote, pacote, garrafa…) como R$/un', () => {
+    const unitarias = [
+      'BJ',
+      'BDJ',
+      'BANDEJA',
+      'EV',
+      'ENVELOPE',
+      'FR',
+      'FRASCO',
+      'PT',
+      'POTE',
+      'PCT',
+      'PCTE',
+      'PACOTE',
+      'PAC',
+      'SC',
+      'SACO',
+      'GF',
+      'GFA',
+      'GRF',
+      'GARRAFA',
+      'LATA',
+      'LTA',
+      'VD',
+      'VIDRO',
+      'TB',
+      'TUBO',
+      'RL',
+      'ROLO',
+      'PC',
+      'PÇ',
+      'PECA',
+    ];
+    for (const unidade of unitarias) {
+      expect(normalizarPreco({ unidade, valorUnitario: 9.98 }), unidade).toEqual({
         unidadeBase: 'un',
         precoNormalizado: 9.98,
       });
     }
   });
 
+  it('absorve pontuação e acento da unidade ("un.", "Pç", "kg")', () => {
+    for (const unidade of ['un.', ' UN ', 'Un', 'Pç', 'PÇ.']) {
+      expect(normalizarPreco({ unidade, valorUnitario: 4.79 }), unidade).toEqual({
+        unidadeBase: 'un',
+        precoNormalizado: 4.79,
+      });
+    }
+    expect(normalizarPreco({ unidade: 'Kg.', valorUnitario: 32.9 })).toMatchObject({
+      unidadeBase: 'kg',
+    });
+  });
+
   it('rejeita unidade desconhecida (fora do pool)', () => {
-    expect(normalizarPreco({ unidade: 'CX', valorUnitario: 10 })).toBeUndefined();
+    expect(normalizarPreco({ unidade: 'XPTO', valorUnitario: 10 })).toBeUndefined();
+    expect(normalizarPreco({ unidade: '', valorUnitario: 10 })).toBeUndefined();
   });
 
   it('rejeita preço inválido', () => {
     expect(normalizarPreco({ unidade: 'KG', valorUnitario: 0 })).toBeUndefined();
+  });
+});
+
+describe('itensPorEmbalagem (C3.4)', () => {
+  it('lê a contagem de "N × tamanho"', () => {
+    expect(itensPorEmbalagem('CERVEJA BRAHMA 350ML 12X350ML')).toBe(12);
+    expect(itensPorEmbalagem('Água Mineral 6 x 1,5 L')).toBe(6);
+    expect(itensPorEmbalagem('SABAO EM PO OMO 12X500G')).toBe(12);
+  });
+
+  it('lê a contagem declarada em unidades', () => {
+    expect(itensPorEmbalagem('OVO BRANCO GRANDE 30UN')).toBe(30);
+    expect(itensPorEmbalagem('IOGURTE MORANGO CX 6 UNIDADES')).toBe(6);
+  });
+
+  it('lê a contagem marcada por caixa/fardo/pacote', () => {
+    expect(itensPorEmbalagem('REFRIGERANTE COLA 2L FD 6')).toBe(6);
+    expect(itensPorEmbalagem('LEITE INTEGRAL 1L C/12')).toBe(12);
+    expect(itensPorEmbalagem('CAFE TORRADO CX 24')).toBe(24);
+  });
+
+  it('não confunde TAMANHO com contagem', () => {
+    // O clássico: caixa de 5 kg é UM volume de 5 kg, não 5 unidades.
+    expect(itensPorEmbalagem('ARROZ TIPO 1 CX 5KG')).toBeUndefined();
+    expect(itensPorEmbalagem('DETERGENTE CX 500ML')).toBeUndefined();
+    expect(itensPorEmbalagem('PAPEL SULFITE CX 20X30CM')).toBeUndefined();
+  });
+
+  it('ignora contagem fora da faixa sã (1 ou absurda)', () => {
+    expect(itensPorEmbalagem('BOLACHA PCT 1')).toBeUndefined();
+    expect(itensPorEmbalagem('PARAFUSO CX 500')).toBeUndefined();
+  });
+
+  it('ignora descrição sem contagem alguma', () => {
+    expect(itensPorEmbalagem('CAFE TORRADO 500G')).toBeUndefined();
+    expect(itensPorEmbalagem('SHAMPOO 2 EM 1 400ML')).toBeUndefined();
+  });
+});
+
+describe('normalizarPreco — embalagem múltipla (C3.4)', () => {
+  it('caixa/fardo com contagem na descrição vira R$/un do item de dentro', () => {
+    expect(
+      normalizarPreco({ unidade: 'CX', valorUnitario: 48, descricao: 'CERVEJA LATA 12X350ML' }),
+    ).toEqual({ unidadeBase: 'un', precoNormalizado: 4 });
+    expect(
+      normalizarPreco({ unidade: 'FD', valorUnitario: 36, descricao: 'REFRIGERANTE 2L FD 6' }),
+    ).toEqual({ unidadeBase: 'un', precoNormalizado: 6 });
+  });
+
+  it('aceita a contagem colada na própria unidade ("CX12", "PCT 6")', () => {
+    expect(normalizarPreco({ unidade: 'CX12', valorUnitario: 48 })).toEqual({
+      unidadeBase: 'un',
+      precoNormalizado: 4,
+    });
+    // Unidade de um volume + contagem colada: o pacote É de 6 (ex.: PCT6).
+    expect(normalizarPreco({ unidade: 'PCT 6', valorUnitario: 12 })).toEqual({
+      unidadeBase: 'un',
+      precoNormalizado: 2,
+    });
+  });
+
+  it('SEM contagem, caixa e fardo seguem fora do pool (conservador)', () => {
+    expect(normalizarPreco({ unidade: 'CX', valorUnitario: 48 })).toBeUndefined();
+    expect(
+      normalizarPreco({ unidade: 'FARDO', valorUnitario: 48, descricao: 'ARROZ TIPO 1 5KG' }),
+    ).toBeUndefined();
+  });
+
+  it('não divide KIT/CONJUNTO (conteúdo heterogêneo, não comparável)', () => {
+    expect(
+      normalizarPreco({ unidade: 'KIT', valorUnitario: 30, descricao: 'KIT SHAMPOO 2X350ML' }),
+    ).toBeUndefined();
+  });
+
+  it('a descrição NUNCA muda o fator de uma unidade de fator fixo', () => {
+    // Invariante que impede app e backend de divergirem: passar (ou esquecer) a
+    // descrição só destrava embalagem múltipla — jamais altera KG/L/UN.
+    const comDescricao = normalizarPreco({
+      unidade: 'UN',
+      valorUnitario: 5.49,
+      descricao: 'LEITE INTEGRAL 1L C/12',
+    });
+    expect(comDescricao).toEqual(normalizarPreco({ unidade: 'UN', valorUnitario: 5.49 }));
+    expect(comDescricao).toEqual({ unidadeBase: 'un', precoNormalizado: 5.49 });
+  });
+
+  it('resolverUnidade expõe o fator resolvido', () => {
+    expect(resolverUnidade('CX', 'CERVEJA 12X350ML')).toEqual({ base: 'un', fator: 1 / 12 });
+    expect(resolverUnidade('KG')).toEqual({ base: 'kg', fator: 1 });
+    expect(resolverUnidade('CX')).toBeUndefined();
   });
 });
 

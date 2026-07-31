@@ -69,9 +69,12 @@ export class Anonimizador {
       // O pool recebe o preço que o consumidor PAGOU: com desconto no item, o
       // unitário efetivo (líquido) — senão o "menor promocional" (docs/06)
       // reportaria o preço cheio de um item que estava em promoção.
+      // A descrição entra só para destravar multipack (CX/FD com a contagem
+      // declarada, C3.4) — nunca altera o fator de uma unidade já conhecida.
       const norm = normalizarPreco({
         unidade: item.unidade,
         valorUnitario: precoUnitarioEfetivo(item),
+        descricao: item.descricao,
       });
       // Sinal de promoção da própria NFC-e (docs/06, camada 1).
       const emPromocao = item.desconto != null && item.desconto > 0;

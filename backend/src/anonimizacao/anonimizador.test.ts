@@ -154,21 +154,33 @@ describe('Anonimizador (C2.4)', () => {
 
   it('não casa item sem preço normalizável (unidade fora do mapa)', async () => {
     const catalogo = catalogoFake();
-    const nota: NotaEstruturada = {
-      ...NOTA,
-      itens: [
-        {
-          descricao: 'CERVEJA PACK 12',
-          quantidade: 1,
-          unidade: 'CX',
-          valorUnitario: 36,
-          valorTotal: 36,
-        },
-      ],
-    };
-    const r = await new Anonimizador(catalogo).anonimizar(nota, CONTEXTO);
+    const r = await new Anonimizador(catalogo).anonimizar(notaDeUmItem('CX'), CONTEXTO);
     expect(catalogo.casarPorDescricao).not.toHaveBeenCalled();
     expect(r.observacoes).toHaveLength(0);
     expect(r.itensPrivados).toHaveLength(1); // privado guarda mesmo assim
   });
+
+  it('multipack com contagem na descrição entra no pool como R$/un (C3.4)', async () => {
+    const catalogo = catalogoFake();
+    const r = await new Anonimizador(catalogo).anonimizar(
+      notaDeUmItem('CX', 'CERVEJA LATA 12X350ML'),
+      CONTEXTO,
+    );
+    expect(catalogo.casarPorDescricao).toHaveBeenCalledWith({
+      descricaoNormalizada: 'CERVEJA LATA 12X350ML',
+      unidadeBase: 'un',
+    });
+    // R$ 36 a caixa de 12 = R$ 3,00 a lata — comparável com a lata solta.
+    expect(r.observacoes).toEqual([
+      expect.objectContaining({ precoNormalizado: 3, unidadeBase: 'un' }),
+    ]);
+  });
 });
+
+/** Nota de um único item, para exercitar a normalização da unidade. */
+function notaDeUmItem(unidade: string, descricao = 'CERVEJA LATA'): NotaEstruturada {
+  return {
+    ...NOTA,
+    itens: [{ descricao, quantidade: 1, unidade, valorUnitario: 36, valorTotal: 36 }],
+  };
+}

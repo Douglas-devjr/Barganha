@@ -38,7 +38,14 @@ describe('normalizarPreco (C2.4)', () => {
   });
 
   it('devolve undefined para unidade desconhecida (não entra no pool)', () => {
-    expect(normalizarPreco({ unidade: 'CX', valorUnitario: 10 })).toBeUndefined();
+    expect(normalizarPreco({ unidade: 'XPTO', valorUnitario: 10 })).toBeUndefined();
+  });
+
+  it('caixa sem contagem fica fora do pool; com contagem, vira R$/un (C3.4)', () => {
+    expect(normalizarPreco({ unidade: 'CX', valorUnitario: 48 })).toBeUndefined();
+    expect(
+      normalizarPreco({ unidade: 'CX', valorUnitario: 48, descricao: 'CERVEJA LATA 12X350ML' }),
+    ).toEqual({ unidadeBase: 'un', precoNormalizado: 4 });
   });
 
   it('devolve undefined para preço inválido', () => {

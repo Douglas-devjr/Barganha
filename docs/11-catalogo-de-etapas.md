@@ -68,7 +68,7 @@ Este documento dá um **nome e um código curto** a cada etapa do desenvolviment
 | C3.1 | Pipeline `preco_estatistica` (mediana/percentis/mín/máx/`n`) |
 | C3.2 | Decaimento temporal |
 | C3.3 | Escopos geo + fallback hierárquico (loja→município→região→UF) |
-| C3.4 | Casamento por EAN + calibração do mapa de unidades (hoje conservador; ampliar CX/PCT/FD/packs com dados reais) |
+| C3.4 | Casamento por EAN + mapa de unidades (pacote/garrafa/lata como 1 item; CX/FD/PACK só com a contagem declarada). Falta conferir as abreviações contra notas reais de mais estados |
 | C3.5 | Casamento por texto (sem EAN, com confirmação) |
 | C3.6 | Detecção de promoção + veredito híbrido (pessoal + regional) |
 *Responsáveis:* data-scientist, data-engineer

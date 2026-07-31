@@ -42,7 +42,11 @@ export class ServicoModeracao {
   async lancar(usuarioId: string, req: LancamentoManualRequest): Promise<LancamentoManualResponse> {
     // Só entra na fila o que pode virar observação comparável: unidade conhecida
     // e preço válido (mesmo mapa do cupom, shared/). Falha → 400, não enfileira.
-    const norm = normalizarPreco({ unidade: req.unidade, valorUnitario: req.valorUnitario });
+    const norm = normalizarPreco({
+      unidade: req.unidade,
+      valorUnitario: req.valorUnitario,
+      descricao: req.descricao,
+    });
     if (!norm) {
       throw new LancamentoInvalidoError(
         `Unidade "${req.unidade}" não reconhecida ou preço inválido — não dá para comparar.`,
@@ -98,6 +102,7 @@ export class ServicoModeracao {
     const norm = normalizarPreco({
       unidade: lancamento.unidade,
       valorUnitario: lancamento.valorUnitario,
+      descricao: lancamento.descricao,
     });
     if (!norm) {
       // Não deveria ocorrer (validado no `lancar`); falha-segura: rejeita.

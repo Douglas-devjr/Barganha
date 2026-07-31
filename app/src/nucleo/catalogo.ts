@@ -80,6 +80,10 @@ function emPromocao(o: ObservacaoLocal): boolean {
 function normalizarPago(o: ObservacaoLocal) {
   return normalizarPreco({
     unidade: o.unidade,
+    // Destrava multipack (CX/FD com contagem na descrição, C3.4) com a MESMA
+    // regra do backend — se só um dos lados passasse, o mesmo item entraria no
+    // pool e ficaria fora da faixa pessoal.
+    descricao: o.descricaoOriginal,
     valorUnitario: precoUnitarioEfetivo({
       valorUnitario: o.valorUnitario,
       quantidade: o.quantidade,
@@ -160,7 +164,11 @@ function agrupar(observacoes: readonly ObservacaoLocal[]): Map<string, Grupo> {
 
 function unidadeBaseDe(obs: readonly ObservacaoLocal[]): UnidadeBase | null {
   for (const o of obs) {
-    const norm = normalizarPreco({ unidade: o.unidade, valorUnitario: o.valorUnitario });
+    const norm = normalizarPreco({
+      unidade: o.unidade,
+      valorUnitario: o.valorUnitario,
+      descricao: o.descricaoOriginal,
+    });
     if (norm) return norm.unidadeBase;
   }
   return null;

@@ -190,6 +190,7 @@ export function NotaFiscalTela({ navigation, route }: Props) {
             precoPrateleira: item.valorUnitario,
             produtoCanonicoId: item.produtoCanonicoId,
             unidadeVenda: item.unidade,
+            descricao: item.descricaoOriginal,
           });
           if (r.semDados || !r.hibrido.regional) return null;
           return [item.id, r.hibrido.veredito] as const;

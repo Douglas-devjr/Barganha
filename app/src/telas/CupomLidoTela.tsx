@@ -75,6 +75,7 @@ export function CupomLidoTela({ navigation, route }: Props) {
             precoPrateleira: item.valorUnitario,
             produtoCanonicoId: item.produtoCanonicoId,
             unidadeVenda: item.unidade,
+            descricao: item.descricaoOriginal,
           });
           // Sem ângulo regional não há com o que comparar — fora da contagem.
           if (r.semDados || !r.hibrido.regional) return null;

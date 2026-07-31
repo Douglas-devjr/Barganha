@@ -6,7 +6,7 @@
 > - **Escopos + fallback** (C3.3): `backend/src/estatistica/escopos.ts`.
 > - **Casamento por texto** (C3.5): `backend/src/estatistica/casamento-texto.ts` (só **sugere**; confirmação é curadoria).
 > - **Pipeline** (C3.1): `backend/src/estatistica/pipeline.ts` grava `preco_estatistica`. EAN (C3.4) já casa na ingestão (C2).
-> - **Normalização** (fonte única app+backend): `shared/src/estatistica/normalizacao.ts` — `normalizarPreco` (R$/kg·L·un pelo preço unitário) + `unidadePadraoDaBase`. O backend só re-exporta.
+> - **Normalização** (fonte única app+backend): `shared/src/estatistica/normalizacao.ts` — `normalizarPreco` (R$/kg·L·un pelo preço unitário), `resolverUnidade`/`itensPorEmbalagem` (multipack, C3.4) + `unidadePadraoDaBase`. O backend só re-exporta.
 >
 > **v1 da gôndola implementado** na Camada 7 (C7), consumindo o núcleo acima:
 > - **Faixa pessoal** (C7.2): `shared/src/estatistica/faixa.ts` — `montarFaixaDeObservacoes` (mediana/percentis não ponderados sobre o histórico privado; promoção à parte).
@@ -31,6 +31,17 @@ Quando o usuário ainda não tem histórico de um produto, o veredito usa só a 
 
 ## Normalização (pré-requisito)
 Todo preço é convertido para a **unidade base** do produto: **R$/kg**, **R$/L** ou **R$/un**, usando a `unidade` e a `quantidade` da NFC-e. Nunca se compara valor cru.
+
+**Embalagem (C3.4).** As unidades entram em três grupos:
+- **Fator fixo** — `KG`/`G`, `L`/`ML`, `UN`, `DZ`: conversão direta.
+- **Um volume = um item vendido** — pacote, saco, bandeja, pote, frasco, garrafa, lata, vidro, tubo, rolo: valem como `UN`.
+- **Embalagem múltipla** — `CX`, `FD`, `PACK`, `DP`: o fator depende de **quantas unidades vêm dentro**, então só normaliza quando a contagem é declarada, na própria unidade (`CX12`) ou na descrição (`12X350ML`, `FD 6`, `C/12`, `30UN`). O preço vira **R$/un do item de dentro** — o que compara com o mesmo produto vendido solto, caso comum nos portais **sem EAN** (RJ/ENCAT), onde caixa e unidade caem no mesmo canônico pela descrição.
+
+Sem contagem declarada, o item **fica fora do pool** (segue no histórico privado): "R$ 36 a caixa" entrando na mediana da lata é pior que observação nenhuma. Um número que pareça **tamanho** não é aceito como contagem (`CX 5KG` = uma caixa de 5 kg, não 5 unidades), e `KIT`/`CONJUNTO` nunca são divididos — o conteúdo é heterogêneo.
+
+A descrição serve **só** para ler essa contagem: ela nunca altera o fator de uma unidade de fator fixo. Por isso, se um dos lados (app ou backend) esquecer de passá-la, o efeito é uma observação **a menos**, nunca um preço **diferente**.
+
+Normalizar pelo **tamanho** do pacote (R$/kg de um `ARROZ 5KG` vendido por `UN`) é outra coisa, e fica para C11.5.
 
 ## A estatística usa MEDIANA, nunca média
 A média é sensível a outliers e a promoções. Usamos:
@@ -212,3 +223,4 @@ coexistirem é necessário.
 - Meia-vida do decaimento temporal.
 - Mínimo de `n_observacoes` por nível de escopo.
 - Heurística de detecção de promoção sem campo de desconto.
+- Abreviações de unidade por portal: o que não está no mapa fica fora do pool **em silêncio**. Contar as unidades recusadas na ingestão diz quais faltam.
