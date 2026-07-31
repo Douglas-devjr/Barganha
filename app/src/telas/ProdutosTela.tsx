@@ -4,9 +4,14 @@
  * filtros ativos), skeleton shimmer enquanto o catálogo carrega e a lista em
  * cartão único com divisórias.
  *
- * Cada item: nome + "típico R$ x · N compras", preço à direita e o indicador de
- * variação (seta para baixo em `barato`, para cima em `caro`, "na média" em
- * `medio`). O kebab abre o sheet de ações.
+ * Cada item: nome + "seu típico R$ x" + "comprou N vezes", último preço à
+ * direita e o indicador de variação (seta para baixo em `barato`, para cima em
+ * `caro`, "na média" em `medio`). O kebab abre o sheet de ações.
+ *
+ * O típico e a contagem ficam em LINHAS SEPARADAS. Juntos numa só ("típico
+ * R$ 5,49/L · 3 compras") o preço colava na contagem e virava quantidade do
+ * produto aos olhos de quem lê — 3 unidades por R$ 5,49. A contagem é a
+ * evidência do típico, não um número do rótulo da gôndola.
  *
  * A ordenação por preço usa a mediana PESSOAL; produto sem faixa vai para o fim
  * — não fingimos que custa zero.
@@ -42,6 +47,7 @@ import {
 import { clienteApi } from '@/api';
 import { lista as listaCompras } from '@/dados';
 import * as catalogo from '@/nucleo/catalogo';
+import { vezesCompradas } from '@/nucleo/formato';
 import { resolverLocalizacao } from '@/nucleo/localizacao';
 import { comPiso } from '@/nucleo/ritmo';
 import type { ProdutoLocal } from '@/nucleo/catalogo';
@@ -315,9 +321,12 @@ function EsqueletoLista() {
             i < 4 && { borderBottomWidth: 1, borderBottomColor: c.linha },
           ]}
         >
+          {/* três barras porque a linha real tem três textos (nome, típico,
+              "comprou N vezes") — com duas, a lista pulava ao carregar. */}
           <View style={{ flex: 1 }}>
             <Esqueleto largura="62%" altura={12} />
             <Esqueleto largura="40%" altura={9} style={{ marginTop: 8 }} />
+            <Esqueleto largura="30%" altura={9} style={{ marginTop: 6 }} />
           </View>
           <Esqueleto largura={54} altura={12} />
         </View>
@@ -354,12 +363,13 @@ function ProdutoItem({
         <Texto peso="semibold" tamanho="sm" numberOfLines={1}>
           {produto.nome}
         </Texto>
+        {tipico != null ? (
+          <Texto cor="fraco" numerico style={estilos.itemSub}>
+            {`seu típico ${moeda(tipico)}${sufixo}`}
+          </Texto>
+        ) : null}
         <Texto cor="fraco" numerico style={estilos.itemSub}>
-          {tipico != null
-            ? `típico ${moeda(tipico)}${sufixo} · ${produto.nObservacoes} ${
-                produto.nObservacoes === 1 ? 'compra' : 'compras'
-              }`
-            : `${produto.nObservacoes} ${produto.nObservacoes === 1 ? 'compra' : 'compras'}`}
+          {vezesCompradas(produto.nObservacoes)}
         </Texto>
       </View>
 
