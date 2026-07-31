@@ -50,6 +50,12 @@ sync lêem **só o pool compartilhado anônimo** — não exigem conta (`docs/04
   **cursor** (`atualizado_em`), no escopo do usuário (municípios + produtos do
   histórico). Devolve as linhas + o novo cursor. Janela pequena por design
   (`docs/05`); paginação por cursor composto fica para C9.3.
+- **C4.5 — Delta de catálogo:** `POST /sync/produtos` recebe um lote de ids
+  (teto de 200) e devolve o `ProdutoResumo` de cada um — nome/marca/categoria +
+  `unidadeBase`. É o que dá NOME, offline, ao id que o delta de estatística
+  conhece só pelo preço. Sem cursor de propósito: quem sabe o que falta é o app.
+  Id desconhecido apenas não volta (nunca 404 — um produto removido não pode
+  derrubar o lote inteiro).
 - **C4.3.1 — Auth real (login obrigatório):** os endpoints **privados**
   (ingestão, `DELETE /conta`) exigem `Authorization: Bearer <JWT do Supabase>`.
   O `AutenticadorSupabase` valida o token (`auth.getUser`) e usa o `sub`

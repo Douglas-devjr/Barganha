@@ -102,7 +102,8 @@ automaticamente — não é preciso configurar `localhost`/IP (ver passo 4).
    curl http://localhost:3000/saude     # -> {"ok":true}
    ```
 
-> Endpoints anônimos: `POST /consulta/preco`, `POST /sync/estatisticas`.
+> Endpoints anônimos: `POST /consulta/preco`, `POST /sync/estatisticas`,
+> `POST /sync/produtos`.
 > Endpoints privados (exigem `Authorization: Bearer <JWT>`): `POST /ingestao/qr`,
 > `DELETE /conta`. O JWT é o do login do Supabase (passo 5).
 

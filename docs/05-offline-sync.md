@@ -2,8 +2,9 @@
 
 > **Lado servidor implementado** na Camada 4 (C4): `POST /sync/estatisticas`
 > (`backend/src/sync/`) baixa só o delta desde o cursor `atualizado_em`, no
-> escopo do usuário (municípios + produtos). `POST /consulta/preco`
-> (`backend/src/consulta/`) resolve o veredito online com fallback geo. Ambos
+> escopo do usuário (municípios + produtos); `POST /sync/produtos` (C4.5) desce
+> nome/marca/categoria dos ids que o app já tem em cache. `POST /consulta/preco`
+> (`backend/src/consulta/`) resolve o veredito online com fallback geo. Todos
 > lêem só o pool anônimo. O lado app (cache SQLite + fila + cursor local) é C5–C7.
 
 ## Por que offline importa
@@ -29,6 +30,15 @@ O app **não** baixa o Brasil inteiro. O cache cobre apenas:
 - Roda em background (preferência por Wi-Fi / carregando).
 - Botão de **"atualizar"** manual disponível.
 
+## Delta de catálogo (C4.5)
+O delta acima desce **preço** por `produto_canonico_id` — e só. Sem um segundo passo, o app termina com estatística de produtos que ele **não sabe nomear**: cai na descrição crua do cupom (`ARR TP1 TIO J 5KG`) ou fica mudo, no caso de quem pôs na lista um produto vindo do catálogo regional (C7.6) sem nunca tê-lo comprado.
+
+- `POST /sync/produtos` recebe um **lote de ids** (teto de 200 por chamada) e devolve `ProdutoResumo`: `nomeExibicao`, `marca`, `categoria`, `imagemUrl` e sempre a `unidadeBase`.
+- **Sem cursor**, ao contrário do delta de estatística: quem sabe o que falta é o app (ele conhece o próprio cache), e um cursor global obrigaria a baixar o catálogo do país inteiro.
+- Id desconhecido **não volta** na resposta — ausência não é erro, e um produto removido não pode derrubar o lote.
+- O app guarda em `cache_produto` (SQLite) e **revalida a cada 7 dias**: a curadoria (C11.5) enriquece produto depois, e sem revalidação um produto baixado ainda sem nome ficaria anônimo naquele aparelho para sempre.
+- Esse cache **não** é apagado ao trocar de região (nome não tem recorte geográfico), mas sai inteiro no logout.
+
 ## Por que dado "de semana passada" basta
 O veredito usa a **faixa típica** (mediana/percentis), que é **estável**: muda em semanas, não em horas. R$ 8,00 hoje virar R$ 8,50 amanhã **não** altera o veredito "típico ~R$ 8,00". Logo, sync diário/sob demanda é suficiente.
 
@@ -43,6 +53,7 @@ Cada estatística carrega `atualizado_em`, exibido como **"última atualização
 ## Modelo de dados local (SQLite)
 - Espelho do **lado privado** (`cupom`, `item_cupom`).
 - **Cache** de `preco_estatistica` (escopo da região/produtos do usuário).
+- **Cache de catálogo** (`cache_produto`): nome/marca/categoria + unidade-base dos produtos em cache (C4.5).
 - Tabela de **fila de sync** (uploads pendentes + cursor de delta).
 
 ## Decisões a fechar com backend/data engineer

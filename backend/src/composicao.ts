@@ -41,6 +41,7 @@ import { ReprocessadorRetroativo } from './processamento/reprocessamento';
 import { ControleRollout } from './rollout/controle-rollout';
 import { ClienteSefazHttp } from './sefaz/cliente-sefaz-http';
 import { ServicoSync } from './sync/servico-sync';
+import { ServicoSyncCatalogo } from './sync/servico-sync-catalogo';
 
 export interface Backend {
   servicoIngestao: ServicoIngestao;
@@ -60,6 +61,8 @@ export interface Backend {
   servicoComparacaoLista: ServicoComparacaoLista;
   /** Delta sync incremental do cache de estatística (C4.2). */
   servicoSync: ServicoSync;
+  /** Delta de catálogo — nome/marca/categoria p/ o cache offline (C4.5). */
+  servicoSyncCatalogo: ServicoSyncCatalogo;
   /** Autenticação dos endpoints privados (C4.3.1) — valida o JWT do Supabase. */
   autenticacao: Autenticacao;
   /** Apagamento de conta (C4.3.1) — direito ao apagamento (docs/04). */
@@ -170,6 +173,9 @@ export function montarBackend(config: ConfigBackend): Backend {
   const servicoBuscaProdutos = new ServicoBuscaProdutos(repo, repo);
   const servicoComparacaoLista = new ServicoComparacaoLista(repo);
   const servicoSync = new ServicoSync(repo);
+  // C4.5 — o delta de estatística desce preço por id; este desce o NOME daquele
+  // id. Sem ele o cache offline tem típico de produto que a tela não sabe nomear.
+  const servicoSyncCatalogo = new ServicoSyncCatalogo(repo);
   // O cache evita uma ida ao GoTrue por request privado (o polling da tela da
   // nota revalidava o mesmo token dezenas de vezes/min). Só memoriza sucesso, e
   // por no máximo 60s — a revogação continua valendo, com esse atraso.
@@ -219,6 +225,7 @@ export function montarBackend(config: ConfigBackend): Backend {
     servicoBuscaProdutos,
     servicoComparacaoLista,
     servicoSync,
+    servicoSyncCatalogo,
     autenticacao,
     gerenciadorConta,
     rollout,

@@ -415,6 +415,31 @@ export interface DeltaSyncResponse {
   temMais?: boolean;
 }
 
+// ─────────────────── Delta de catálogo — offline (C4.5) ────────────────
+
+/**
+ * Desce os dados de EXIBIÇÃO (nome/marca/categoria) dos produtos que o app já
+ * tem em cache. Sem isto, o cache offline guarda estatística de ids que ele não
+ * sabe nomear: o típico existe, mas a tela mostraria um UUID.
+ *
+ * Anônimo como o resto do sync — lê só o lado compartilhado (`produto_canonico`),
+ * e o cliente só pergunta por ids que o próprio delta de estatística já lhe
+ * entregou. Não é paginado por cursor: o cliente é quem sabe quais ids lhe
+ * faltam, e pede em lotes.
+ */
+export interface SyncProdutosRequest {
+  produtoCanonicoIds: string[];
+}
+
+export interface SyncProdutosResponse {
+  /**
+   * Um resumo por id ENCONTRADO. Id inexistente (ou já removido do catálogo)
+   * simplesmente não volta — a ausência não é erro, e o cliente trata como
+   * "ainda sem nome", nunca como falha de sincronização.
+   */
+  produtos: ProdutoResumo[];
+}
+
 // ───────────────────── Denúncia de preço (C12.5) ───────────────────────
 
 /**

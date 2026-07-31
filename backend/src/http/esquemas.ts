@@ -123,6 +123,25 @@ export const SCHEMA_SYNC = {
   },
 } as const;
 
+// Delta de catálogo (C4.5) — os dados de exibição dos ids que o app já tem em
+// cache. `maxItems` espelha o `LIMITE_SYNC_PRODUTOS` do serviço: lote maior é
+// 400 na borda (o cliente repagina), e não uma varredura do catálogo inteiro.
+export const SCHEMA_SYNC_PRODUTOS = {
+  body: {
+    type: 'object',
+    required: ['produtoCanonicoIds'],
+    additionalProperties: false,
+    properties: {
+      produtoCanonicoIds: {
+        type: 'array',
+        minItems: 1,
+        maxItems: 200,
+        items: { type: 'string', minLength: 1 },
+      },
+    },
+  },
+} as const;
+
 // Lançamento manual de gôndola (C11.3) — preço de prateleira informado à mão.
 export const SCHEMA_LANCAMENTO = {
   body: {

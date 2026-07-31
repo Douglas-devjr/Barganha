@@ -11,7 +11,7 @@
  * `supabase/migrations/20260722120000_delta_sync_cursor_keyset.sql`.
  */
 
-import type { PrecoEstatistica } from '@barganha/shared';
+import type { PrecoEstatistica, ProdutoResumo } from '@barganha/shared';
 
 /** Posição da paginação keyset: a última linha entregue. */
 export interface CursorDelta {
@@ -44,4 +44,13 @@ export interface FonteDeltaSync {
    * o mesmo valor, e usar a última deixa explícito que a posição é keyset).
    */
   deltaEstatisticas(filtro: FiltroDeltaSync): Promise<LinhaDelta[]>;
+}
+
+/**
+ * C4.5 — Porta do delta de CATÁLOGO. Mesma leitura em lote que a busca regional
+ * (C4.4) já usa: só `produto_canonico`, nada do mundo privado. Id sem linha no
+ * catálogo simplesmente não volta.
+ */
+export interface FonteCatalogoSync {
+  resumosProdutos(produtoCanonicoIds: readonly string[]): Promise<ProdutoResumo[]>;
 }

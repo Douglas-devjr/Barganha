@@ -26,6 +26,7 @@ import type { MonitorSaude } from '../observabilidade/saude';
 import type { FonteMetricas } from '../observabilidade/telemetria';
 import type { ReprocessadorRetroativo } from '../processamento/reprocessamento';
 import type { ServicoSync } from '../sync/servico-sync';
+import type { ServicoSyncCatalogo } from '../sync/servico-sync-catalogo';
 import type { OpcoesLimite } from './rate-limit';
 
 /** Tetos de taxa por janela (C9.3.2). Sobrescrevíveis (testes/infra). */
@@ -69,6 +70,12 @@ export interface DependenciasHttp {
   /** Busca no catálogo regional (C4.4, cold start). Omitido → rota não sobe. */
   servicoBuscaProdutos?: ServicoBuscaProdutos;
   servicoSync: ServicoSync;
+  /**
+   * Delta de catálogo (C4.5) — desce nome/marca/categoria dos ids em cache para
+   * o catálogo ficar navegável offline. Omitido → rota não sobe (o app continua
+   * caindo na descrição crua do cupom, como antes desta etapa).
+   */
+  servicoSyncCatalogo?: ServicoSyncCatalogo;
   /**
    * Conta anônima (C4.3) — afordância de testes/legado. Em produção o login é
    * obrigatório (Supabase Auth), então este serviço NÃO é injetado e a rota

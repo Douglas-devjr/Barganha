@@ -5,6 +5,7 @@
  *  • `POST /consulta/produtos` (C4.4) — catálogo regional (busca/populares).
  *  • `POST /consulta/lista` (C12.1) — onde a cesta sai mais barata.
  *  • `POST /sync/estatisticas` (C4.2) — delta desde o cursor (offline).
+ *  • `POST /sync/produtos` (C4.5) — nome/marca/categoria dos ids em cache.
  *
  * Nenhuma delas toca o mundo privado nem preenche `req.usuarioId` — é assim que
  * tem que ser. Compartilham UM teto de "leitura pública" por IP (anti-scraping).
@@ -15,6 +16,7 @@ import type {
   ComparacaoListaRequest,
   ConsultaPrecoRequest,
   DeltaSyncRequest,
+  SyncProdutosRequest,
 } from '@barganha/shared';
 import type { FastifyInstance } from 'fastify';
 
@@ -24,10 +26,17 @@ import {
   SCHEMA_COMPARACAO_LISTA,
   SCHEMA_CONSULTA,
   SCHEMA_SYNC,
+  SCHEMA_SYNC_PRODUTOS,
 } from '../esquemas';
 
 export function registrarRotasConsulta(app: FastifyInstance, ctx: ContextoRotas): void {
-  const { servicoConsulta, servicoBuscaProdutos, servicoComparacaoLista, servicoSync } = ctx.deps;
+  const {
+    servicoConsulta,
+    servicoBuscaProdutos,
+    servicoComparacaoLista,
+    servicoSync,
+    servicoSyncCatalogo,
+  } = ctx.deps;
 
   app.post<{ Body: ConsultaPrecoRequest }>(
     '/consulta/preco',
@@ -70,4 +79,17 @@ export function registrarRotasConsulta(app: FastifyInstance, ctx: ContextoRotas)
       return reply.send(resposta);
     },
   );
+
+  /**
+   * C4.5 — delta de catálogo. Sempre 200: id sem resumo apenas não volta na
+   * lista (o app trata como "ainda sem nome"), porque um 404 aqui derrubaria o
+   * lote inteiro por causa de um produto que saiu do catálogo.
+   */
+  if (servicoSyncCatalogo) {
+    app.post<{ Body: SyncProdutosRequest }>(
+      '/sync/produtos',
+      { schema: SCHEMA_SYNC_PRODUTOS, onRequest: ctx.guardaLeitura },
+      async (req) => servicoSyncCatalogo.produtos(req.body),
+    );
+  }
 }
