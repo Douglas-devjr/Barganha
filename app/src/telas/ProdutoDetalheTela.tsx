@@ -17,7 +17,10 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Switch, View } from 'react-native';
 
+import { GRAFICO_GRATIS_DIAS } from '@barganha/shared';
+
 import {
+  BloqueioPlus,
   Botao,
   CampoTexto,
   Cartao,
@@ -45,6 +48,7 @@ import type { CompraHistorico, ProdutoLocal } from '@/nucleo/catalogo';
 import { moeda as moedaFmt, parseMoeda } from '@/nucleo/formato';
 import { agora, completarPiso } from '@/nucleo/ritmo';
 import { resolverVeredito } from '@/nucleo/veredito-local';
+import { usePlano } from '@/plano';
 import { espaco, raio, useTema } from '@/tema';
 import type { RootStackParamList } from '@/navegacao/tipos';
 
@@ -92,12 +96,15 @@ function agruparPorLoja(historico: CompraHistorico[]): OndeViu[] {
 export function ProdutoDetalheTela({ navigation, route }: Props) {
   const { c } = useTema();
   const toast = useToast();
+  const { dentroDoGrafico, podeAdicionar, limiteDe, mostrarPlus } = usePlano();
   const { chave, nome } = route.params;
   const [carregando, setCarregando] = useState(true);
   const [produto, setProduto] = useState<ProdutoLocal | null>(null);
   const [historico, setHistorico] = useState<CompraHistorico[]>([]);
   const [naLista, setNaLista] = useState(false);
   const [alerta, setAlerta] = useState<AlertaPreco | null>(null);
+  /** Quantos alertas existem no aparelho — o teto do plano é sobre o total. */
+  const [totalAlertas, setTotalAlertas] = useState(0);
   const [editandoAlerta, setEditandoAlerta] = useState(false);
   const [alvoInput, setAlvoInput] = useState('');
   /** Típico da REGIÃO (cache do delta sync), quando existe base. */
@@ -122,13 +129,15 @@ export function ProdutoDetalheTela({ navigation, route }: Props) {
 
       if (p?.produtoCanonicoId) {
         const id = p.produtoCanonicoId;
-        const [estaNaLista, alertaExistente] = await Promise.all([
+        const [estaNaLista, alertaExistente, todosAlertas] = await Promise.all([
           lista.contem(id),
           alertas.obter(id),
+          alertas.listar(),
         ]);
         if (!ativo) return;
         setNaLista(estaNaLista);
         setAlerta(alertaExistente);
+        setTotalAlertas(todosAlertas.length);
 
         // Reusa a resolução travada do veredito só para ler a faixa regional.
         const r = await resolverVeredito({
@@ -158,20 +167,35 @@ export function ProdutoDetalheTela({ navigation, route }: Props) {
     const alvo = parseMoeda(alvoInput);
     if (!id || alvo == null || alvo <= 0) return;
     await alertas.definir(id, produto?.nome ?? nome ?? 'Produto', alvo);
-    setAlerta(await alertas.obter(id));
+    const [atual, todos] = await Promise.all([alertas.obter(id), alertas.listar()]);
+    setAlerta(atual);
+    setTotalAlertas(todos.length);
     setEditandoAlerta(false);
     toast('Alerta de preço ativado');
   }
+
+  /**
+   * C13.5 — o teto de alertas do plano. Vale só para alertas NOVOS: mexer no
+   * alvo de um alerta que já existe nunca esbarra no limite, e desligar sempre
+   * pode. Um limite que impede o usuário de DESFAZER não é limite, é armadilha.
+   */
+  const noLimiteDeAlertas = alerta == null && !podeAdicionar('alertas', totalAlertas);
 
   async function alternarAlerta(ligar: boolean) {
     const id = produto?.produtoCanonicoId;
     if (!id) return;
     if (ligar) {
+      if (noLimiteDeAlertas) {
+        mostrarPlus();
+        return;
+      }
       abrirEditorAlerta();
       return;
     }
     await alertas.remover(id);
+    const todos = await alertas.listar();
     setAlerta(null);
+    setTotalAlertas(todos.length);
     toast('Alerta de preço desativado');
   }
 
@@ -190,7 +214,12 @@ export function ProdutoDetalheTela({ navigation, route }: Props) {
   }
 
   const base = produto?.unidadeBase ? `/${produto.unidadeBase}` : '';
-  const serie = historico.filter((h) => h.precoNormalizado != null);
+  // C13.5 — a janela do gráfico é do plano; o TÍPICO, o menor, o maior e a
+  // tendência do card acima NÃO são cortados. O julgamento de preço é igual nos
+  // dois planos (regra travada nº 2, docs/21) — o que o plus dá é o retrospecto.
+  const serieCompleta = historico.filter((h) => h.precoNormalizado != null);
+  const serie = serieCompleta.filter((h) => dentroDoGrafico(h.observadoEm));
+  const pontosOcultos = serieCompleta.length - serie.length;
   const valores = serie.map((h) => h.precoNormalizado as number);
   const pontoInicial = serie[0];
   const pontoFinal = serie.at(-1);
@@ -296,6 +325,17 @@ export function ProdutoDetalheTela({ navigation, route }: Props) {
             </View>
           </View>
 
+          {pontosOcultos > 0 ? (
+            <BloqueioPlus
+              titulo="A evolução do ano inteiro"
+              texto={`O gráfico mostra ${GRAFICO_GRATIS_DIAS} dias — há mais ${pontosOcultos} ${
+                pontosOcultos === 1 ? 'registro' : 'registros'
+              } antes disso.`}
+              onPress={mostrarPlus}
+              style={estilos.bloqueio}
+            />
+          ) : null}
+
           {/* "Onde comprar hoje" do handoff, com dado real: suas próprias compras */}
           {ondeViu.length > 0 ? (
             <>
@@ -380,7 +420,9 @@ export function ProdutoDetalheTela({ navigation, route }: Props) {
                     <Texto cor="fraco" tamanho="xs" style={{ marginTop: 2 }}>
                       {alerta
                         ? `Avisamos quando chegar a ${moedaFmt(alerta.precoAlvo)}${base}.`
-                        : 'Receba um aviso quando este produto baixar.'}
+                        : noLimiteDeAlertas
+                          ? `Você já usa seus ${limiteDe('alertas')} alertas. No Barganha+ são ilimitados.`
+                          : 'Receba um aviso quando este produto baixar.'}
                     </Texto>
                   </View>
                   <Switch
@@ -521,6 +563,7 @@ const estilos = StyleSheet.create({
   badgeMenor: { borderWidth: 1, borderRadius: raio.pill, paddingHorizontal: 8, paddingVertical: 3 },
   badgeMenorTexto: { fontSize: 9, letterSpacing: 0.8 },
   notaLoja: { marginTop: espaco.sm, marginLeft: espaco.xs, lineHeight: 15 },
+  bloqueio: { marginTop: espaco.sm },
   acoesAlerta: { flexDirection: 'row', gap: espaco.sm, marginTop: espaco.sm },
   linhaAlerta: { flexDirection: 'row', alignItems: 'center', gap: espaco.md },
 });

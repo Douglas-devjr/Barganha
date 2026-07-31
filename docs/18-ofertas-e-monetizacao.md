@@ -63,3 +63,10 @@ Perseguir contrato B2B **antes** do lançamento é uma forma clássica de um pro
 pequeno morrer: meses queimados em reunião com procurement de empresa grande, em
 vez de colocar o app na rua. A parceria é hipótese de receita da **Fase 2** —
 documentada, com a arquitetura pronta para recebê-la. Usuários primeiro.
+
+## A outra linha de receita
+
+Este documento cobre a receita que vem **dos mercados**. A que vem **do usuário**
+(assinatura, planos grátis × pago) está em `21-assinatura-e-planos.md`. São
+independentes, podem coexistir — e obedecem ao mesmo muro: nem o anunciante nem
+o assinante compram influência sobre o veredito.

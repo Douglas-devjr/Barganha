@@ -29,6 +29,7 @@ import { ProvedorToast } from '@/componentes';
 import { cupons, inicializarBd, meta } from '@/dados';
 import { AuthNavegador, RaizNavegador } from '@/navegacao';
 import { sincronizar } from '@/nucleo/sincronizador';
+import { ProvedorPlano } from '@/plano';
 import { AberturaFluxo } from '@/telas/abertura/AberturaFluxo';
 import { OnboardingTela } from '@/telas/OnboardingTela';
 import { SplashTela } from '@/telas/SplashTela';
@@ -78,7 +79,10 @@ export default function App() {
                 inteiro — o que vier primeiro espera pelo outro. Fica no mesmo
                 slot para não remontar (remontar reiniciaria a construção). */}
             {pronto && aberturaVista ? (
-              <Conteudo consentidoInicial={consentidoInicial!} />
+              // O plano lê o SQLite, então só entra depois do boot do banco.
+              <ProvedorPlano>
+                <Conteudo consentidoInicial={consentidoInicial!} />
+              </ProvedorPlano>
             ) : (
               <SplashTela aoConcluir={() => setAberturaVista(true)} />
             )}

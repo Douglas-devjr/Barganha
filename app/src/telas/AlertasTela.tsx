@@ -11,16 +11,26 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useEffect, useState } from 'react';
 import { StyleSheet } from 'react-native';
 
-import { Botao, CabecalhoVoltar, PainelAlertas, Tela, Texto, useToast } from '@/componentes';
+import {
+  BloqueioPlus,
+  Botao,
+  CabecalhoVoltar,
+  PainelAlertas,
+  Tela,
+  Texto,
+  useToast,
+} from '@/componentes';
 import { alertas as alertasRepo, meta } from '@/dados';
 import { PREFERENCIAS_ALERTA_PADRAO, type PreferenciasAlerta } from '@/dados/repositorio-meta';
 import type { RootStackParamList } from '@/navegacao/tipos';
+import { usePlano } from '@/plano';
 import { espaco } from '@/tema';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Alertas'>;
 
 export function AlertasTela({ navigation }: Props) {
   const toast = useToast();
+  const { plus, limiteDe, mostrarPlus } = usePlano();
   const [preferencias, setPreferencias] = useState<PreferenciasAlerta>(PREFERENCIAS_ALERTA_PADRAO);
   const [quantosAlvos, setQuantosAlvos] = useState(0);
   const [salvando, setSalvando] = useState(false);
@@ -69,7 +79,18 @@ export function AlertasTela({ navigation }: Props) {
           : quantosAlvos === 1
             ? '1 produto com alvo de preço definido.'
             : `${quantosAlvos} produtos com alvo de preço definido.`}
+        {plus ? '' : ` Seu plano permite ${limiteDe('alertas')}.`}
       </Texto>
+
+      {/* C13.5 — o teto aparece aqui, onde a pessoa administra os alertas. */}
+      {!plus && quantosAlvos >= limiteDe('alertas') ? (
+        <BloqueioPlus
+          titulo="Alertas ilimitados"
+          texto="Acompanhe quantos produtos quiser, sem escolher quais cabem."
+          onPress={mostrarPlus}
+          style={estilos.bloqueio}
+        />
+      ) : null}
 
       <Botao
         titulo="Salvar preferências"
@@ -85,5 +106,6 @@ export function AlertasTela({ navigation }: Props) {
 const estilos = StyleSheet.create({
   intro: { lineHeight: 19, marginBottom: espaco.md },
   nota: { marginTop: espaco.md, marginLeft: espaco.xs, lineHeight: 16 },
+  bloqueio: { marginTop: espaco.md },
   salvar: { marginTop: espaco.lg },
 });

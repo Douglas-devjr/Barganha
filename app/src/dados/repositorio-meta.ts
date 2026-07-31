@@ -6,6 +6,8 @@
  * sessão do Supabase Auth, gerido pelo supabase-js (ver src/auth/).
  */
 
+import { PLANO_PADRAO, type Plano, ePlano } from '@barganha/shared';
+
 import { getBd } from './bd';
 
 const CHAVE_CURSOR = 'cursor_delta';
@@ -22,6 +24,7 @@ const CHAVE_RAIO = 'raio_comparacao_km';
 const CHAVE_HISTORICO_RESTAURADO = 'historico_restaurado_em';
 const CHAVE_IDS_RECUPERADOS = 'ids_recuperados_delta';
 const CHAVE_ESCOPOS_SYNC = 'escopos_delta';
+const CHAVE_PLANO = 'plano';
 
 export async function obterMeta(chave: string): Promise<string | null> {
   const linha = await getBd().getFirstAsync<{ valor: string | null }>(
@@ -201,6 +204,25 @@ export interface LocalEscolhido {
   uf: string;
   municipio?: string;
 }
+
+/**
+ * C13.1/C13.5 — Plano da conta (grátis × Barganha+).
+ *
+ * PROVISÓRIO, e de propósito: hoje o plano mora SÓ no aparelho e só o
+ * interruptor de teste das Configurações o altera. Ninguém paga nada — não há
+ * cobrança nem Google Play Billing (C13.3). Quando o C13.2 chegar, a verdade
+ * passa a vir do backend e este valor vira o CACHE dela (com a folga de 7 dias
+ * sem rede prevista em docs/21) — a leitura do resto do app não muda.
+ *
+ * Valor ausente ou desconhecido = `gratis`. Nunca o contrário: um dado
+ * corrompido não pode conceder o plano pago.
+ */
+export async function obterPlano(): Promise<Plano> {
+  const valor = await obterMeta(CHAVE_PLANO);
+  return ePlano(valor) ? valor : PLANO_PADRAO;
+}
+
+export const definirPlano = (plano: Plano): Promise<void> => definirMeta(CHAVE_PLANO, plano);
 
 export async function obterLocalEscolhido(): Promise<LocalEscolhido | null> {
   const [uf, municipio] = await Promise.all([

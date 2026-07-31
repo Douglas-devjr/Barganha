@@ -168,6 +168,19 @@ Alertas de preço e economia acumulada já estão em **C8.4**.
 | C12.5 | Denúncia de preço incorreto: tabela `denuncia_preco` (PRIVADA) + `POST /denuncia` + fila de curadoria. O alvo é **produto + recorte geo**, nunca uma `observacao_preco` — não existe ponteiro de usuário para linha do pool (decisão travada nº3). Denunciar **não publica nada**: é sinal para a curadoria corrigir casamento/unidade com as ferramentas do C11 |
 *Responsáveis:* product-manager, data-scientist, mobile-engineer, ux-designer
 
+### `C13` — Assinatura *(Monetização pelo usuário)* `[Pós]`
+Planos grátis × pago. **Duas regras travadas** (ver `docs/21-assinatura-e-planos.md`):
+escanear cupom é ilimitado no grátis para sempre, e o veredito é o mesmo para
+todo mundo — pagar não compra uma verdade melhor.
+| Código | Sub-passo |
+|---|---|
+| C13.1 | Conceito de direito (entitlement): `Plano`/`Recurso` + `podeUsar()` em `shared/`, coluna de plano no modelo, todo mundo em `gratis`. É o gancho barato que evita refatorar 25 telas depois |
+| C13.2 | Backend da assinatura: tabela `assinatura` (PRIVADA, com RLS), estado exposto na conta (`plano`, `valido_ate`). **Depende de C4.3.1** — não se vende assinatura sobre um Bearer que é o próprio `usuarioId` |
+| C13.3 | Google Play Billing: compra no app + webhook (RTDN) → backend confirma na API do Play. Entitlement **nunca** decidido pelo cliente; cancelamento/reembolso/carência refletidos, não inventados |
+| C13.4 | Plus por contribuição: job mensal que concede o mesmo direito a quem teve ≥ 4 cupons **processados** no mês anterior (`plus_contribuindo`) |
+| C13.5 | Gates no app: cache do plano no SQLite com folga de 7 dias sem rede (paywall tem de funcionar offline, no corredor do mercado) + telas de limite com cadeado e prévia do valor — recurso bloqueado aparece, não some |
+*Responsáveis:* product-manager, tech-lead-arquiteto, backend-engineer, mobile-engineer, privacy-lgpd-specialist
+
 ---
 
 ## Exemplos de uso no chat

@@ -11,12 +11,14 @@
  * cupons que terminaram de processar em segundo plano.
  */
 
+import { HISTORICO_GRATIS_MESES } from '@barganha/shared';
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useCallback, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import {
+  BloqueioPlus,
   CabecalhoVoltar,
   CartaoLista,
   Estado,
@@ -30,6 +32,7 @@ import { cupons } from '@/dados';
 import type { CompraResumo } from '@/dados/repositorio-cupom';
 import { dataCurta, moeda } from '@/nucleo/formato';
 import type { RootStackParamList } from '@/navegacao/tipos';
+import { usePlano } from '@/plano';
 import { espaco, useTema } from '@/tema';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Compras'>;
@@ -43,6 +46,7 @@ const LIMITE = 500;
 
 export function ComprasTela({ navigation }: Props) {
   const { c } = useTema();
+  const { dentroDoHistorico, mostrarPlus } = usePlano();
   const [compras, setCompras] = useState<CompraResumo[] | null>(null);
 
   useFocusEffect(
@@ -67,6 +71,11 @@ export function ComprasTela({ navigation }: Props) {
       </Tela>
     );
 
+  // C13.5 — janela do plano. O corte é de EXIBIÇÃO: o cupom antigo continua
+  // salvo, contando na economia e no pool. Nada foi apagado.
+  const visiveis = compras.filter((compra) => dentroDoHistorico(compra.observadoEm));
+  const ocultas = compras.length - visiveis.length;
+
   return (
     <Tela>
       <CabecalhoVoltar titulo="Minhas compras" aoVoltar={() => navigation.goBack()} />
@@ -81,24 +90,35 @@ export function ComprasTela({ navigation }: Props) {
       ) : (
         <>
           <Texto cor="suave" tamanho="sm" style={estilos.contagem}>
-            {compras.length === 1 ? '1 compra' : `${compras.length} compras`}
+            {visiveis.length === 1 ? '1 compra' : `${visiveis.length} compras`}
+            {ocultas > 0 ? ` · últimos ${HISTORICO_GRATIS_MESES} meses` : ''}
           </Texto>
-          <CartaoLista>
-            {compras.map((compra, idx) => (
-              <LinhaLista
-                key={compra.cupomLocalId}
-                icone={<IconeLoja tamanho={18} cor={c.tinta} />}
-                titulo={compra.lojaNome ?? 'Compra'}
-                subtitulo={subtituloDe(compra)}
-                chevron
-                ultima={idx === compras.length - 1}
-                direita={<ValorCompra compra={compra} />}
-                onPress={() =>
-                  navigation.navigate('NotaFiscal', { cupomLocalId: compra.cupomLocalId })
-                }
-              />
-            ))}
-          </CartaoLista>
+          {visiveis.length > 0 ? (
+            <CartaoLista>
+              {visiveis.map((compra, idx) => (
+                <LinhaLista
+                  key={compra.cupomLocalId}
+                  icone={<IconeLoja tamanho={18} cor={c.tinta} />}
+                  titulo={compra.lojaNome ?? 'Compra'}
+                  subtitulo={subtituloDe(compra)}
+                  chevron
+                  ultima={idx === visiveis.length - 1}
+                  direita={<ValorCompra compra={compra} />}
+                  onPress={() =>
+                    navigation.navigate('NotaFiscal', { cupomLocalId: compra.cupomLocalId })
+                  }
+                />
+              ))}
+            </CartaoLista>
+          ) : null}
+          {ocultas > 0 ? (
+            <BloqueioPlus
+              titulo={ocultas === 1 ? '1 compra mais antiga' : `${ocultas} compras mais antigas`}
+              texto="Continuam guardadas. O histórico completo é do Barganha+."
+              onPress={mostrarPlus}
+              style={visiveis.length > 0 ? estilos.bloqueio : undefined}
+            />
+          ) : null}
         </>
       )}
     </Tela>
@@ -137,6 +157,7 @@ function ValorCompra({ compra }: { compra: CompraResumo }) {
 
 const estilos = StyleSheet.create({
   contagem: { marginBottom: espaco.sm, marginLeft: espaco.xs },
+  bloqueio: { marginTop: espaco.md },
   valor: { alignItems: 'flex-end' },
   economia: { fontSize: 11 },
 });

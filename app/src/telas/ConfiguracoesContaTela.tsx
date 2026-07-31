@@ -20,7 +20,7 @@
 
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useState } from 'react';
-import { Linking, StyleSheet, View } from 'react-native';
+import { Linking, StyleSheet, Switch, View } from 'react-native';
 
 import { clienteApi } from '@/api';
 import { useAuth } from '@/auth';
@@ -41,6 +41,7 @@ import {
 } from '@/componentes';
 import { fila } from '@/dados';
 import type { RootStackParamList } from '@/navegacao/tipos';
+import { usePlano } from '@/plano';
 import { espaco, useTema } from '@/tema';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ConfiguracoesConta'>;
@@ -53,6 +54,7 @@ export function ConfiguracoesContaTela({ navigation }: Props) {
   const { c } = useTema();
   const toast = useToast();
   const { usuario, sair, definirNomeExibicao } = useAuth();
+  const { plus, trocarPlano, mostrarPlus } = usePlano();
 
   const [dialogo, setDialogo] = useState<'sair' | 'conta' | null>(null);
   const [pendentesAoSair, setPendentesAoSair] = useState(0);
@@ -130,6 +132,41 @@ export function ConfiguracoesContaTela({ navigation }: Props) {
           onPress={() => void Linking.openURL(URL_PRIVACIDADE)}
         />
       </CartaoLista>
+
+      {/*
+        C13 — INTERRUPTOR DE TESTE. Não é uma feature: é o jeito de ver as duas
+        visões do app enquanto a assinatura não existe. Nada é cobrado, o plano
+        vive só neste aparelho e some ao sair da conta. Sai daqui quando o
+        C13.3 (Google Play Billing) entrar — aí quem manda é o servidor.
+      */}
+      <Eyebrow style={estilos.eyebrowBloco}>Plano (em construção)</Eyebrow>
+      <CartaoLista>
+        <LinhaLista
+          icone={<IconeCadeado tamanho={18} cor={c.suave} />}
+          titulo="Simular Barganha+"
+          subtitulo={plus ? 'Vendo o app como assinante' : 'Vendo o app como plano grátis'}
+          direita={
+            <Switch
+              value={plus}
+              onValueChange={(v) => void trocarPlano(v ? 'plus' : 'gratis')}
+              trackColor={{ false: c.linha, true: c.tinta }}
+              thumbColor={c.cartao}
+              accessibilityLabel="Simular Barganha+"
+            />
+          }
+        />
+        <LinhaLista
+          icone={<IconeCadeado tamanho={18} cor={c.suave} />}
+          titulo="O que é o Barganha+"
+          chevron
+          ultima
+          onPress={mostrarPlus}
+        />
+      </CartaoLista>
+      <Texto cor="fraco" tamanho="xs" style={estilos.nota}>
+        Ninguém é cobrado: o plano ainda não está à venda. Este interruptor existe só para conferir
+        como cada tela fica nos dois planos.
+      </Texto>
 
       <CartaoLista style={estilos.bloco}>
         <LinhaLista
@@ -235,6 +272,7 @@ function Dado({
 
 const estilos = StyleSheet.create({
   eyebrow: { marginBottom: espaco.sm },
+  eyebrowBloco: { marginTop: espaco.lg, marginBottom: espaco.sm },
   bloco: { marginTop: espaco.md },
   nota: { marginTop: espaco.sm, marginLeft: espaco.xs, lineHeight: 16 },
   dado: { paddingVertical: espaco.md },

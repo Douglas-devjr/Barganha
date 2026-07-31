@@ -47,6 +47,8 @@ export { PainelAlertas } from './PainelAlertas';
 export type { PainelAlertasProps } from './PainelAlertas';
 export { EditorRegiao } from './EditorRegiao';
 export type { EditorRegiaoProps } from './EditorRegiao';
+export { BloqueioPlus, SeloPlus } from './BloqueioPlus';
+export type { BloqueioPlusProps } from './BloqueioPlus';
 export { Dialogo } from './Dialogo';
 export type { DialogoProps } from './Dialogo';
 export { DURACAO, useDuracao, useReduzirMovimento } from './movimento';
