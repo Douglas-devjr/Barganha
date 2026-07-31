@@ -59,6 +59,9 @@ export async function redefinirAppLocal(): Promise<void> {
       DELETE FROM fila_upload;
       DELETE FROM cupom_local;
       DELETE FROM cache_estatistica;
+      -- C4.5: o cache de catálogo é anônimo, mas o RECORTE dele denuncia o que
+      -- a pessoa comprava (só descem os ids que ela tinha em cache). Sai junto.
+      DELETE FROM cache_produto;
       -- Preferências e derivados do usuário: sem isto a próxima conta neste
       -- aparelho herdaria a lista, os alertas e os avisos da anterior.
       DELETE FROM lista_compras;

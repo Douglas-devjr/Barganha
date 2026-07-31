@@ -26,6 +26,8 @@ import type {
   IngestaoHtmlRequest,
   IngestaoQrRequest,
   IngestaoQrResponse,
+  SyncProdutosRequest,
+  SyncProdutosResponse,
 } from '@barganha/shared';
 
 import { gerarRequestId, HEADER_REQUEST_ID } from '@barganha/shared';
@@ -232,6 +234,15 @@ export class ClienteApi {
   /** `POST /sync/estatisticas` (C4.2) — ANÔNIMO. Delta desde o cursor. */
   sincronizar(req: DeltaSyncRequest): Promise<DeltaSyncResponse> {
     return this.requisitar<DeltaSyncResponse>('POST', '/sync/estatisticas', req);
+  }
+
+  /**
+   * `POST /sync/produtos` (C4.5) — ANÔNIMO. Nome/marca/categoria dos ids que o
+   * app já tem em cache, para o catálogo ficar navegável sem sinal. Sem cursor:
+   * quem sabe o que falta é o app, que pede em lotes.
+   */
+  sincronizarProdutos(req: SyncProdutosRequest): Promise<SyncProdutosResponse> {
+    return this.requisitar<SyncProdutosResponse>('POST', '/sync/produtos', req);
   }
 
   // ──────────────────────────────────────────────────────────────────────

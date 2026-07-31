@@ -33,6 +33,26 @@ const BACKOFF_MAX_S = 60 * 60;
  */
 const MAX_PAGINAS_DELTA = 50;
 
+/**
+ * C4.5 — ids de produto por chamada do delta de catálogo. Espelha o teto do
+ * servidor (`LIMITE_SYNC_PRODUTOS`): pedir mais é 400 na borda.
+ */
+const LOTE_CATALOGO = 200;
+
+/**
+ * Lotes de catálogo por rodada. O que sobra fica para a próxima — o catálogo não
+ * tem cursor, então nada se perde por parar aqui.
+ */
+const MAX_LOTES_CATALOGO = 5;
+
+/**
+ * Depois de quantos dias um resumo já baixado é buscado de novo. Existe porque a
+ * curadoria (C11.5) enriquece produto DEPOIS: sem revalidar, um produto baixado
+ * hoje sem nome ficaria anônimo neste aparelho para sempre. O payload é ínfimo
+ * (uma linha de texto por produto), então a janela pode ser curta.
+ */
+const VALIDADE_RESUMO_DIAS = 7;
+
 function emSegundos(segundos: number): string {
   return new Date(Date.now() + segundos * 1000).toISOString();
 }
@@ -235,6 +255,46 @@ export async function sincronizarEstatisticas(): Promise<void> {
 }
 
 /**
+ * C4.5 — Delta de CATÁLOGO: desce nome/marca/categoria dos produtos que o app já
+ * tem em cache, para o catálogo ficar navegável offline.
+ *
+ * O delta de estatística (C4.2) traz preço por `produto_canonico_id` e nada
+ * mais — sem isto o app sabe quanto custa um produto que ele não sabe nomear, e
+ * a tela cai na descrição crua do cupom ("ARR TP1 TIO J 5KG") ou fica muda, no
+ * caso de quem pôs na lista um produto do catálogo regional (C7.6) sem nunca
+ * tê-lo comprado.
+ *
+ * Sem cursor de propósito (ver o serviço no backend): quem sabe o que falta é o
+ * app. Best-effort e idempotente — `salvarResumos` é upsert por id.
+ */
+export async function sincronizarCatalogo(): Promise<void> {
+  const [doCache, doHistorico, daLista] = await Promise.all([
+    cache.listarProdutoCanonicoIds(),
+    produtos.listarProdutoCanonicoIds(),
+    lista.listarProdutoCanonicoIds(),
+  ]);
+  const ids = [...new Set([...doCache, ...doHistorico, ...daLista])];
+  if (ids.length === 0) return;
+
+  const corte = new Date(Date.now() - VALIDADE_RESUMO_DIAS * 24 * 60 * 60 * 1000).toISOString();
+  // Faltantes primeiro (contrato de `idsParaResumo`), então o teto de lotes por
+  // rodada nunca adia quem ainda não tem nome nenhum em favor de revalidação.
+  const alvos = (await cache.idsParaResumo(ids, corte)).slice(
+    0,
+    LOTE_CATALOGO * MAX_LOTES_CATALOGO,
+  );
+
+  for (let inicio = 0; inicio < alvos.length; inicio += LOTE_CATALOGO) {
+    const lote = alvos.slice(inicio, inicio + LOTE_CATALOGO);
+    const resp = await clienteApi.sincronizarProdutos({ produtoCanonicoIds: lote });
+    // Grava lote a lote: se o próximo falhar (sinal caiu), o que já veio fica.
+    // Id que o servidor não conhece simplesmente não volta — segue sem resumo, e
+    // a próxima rodada tenta de novo (o custo é um id no lote, não uma falha).
+    await cache.salvarResumos(resp.produtos);
+  }
+}
+
+/**
  * Baixa TUDO (sem cursor) dos produtos do recorte que ainda não têm nada em
  * cache. Não mexe no cursor persistido: este é um recorte lateral, e adiantá-lo
  * com o resultado daqui pularia o que o delta principal ainda deve entregar.
@@ -364,6 +424,15 @@ export async function sincronizar(): Promise<void> {
       limparFalhas('sync.estatisticas');
     } catch (erro) {
       contarFalha('sync.estatisticas', erro);
+    }
+    // C4.5 — catálogo DEPOIS das estatísticas: os ids que entraram no cache
+    // agora já ganham nome nesta mesma rodada. Também isolado; ficar sem nome é
+    // uma degradação (cai na descrição do cupom), não uma falha de sync.
+    try {
+      await sincronizarCatalogo();
+      limparFalhas('sync.catalogo');
+    } catch (erro) {
+      contarFalha('sync.catalogo', erro);
     }
     limparFalhas('sync.rodada');
     log.info({ action: 'sync.rodada', duracaoMs: Date.now() - inicio }, 'Rodada de sync concluída');

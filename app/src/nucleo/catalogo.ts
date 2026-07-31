@@ -20,7 +20,8 @@ import {
   type UnidadeBase,
 } from '@barganha/shared';
 
-import { produtos } from '@/dados';
+import { cache, produtos } from '@/dados';
+import type { CacheProduto } from '@/dados';
 import type { ObservacaoLocal } from '@/dados/repositorio-produtos';
 
 /** Produto consolidado a partir do histórico do usuário. */
@@ -29,8 +30,16 @@ export interface ProdutoLocal {
   chave: string;
   produtoCanonicoId: string | null;
   ean: string | null;
-  /** Nome exibido (a descrição mais recente vista para o produto). */
+  /**
+   * Nome exibido: o nome de catálogo baixado pela C4.5 quando existe, senão a
+   * descrição mais recente vista no cupom. O curado ganha porque é escrito para
+   * gente ler ("Arroz Tio João Tipo 1 5kg"), e o do cupom vem abreviado pelo PDV.
+   */
   nome: string;
+  /** Marca, do catálogo compartilhado (C4.5/C11.5). Ausente sem enriquecimento. */
+  marca?: string;
+  /** Categoria, do catálogo compartilhado (C4.5/C11.5). */
+  categoria?: string;
   unidadeBase: UnidadeBase | null;
   nObservacoes: number;
   /** "Seu típico" (mediana/percentis das suas compras). */
@@ -92,8 +101,16 @@ function normalizarPago(o: ObservacaoLocal) {
   });
 }
 
-/** Agrupa observações soltas em produtos + histórico ordenado. */
-function agrupar(observacoes: readonly ObservacaoLocal[]): Map<string, Grupo> {
+/**
+ * Agrupa observações soltas em produtos + histórico ordenado. `resumos` é o
+ * cache de catálogo (C4.5), por id canônico; vazio = app ainda não sincronizou
+ * (ou produto sem enriquecimento), e tudo segue como antes, pela descrição do
+ * cupom.
+ */
+function agrupar(
+  observacoes: readonly ObservacaoLocal[],
+  resumos: ReadonlyMap<string, CacheProduto>,
+): Map<string, Grupo> {
   // Pré-ordena por data crescente: o histórico já sai pronto e o "nome mais
   // recente" é o último visto.
   const ordenadas = [...observacoes].sort((a, b) => a.observadoEm.localeCompare(b.observadoEm));
@@ -141,11 +158,19 @@ function agrupar(observacoes: readonly ObservacaoLocal[]): Map<string, Grupo> {
 
     const recente = obs.at(-1);
     if (!recente) continue; // grupo sempre tem ao menos 1; satisfaz o tipo
+    const produtoCanonicoId = primeiroCanonico(obs);
+    const resumo = produtoCanonicoId ? resumos.get(produtoCanonicoId) : undefined;
     const produto: ProdutoLocal = {
       chave,
-      produtoCanonicoId: primeiroCanonico(obs),
+      produtoCanonicoId,
       ean: primeiroEan(obs),
-      nome: recente.descricaoOriginal,
+      // C4.5 — nome de catálogo quando ele existe; senão a descrição do cupom.
+      // A CHAVE não muda com isso: agrupar continua sendo por id/EAN/descrição
+      // normalizada, então lista, detalhe e veredito seguem falando do mesmo
+      // produto mesmo que o nome mude entre uma sincronização e outra.
+      nome: resumo?.nomeExibicao ?? recente.descricaoOriginal,
+      ...(resumo?.marca ? { marca: resumo.marca } : {}),
+      ...(resumo?.categoria ? { categoria: resumo.categoria } : {}),
       unidadeBase,
       nObservacoes: obs.length,
       ...(faixaPessoal ? { faixaPessoal } : {}),
@@ -206,14 +231,20 @@ function ordenarProdutos(grupos: Map<string, Grupo>): ProdutoLocal[] {
 
 /** Catálogo completo do usuário (tela Produtos / chips de Verificar). */
 export async function carregarCatalogo(): Promise<ProdutoLocal[]> {
-  const observacoes = await produtos.listarObservacoes();
-  return ordenarProdutos(agrupar(observacoes));
+  const [observacoes, resumos] = await Promise.all([
+    produtos.listarObservacoes(),
+    cache.mapaDeResumos(),
+  ]);
+  return ordenarProdutos(agrupar(observacoes, resumos));
 }
 
 /** Produto + histórico por chave (tela Detalhe). */
 export async function obterProduto(
   chave: string,
 ): Promise<{ produto: ProdutoLocal; historico: CompraHistorico[] } | null> {
-  const grupos = agrupar(await produtos.listarObservacoes());
-  return grupos.get(chave) ?? null;
+  const [observacoes, resumos] = await Promise.all([
+    produtos.listarObservacoes(),
+    cache.mapaDeResumos(),
+  ]);
+  return agrupar(observacoes, resumos).get(chave) ?? null;
 }
