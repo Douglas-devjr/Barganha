@@ -90,5 +90,10 @@ export function montarFaixaDeObservacoes(
     nObservacoes: validas.length,
     unidadeBase,
     atualizadoEm,
+    // No lado PESSOAL as duas datas coincidem — a faixa é calculada na hora, a
+    // partir das próprias compras, então "quando calculei" e "de quando é o dado
+    // mais novo" são o mesmo instante. Preencher explicitamente é o que deixa a
+    // Verificar exibir a idade sem precisar saber de qual ângulo a faixa veio.
+    ...(atualizadoEm ? { observadoEmMaisRecente: atualizadoEm } : {}),
   };
 }

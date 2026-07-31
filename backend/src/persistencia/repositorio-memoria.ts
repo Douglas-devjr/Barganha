@@ -520,6 +520,7 @@ export class RepositorioMemoria
         maximo: l.maximo,
         ...(l.menorPromocional != null ? { menorPromocional: l.menorPromocional } : {}),
         nObservacoes: l.nObservacoes,
+        observadoEmMaisRecente: l.observadoEmMaisRecente,
         atualizadoEm: new Date().toISOString(),
       });
     }

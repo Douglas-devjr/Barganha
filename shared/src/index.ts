@@ -18,6 +18,7 @@ export * from './api/dtos';
 export * from './estatistica/veredito';
 export * from './estatistica/normalizacao';
 export * from './estatistica/faixa';
+export * from './estatistica/frescor';
 export * from './plano/direitos';
 export * from './observabilidade/redacao';
 export * from './observabilidade/request-id';

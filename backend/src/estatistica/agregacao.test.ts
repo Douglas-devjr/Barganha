@@ -102,4 +102,26 @@ describe('agregar (C3.1/C3.2/C3.6)', () => {
     expect(agregar([obs(6.5, 999)], { referencia: REF })).toBeUndefined();
     expect(agregar([], { referencia: REF })).toBeUndefined();
   });
+
+  describe('idade do típico (observadoEmMaisRecente)', () => {
+    it('é a data da observação mais nova da base', () => {
+      const r = agregar([obs(6.0, 40), obs(6.5, 3), obs(7.0, 12)], { referencia: REF });
+      expect(r!.observadoEmMaisRecente).toBe(obs(0, 3).observadoEm);
+    });
+
+    it('ignora a observação descartada pela janela', () => {
+      // A de 400 dias é a "mais recente" de nada: nem entrou no cálculo.
+      const r = agregar([obs(6.5, 20), obs(6.6, 25), obs(99, 400)], { referencia: REF });
+      expect(r!.observadoEmMaisRecente).toBe(obs(0, 20).observadoEm);
+    });
+
+    it('promoção segregada não rejuvenesce o típico', () => {
+      // O típico é dos regulares (de 60 dias atrás); a promoção de ontem foi
+      // separada do cálculo, então não pode fazer o típico parecer de ontem.
+      const dados = [obs(8.0, 60), obs(8.2, 60), obs(7.8, 60), obs(5.0, 1, true)];
+      const r = agregar(dados, { referencia: REF });
+      expect(r!.menorPromocional).toBe(5.0);
+      expect(r!.observadoEmMaisRecente).toBe(obs(0, 60).observadoEm);
+    });
+  });
 });

@@ -68,6 +68,12 @@ export interface LinhaEstatistica {
   maximo: number;
   menorPromocional?: number;
   nObservacoes: number;
+  /**
+   * `observado_em` da observação mais recente que sustenta o típico (ISO). É a
+   * idade do PREÇO — `atualizado_em` é a do recálculo e não serve para isso
+   * (ver `EstatisticaCalculada.observadoEmMaisRecente`).
+   */
+  observadoEmMaisRecente: string;
 }
 
 /** Escrita do cache de estatística + leitura dos candidatos p/ o fallback. */

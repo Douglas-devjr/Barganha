@@ -131,6 +131,7 @@ function paraEstatistica(e: Record<string, unknown>): PrecoEstatistica {
     maximo: num(e.maximo),
     menorPromocional: num(e.menor_promocional),
     nObservacoes: Number(e.n_observacoes),
+    ...(e.observado_em_max ? { observadoEmMaisRecente: e.observado_em_max as string } : {}),
     atualizadoEm: e.atualizado_em as string,
   };
 }
@@ -782,6 +783,9 @@ export class RepositorioSupabase
         maximo: l.maximo,
         menor_promocional: l.menorPromocional ?? null,
         n_observacoes: l.nObservacoes,
+        // Idade do PREÇO (do dado) — separada de `atualizado_em`, que é a do
+        // RECÁLCULO e vira "hoje" em toda varredura geral.
+        observado_em_max: l.observadoEmMaisRecente,
         atualizado_em: agora,
       })),
       { onConflict: 'produto_canonico_id,escopo,escopo_id,unidade_base' },

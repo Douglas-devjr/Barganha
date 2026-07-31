@@ -123,6 +123,7 @@ export class PipelineEstatistica {
         maximo: estat.maximo,
         ...(estat.menorPromocional != null ? { menorPromocional: estat.menorPromocional } : {}),
         nObservacoes: estat.nObservacoes,
+        observadoEmMaisRecente: estat.observadoEmMaisRecente,
       });
     }
     return linhas;

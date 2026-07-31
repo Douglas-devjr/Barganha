@@ -16,14 +16,21 @@
  * Limiares marcados como **a calibrar com dados reais** (docs/06; data-scientist).
  */
 
+import { MAX_IDADE_OBSERVACAO_DIAS } from '@barganha/shared';
+
 const DIA_MS = 86_400_000;
 
 /** Parâmetros de calibração do motor — ajustar com dados reais (docs/06). */
 export const DECAIMENTO = {
   /** Meia-vida do peso temporal, em dias (~1 mês; docs/06 fala "algumas semanas"). */
   meiaVidaDias: 30,
-  /** Janela: observações mais antigas que isto são descartadas (~6 meses). */
-  maxIdadeDias: 180,
+  /**
+   * Janela: observações mais antigas que isto são descartadas (~6 meses). Vem do
+   * shared porque o APP usa o mesmo número para parar de opinar (`foraDaJanela`):
+   * duplicá-la deixaria o app dando veredito sobre dado que este motor já jogou
+   * fora, e calibrar significaria mudar em dois lugares.
+   */
+  maxIdadeDias: MAX_IDADE_OBSERVACAO_DIAS,
   /** Fator do cerco IQR p/ promoção estatística: abaixo de `p25 − k·(p75−p25)`. */
   fatorCercoPromo: 1.5,
 } as const;
@@ -55,6 +62,18 @@ export interface EstatisticaCalculada {
   menorPromocional?: number;
   /** Nº de observações regulares que sustentam o típico (confiança). */
   nObservacoes: number;
+  /**
+   * `observadoEm` (ISO) da observação MAIS RECENTE da base regular — a idade real
+   * do típico.
+   *
+   * Existe porque `preco_estatistica.atualizado_em` NÃO responde isso: aquilo é o
+   * carimbo do recálculo, e um recálculo geral (deploy, mudança de calibração)
+   * deixa todas as linhas com data de hoje mesmo que o preço mais novo seja de
+   * meses atrás. Sem este campo não há como a UI distinguir um típico fresco de
+   * um fóssil — e é justo essa distinção que impede o ranking de mercados de
+   * eleger "mais barato" uma loja com dado velho.
+   */
+  observadoEmMaisRecente: string;
 }
 
 interface Amostra {
@@ -116,6 +135,8 @@ export function percentilPonderado(
 
 interface AmostraDatada extends Amostra {
   emPromocao: boolean;
+  /** Epoch ms de `observadoEm` — sustenta o peso e a recência da base. */
+  observadoMs: number;
 }
 
 function ordenarPorValor(amostras: readonly AmostraDatada[]): AmostraDatada[] {
@@ -151,6 +172,7 @@ export function agregar(
       valor: o.precoNormalizado,
       peso: pesoTemporal(idadeDias, meiaVida),
       emPromocao: o.emPromocao,
+      observadoMs: ms,
     });
   }
   if (amostras.length === 0) return undefined;
@@ -189,6 +211,11 @@ export function agregar(
   const menorPromocional =
     promocoes.length > 0 ? Math.min(...promocoes.map((a) => a.valor)) : undefined;
 
+  // 6) Recência da BASE (não do conjunto): é o típico que a UI exibe, então é a
+  //    idade dele que importa. Uma promoção recente segregada pelo cerco não
+  //    pode fazer um típico velho parecer novo.
+  const observadoMaisRecenteMs = Math.max(...ordBase.map((a) => a.observadoMs));
+
   return {
     mediana: arredondar(mediana),
     p25: arredondar(p25),
@@ -197,5 +224,6 @@ export function agregar(
     maximo: arredondar(maximo),
     ...(menorPromocional != null ? { menorPromocional: arredondar(menorPromocional) } : {}),
     nObservacoes: base.length,
+    observadoEmMaisRecente: new Date(observadoMaisRecenteMs).toISOString(),
   };
 }

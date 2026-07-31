@@ -7,6 +7,15 @@ function obs(preco: number, emPromocao = false, observadoEm = '2026-01-01'): Obs
   return { precoNormalizado: preco, emPromocao, observadoEm };
 }
 
+/**
+ * "Agora" logo depois das datas das fixtures. Precisa ser explícito: a faixa
+ * pessoal agora carrega `observadoEmMaisRecente`, e o `classificarPreco` mede a
+ * idade contra ele — com o relógio real, estas observações de janeiro/2026 já
+ * estariam fora da janela da agregação e o veredito viria `sem_dados`. O teste é
+ * sobre segregação de promoção, então a idade não pode ser variável aqui.
+ */
+const LOGO_DEPOIS = new Date('2026-01-05T00:00:00.000Z');
+
 describe('quantil', () => {
   it('interpola linearmente numa lista ordenada', () => {
     expect(quantil([10, 20, 30, 40], 0.5)).toBe(25);
@@ -54,7 +63,7 @@ describe('montarFaixaDeObservacoes', () => {
     expect(faixa?.menorPromocional).toBe(5);
     expect(faixa?.nObservacoes).toBe(4);
     // O preço regular de 8,50 cai dentro da faixa, não "caro" por causa da promoção.
-    expect(classificarPreco(8.5, faixa!)).toBe('na_media');
+    expect(classificarPreco(8.5, faixa!, LOGO_DEPOIS)).toBe('na_media');
   });
 
   it('usa o instante mais recente como atualizadoEm', () => {
@@ -63,6 +72,19 @@ describe('montarFaixaDeObservacoes', () => {
       'kg',
     );
     expect(faixa?.atualizadoEm).toBe('2026-03-02');
+  });
+
+  it('também expõe a idade do PREÇO — aqui as duas datas coincidem', () => {
+    // Na faixa pessoal a conta é feita na hora sobre as próprias compras, então
+    // "quando calculei" e "de quando é o dado" são o mesmo instante. A UI lê
+    // `observadoEmMaisRecente` sem saber de qual ângulo a faixa veio; se este
+    // lado não preenchesse, a Verificar diria "sem data" para quem TEM histórico.
+    const faixa = montarFaixaDeObservacoes(
+      [obs(10, false, '2026-01-10'), obs(12, false, '2026-03-02')],
+      'kg',
+    );
+    expect(faixa?.observadoEmMaisRecente).toBe('2026-03-02');
+    expect(faixa?.observadoEmMaisRecente).toBe(faixa?.atualizadoEm);
   });
 
   it('degrada para usar promoções quando não há nenhuma observação regular', () => {

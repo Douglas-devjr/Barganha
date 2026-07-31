@@ -49,6 +49,7 @@ describe('ServicoCuradoria (C11.5)', () => {
         minimo: 4,
         maximo: 6,
         nObservacoes: 20,
+        observadoEmMaisRecente: '2026-06-20T00:00:00.000Z',
       },
     ]);
 
@@ -87,6 +88,7 @@ describe('ServicoCuradoria (C11.5)', () => {
         minimo: 4,
         maximo: 6,
         nObservacoes: 20,
+        observadoEmMaisRecente: '2026-06-20T00:00:00.000Z',
       },
     ]);
     const consulta = new ServicoConsulta(repo, repo);

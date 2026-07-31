@@ -209,6 +209,7 @@ describe('Servidor HTTP', () => {
           minimo: 4,
           maximo: 6,
           nObservacoes: 8,
+          observadoEmMaisRecente: '2026-06-20T00:00:00.000Z',
         },
       ]);
 

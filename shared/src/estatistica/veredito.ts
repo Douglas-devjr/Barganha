@@ -17,6 +17,7 @@
  */
 
 import type { UnidadeBase } from '../core';
+import { foraDaJanela, idadeEmMeses, MAX_IDADE_TIPICO_DIAS, dadoRecente } from './frescor';
 
 /**
  * Mínimo de observações para um nível geográfico ser considerado CONFIÁVEL.
@@ -65,7 +66,43 @@ export const LIMIARES_VEREDITO = {
    * (onde eram ruído) e só ~1% nos de preço disperso (onde eram sinal real).
    */
   diferencaMinimaRelevante: 0.05,
+  /**
+   * Deriva de preço presumida por MÊS de idade do típico — quanto a zona morta
+   * cresce por mês de dado velho.
+   *
+   * Por que existir: a zona morta acima cerca o ruído da AMOSTRA, mas não o do
+   * TEMPO. Um típico de três meses atrás descreve o mercado de três meses atrás;
+   * comparar a gôndola de hoje contra ele com a mesma exigência de 5% é fingir
+   * que preço de alimento não anda. Com deriva, quanto mais velho o típico, maior
+   * a diferença necessária para o app cravar "barato" ou "caro" — ele fica mais
+   * calado em vez de ficar errado.
+   *
+   * 0,8%/mês é conservador para alimento no Brasil: em 3 meses a zona morta vai de
+   * 5% para ~7,4%; no limite da janela (6 meses), para ~9,8%. Não mata o veredito
+   * em nenhum ponto da janela — só exige mais evidência conforme o dado envelhece.
+   *
+   * A calibrar com dados reais (docs/06; data-scientist).
+   */
+  derivaMensalPresumida: 0.008,
 } as const;
+
+/**
+ * Zona morta efetiva para esta faixa: a base ± o que a idade do dado justifica
+ * (ver `derivaMensalPresumida`).
+ *
+ * Idade DESCONHECIDA (`observadoEmMaisRecente` ausente — cache antigo, backend
+ * anterior ao campo) é tratada como o limite do frescor, não como zero: uma
+ * penalidade branda, porque supor o pior faria o app emudecer justamente durante
+ * a transição em que nenhuma linha tem data ainda.
+ */
+export function zonaMortaPara(faixa: FaixaPreco, referencia: Date): number {
+  const meses =
+    idadeEmMeses(faixa.observadoEmMaisRecente, referencia) ?? MAX_IDADE_TIPICO_DIAS / 30.44;
+  return (
+    LIMIARES_VEREDITO.diferencaMinimaRelevante +
+    LIMIARES_VEREDITO.derivaMensalPresumida * Math.max(0, meses)
+  );
+}
 
 /**
  * Faixa típica de um produto num recorte (regional OU pessoal). É um subconjunto
@@ -80,8 +117,26 @@ export interface FaixaPreco {
   menorPromocional?: number;
   nObservacoes: number;
   unidadeBase: UnidadeBase;
-  /** Mostrado como "última atualização" (ISO 8601). */
+  /**
+   * Quando esta faixa foi CALCULADA (ISO 8601). Não confundir com a idade do
+   * preço: no ângulo REGIONAL isto é o carimbo do recálculo no servidor, e um
+   * `recalcularTodos` (deploy, recalibração) põe "agora" em faixa sustentada por
+   * cupom de meses atrás. Para idade do dado use `observadoEmMaisRecente`.
+   */
   atualizadoEm: string;
+  /**
+   * Data da observação mais recente que sustenta a mediana (ISO 8601) — a idade
+   * do PREÇO, comparável entre os dois ângulos.
+   *
+   * Existe porque `atualizadoEm` significava coisas diferentes em cada lado: na
+   * faixa PESSOAL ele já era a data da última compra (idade real), na REGIONAL era
+   * o recálculo do servidor. Quem exibisse "atualizado em" tratando os dois igual
+   * afirmaria frescor que só um dos lados tinha.
+   *
+   * Ausente = idade DESCONHECIDA (cache anterior à coluna, backend antigo). Leia
+   * como desconhecida, nunca como recente.
+   */
+  observadoEmMaisRecente?: string;
 }
 
 /**
@@ -96,14 +151,26 @@ export interface FaixaPreco {
  *     refrigerante, e os dois estariam certos).
  *
  * Sem percentis (fallback degradado), a zona morta é a regra inteira: passou
- * dos 5%, o lado vem do sinal da própria diferença.
+ * dela, o lado vem do sinal da própria diferença.
+ *
+ * A zona morta CRESCE com a idade do típico (`zonaMortaPara`): dado velho exige
+ * diferença maior para merecer um rótulo. E passada a JANELA DA AGREGAÇÃO
+ * (`foraDaJanela`) não há veredito nenhum — ali o próprio motor estatístico já
+ * descartaria a observação, e o app não pode ser mais confiante que ele.
  *
  * Nunca compara contra `menorPromocional` (evita o falso "está caro" por causa
  * de uma promoção pontual antiga — docs/06).
  */
-export function classificarPreco(precoPrateleira: number, faixa: FaixaPreco): Veredito {
+export function classificarPreco(
+  precoPrateleira: number,
+  faixa: FaixaPreco,
+  /** "Agora" para medir a idade do típico (injetável p/ testes). */
+  referencia: Date = new Date(),
+): Veredito {
   if (!Number.isFinite(precoPrateleira) || precoPrateleira <= 0) return 'sem_dados';
   if (faixa.nObservacoes <= 0) return 'sem_dados';
+  // Além da janela não é "dado velho", é dado que o motor já não usaria.
+  if (foraDaJanela(faixa.observadoEmMaisRecente, referencia)) return 'sem_dados';
 
   const temPercentis = faixa.p25 != null && faixa.p75 != null;
   if (!temPercentis && faixa.mediana == null) return 'sem_dados';
@@ -111,7 +178,7 @@ export function classificarPreco(precoPrateleira: number, faixa: FaixaPreco): Ve
   // Zona morta (só quando há mediana p/ medir a diferença contra).
   if (faixa.mediana != null && faixa.mediana > 0) {
     const desvio = (precoPrateleira - faixa.mediana) / faixa.mediana;
-    if (Math.abs(desvio) < LIMIARES_VEREDITO.diferencaMinimaRelevante) return 'na_media';
+    if (Math.abs(desvio) < zonaMortaPara(faixa, referencia)) return 'na_media';
     if (!temPercentis) return desvio < 0 ? 'barato' : 'caro';
   }
 
@@ -131,6 +198,15 @@ export interface AnguloVeredito {
   faixa: FaixaPreco;
   /** Base pequena → exibir com ressalva. */
   poucosDados: boolean;
+  /**
+   * O típico passou da janela de frescor, OU a idade dele é desconhecida → exibir
+   * com ressalva de "pode estar desatualizado".
+   *
+   * Cobre os dois casos com um flag só de propósito: para o usuário, "é de 60 dias
+   * atrás" e "não sei de quando é" pedem a mesma cautela na gôndola. A idade exata,
+   * quando existe, a tela mostra à parte.
+   */
+  dadoVelho: boolean;
 }
 
 /** Linha de promoção exibida à parte (nunca no típico). */
@@ -147,6 +223,8 @@ export interface EntradaVeredito {
   regional?: FaixaPreco;
   /** Faixa do histórico do usuário (privada/local). */
   pessoal?: FaixaPreco;
+  /** "Agora" para medir a idade dos típicos (injetável p/ testes). */
+  referencia?: Date;
 }
 
 /** Veredito híbrido — os dois ângulos lado a lado + a promoção à parte. */
@@ -160,11 +238,12 @@ export interface VeredictoHibrido {
   promocao?: LinhaPromocao;
 }
 
-function anguloDe(precoPrateleira: number, faixa: FaixaPreco): AnguloVeredito {
+function anguloDe(precoPrateleira: number, faixa: FaixaPreco, referencia: Date): AnguloVeredito {
   return {
-    veredito: classificarPreco(precoPrateleira, faixa),
+    veredito: classificarPreco(precoPrateleira, faixa, referencia),
     faixa,
     poucosDados: poucosDados(faixa),
+    dadoVelho: !dadoRecente(faixa.observadoEmMaisRecente, referencia),
   };
 }
 
@@ -182,10 +261,15 @@ function menorPromocional(...faixas: (FaixaPreco | undefined)[]): number | undef
  * lado quando o usuário já tem histórico. A promoção fica numa linha separada.
  */
 export function montarVeredito(entrada: EntradaVeredito): VeredictoHibrido {
+  // Uma referência para os dois ângulos: com `new Date()` em cada um, regional e
+  // pessoal poderiam cair em lados opostos de um limiar de idade na mesma tela.
+  const referencia = entrada.referencia ?? new Date();
   const regional = entrada.regional
-    ? anguloDe(entrada.precoPrateleira, entrada.regional)
+    ? anguloDe(entrada.precoPrateleira, entrada.regional, referencia)
     : undefined;
-  const pessoal = entrada.pessoal ? anguloDe(entrada.precoPrateleira, entrada.pessoal) : undefined;
+  const pessoal = entrada.pessoal
+    ? anguloDe(entrada.precoPrateleira, entrada.pessoal, referencia)
+    : undefined;
   const destaque = regional ?? pessoal;
 
   const menor = menorPromocional(entrada.regional, entrada.pessoal);

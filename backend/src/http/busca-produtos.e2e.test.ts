@@ -51,6 +51,7 @@ beforeAll(async () => {
     maximo: 0,
     escopo: 'municipio',
     escopoId: RIO,
+    observadoEmMaisRecente: '2026-06-20T00:00:00.000Z',
   } as const;
   await repo.upsertEstatisticas([
     { ...base, produtoCanonicoId: arroz, unidadeBase: 'kg', mediana: 8, nObservacoes: 40 },

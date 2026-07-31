@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
-import { classificarPreco, montarVeredito, poucosDados, type FaixaPreco } from './veredito';
+import {
+  classificarPreco,
+  montarVeredito,
+  poucosDados,
+  zonaMortaPara,
+  type FaixaPreco,
+} from './veredito';
 
 const faixaRegional: FaixaPreco = {
   mediana: 6.5,
@@ -92,6 +98,89 @@ describe('poucosDados (confiança)', () => {
   it('sinaliza quando a base é pequena', () => {
     expect(poucosDados({ ...faixaRegional, nObservacoes: 2 })).toBe(true);
     expect(poucosDados(faixaRegional)).toBe(false);
+  });
+});
+
+describe('idade do típico no veredito (dado velho exige mais evidência)', () => {
+  const AGORA = new Date('2026-07-29T12:00:00.000Z');
+  const DIA_MS = 86_400_000;
+  const diasAtras = (d: number) => new Date(AGORA.getTime() - d * DIA_MS).toISOString();
+
+  /** Homogênea: p25/p75 colados na mediana, então a zona morta é quem decide. */
+  const comIdade = (dias: number): FaixaPreco => ({
+    mediana: 10,
+    p25: 9.95,
+    p75: 10.05,
+    nObservacoes: 20,
+    unidadeBase: 'un',
+    atualizadoEm: AGORA.toISOString(),
+    observadoEmMaisRecente: diasAtras(dias),
+  });
+
+  it('a zona morta cresce com a idade', () => {
+    // Base 5% com dado de hoje; ~0,8% por mês de idade depois disso.
+    expect(zonaMortaPara(comIdade(0), AGORA)).toBeCloseTo(0.05, 3);
+    expect(zonaMortaPara(comIdade(91), AGORA)).toBeCloseTo(0.05 + 0.008 * 3, 2);
+    expect(zonaMortaPara(comIdade(183), AGORA)).toBeCloseTo(0.05 + 0.008 * 6, 2);
+  });
+
+  it('a MESMA diferença é veredito com dado novo e "na média" com dado velho', () => {
+    // −6% num típico fresco: passa dos 5% e o percentil manda → barato.
+    expect(classificarPreco(9.4, comIdade(2), AGORA)).toBe('barato');
+    // O mesmo −6% contra um típico de 5 meses cabe na deriva presumida: o app
+    // deixa de cravar em vez de cravar errado.
+    expect(classificarPreco(9.4, comIdade(150), AGORA)).toBe('na_media');
+  });
+
+  it('dado velho não emudece o app: diferença grande segue valendo', () => {
+    // O ponto de NÃO suprimir por idade — 25% abaixo é sinal em qualquer idade.
+    expect(classificarPreco(7.5, comIdade(150), AGORA)).toBe('barato');
+    expect(classificarPreco(13, comIdade(150), AGORA)).toBe('caro');
+  });
+
+  it('passada a JANELA da agregação, não há veredito', () => {
+    // Aos 181 dias o motor já descartaria a observação (MAX_IDADE_OBSERVACAO_DIAS).
+    // O app não pode opinar sobre dado que nem existe mais para quem o calculou.
+    expect(classificarPreco(7.5, comIdade(181), AGORA)).toBe('sem_dados');
+    expect(classificarPreco(7.5, comIdade(179), AGORA)).not.toBe('sem_dados');
+  });
+
+  it('idade desconhecida é penalidade BRANDA, não silêncio', () => {
+    // Cache anterior à coluna: se supuséssemos o pior, o app emudeceria durante a
+    // transição inteira, quando nenhuma linha tem data ainda.
+    const semData: FaixaPreco = { ...comIdade(0) };
+    delete semData.observadoEmMaisRecente;
+    expect(classificarPreco(7.5, semData, AGORA)).toBe('barato');
+    expect(zonaMortaPara(semData, AGORA)).toBeLessThan(0.06);
+  });
+
+  it('o recálculo do servidor não rejuvenesce o veredito', () => {
+    // `atualizadoEm` de hoje (varredura geral) com preço de 5 meses: se a idade
+    // saísse do campo errado, a deriva sumiria e o app voltaria a cravar rótulos
+    // sobre dado velho em massa.
+    const recalculadoHoje: FaixaPreco = {
+      ...comIdade(150),
+      atualizadoEm: AGORA.toISOString(),
+    };
+    expect(classificarPreco(9.4, recalculadoHoje, AGORA)).toBe('na_media');
+  });
+
+  it('montarVeredito marca a ressalva de dado velho nos dois ângulos', () => {
+    const v = montarVeredito({
+      precoPrateleira: 7.5,
+      regional: comIdade(90),
+      pessoal: comIdade(2),
+      referencia: AGORA,
+    });
+    expect(v.regional?.dadoVelho).toBe(true);
+    expect(v.pessoal?.dadoVelho).toBe(false);
+  });
+
+  it('sem data, a ressalva aparece — desconhecido pede a mesma cautela', () => {
+    const semData: FaixaPreco = { ...comIdade(0) };
+    delete semData.observadoEmMaisRecente;
+    const v = montarVeredito({ precoPrateleira: 7.5, regional: semData, referencia: AGORA });
+    expect(v.regional?.dadoVelho).toBe(true);
   });
 });
 

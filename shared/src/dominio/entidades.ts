@@ -151,5 +151,13 @@ export interface PrecoEstatistica {
   /** Menor preço promocional visto — exibido à parte, nunca no típico. */
   menorPromocional?: number;
   nObservacoes: number;
+  /**
+   * `observado_em` da observação regular mais recente que sustenta a mediana —
+   * a idade do PREÇO. Diferente de `atualizadoEm`, que é a do RECÁLCULO e vira
+   * "agora" em toda varredura geral (deploy, recalibração), fazendo dado velho
+   * parecer novo. Ausente nas linhas anteriores à coluna: leia como idade
+   * DESCONHECIDA, nunca como recente.
+   */
+  observadoEmMaisRecente?: string;
   atualizadoEm: string;
 }

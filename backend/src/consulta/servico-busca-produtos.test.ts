@@ -45,6 +45,7 @@ async function semearEstatistica(opcoes: {
       minimo: opcoes.mediana * 0.8,
       maximo: opcoes.mediana * 1.2,
       nObservacoes: opcoes.nObservacoes,
+      observadoEmMaisRecente: '2026-06-20T00:00:00.000Z',
     },
   ]);
 }
