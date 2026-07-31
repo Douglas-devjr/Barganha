@@ -9,13 +9,17 @@
  * cupom fica como está (tipicamente `qr_capturado`) e o reprocessamento
  * retroativo (C2.5) pode pegá-lo mais tarde.
  *
- * Em produção a durabilidade da fila é definida na infra (C10); aqui mora a
- * lógica de retry/backoff, com `dormir` injetável para testes determinísticos.
+ * QUANDO USAR ESTA E NÃO A DURÁVEL. Esta serve a UMA instância: é a fila dos
+ * testes e do desenvolvimento local (não exige a migração aplicada). Em produção
+ * a fila é a `FilaPostgres` (`FILA_DURAVEL`), porque com duas instâncias cada
+ * processo teria a SUA lista e as duas processariam os mesmos cupons. Aqui mora
+ * a lógica de retry/backoff em memória, com `dormir` injetável para testes
+ * determinísticos.
  */
 
 import { logDeCupom } from '../observabilidade/log';
 import { sanitizarErro } from '../observabilidade/sanitizar';
-import type { FilaProcessamento, TarefaProcessamento } from './tipos';
+import type { EstadoFila, FilaOperavel, TarefaProcessamento } from './tipos';
 
 export interface OpcoesFila {
   /** Máximo de tentativas por tarefa (inclui a primeira). */
@@ -45,7 +49,7 @@ const dormirReal = (ms: number): Promise<void> => new Promise((r) => setTimeout(
 /** Tarefas em paralelo por padrão — ver `OpcoesFila.concorrencia`. */
 export const CONCORRENCIA_PADRAO = 4;
 
-export class FilaMemoria implements FilaProcessamento {
+export class FilaMemoria implements FilaOperavel {
   private readonly tentativasMax: number;
   private readonly baseBackoffMs: number;
   private readonly maxBackoffMs: number;
@@ -76,12 +80,12 @@ export class FilaMemoria implements FilaProcessamento {
   }
 
   /**
-   * Profundidade da fila agora — fonte da sonda de saúde (C10.4). A fila é
-   * in-process, então este número é a única evidência de represamento: um cupom
+   * Profundidade da fila agora — fonte da sonda de saúde (C10.4). Sendo
+   * in-process, este número é a única evidência de represamento: um cupom
    * esperando aqui está parado em "Processando" na tela do usuário sem gerar
    * uma única linha de log.
    */
-  estado(): { pendentes: number; emCurso: number } {
+  estado(): EstadoFila {
     return { pendentes: this.pendentes.length, emCurso: this.emCurso.size };
   }
 

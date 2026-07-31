@@ -238,20 +238,48 @@ botão continua como fallback para quem não tem o app instalado.
 
 ---
 
-## 6. O que fica para quando escalar (não fazer agora)
+## 6. Rodar com mais de uma instância
 
-Dois pontos são conhecidos e **corretos como estão** enquanto o backend rodar em
-uma única instância. Ambos passam a importar no dia em que houver duas:
+Eram dois os pontos que só valiam para UM processo. **A fila já foi resolvida**;
+sobra o rate limit.
 
-- **Fila em memória** (`fila/fila-memoria.ts`). Um restart perde o que estava em
-  processamento; hoje isso é coberto por `reprocessador.recuperarPendentes` no
-  boot. Com duas instâncias, as duas processariam os mesmos cupons. Substituir
-  por fila durável no Postgres (tabela de estado + polling, ou Supabase Queues).
-- **Rate limit em memória** (`http/rate-limit.ts`). O teto vale por processo:
-  com duas instâncias o limite efetivo dobra. A interface já foi desenhada para
-  trocar o miolo por um store compartilhado (Redis/Postgres) sem tocar nas rotas.
+### 6.1 Fila de processamento — durável (feito)
 
-Antecipar qualquer um dos dois hoje custa complexidade e não compra nada.
+A fila é a tabela **`fila_processamento`** (migração `20260729100000`), drenada
+por `fila/fila-postgres.ts`. Três coisas que a fila em memória não dava:
+
+- **Exclusividade entre instâncias.** `fila_reivindicar` entrega o lote com
+  `for update skip locked`: cada tarefa vai para UM consumidor, quantas
+  instâncias existirem. Antes, cada processo tinha a sua lista e as duas
+  parseavam o mesmo cupom (duas idas ao portal da SEFAZ pelo mesmo cupom).
+- **Sobrevive ao restart.** Tentativas e backoff são colunas
+  (`tentativas`, `disponivel_em`), não estado de processo. Deploy no meio de um
+  backoff não perde a tarefa.
+- **Recupera o trabalho de quem morreu.** Quem reivindica abre uma *lease* de 5
+  min (`reivindicado_em`); vencida, a tarefa volta à fila e outra instância a
+  pega. É o caminho para instância morta em deploy/OOM/hibernação — antes isso
+  dependia de `reprocessador.recuperarPendentes` rodar no boot.
+
+O que **não** mudou: só há retry quando o worker lança (erro transitório); erro
+permanente marca o cupom `falha` sem retry; tentativas esgotadas deixam o cupom
+para o reprocessamento retroativo (C2.5).
+
+**Ordem de deploy (importa):** aplicar a migração ANTES de subir o código —
+sem as RPCs, nada é enfileirado. A sonda crítica `fila-esquema` em `/saude`
+existe para isso: sem a migração, `/saude/pronto` responde 503 e o deploy é
+reprovado (esquema fora de sincronia), em vez de o app ficar em "Processando"
+para sempre. `FILA_DURAVEL=false` volta à fila em memória — só para uma
+instância, e é assim que se roda o dev local antes do `db push`.
+
+A tarefa reivindicada por uma instância que recebeu `SIGTERM` não espera a lease:
+o encerramento ordenado (`index.ts`) desliga o poll antes de fechar o servidor.
+
+### 6.2 Rate limit em memória (continua pendente)
+
+`http/rate-limit.ts` conta por processo: com duas instâncias o limite efetivo
+dobra. A interface já foi desenhada para trocar o miolo por um store
+compartilhado (Redis/Postgres) sem tocar nas rotas. Antecipar hoje custa
+complexidade e não compra nada — o teto dobrado é degradação suave, não furo.
 
 ---
 

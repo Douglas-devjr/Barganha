@@ -19,6 +19,7 @@ export async function main(): Promise<void> {
     servicoBuscaProdutos,
     servicoComparacaoLista,
     servicoSync,
+    servicoSyncCatalogo,
     autenticacao,
     gerenciadorConta,
     telemetria,
@@ -30,6 +31,7 @@ export async function main(): Promise<void> {
     matcherTexto,
     saude,
     metricasPerformance,
+    fila,
   } = montarBackend(config);
   const app = construirServidor({
     servicoIngestao,
@@ -37,6 +39,7 @@ export async function main(): Promise<void> {
     servicoBuscaProdutos,
     servicoComparacaoLista,
     servicoSync,
+    servicoSyncCatalogo,
     autenticacao,
     gerenciadorConta,
     metricas: telemetria,
@@ -54,11 +57,20 @@ export async function main(): Promise<void> {
     logger: true,
   });
   await app.listen({ port: config.porta, host: '0.0.0.0' });
+
+  // C2.1 — liga o consumidor da fila. Na fila durável isto sobe o poll, que é
+  // como esta instância vê o trabalho que não passou pelo seu próprio
+  // `enfileirar`: enfileirado por OUTRA instância, saindo do backoff, ou órfão
+  // de uma instância que morreu no meio. Depois do `listen`: drenar cupom não
+  // pode atrasar a subida do servidor.
+  fila.iniciar?.();
+
   log.info(
     {
       action: 'boot.pronto',
       porta: config.porta,
       ambiente: config.nodeEnv,
+      filaDuravel: config.filaDuravel,
       // Carimba a versão no boot: é a linha que amarra "o que subiu" ao resto do
       // log daquela instância, sem depender de ninguém chamar `/saude`.
       versao: config.versao,
@@ -67,10 +79,13 @@ export async function main(): Promise<void> {
     'Backend no ar',
   );
 
-  // Recuperação de boot: a fila é in-process, então um restart (deploy, ou a
-  // instância acordando no free tier) deixaria cupons presos em `qr_capturado`
-  // sem ninguém para processá-los. Depois do `listen` e sem `await` no caminho
-  // de subida — o servidor já atende enquanto isto drena.
+  // Recuperação de boot. Com a fila DURÁVEL isto deixou de ser o remendo do
+  // restart (a tarefa sobrevive na tabela, e a lease vencida devolve à fila o que
+  // uma instância morta estava processando). Continua valendo para o cupom que
+  // NUNCA chegou à fila: o `enfileirar` falhou, ou a linha se perdeu — nesse caso
+  // o cupom está em `qr_capturado` e ninguém tem tarefa dele. É idempotente (o
+  // enfileiramento não rearma tarefa com lease viva), então rodar sempre é
+  // barato. Depois do `listen` e sem `await`: o servidor já atende enquanto drena.
   void reprocessador
     .recuperarPendentes({ limite: LIMITE_RECUPERACAO_BOOT })
     .then((n) => {
@@ -90,6 +105,28 @@ export async function main(): Promise<void> {
         'Falha ao recuperar cupons pendentes — servidor segue atendendo',
       );
     });
+
+  // Encerramento ordenado. O Render manda SIGTERM em todo deploy: sem isto o
+  // processo morre no meio de um poll e as tarefas reivindicadas só voltam à
+  // fila quando a lease vence (minutos). Parando de reivindicar primeiro, a
+  // instância nova pega o trabalho na hora.
+  for (const sinal of ['SIGTERM', 'SIGINT'] as const) {
+    process.once(sinal, () => {
+      log.info({ action: 'encerrar.inicio', sinal }, 'Encerrando o backend');
+      fila.parar?.();
+      void app.close().then(
+        () => {
+          log.info({ action: 'encerrar.pronto', sinal }, 'Backend encerrado');
+        },
+        (erro: unknown) => {
+          log.warn(
+            { action: 'encerrar.falhou', sinal, erro: sanitizarErro(erro) },
+            'Falha ao fechar o servidor HTTP',
+          );
+        },
+      );
+    });
+  }
 }
 
 /** Teto de cupons re-enfileirados por UF no boot — não afogar o portal da SEFAZ. */

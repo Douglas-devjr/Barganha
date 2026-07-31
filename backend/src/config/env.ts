@@ -25,6 +25,20 @@ export interface ConfigBackend {
    */
   recalculoLookbackMinutos: number;
   /**
+   * Fila de processamento DURÁVEL no Postgres (C2.1) — o padrão. Só desligue
+   * (`FILA_DURAVEL=false`) para rodar com a fila em memória, o que exige UMA
+   * instância: com duas, cada processo teria a sua lista e as duas processariam
+   * os mesmos cupons. Útil em dev antes de aplicar a migração da fila.
+   */
+  filaDuravel: boolean;
+  /**
+   * Intervalo do poll da fila durável, em ms. É o atraso máximo para uma
+   * instância notar trabalho que não passou pelo seu próprio `enfileirar`
+   * (enfileirado por OUTRA instância, saindo do backoff, ou órfão de lease
+   * vencida). Cada poll é uma consulta ao Postgres — não baixe sem motivo.
+   */
+  filaPollMs: number;
+  /**
    * SHA do commit no ar, exposto em `/saude` (C10.4). Sem ele, diante de um
    * incidente não há como saber QUAL versão está rodando — e a verificação
    * pós-deploy não consegue distinguir "a nova subiu" de "a antiga continua".
@@ -54,8 +68,20 @@ export function lerConfig(env: NodeJS.ProcessEnv = process.env): ConfigBackend {
     trustProxy: env.TRUST_PROXY === 'true',
     curadoriaTokens: parseCuradoriaTokens(env.CURADORIA_TOKENS),
     recalculoLookbackMinutos: parseLookbackMinutos(env.RECALCULO_LOOKBACK_MINUTES),
+    // Durável por padrão: a variável existe para DESLIGAR, não para ligar. Uma
+    // instância a mais no Render não pode depender de alguém lembrar de um env.
+    filaDuravel: env.FILA_DURAVEL !== 'false',
+    filaPollMs: parsePollMs(env.FILA_POLL_MS),
     versao: (env.RENDER_GIT_COMMIT ?? env.APP_VERSAO ?? 'desenvolvimento').slice(0, 12),
   };
+}
+
+/** Poll da fila durável (ms). Inválido/ausente → 5000; piso de 250ms. */
+function parsePollMs(bruto: string | undefined): number {
+  const padrao = 5_000;
+  if (bruto == null || bruto.trim() === '') return padrao;
+  const n = Number(bruto);
+  return Number.isFinite(n) && n > 0 ? Math.max(250, n) : padrao;
 }
 
 /** Lookback do job de recálculo (min). Inválido/ausente → 180; `0` = completo. */

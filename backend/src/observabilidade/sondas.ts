@@ -6,10 +6,15 @@
  * tipo, o quanto do sistema o health check realmente toca.
  */
 
+import type { EstadoFila } from '../fila/tipos';
 import type { Rollout } from '../rollout/controle-rollout';
 import { sanitizarErro } from './sanitizar';
 import type { Sonda } from './saude';
 import type { FonteMetricas } from './telemetria';
+
+// A forma do estado da fila é do módulo da FILA (dois adaptadores a produzem);
+// reexportada porque a sonda é o consumidor público dela.
+export type { EstadoFila };
 
 /** Erro do PostgREST/Postgres, só o que importa para classificar. */
 interface ErroBanco {
@@ -79,31 +84,45 @@ export function sondaTelemetria(fonte: FonteMetricas): Sonda {
   };
 }
 
-export interface EstadoFila {
-  /** Tarefas aguardando um consumidor. */
-  pendentes: number;
-  /** Tarefas sendo processadas agora (≤ concorrência). */
-  emCurso: number;
-}
-
 /**
- * Fila represada. A fila é in-process (C2.1), então acúmulo aqui significa que
- * os portais da SEFAZ estão lentos ou que o worker travou — e o cupom do usuário
- * está parado em "Processando" sem que nada no log diga isso.
+ * Fila represada. Acúmulo aqui significa que os portais da SEFAZ estão lentos ou
+ * que o worker travou — e o cupom do usuário está parado em "Processando" sem
+ * que nada no log diga isso.
+ *
+ * A fonte é sync-ou-async de propósito: na fila em memória é ler dois números do
+ * processo; na fila durável (C2.1) é uma consulta ao Postgres — que pode
+ * FALHAR. Fila cega é `degradado`, nunca `ok`: silenciar o erro aqui devolveria
+ * o instrumento que responde "saudável" sem saber de nada.
  *
  * Não crítica: represamento é transitório por natureza e a fila drena sozinha.
  */
-export function sondaFila(fonte: () => EstadoFila, limiarPendentes = 50): Sonda {
+export function sondaFila(
+  fonte: () => EstadoFila | Promise<EstadoFila>,
+  limiarPendentes = 50,
+): Sonda {
   return {
     nome: 'fila',
     critica: false,
-    verificar() {
-      const { pendentes, emCurso } = fonte();
-      if (pendentes <= limiarPendentes) return Promise.resolve({ estado: 'ok' });
-      return Promise.resolve({
+    async verificar() {
+      let estado: EstadoFila;
+      try {
+        estado = await fonte();
+      } catch (erro) {
+        return { estado: 'degradado', detalhe: sanitizarErro(erro).mensagem };
+      }
+      const { pendentes, emCurso, esgotadas } = estado;
+      // Esgotadas não são represamento (ninguém as vai drenar), mas precisam
+      // aparecer: são cupons de usuário parados esperando o retroativo (C2.5).
+      const sufixoEsgotadas = esgotadas ? `, ${esgotadas} esgotada(s)` : '';
+      if (pendentes <= limiarPendentes) {
+        return esgotadas
+          ? { estado: 'degradado', detalhe: `${esgotadas} tarefa(s) com tentativas esgotadas` }
+          : { estado: 'ok' };
+      }
+      return {
         estado: 'degradado',
-        detalhe: `${pendentes} tarefas represadas (${emCurso} em curso, limiar ${limiarPendentes})`,
-      });
+        detalhe: `${pendentes} tarefas represadas (${emCurso} em curso${sufixoEsgotadas}, limiar ${limiarPendentes})`,
+      };
     },
   };
 }

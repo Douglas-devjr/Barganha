@@ -18,7 +18,10 @@ import { ServicoCuradoria } from './curadoria/servico-curadoria';
 import { AgendadorRecalculo } from './estatistica/agendador-recalculo';
 import { MatcherTexto } from './estatistica/casamento-texto';
 import { PipelineEstatistica } from './estatistica/pipeline';
+import { ArmazenamentoFilaSupabase } from './fila/armazenamento-supabase';
 import { FilaMemoria } from './fila/fila-memoria';
+import { FilaPostgres } from './fila/fila-postgres';
+import type { FilaOperavel, TarefaProcessamento } from './fila/tipos';
 import { ServicoIngestao } from './ingestao/servico-ingestao';
 import { ServicoDenuncia } from './moderacao/servico-denuncia';
 import { ServicoModeracao } from './moderacao/servico-moderacao';
@@ -46,6 +49,12 @@ import { ServicoSyncCatalogo } from './sync/servico-sync-catalogo';
 export interface Backend {
   servicoIngestao: ServicoIngestao;
   reprocessador: ReprocessadorRetroativo;
+  /**
+   * A fila de parsing (C2.1). Sai daqui porque o ponto de entrada precisa LIGAR
+   * o consumidor (`iniciar`) e desligá-lo no encerramento — a fila durável tem
+   * laço de poll próprio, ao contrário da fila em memória.
+   */
+  fila: FilaOperavel;
   registro: RegistroParsers;
   /** Motor estatístico (C3): recalcula `preco_estatistica` a partir do pool. */
   pipelineEstatistica: PipelineEstatistica;
@@ -143,18 +152,28 @@ export function montarBackend(config: ConfigBackend): Backend {
     // assim mesmo porque a mediana de hoje é irrecuperável amanhã.
     fonteTipico: repo,
   });
-  const fila = new FilaMemoria((t) => processador.processar(t.cupomId), {
-    aoEsgotar: (tarefa, erro) => {
-      // C10.2 — conta o esgotamento por estado e registra para investigação.
-      telemetria.registrarParsing(tarefa.uf, 'transitorio_esgotado');
-      // `error`: acabaram as tentativas, o cupom do usuário ficou represado e
-      // só o reprocessamento retroativo (C2.5) o recupera. Exige ação humana.
-      logDeCupom(tarefa.cupomId, tarefa.uf).error(
-        { action: 'fila.esgotada', erro: sanitizarErro(erro) },
-        'Tentativas esgotadas — cupom represado para reprocessamento retroativo',
-      );
-    },
-  });
+  const worker = (t: TarefaProcessamento): Promise<void> => processador.processar(t.cupomId);
+  const aoEsgotar = (tarefa: TarefaProcessamento, erro: unknown): void => {
+    // C10.2 — conta o esgotamento por estado e registra para investigação.
+    telemetria.registrarParsing(tarefa.uf, 'transitorio_esgotado');
+    // `error`: acabaram as tentativas, o cupom do usuário ficou represado e
+    // só o reprocessamento retroativo (C2.5) o recupera. Exige ação humana.
+    logDeCupom(tarefa.cupomId, tarefa.uf).error(
+      { action: 'fila.esgotada', erro: sanitizarErro(erro) },
+      'Tentativas esgotadas — cupom represado para reprocessamento retroativo',
+    );
+  };
+  // C2.1 — a fila é DURÁVEL por padrão (tabela `fila_processamento` + `for update
+  // skip locked`): é o que permite mais de uma instância sem que as duas
+  // processem os mesmos cupons, e o que faz o backoff/tentativas sobreviverem a
+  // um restart. `FILA_DURAVEL=false` volta à fila em memória — só para uma
+  // instância (dev antes de aplicar a migração).
+  const fila: FilaOperavel = config.filaDuravel
+    ? new FilaPostgres(new ArmazenamentoFilaSupabase(db), worker, {
+        intervaloPollMs: config.filaPollMs,
+        aoEsgotar,
+      })
+    : new FilaMemoria(worker, { aoEsgotar });
 
   // O processador também serve à ingestão por HTML (C2.6): o app colhe o HTML da
   // nota (WebView) quando o portal exige navegador/reCAPTCHA e o backend parseia.
@@ -208,6 +227,11 @@ export function montarBackend(config: ConfigBackend): Backend {
       sondaParsers(rollout, (uf) => registro.suporta(uf)),
       sondaTelemetria(telemetria),
       sondaFila(() => fila.estado()),
+      // A fila durável VIVE das RPCs de `fila_processamento`: sem a migração
+      // aplicada, nada é enfileirado e todo cupom fica em "Processando". Isso é
+      // esquema fora de sincronia — CRÍTICO, para o gate de deploy reprovar a
+      // subida (e o rollback resolver) em vez de degradar em silêncio.
+      ...(config.filaDuravel ? [sondaBanco(() => db.rpc('fila_estado'), 'fila-esquema')] : []),
     ],
     { versao: config.versao, ambiente: config.nodeEnv },
   );
@@ -216,6 +240,7 @@ export function montarBackend(config: ConfigBackend): Backend {
     saude,
     metricasPerformance,
     servicoIngestao,
+    fila,
     reprocessador,
     registro,
     pipelineEstatistica,

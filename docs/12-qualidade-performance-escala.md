@@ -63,7 +63,7 @@ O dado de preço é **minúsculo** e a carga é de leitura. A ordem de evoluçã
 1. **Pipeline incremental** (já é por inserção): manter o recálculo só dos produtos com observação nova; nunca recomputar a base toda.
 2. **Delta sync** (já é o modelo): o app baixa só o que mudou desde o cursor, escopado à sua região/produtos — não há download total.
 3. **Rate-limit distribuído**: ao rodar mais de uma instância (C10), trocar o store em memória do limitador por um compartilhado (ex.: Redis), mantendo a interface `LimitadorJanelaFixa`.
-4. **Fila durável**: a `FilaMemoria` é suficiente para o MVP; sob volume, mover para fila persistente (a raiz de composição isola a troca).
+4. ~~**Fila durável**~~ — **feito** (C2.1): a fila é a tabela `fila_processamento` com reivindicação por `for update skip locked` (`fila/fila-postgres.ts`). A `FilaMemoria` continua servindo aos testes e ao dev local (`FILA_DURAVEL=false`), como a raiz de composição sempre previu.
 5. **Busca de texto plena**: evoluir o pré-filtro `ILIKE`+trigram para `tsvector`/ranking quando o catálogo crescer.
 6. **Particionamento/retenção**: se `observacao_preco` crescer muito, particionar por tempo; o decaimento temporal (`06`) já torna o histórico antigo descartável para o veredito.
 

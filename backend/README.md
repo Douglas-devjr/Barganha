@@ -37,6 +37,24 @@ ar, rede, banco) → retry com backoff exponencial. Erro **permanente** (layout,
 QR inválido) → cupom marcado `falha`, sem retry. UF sem parser → fica
 `qr_capturado` aguardando C2.5.
 
+### Onde a fila vive
+
+**Durável, no Postgres** (padrão): tabela `fila_processamento` drenada por
+`fila/fila-postgres.ts`. A reivindicação é um `for update skip locked`
+(`fila_reivindicar`), então cada tarefa vai para **um** consumidor — é o que
+permite rodar mais de uma instância sem que as duas parseiem o mesmo cupom.
+Tentativas e backoff são colunas, não estado de processo: sobrevivem ao restart.
+Quem reivindica abre uma **lease** de 5 min; vencida, a tarefa volta à fila —
+é assim que o trabalho de uma instância morta é retomado.
+
+Uma tarefa chega ao consumidor por dois caminhos: o `enfileirar` bombeia na hora
+(latência do caminho feliz igual à de antes) e o **poll** (`FILA_POLL_MS`) pega o
+que veio de outra instância, o que saiu do backoff e o que ficou órfão.
+
+`FILA_DURAVEL=false` volta à `FilaMemoria` — a fila dos testes e do dev local,
+válida para **uma** instância. Aplicar a migração antes de subir o código: a
+sonda crítica `fila-esquema` de `/saude` reprova o deploy sem ela.
+
 ## Camada 4 — API de Consulta & Sync (implementada)
 
 Endpoints que servem o app rápido e habilitam o offline (`docs/05`). Consulta e
@@ -77,14 +95,15 @@ sync lêem **só o pool compartilhado anônimo** — não exigem conta (`docs/04
 | `consulta/` | Serviço de consulta de preço com fallback geo (C4.1) |
 | `sync/` | Serviço de delta sync incremental (C4.2) |
 | `auth/` | Auth por JWT do Supabase + apagar conta (C4.3.1); conta anônima legado (C4.3) |
-| `fila/` | Fila com retry/backoff (porta + adaptador em memória) |
+| `fila/` | Fila com retry/backoff: porta + adaptador durável (Postgres) e em memória |
 | `persistencia/` | Portas + adaptador Supabase + adaptador em memória (testes) |
 | `sefaz/` | `ClienteSefaz` HTTP (real) e em memória (testes) |
 | `http/` | Servidor Fastify (ingestão, conta, consulta, sync, `GET /saude`) |
 
 Portas e adaptadores: o domínio não conhece Supabase nem rede; tudo é injetado
 na raiz de composição (`composicao.ts`). Isso mantém a lógica testável sem
-infra e permite trocar peças (ex.: fila durável na infra de C10).
+infra e permite trocar peças — foi assim que a fila durável entrou sem que
+ingestão, processador ou reprocessamento soubessem da troca.
 
 ## Rodar
 
