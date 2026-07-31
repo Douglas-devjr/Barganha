@@ -18,13 +18,16 @@
  * SQLite, sessão) e segura o mínimo de 1,9 s.
  */
 
+import { isLoaded } from 'expo-font';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useId, useRef } from 'react';
 import { Animated, Easing, Pressable, StyleSheet, View, type ViewStyle } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Defs, Path, RadialGradient, Rect, Stop } from 'react-native-svg';
 
 import { Texto } from '@/componentes';
 import { useReduzirMovimento } from '@/componentes/movimento';
+import { fontes } from '@/tema';
 
 /** §3 do handoff — literais fixos: a abertura não acompanha o tema. */
 const FUNDO = '#111110';
@@ -40,6 +43,14 @@ const u = (n: number) => (n / 100) * CAIXA;
 
 /** Círculos decorativos dos cantos (§2). */
 const BRILHO = 260;
+
+/**
+ * Distância da tagline até o rodapé. O §2 do handoff pede 40, medidos num
+ * protótipo web sem barra de navegação; no aparelho aquilo joga a frase contra
+ * os botões do sistema, mesmo já somando o inset. Este é o número a mexer para
+ * ajustar a altura da frase — nada mais depende dele.
+ */
+const RODAPE_TAGLINE = 120;
 
 /** Curvas do §5 — a dos bojos passa de 1 de propósito (o "pop" ao brotar). */
 const CURVA_HASTE = Easing.bezier(0.3, 0.9, 0.3, 1);
@@ -61,6 +72,12 @@ export interface SplashTelaProps {
 
 export function SplashTela({ aoConcluir, animar = true }: SplashTelaProps) {
   const reduzirMovimento = useReduzirMovimento();
+  // Edge-to-edge (padrão do SDK 54 no Android): a tela desenha POR BAIXO da
+  // barra de navegação. Sem o inset, o recuo do rodapé é contado da borda do
+  // aparelho e a tagline fica atrás dos botões do sistema. É o mesmo
+  // cuidado que `Tela.tsx` e a `ScannerTela` já tomam com `SafeAreaView` —
+  // aqui não dá para usar o componente, porque o fundo tem que ir até a borda.
+  const bordas = useSafeAreaInsets();
   // §5: com "reduzir movimento" a marca aparece pronta — o estado final é o
   // mesmo, só não há construção.
   const construir = animar && !reduzirMovimento;
@@ -196,8 +213,19 @@ export function SplashTela({ aoConcluir, animar = true }: SplashTelaProps) {
             </Animated.View>
           </View>
 
+          {/* O "a" final saía cortado ao meio, e são dois riscos somados:
+              1) a faixa encolhia até a largura medida do texto, e qualquer erro
+                 de medida virava corte — daí o `alignSelf: 'stretch'` com o
+                 texto centralizado dentro, como nos títulos das outras telas;
+              2) a medida em si saía curta. Esta tela é montada ANTES de a
+                 Instrument Sans carregar (é uma das esperas que ela cobre), o
+                 wordmark é medido com a fonte do sistema e, quando a fonte real
+                 chega, o Android não remede — as props do `Text` não mudaram.
+                 Trocar a `key` remonta só o texto e força a medição certa; a
+                 animação vive na `Animated.View` de fora e não reinicia. */}
           <Animated.View
             style={{
+              alignSelf: 'stretch',
               opacity: opacidade(passos.wordmark),
               transform: [
                 {
@@ -209,13 +237,22 @@ export function SplashTela({ aoConcluir, animar = true }: SplashTelaProps) {
               ],
             }}
           >
-            <Texto peso="bold" style={estilos.wordmark}>
+            <Texto
+              key={String(isLoaded(fontes.bold))}
+              peso="bold"
+              centralizado
+              style={estilos.wordmark}
+            >
               Barganha
             </Texto>
           </Animated.View>
         </View>
 
-        <Texto peso="medium" centralizado style={estilos.tagline}>
+        <Texto
+          peso="medium"
+          centralizado
+          style={[estilos.tagline, { bottom: RODAPE_TAGLINE + bordas.bottom }]}
+        >
           Saiba se o preço vale a barganha
         </Texto>
       </Animated.View>
@@ -287,7 +324,6 @@ const estilos = StyleSheet.create({
     position: 'absolute',
     left: 0,
     right: 0,
-    bottom: 40,
     fontSize: 12,
     color: TAGLINE,
   },
