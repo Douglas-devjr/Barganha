@@ -1139,7 +1139,10 @@ export const funcoes = [
     detalhe:
       'Crítico para os dados do RJ, que costumam nascer sem EAN. Depois que o casamento é confirmado, o job `republicar-pool` volta e preenche o pool com as observações que estavam órfãs. Sugestões via `POST /curadoria/casamento/sugestoes` e confirmação via `POST /curadoria/casamento/confirmar`.',
     ligacoes: ['republicar', 'curadoria', 'busca-produtos'],
-    arquivos: ['backend/src/estatistica/casamento-texto.ts', 'backend/src/curadoria/servico-confirmacao-casamento.ts'],
+    arquivos: [
+      'backend/src/estatistica/casamento-texto.ts',
+      'backend/src/curadoria/servico-confirmacao-casamento.ts',
+    ],
     rotas: ['POST /curadoria/casamento/sugestoes', 'POST /curadoria/casamento/confirmar'],
     etapas: ['C3.5'],
   },
@@ -1417,16 +1420,15 @@ export const funcoes = [
     id: 'moderacao',
     nome: 'Moderação e denúncia',
     area: 'api',
-    status: 'parcial',
+    status: 'pronto',
     oque: 'Fila para revisar preços lançados à mão e denúncias de preço errado, com decisão de aprovar ou recusar.',
-    falta:
-      'O backend está completo (tabelas, rotas, fila, decisão) e o app já sabe DENUNCIAR — mas não existe tela de lançamento manual de preço, nem interface de moderação. Hoje se modera por API.',
     detalhe:
-      'Denunciar não publica nada: é sinal para a curadoria corrigir casamento ou unidade. O alvo é produto + recorte geográfico, nunca uma linha do pool — não existe ponteiro de usuário para lá, por desenho.',
-    ligacoes: ['denuncia-app', 'curadoria'],
+      'Denunciar não publica nada: é sinal para a curadoria corrigir casamento ou unidade. O alvo é produto + recorte geográfico, nunca uma linha do pool — não existe ponteiro de usuário para lá, por desenho. As duas filas (lançamento manual e denúncia) se resolvem pela mesma página web de curadoria do C11.5 (`/curadoria/painel`), e o app já lança e denuncia pelo lado do usuário (ver `lancamento-manual`/`denuncia-app`).',
+    ligacoes: ['denuncia-app', 'lancamento-manual', 'curadoria'],
     arquivos: [
       'backend/src/moderacao/servico-moderacao.ts',
       'backend/src/moderacao/servico-denuncia.ts',
+      'backend/src/http/rotas/painel-curadoria-html.ts',
     ],
     rotas: [
       'GET /moderacao/fila',
@@ -1435,6 +1437,7 @@ export const funcoes = [
       'GET /denuncia/fila',
       'POST /denuncia/:id/decisao',
       'POST /lancamento-manual',
+      'GET /curadoria/painel',
     ],
     etapas: ['C11.3', 'C12.5'],
   },
@@ -2063,14 +2066,12 @@ export const funcoes = [
     id: 'lancamento-manual',
     nome: 'Lançar preço de gôndola à mão',
     area: 'app',
-    status: 'falta',
-    oque: 'Permitiria informar um preço visto na prateleira sem ter cupom, passando por moderação antes de valer.',
-    falta:
-      'Não existe tela nenhuma no app. O backend está inteiro — tabela, rota, fila de moderação e decisão — mas ninguém consegue lançar nada pelo aplicativo.',
+    status: 'pronto',
+    oque: 'Informa um preço visto na prateleira sem ter cupom, passando por moderação antes de valer.',
     detalhe:
-      'Quando entrar, a geografia continua sendo pela LOJA (CNPJ). O id do usuário fica só no registro de moderação, para conter abuso, e nunca na base de preços.',
+      'Entra pela aba Verificar: com um EAN escaneado, "Lançar preço" abre o formulário (descrição, unidade, preço, CNPJ da loja, promoção) já com a região configurada preenchida. A geografia é pela LOJA (CNPJ); o id do usuário fica só no registro de moderação, para conter abuso, e nunca na base de preços. Sem tela de "escolher mercado" ainda — o CNPJ é digitado à mão.',
     ligacoes: ['moderacao'],
-    arquivos: ['backend/src/http/rotas/contribuicao.ts'],
+    arquivos: ['backend/src/http/rotas/contribuicao.ts', 'app/src/telas/LancamentoManualTela.tsx'],
     rotas: ['POST /lancamento-manual'],
     etapas: ['C11.3'],
   },
@@ -2918,9 +2919,8 @@ export const etapas = [
     codigo: 'C11.3',
     nome: 'Lançamento manual',
     fase: 'Pós',
-    status: 'parcial',
-    oque: 'Backend completo: tabela, rota e fila de moderação.',
-    falta: 'Nenhuma tela no app para lançar preço de gôndola, e nenhuma interface de moderação.',
+    status: 'pronto',
+    oque: 'Tela no app (a partir de um EAN escaneado) + backend + fila de moderação pela página de curadoria.',
   },
   {
     codigo: 'C11.4',
@@ -2975,9 +2975,8 @@ export const etapas = [
     codigo: 'C12.5',
     nome: 'Denúncia de preço',
     fase: 'Pós',
-    status: 'parcial',
-    oque: 'Botão no app e fila de curadoria no backend.',
-    falta: 'Interface de moderação para resolver a fila.',
+    status: 'pronto',
+    oque: 'Botão no app, fila de curadoria no backend e página web para resolver a fila.',
   },
 
   {
