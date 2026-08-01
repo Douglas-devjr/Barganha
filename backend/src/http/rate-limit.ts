@@ -12,6 +12,15 @@
 
 import type { FastifyReply, FastifyRequest } from 'fastify';
 
+/**
+ * Interface comum para limitadores de taxa. Ambos `LimitadorJanelaFixa`
+ * (memória) e `LimitadorJanelaFixaPostgres` (Postgres) implementam isto,
+ * permitindo que o servidor escolha a implementação sem quebrar tipagem.
+ */
+export interface Limitador {
+  permitir(chave: string): boolean | Promise<boolean>;
+}
+
 export interface OpcoesLimite {
   /** Tamanho da janela, em milissegundos. */
   janelaMs: number;
@@ -30,8 +39,10 @@ interface Janela {
  * Conta requisições por chave numa janela fixa e zera quando a janela vira.
  * Poda janelas expiradas no máximo uma vez por janela, para a memória não
  * crescer com chaves (IPs) que nunca mais voltam.
+ *
+ * Implementa `Limitador` para compatibilidade com a versão Postgres.
  */
-export class LimitadorJanelaFixa {
+export class LimitadorJanelaFixa implements Limitador {
   private readonly janelas = new Map<string, Janela>();
   private readonly agora: () => number;
   private proximaPoda: number;
@@ -78,15 +89,15 @@ export type GuardaTaxa = (req: FastifyRequest, reply: FastifyReply) => Promise<v
  * Roda ANTES do handler — não consome o serviço protegido. É `async` (sempre
  * devolve promessa) para o Fastify avançar o ciclo; ao enviar o 429 o reply é
  * marcado como respondido e o handler não roda.
+ *
+ * Aceita qualquer `Limitador` (memória ou Postgres).
  */
-export function guardaDeTaxa(
-  limitador: LimitadorJanelaFixa,
-  opcoes: OpcoesGuarda = {},
-): GuardaTaxa {
+export function guardaDeTaxa(limitador: Limitador, opcoes: OpcoesGuarda = {}): GuardaTaxa {
   const chaveDe = opcoes.chave ?? ((req: FastifyRequest) => req.ip);
   const mensagem = opcoes.mensagem ?? 'Muitas requisições. Tente novamente em instantes.';
   return async (req: FastifyRequest, reply: FastifyReply): Promise<void> => {
-    if (!limitador.permitir(chaveDe(req))) {
+    const permitido = await Promise.resolve(limitador.permitir(chaveDe(req)));
+    if (!permitido) {
       await reply.code(429).send({ erro: mensagem });
     }
   };
@@ -104,12 +115,13 @@ export function guardaDeTaxa(
  * que o verificador devolveu: um atacante teria de possuir contas reais.
  */
 export async function barrarPorConta(
-  limitador: LimitadorJanelaFixa,
+  limitador: Limitador,
   usuarioId: string,
   reply: FastifyReply,
   mensagem = 'Muitas requisições. Tente novamente em instantes.',
 ): Promise<boolean> {
-  if (limitador.permitir(`conta:${usuarioId}`)) return true;
+  const permitido = await Promise.resolve(limitador.permitir(`conta:${usuarioId}`));
+  if (permitido) return true;
   await reply.code(429).send({ erro: mensagem });
   return false;
 }

@@ -28,6 +28,7 @@ import type { FonteMetricas } from '../observabilidade/telemetria';
 import type { ContextoRotas } from './contexto';
 import { type DependenciasHttp, LIMITES_PADRAO } from './dependencias';
 import { tratarErro } from './erros-http';
+import { LimitadorJanelaFixaPostgres } from './limitador-postgres';
 import { barrarPorConta, guardaDeTaxa, LimitadorJanelaFixa } from './rate-limit';
 import { registrarRotasConsulta } from './rotas/consulta';
 import { registrarRotasConta } from './rotas/conta';
@@ -106,10 +107,20 @@ export function construirServidor(deps: DependenciasHttp): FastifyInstance {
     });
   }
 
+  // C9.3.2 — Escolhe o limitador: Postgres (distribuído) ou memória (fallback).
+  // Postgres permite múltiplas instâncias respeitarem o mesmo teto; memória vale
+  // só para o processo atual (dev/testes em memória).
+  const criarLimitador = (opcoes: typeof limites.ingestao) => {
+    if (deps.supabaseClient) {
+      return new LimitadorJanelaFixaPostgres(deps.supabaseClient, opcoes);
+    }
+    return new LimitadorJanelaFixa(opcoes);
+  };
+
   // Consulta e sync compartilham o MESMO limitador: um teto único de "leitura
   // pública" por IP. Os privados têm DOIS tetos, em ordem: por IP antes de
   // autenticar (barato, segura flood anônimo) e por CONTA depois (o que vale).
-  const limitadorConta = new LimitadorJanelaFixa(limites.ingestao);
+  const limitadorConta = criarLimitador(limites.ingestao);
   const contaDoRequest = async (
     req: FastifyRequest,
     reply: FastifyReply,
@@ -131,10 +142,10 @@ export function construirServidor(deps: DependenciasHttp): FastifyInstance {
     deps,
     metricas: deps.metricas ?? SEM_METRICAS,
     saude: deps.saude ?? semSondas(),
-    guardaConta: guardaDeTaxa(new LimitadorJanelaFixa(limites.conta)),
-    guardaLeitura: guardaDeTaxa(new LimitadorJanelaFixa(limites.leituraPublica)),
-    guardaPrivadoIp: guardaDeTaxa(new LimitadorJanelaFixa(limites.privadoIp)),
-    guardaCuradoriaIp: guardaDeTaxa(new LimitadorJanelaFixa(limites.curadoriaIp)),
+    guardaConta: guardaDeTaxa(criarLimitador(limites.conta)),
+    guardaLeitura: guardaDeTaxa(criarLimitador(limites.leituraPublica)),
+    guardaPrivadoIp: guardaDeTaxa(criarLimitador(limites.privadoIp)),
+    guardaCuradoriaIp: guardaDeTaxa(criarLimitador(limites.curadoriaIp)),
     contaDoRequest,
   };
 

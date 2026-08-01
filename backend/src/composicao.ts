@@ -15,6 +15,7 @@ import { ServicoBuscaProdutos } from './consulta/servico-busca-produtos';
 import { ServicoComparacaoLista } from './consulta/servico-comparacao-lista';
 import { ServicoConsulta } from './consulta/servico-consulta';
 import { ServicoCuradoria } from './curadoria/servico-curadoria';
+import { ServicoConfirmacaoCasamento } from './curadoria/servico-confirmacao-casamento';
 import { AgendadorRecalculo } from './estatistica/agendador-recalculo';
 import { MatcherTexto } from './estatistica/casamento-texto';
 import { PipelineEstatistica } from './estatistica/pipeline';
@@ -47,6 +48,8 @@ import { ServicoSync } from './sync/servico-sync';
 import { ServicoSyncCatalogo } from './sync/servico-sync-catalogo';
 
 export interface Backend {
+  /** Cliente Supabase para rate-limit distribuído e outras operações de middleware. */
+  db: ReturnType<typeof criarClienteSupabase>;
   servicoIngestao: ServicoIngestao;
   reprocessador: ReprocessadorRetroativo;
   /**
@@ -86,6 +89,8 @@ export interface Backend {
   servicoDenuncia: ServicoDenuncia;
   /** Enriquecimento de produto pela curadoria (C11.5). */
   servicoCuradoria: ServicoCuradoria;
+  /** Confirmação de casamento por texto (C3.5) — curadoria. */
+  servicoConfirmacaoCasamento: ServicoConfirmacaoCasamento;
   /** Autorização dos endpoints de curadoria (C11) — token estático do ambiente. */
   guardaCuradoria: GuardaCuradoria;
   /** Health check detalhado (C10.4) — fonte de `/saude` e do gate de deploy. */
@@ -215,6 +220,7 @@ export function montarBackend(config: ConfigBackend): Backend {
   // C12.5 — denúncia: só enfileira sinal; não tem caminho de escrita no pool.
   const servicoDenuncia = new ServicoDenuncia(repo);
   const servicoCuradoria = new ServicoCuradoria(repo);
+  const servicoConfirmacaoCasamento = new ServicoConfirmacaoCasamento(repo);
   const guardaCuradoria = new GuardaCuradoria(config.curadoriaTokens);
 
   // C10.4 — health check detalhado. A ordem das sondas é a do relatório; as
@@ -237,6 +243,7 @@ export function montarBackend(config: ConfigBackend): Backend {
   );
 
   return {
+    db,
     saude,
     metricasPerformance,
     servicoIngestao,
@@ -258,6 +265,7 @@ export function montarBackend(config: ConfigBackend): Backend {
     servicoModeracao,
     servicoDenuncia,
     servicoCuradoria,
+    servicoConfirmacaoCasamento,
     guardaCuradoria,
   };
 }

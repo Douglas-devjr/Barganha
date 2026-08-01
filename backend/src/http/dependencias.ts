@@ -9,6 +9,8 @@
  * vez de subir aberta.
  */
 
+import type { SupabaseClient } from '@supabase/supabase-js';
+
 import type { Autenticacao } from '../auth/autenticador';
 import type { AutorizacaoCuradoria } from '../auth/curadoria';
 import type { GerenciadorConta } from '../auth/gerenciador-conta';
@@ -17,6 +19,7 @@ import type { ServicoBuscaProdutos } from '../consulta/servico-busca-produtos';
 import type { ServicoComparacaoLista } from '../consulta/servico-comparacao-lista';
 import type { ServicoConsulta } from '../consulta/servico-consulta';
 import type { ServicoCuradoria } from '../curadoria/servico-curadoria';
+import type { ServicoConfirmacaoCasamento } from '../curadoria/servico-confirmacao-casamento';
 import type { MatcherTexto } from '../estatistica/casamento-texto';
 import type { ServicoIngestao } from '../ingestao/servico-ingestao';
 import type { ServicoDenuncia } from '../moderacao/servico-denuncia';
@@ -63,6 +66,8 @@ export const LIMITES_PADRAO: LimitesTaxa = {
 };
 
 export interface DependenciasHttp {
+  /** Cliente Supabase para operações de banco em middlewares (ex.: rate-limit distribuído). */
+  supabaseClient?: SupabaseClient;
   servicoIngestao: ServicoIngestao;
   servicoConsulta: ServicoConsulta;
   /** Lista de compras comparada por loja (C12.1). Omitido → rota não sobe. */
@@ -97,6 +102,8 @@ export interface DependenciasHttp {
   servicoCuradoria?: ServicoCuradoria;
   /** Sugestões de casamento por texto p/ a curadoria (C3.5). Omitido → rota não sobe. */
   matcherTexto?: Pick<MatcherTexto, 'sugerir'>;
+  /** Confirmação de casamento por texto (C3.5). Omitido → rota não sobe. */
+  servicoConfirmacaoCasamento?: ServicoConfirmacaoCasamento;
   /** Reprocessamento retroativo por UF (C11.1/C2.5) — gatilho operacional. */
   reprocessador?: ReprocessadorRetroativo;
   /** Autorização dos endpoints de CURADORIA (C11). Sem ela, as rotas não sobem. */

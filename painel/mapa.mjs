@@ -1134,15 +1134,13 @@ export const funcoes = [
     id: 'casamento-texto',
     nome: 'Casamento por texto (sem EAN)',
     area: 'estatistica',
-    status: 'parcial',
-    oque: 'Quando o item vem sem código de barras, sugere a qual produto ele corresponde comparando as descrições.',
-    falta:
-      'Ele só SUGERE — quem confirma é a curadoria, e não existe ainda uma tela de curadoria (é chamada por API). Enquanto isso, itens sem EAN dependem de alguém rodar o fluxo à mão.',
+    status: 'pronto',
+    oque: 'Quando o item vem sem código de barras, sugere a qual produto ele corresponde comparando as descrições, e permite confirmar a sugestão.',
     detalhe:
-      'Crítico para os dados do RJ, que costumam nascer sem EAN. Depois que o casamento é confirmado, o job `republicar-pool` volta e preenche o pool com as observações que estavam órfãs.',
+      'Crítico para os dados do RJ, que costumam nascer sem EAN. Depois que o casamento é confirmado, o job `republicar-pool` volta e preenche o pool com as observações que estavam órfãs. Sugestões via `POST /curadoria/casamento/sugestoes` e confirmação via `POST /curadoria/casamento/confirmar`.',
     ligacoes: ['republicar', 'curadoria', 'busca-produtos'],
-    arquivos: ['backend/src/estatistica/casamento-texto.ts'],
-    rotas: ['POST /curadoria/casamento/sugestoes'],
+    arquivos: ['backend/src/estatistica/casamento-texto.ts', 'backend/src/curadoria/servico-confirmacao-casamento.ts'],
+    rotas: ['POST /curadoria/casamento/sugestoes', 'POST /curadoria/casamento/confirmar'],
     etapas: ['C3.5'],
   },
   {
@@ -1355,12 +1353,18 @@ export const funcoes = [
     id: 'rate-limit',
     nome: 'Teto de requisições',
     area: 'api',
-    status: 'parcial',
-    oque: 'Limita quantas vezes a mesma conta ou o mesmo IP pode chamar a API, contra abuso e raspagem do pool.',
-    falta:
-      'O contador vive em MEMÓRIA: o teto vale por processo, então com duas instâncias o limite efetivo dobra. A interface já foi desenhada para trocar o miolo por um store compartilhado sem tocar nas rotas.',
+    status: 'pronto',
+    oque: 'Limita quantas vezes a mesma conta ou o mesmo IP pode chamar a API, contra abuso e raspagem do pool. Compartilhado entre instâncias via Postgres.',
+    detalhe:
+      'Implementação dual: `LimitadorJanelaFixa` para testes/memória, `LimitadorJanelaFixaPostgres` para produção (múltiplas instâncias). A mesma interface pública (sem breaking changes nas rotas). Janelas ficam em `rate_limit_janela` e são auto-limpas uma vez por ciclo.',
     ligacoes: ['ingestao-qr', 'consulta-preco'],
-    arquivos: ['backend/src/http/rate-limit.ts'],
+    arquivos: [
+      'backend/src/http/rate-limit.ts',
+      'backend/src/http/limitador-postgres.ts',
+      'backend/src/http/limitador-postgres.test.ts',
+      'backend/src/http/servidor.ts',
+      'supabase/migrations/20260801090000_rate_limit_janela.sql',
+    ],
     etapas: ['C9.3.2'],
   },
   {
@@ -2528,9 +2532,8 @@ export const etapas = [
     codigo: 'C3.5',
     nome: 'Casamento por texto',
     fase: 'MVP',
-    status: 'parcial',
-    oque: 'Sugestão por similaridade para itens sem EAN.',
-    falta: 'A confirmação é curadoria e não tem interface — hoje se faz por API.',
+    status: 'pronto',
+    oque: 'Sugestão por similaridade para itens sem EAN, com confirmação via API.',
   },
   {
     codigo: 'C3.6',

@@ -14,6 +14,7 @@ import { sanitizarErro, sanitizarErroInesperado } from './observabilidade/saniti
 export async function main(): Promise<void> {
   const config = lerConfig();
   const {
+    db,
     servicoIngestao,
     servicoConsulta,
     servicoBuscaProdutos,
@@ -34,6 +35,7 @@ export async function main(): Promise<void> {
     fila,
   } = montarBackend(config);
   const app = construirServidor({
+    supabaseClient: db,
     servicoIngestao,
     servicoConsulta,
     servicoBuscaProdutos,
