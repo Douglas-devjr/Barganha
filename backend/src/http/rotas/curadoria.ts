@@ -55,8 +55,12 @@ export function registrarRotasCuradoria(app: FastifyInstance, ctx: ContextoRotas
   // Bearer para CARREGAR a página (é só o formulário) — o token é digitado ali
   // e guardado no localStorage do navegador do curador; a autenticação real
   // continua sendo o `exigeCuradoria` em cada chamada de API feita pelo JS.
-  app.get('/curadoria/painel', opcoes, (_req, reply) => {
-    return reply.type('text/html; charset=utf-8').send(PAINEL_CURADORIA_HTML);
+  app.get('/curadoria/painel', (_req, reply) => {
+    try {
+      return reply.type('text/html; charset=utf-8').send(PAINEL_CURADORIA_HTML);
+    } catch (e) {
+      return reply.code(500).send({ erro: 'Erro ao servir painel de curadoria' });
+    }
   });
 
   // ── Métricas (C10.2 + C10.4) ────────────────────────────────────────
