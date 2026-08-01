@@ -452,8 +452,8 @@ footer{max-width:1180px; margin:0 auto; padding:0 24px 72px; font-size:12px; col
   <div class="topo-in">
     <span class="marca">Barganha <span>painel do projeto</span></span>
     <span class="topo-meta">
-      <span class="selo">commit <code>4ba6e70</code> · 01/08/2026</span>
-      <span class="selo sujo">18 arquivo(s) sem commit</span>
+      <span class="selo">commit <code>384d0e2</code> · 01/08/2026</span>
+      <span class="selo sujo">3 arquivo(s) sem commit</span>
       <span class="selo">gerado em 01 de agosto de 2026</span>
     </span>
   </div>
@@ -1894,8 +1894,8 @@ footer{max-width:1180px; margin:0 auto; padding:0 24px 72px; font-size:12px; col
         <h4>Curadoria de produtos</h4>
         <span class="fn-area">API &amp; sync</span>
       </header>
-      <p class="oque">Corrige nome, marca e categoria dos produtos, confirma casamentos e manda reprocessar cupons de uma UF.</p>
-      <p class="falta"><span class="rot">O que falta</span>Não há interface — é tudo chamada de API com um Bearer de curadoria. Enquanto for uma pessoa só, funciona; a partir do beta, corrigir casamento errado por curl é gargalo.</p>
+      <p class="oque">Corrige nome, marca e categoria dos produtos, confirma casamentos e manda reprocessar cupons de uma UF — agora por uma página web (<code>/curadoria/painel</code>), não só por curl.</p>
+      <p class="falta"><span class="rot">O que falta</span>A página é deliberadamente simples (sem build step, HTML+JS puro) — ainda não tem paginação nem busca de produto por nome/EAN antes de editar; para volume alto de curadores, vale revisitar.</p>
       <div class="chips">
         <button type="button" class="chip liga" data-ir="curadoria">ver no mapa</button>
         <a class="chip etapa" href="#etapa-C11.5">C11.5</a>
@@ -2604,20 +2604,20 @@ footer{max-width:1180px; margin:0 auto; padding:0 24px 72px; font-size:12px; col
       <div class="chips"><span class="rot">Etapas</span><a class="chip etapa" href="#etapa-C9.3.2">C9.3.2</a></div>
       <details class="det"><summary>Onde mora no código</summary><ul class="arqs"><li class=""><code>backend/src/http/rate-limit.ts</code></li><li class=""><code>backend/src/http/limitador-postgres.ts</code></li><li class=""><code>backend/src/http/limitador-postgres.test.ts</code></li><li class=""><code>backend/src/http/servidor.ts</code></li><li class=""><code>supabase/migrations/20260801090000_rate_limit_janela.sql</code></li></ul></details>
     </article>
-    <article class="fn s-parcial" id="fn-curadoria" data-area="api" data-status="parcial" data-busca="curadoria de produtos corrige nome, marca e categoria dos produtos, confirma casamentos e manda reprocessar cupons de uma uf. não há interface — é tudo chamada de api com um bearer de curadoria. enquanto for uma pessoa só, funciona; a partir do beta, corrigir casamento errado por curl é gargalo. existe também o enriquecimento automático pelo catálogo vtex das redes conhecidas (job:enriquecer), que preenche nome e categoria sem ninguém digitar. api &amp; sync post /curadoria/produto post /curadoria/casamento/sugestoes post /curadoria/reprocessar c11.5">
+    <article class="fn s-parcial" id="fn-curadoria" data-area="api" data-status="parcial" data-busca="curadoria de produtos corrige nome, marca e categoria dos produtos, confirma casamentos e manda reprocessar cupons de uma uf — agora por uma página web (/curadoria/painel), não só por curl. a página é deliberadamente simples (sem build step, html+js puro) — ainda não tem paginação nem busca de produto por nome/ean antes de editar; para volume alto de curadores, vale revisitar. existe também o enriquecimento automático pelo catálogo vtex das redes conhecidas (job:enriquecer), que preenche nome e categoria sem ninguém digitar. a confirmação de casamento por texto (post /curadoria/casamento/confirmar) grava produto_alias e é feita pela mesma tela. api &amp; sync get /curadoria/painel post /curadoria/produto post /curadoria/casamento/sugestoes post /curadoria/casamento/confirmar post /curadoria/reprocessar c11.5">
       <header>
         <h3>Curadoria de produtos</h3>
         <span class="pill p-parcial"><i></i>parcial</span>
       </header>
       <span class="fn-area">API &amp; sync</span>
-      <p class="oque">Corrige nome, marca e categoria dos produtos, confirma casamentos e manda reprocessar cupons de uma UF.</p>
-      <p class="falta"><span class="rot">Falta</span>Não há interface — é tudo chamada de API com um Bearer de curadoria. Enquanto for uma pessoa só, funciona; a partir do beta, corrigir casamento errado por curl é gargalo.</p>
-      <details class="det"><summary>Por que é assim</summary><p>Existe também o enriquecimento AUTOMÁTICO pelo catálogo VTEX das redes conhecidas (<code>job:enriquecer</code>), que preenche nome e categoria sem ninguém digitar.</p></details>
-      <div class="rotas"><code class="rota">POST /curadoria/produto</code><code class="rota">POST /curadoria/casamento/sugestoes</code><code class="rota">POST /curadoria/reprocessar</code></div>
+      <p class="oque">Corrige nome, marca e categoria dos produtos, confirma casamentos e manda reprocessar cupons de uma UF — agora por uma página web (<code>/curadoria/painel</code>), não só por curl.</p>
+      <p class="falta"><span class="rot">Falta</span>A página é deliberadamente simples (sem build step, HTML+JS puro) — ainda não tem paginação nem busca de produto por nome/EAN antes de editar; para volume alto de curadores, vale revisitar.</p>
+      <details class="det"><summary>Por que é assim</summary><p>Existe também o enriquecimento AUTOMÁTICO pelo catálogo VTEX das redes conhecidas (<code>job:enriquecer</code>), que preenche nome e categoria sem ninguém digitar. A confirmação de casamento por texto (<code>POST /curadoria/casamento/confirmar</code>) grava <code>produto_alias</code> e é feita pela mesma tela.</p></details>
+      <div class="rotas"><code class="rota">GET /curadoria/painel</code><code class="rota">POST /curadoria/produto</code><code class="rota">POST /curadoria/casamento/sugestoes</code><code class="rota">POST /curadoria/casamento/confirmar</code><code class="rota">POST /curadoria/reprocessar</code></div>
       <div class="chips"><span class="rot">Conversa com</span><button type="button" class="chip liga" data-ir="casamento-texto">Casamento por texto (sem EAN)</button><button type="button" class="chip liga" data-ir="enriquecer-vtex">Enriquecimento por catálogo VTEX</button></div>
       
       <div class="chips"><span class="rot">Etapas</span><a class="chip etapa" href="#etapa-C11.5">C11.5</a></div>
-      <details class="det"><summary>Onde mora no código</summary><ul class="arqs"><li class=""><code>backend/src/curadoria/servico-curadoria.ts</code></li><li class=""><code>backend/src/auth/curadoria.ts</code></li></ul></details>
+      <details class="det"><summary>Onde mora no código</summary><ul class="arqs"><li class=""><code>backend/src/curadoria/servico-curadoria.ts</code></li><li class=""><code>backend/src/curadoria/servico-confirmacao-casamento.ts</code></li><li class=""><code>backend/src/auth/curadoria.ts</code></li><li class=""><code>backend/src/http/rotas/curadoria.ts</code></li><li class=""><code>backend/src/http/rotas/painel-curadoria-html.ts</code></li></ul></details>
     </article>
     <article class="fn s-parcial" id="fn-enriquecer-vtex" data-area="api" data-status="parcial" data-busca="enriquecimento por catálogo vtex lê o catálogo público das redes que usam vtex e preenche nome, marca e categoria dos produtos automaticamente. a categoria só existe no backend — ela não desce para o catálogo local, então a ui offline não agrupa por categoria. e nem todo mercado grande é vtex: a matriz de plataformas está em docs/17. este mesmo cliente já lê o preço anunciado — é a alavanca para as ofertas (c12.4), que por regra travada vivem numa camada separada e nunca entram na mediana. api &amp; sync c11.5">
       <header>
@@ -4333,7 +4333,7 @@ footer{max-width:1180px; margin:0 auto; padding:0 24px 72px; font-size:12px; col
           <code class="cod">C11.5</code>
           <div class="etapa-corpo">
             <h4>Enriquecimento de produtos <span class="fase-tag pos">Pós</span></h4>
-            <p>Curadoria manual por API e enriquecimento automático pelo catálogo VTEX.</p>
+            <p>Curadoria manual por página web (<code>/curadoria/painel</code>) e enriquecimento automático pelo catálogo VTEX.</p>
             <p class="falta"><span class="rot">Falta</span>A categoria não desce para o app — a UI offline não agrupa por categoria. E nem toda rede é VTEX.</p>
           </div>
           <span class="pill p-parcial"><i></i>parcial</span>
@@ -4681,13 +4681,13 @@ footer{max-width:1180px; margin:0 auto; padding:0 24px 72px; font-size:12px; col
       <span class="sec-num">12</span>
       <h2>Como este painel se mantém junto com o código</h2>
     </div>
-    <button class="ouvir" type="button" data-fala="Tudo em sincronia: as 303 evidências citadas existem no código e nenhuma rota ou tela ficou sem dono." aria-label="Ouvir o resumo desta seção">
+    <button class="ouvir" type="button" data-fala="Tudo em sincronia: as 308 evidências citadas existem no código e nenhuma rota ou tela ficou sem dono." aria-label="Ouvir o resumo desta seção">
       <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2 4.5 5H2v6h2.5L8 14zM11 5.5a3.5 3.5 0 0 1 0 5M13 3.5a6 6 0 0 1 0 9"/></svg>
       ouvir
     </button>
   </header>
   
-  <div class="medidos"><div class="medido"><b>25</b><span>rotas na API</span></div><div class="medido"><b>34</b><span>telas no app</span></div><div class="medido"><b>5</b><span>parsers de estado</span></div><div class="medido"><b>15</b><span>tabelas no servidor</span></div><div class="medido"><b>9</b><span>tabelas no aparelho</span></div><div class="medido"><b>29</b><span>migrações</span></div><div class="medido"><b>83</b><span>arquivos de teste</span></div><div class="medido"><b>9</b><span>rotinas agendadas</span></div></div>
+  <div class="medidos"><div class="medido"><b>26</b><span>rotas na API</span></div><div class="medido"><b>34</b><span>telas no app</span></div><div class="medido"><b>5</b><span>parsers de estado</span></div><div class="medido"><b>15</b><span>tabelas no servidor</span></div><div class="medido"><b>9</b><span>tabelas no aparelho</span></div><div class="medido"><b>29</b><span>migrações</span></div><div class="medido"><b>83</b><span>arquivos de teste</span></div><div class="medido"><b>9</b><span>rotinas agendadas</span></div></div>
   <p class="legenda">Os números acima são <strong>contados no repositório</strong> a cada geração — ninguém os digita. O que é curado à mão é só o status e o texto de cada item, em <code>painel/mapa.mjs</code>.</p>
   <div class="como">
     <h3 class="sub">Como este painel se mantém junto com o código</h3>
@@ -4698,14 +4698,14 @@ footer{max-width:1180px; margin:0 auto; padding:0 24px 72px; font-size:12px; col
       <li><strong>Se você esquecer</strong>, o <code>npm run check</code> (e o CI) roda <code>npm run painel:conferir</code> e reprova: evidência que sumiu e rota/tela nova sem dono aparecem por nome.</li>
     </ol>
   </div>
-  <div class="drift"><p class="ok-drift">&#10003; Tudo em sincronia — as 303 evidências citadas pelo painel existem no código, e nenhuma rota ou tela ficou sem dono.</p></div>
+  <div class="drift"><p class="ok-drift">&#10003; Tudo em sincronia — as 308 evidências citadas pelo painel existem no código, e nenhuma rota ou tela ficou sem dono.</p></div>
 </section>
 </main>
 
 <footer>
   Gerado por <code>npm run painel</code> a partir de <code>painel/mapa.mjs</code> + o estado real do repositório.
-  Último commit lido: <code>4ba6e70</code> — “chore(painel): marca frescor do dado como pronto (C3.6)”.
-  Havia 18 arquivo(s) modificado(s) sem commit no momento da geração.
+  Último commit lido: <code>384d0e2</code> — “feat(curadoria): implementa confirmação de casamento por texto (C3.5)”.
+  Havia 3 arquivo(s) modificado(s) sem commit no momento da geração.
 </footer>
 
 <script>

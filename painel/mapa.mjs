@@ -1372,16 +1372,24 @@ export const funcoes = [
     nome: 'Curadoria de produtos',
     area: 'api',
     status: 'parcial',
-    oque: 'Corrige nome, marca e categoria dos produtos, confirma casamentos e manda reprocessar cupons de uma UF.',
+    oque: 'Corrige nome, marca e categoria dos produtos, confirma casamentos e manda reprocessar cupons de uma UF — agora por uma página web (`/curadoria/painel`), não só por curl.',
     falta:
-      'Não há interface — é tudo chamada de API com um Bearer de curadoria. Enquanto for uma pessoa só, funciona; a partir do beta, corrigir casamento errado por curl é gargalo.',
+      'A página é deliberadamente simples (sem build step, HTML+JS puro) — ainda não tem paginação nem busca de produto por nome/EAN antes de editar; para volume alto de curadores, vale revisitar.',
     detalhe:
-      'Existe também o enriquecimento AUTOMÁTICO pelo catálogo VTEX das redes conhecidas (`job:enriquecer`), que preenche nome e categoria sem ninguém digitar.',
+      'Existe também o enriquecimento AUTOMÁTICO pelo catálogo VTEX das redes conhecidas (`job:enriquecer`), que preenche nome e categoria sem ninguém digitar. A confirmação de casamento por texto (`POST /curadoria/casamento/confirmar`) grava `produto_alias` e é feita pela mesma tela.',
     ligacoes: ['casamento-texto', 'enriquecer-vtex'],
-    arquivos: ['backend/src/curadoria/servico-curadoria.ts', 'backend/src/auth/curadoria.ts'],
+    arquivos: [
+      'backend/src/curadoria/servico-curadoria.ts',
+      'backend/src/curadoria/servico-confirmacao-casamento.ts',
+      'backend/src/auth/curadoria.ts',
+      'backend/src/http/rotas/curadoria.ts',
+      'backend/src/http/rotas/painel-curadoria-html.ts',
+    ],
     rotas: [
+      'GET /curadoria/painel',
       'POST /curadoria/produto',
       'POST /curadoria/casamento/sugestoes',
+      'POST /curadoria/casamento/confirmar',
       'POST /curadoria/reprocessar',
     ],
     etapas: ['C11.5'],
@@ -2928,7 +2936,7 @@ export const etapas = [
     nome: 'Enriquecimento de produtos',
     fase: 'Pós',
     status: 'parcial',
-    oque: 'Curadoria manual por API e enriquecimento automático pelo catálogo VTEX.',
+    oque: 'Curadoria manual por página web (`/curadoria/painel`) e enriquecimento automático pelo catálogo VTEX.',
     falta:
       'A categoria não desce para o app — a UI offline não agrupa por categoria. E nem toda rede é VTEX.',
   },

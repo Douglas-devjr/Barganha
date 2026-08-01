@@ -56,6 +56,7 @@ describe('MatcherTexto (orquestra sobre a fonte de candidatos)', () => {
     const fonte: FonteCandidatosTexto = {
       listarCandidatos: () =>
         Promise.resolve([{ produtoCanonicoId: 'p-banana', descricaoNormalizada: 'BANANA PRATA' }]),
+      confirmarCasamento: () => Promise.resolve('alias-teste'),
     };
     const matcher = new MatcherTexto(fonte);
     const sug = await matcher.sugerir('Banana prata', 'kg');

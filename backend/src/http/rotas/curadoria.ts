@@ -29,6 +29,7 @@ import {
   SCHEMA_ENRIQUECIMENTO,
   SCHEMA_REPROCESSAR,
 } from '../esquemas';
+import { PAINEL_CURADORIA_HTML } from './painel-curadoria-html';
 
 export function registrarRotasCuradoria(app: FastifyInstance, ctx: ContextoRotas): void {
   const {
@@ -48,6 +49,15 @@ export function registrarRotasCuradoria(app: FastifyInstance, ctx: ContextoRotas
     reply: Parameters<typeof exigeCuradoria>[2],
   ) => exigeCuradoria(autorizacaoCuradoria, req, reply);
   const opcoes = { onRequest: ctx.guardaCuradoriaIp };
+
+  // ── Painel web (C11.5) ──────────────────────────────────────────────
+  // HTML+JS estático, sem build step, servido pelo próprio backend. Não pede
+  // Bearer para CARREGAR a página (é só o formulário) — o token é digitado ali
+  // e guardado no localStorage do navegador do curador; a autenticação real
+  // continua sendo o `exigeCuradoria` em cada chamada de API feita pelo JS.
+  app.get('/curadoria/painel', opcoes, (_req, reply) => {
+    return reply.type('text/html; charset=utf-8').send(PAINEL_CURADORIA_HTML);
+  });
 
   // ── Métricas (C10.2 + C10.4) ────────────────────────────────────────
   // Agregadas (contadores por UF, sem dado de cupom), mas NÃO públicas: expõem

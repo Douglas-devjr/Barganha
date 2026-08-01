@@ -600,9 +600,9 @@ export class RepositorioMemoria
   }
 
   confirmarCasamento(
-    produtoCanonicoId: string,
-    confianca: number,
-    textoOriginal: string,
+    _produtoCanonicoId: string,
+    _confianca: number,
+    _textoOriginal: string,
   ): Promise<string> {
     // Simula a geração de ID (não usa repositório de aliases em memória, é só para testes).
     const id = crypto.randomUUID?.() ?? `alias-${Date.now()}`;
