@@ -1,6 +1,15 @@
 import { describe, expect, it } from 'vitest';
 
-import { dataCurta, idadeTexto, moeda, parseMoeda, vezesCompradas } from './formato';
+import {
+  cnpjPareceValido,
+  dataCurta,
+  idadeTexto,
+  mascararCnpj,
+  moeda,
+  parseMoeda,
+  somenteDigitos,
+  vezesCompradas,
+} from './formato';
 
 describe('parseMoeda (valor digitado na prateleira/desconto)', () => {
   it('lê vírgula decimal (teclado pt-BR)', () => {
@@ -79,5 +88,33 @@ describe('vezesCompradas (evidência do típico nas listas de produto)', () => {
   it('sem compra não vira "comprou 0 vezes"', () => {
     expect(vezesCompradas(0)).toBe('sem compra sua ainda');
     expect(vezesCompradas(-1)).toBe('sem compra sua ainda');
+  });
+});
+
+describe('mascararCnpj / somenteDigitos / cnpjPareceValido (loja do lançamento manual, C11.3)', () => {
+  it('formata os dígitos progressivamente enquanto digita', () => {
+    expect(mascararCnpj('11')).toBe('11');
+    expect(mascararCnpj('11222')).toBe('11.222');
+    expect(mascararCnpj('11222333')).toBe('11.222.333');
+    expect(mascararCnpj('11222333000')).toBe('11.222.333/000');
+    expect(mascararCnpj('11222333000181')).toBe('11.222.333/0001-81');
+  });
+
+  it('reformata a partir dos dígitos mesmo colando já pontuado', () => {
+    expect(mascararCnpj('11.222.333/0001-81')).toBe('11.222.333/0001-81');
+  });
+
+  it('trunca em 14 dígitos — não deixa crescer além do CNPJ', () => {
+    expect(mascararCnpj('112223330001819999')).toBe('11.222.333/0001-81');
+  });
+
+  it('somenteDigitos devolve o que a API espera, sem máscara', () => {
+    expect(somenteDigitos('11.222.333/0001-81')).toBe('11222333000181');
+  });
+
+  it('cnpjPareceValido checa só a quantidade de dígitos (o backend valida o resto)', () => {
+    expect(cnpjPareceValido('11.222.333/0001-81')).toBe(true);
+    expect(cnpjPareceValido('11.222.333/0001-8')).toBe(false);
+    expect(cnpjPareceValido('')).toBe(false);
   });
 });

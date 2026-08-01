@@ -17,6 +17,7 @@ export { ConquistasTela } from './ConquistasTela';
 export { ConquistaDetalheTela } from './ConquistaDetalheTela';
 export { DashboardTela } from './DashboardTela';
 export { EditarProdutoTela } from './EditarProdutoTela';
+export { LancamentoManualTela } from './LancamentoManualTela';
 export { EditarRegiaoTela } from './EditarRegiaoTela';
 export { AlertasTela } from './AlertasTela';
 export { ConfiguracoesContaTela } from './ConfiguracoesContaTela';

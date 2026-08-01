@@ -73,6 +73,16 @@ export type RootStackParamList = {
     produtoCanonicoId: string | null;
     unidadeBase?: string | null;
   };
+  /**
+   * Lançamento manual de preço de gôndola (C11.3) — o usuário viu o preço mas não
+   * tem cupom. Exige `ean` real (nunca inventado): quem navega para cá garante
+   * isso, então o campo não é opcional aqui.
+   */
+  LancamentoManual: {
+    ean: string;
+    descricao?: string;
+    unidadeBase?: string | null;
+  };
 };
 
 /**

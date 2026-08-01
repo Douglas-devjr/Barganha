@@ -26,6 +26,8 @@ import type {
   IngestaoHtmlRequest,
   IngestaoQrRequest,
   IngestaoQrResponse,
+  LancamentoManualRequest,
+  LancamentoManualResponse,
   SyncProdutosRequest,
   SyncProdutosResponse,
 } from '@barganha/shared';
@@ -229,6 +231,21 @@ export class ClienteApi {
    */
   denunciarPreco(req: DenunciaPrecoRequest): Promise<DenunciaPrecoResponse> {
     return this.requisitar<DenunciaPrecoResponse>('POST', '/denuncia', req);
+  }
+
+  /**
+   * `POST /lancamento-manual` (C11.3) — PRIVADO (exige sessão). O usuário viu um
+   * preço na prateleira e não tem cupom: informa o EAN + o que leu na etiqueta.
+   * Sempre nasce `pendente` — só entra no pool depois de um curador aprovar
+   * (fila de moderação, fora do escopo do app). 202.
+   *
+   * O `usuarioId` fica só no registro PRIVADO de moderação (anti-abuso); o app
+   * não precisa (nem pode) mandar isso — o Bearer já basta.
+   */
+  async lancarPrecoManual(req: LancamentoManualRequest): Promise<LancamentoManualResponse> {
+    const token = await this.resolverToken();
+    if (!token) throw new ErroApi(401, 'Entre na sua conta para lançar um preço.');
+    return this.requisitar<LancamentoManualResponse>('POST', '/lancamento-manual', req, token);
   }
 
   /** `POST /sync/estatisticas` (C4.2) — ANÔNIMO. Delta desde o cursor. */

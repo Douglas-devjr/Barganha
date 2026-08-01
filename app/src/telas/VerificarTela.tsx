@@ -40,6 +40,7 @@ import {
   IconeBusca,
   IconeCheck,
   IconeChevron,
+  IconeEtiqueta,
   IconeSino,
   Tela,
   Texto,
@@ -329,21 +330,45 @@ export function VerificarTela({ navigation }: Props) {
                   .filter(Boolean)
                   .join(' · ')}
               </Eyebrow>
-              {/* Só dá para denunciar o que a base conhece: a denúncia é
-                  ancorada no produto canônico (C12.5). */}
-              {selecionado.produtoCanonicoId ? (
-                <Pressable
-                  onPress={() => setSheetDenuncia(true)}
-                  accessibilityRole="button"
-                  hitSlop={8}
-                  style={estilos.denunciar}
-                >
-                  <IconeBandeira tamanho={13} cor={c.fraco} larguraTraco={2} />
-                  <Texto cor="fraco" peso="semibold" style={estilos.denunciarTexto}>
-                    Denunciar
-                  </Texto>
-                </Pressable>
-              ) : null}
+              <View style={estilos.acoesTopo}>
+                {/* Lançamento manual (C11.3): só cabe com um EAN real — nunca a
+                    partir de um produto sem código de barras identificado, para
+                    não mandar um lançamento sem como ancorar o produto. */}
+                {selecionado.ean ? (
+                  <Pressable
+                    onPress={() =>
+                      navigation.navigate('LancamentoManual', {
+                        ean: selecionado.ean as string,
+                        descricao: selecionado.nome,
+                        unidadeBase: selecionado.unidadeBase,
+                      })
+                    }
+                    accessibilityRole="button"
+                    hitSlop={8}
+                    style={estilos.denunciar}
+                  >
+                    <IconeEtiqueta tamanho={13} cor={c.fraco} />
+                    <Texto cor="fraco" peso="semibold" style={estilos.denunciarTexto}>
+                      Lançar preço
+                    </Texto>
+                  </Pressable>
+                ) : null}
+                {/* Só dá para denunciar o que a base conhece: a denúncia é
+                    ancorada no produto canônico (C12.5). */}
+                {selecionado.produtoCanonicoId ? (
+                  <Pressable
+                    onPress={() => setSheetDenuncia(true)}
+                    accessibilityRole="button"
+                    hitSlop={8}
+                    style={estilos.denunciar}
+                  >
+                    <IconeBandeira tamanho={13} cor={c.fraco} larguraTraco={2} />
+                    <Texto cor="fraco" peso="semibold" style={estilos.denunciarTexto}>
+                      Denunciar
+                    </Texto>
+                  </Pressable>
+                ) : null}
+              </View>
             </View>
 
             <View style={estilos.linhaNome}>
@@ -626,6 +651,7 @@ const estilos = StyleSheet.create({
     marginTop: espaco.lg,
   },
   painelTopo: { flexDirection: 'row', alignItems: 'center', gap: espaco.sm },
+  acoesTopo: { flexDirection: 'row', alignItems: 'center', gap: espaco.md },
   denunciar: { flexDirection: 'row', alignItems: 'center', gap: 5, minHeight: 24 },
   denunciarTexto: { fontSize: 11 },
   linhaNome: { flexDirection: 'row', alignItems: 'flex-start', gap: espaco.sm, marginTop: 10 },

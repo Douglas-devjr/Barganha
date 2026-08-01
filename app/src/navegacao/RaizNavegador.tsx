@@ -21,6 +21,7 @@ import { DigitarChaveTela } from '@/telas/DigitarChaveTela';
 import { EditarProdutoTela } from '@/telas/EditarProdutoTela';
 import { EditarRegiaoTela } from '@/telas/EditarRegiaoTela';
 import { EscanearBarrasTela } from '@/telas/EscanearBarrasTela';
+import { LancamentoManualTela } from '@/telas/LancamentoManualTela';
 import { NotaFiscalTela } from '@/telas/NotaFiscalTela';
 import { NotificacoesTela } from '@/telas/NotificacoesTela';
 import { ProdutoDetalheTela } from '@/telas/ProdutoDetalheTela';
@@ -58,6 +59,11 @@ export function RaizNavegador() {
       <Stack.Screen
         name="EditarProduto"
         component={EditarProdutoTela}
+        options={{ presentation: 'modal' }}
+      />
+      <Stack.Screen
+        name="LancamentoManual"
+        component={LancamentoManualTela}
         options={{ presentation: 'modal' }}
       />
 

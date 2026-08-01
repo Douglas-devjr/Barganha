@@ -62,3 +62,38 @@ export function parseMoeda(texto: string): number | null {
   const n = Number(normalizado);
   return Number.isFinite(n) && n > 0 ? n : null;
 }
+
+/**
+ * Máscara de CNPJ enquanto o usuário digita (C11.3 — lançamento manual, onde a
+ * loja é informada à mão por falta de uma tela de "escolher loja"). Aceita
+ * colar com ou sem pontuação; sempre reformata a partir dos dígitos.
+ */
+export function mascararCnpj(texto: string): string {
+  const d = texto.replace(/\D/g, '').slice(0, 14);
+  const partes = [
+    d.slice(0, 2),
+    d.slice(2, 5),
+    d.slice(5, 8),
+    d.slice(8, 12),
+    d.slice(12, 14),
+  ].filter(Boolean);
+  let saida = partes[0] ?? '';
+  if (partes[1]) saida += `.${partes[1]}`;
+  if (partes[2]) saida += `.${partes[2]}`;
+  if (partes[3]) saida += `/${partes[3]}`;
+  if (partes[4]) saida += `-${partes[4]}`;
+  return saida;
+}
+
+/** Só os dígitos de um CNPJ mascarado — o formato que a API espera. */
+export function somenteDigitos(texto: string): string {
+  return texto.replace(/\D/g, '');
+}
+
+/**
+ * Validação SIMPLES (não o dígito verificador — o backend já rejeita CNPJ
+ * inválido): 14 dígitos é o mínimo para não mandar uma loja pela metade.
+ */
+export function cnpjPareceValido(texto: string): boolean {
+  return somenteDigitos(texto).length === 14;
+}
