@@ -1172,16 +1172,16 @@ export const funcoes = [
     id: 'frescor',
     nome: 'Frescor do dado',
     area: 'estatistica',
-    status: 'parcial',
+    status: 'pronto',
     oque: 'Mede a idade do preço que sustenta a faixa e faz o app ficar mais calado quanto mais velho o dado for.',
-    falta:
-      'Está em desenvolvimento agora — os arquivos existem mas não estão commitados. Precisa do recálculo completo em produção para a coluna `observado_em_max` ser preenchida em todas as linhas.',
     detalhe:
       'Acima de 30 dias a faixa é exibida com ressalva; acima de 180 dias (a janela da agregação) o app não opina — não pode ser mais confiante que o motor que já descartou aquele dado. A zona morta cresce 0,8% por mês de idade.',
     ligacoes: ['veredito'],
     arquivos: [
       'shared/src/estatistica/frescor.ts',
+      'shared/src/estatistica/frescor.test.ts',
       'supabase/migrations/20260729090000_estatistica_observado_em_max.sql',
+      'supabase/migrations/20260801120000_preencher_observado_em_max.sql',
     ],
     regras: ['r10'],
     etapas: ['C3.6'],
