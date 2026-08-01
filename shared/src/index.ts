@@ -10,6 +10,7 @@ export * from './core';
 export * from './dominio/enums';
 export * from './dominio/nota-estruturada';
 export * from './dominio/entidades';
+export * from './dominio/alertas-regras';
 export * from './dominio/url-consulta';
 export * from './anonimizacao/gate';
 export * from './anonimizacao/exposicao';

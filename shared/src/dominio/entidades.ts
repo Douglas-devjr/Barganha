@@ -137,6 +137,40 @@ export interface ObservacaoPreco {
   observadoEm: string;
 }
 
+/**
+ * Linha de `preco_estatistica` (faixa por produto × escopo), na forma como ela
+ * chega de uma leitura direta de banco: números ausentes são SQL `NULL` (`|
+ * null`), não campo faltando (`?:`). É o formato comum entre o cache offline do
+ * app (`CacheEstatistica`, app/src/dados/tipos.ts) e o job de alerta de preço no
+ * backend (C8.4, jobs/alerta-preco.ts) — as regras puras de alerta
+ * (`alertas-regras.ts`) precisam do MESMO shape dos dois lados; duas cópias
+ * divergiriam cedo ou tarde na mesma histerese/frescor.
+ *
+ * Difere de `PrecoEstatistica` (usa `?: number`, pensado para o DTO de API, onde
+ * ausência = campo omitido no JSON) só na nulidade — o conteúdo é o mesmo.
+ */
+export interface EstatisticaRegional {
+  produtoCanonicoId: string;
+  escopo: EscopoGeo;
+  escopoId: string;
+  unidadeBase: UnidadeBase;
+  mediana: number | null;
+  p25: number | null;
+  p75: number | null;
+  minimo: number | null;
+  maximo: number | null;
+  /** Menor preço promocional visto — exibido à parte, nunca no típico. */
+  menorPromocional: number | null;
+  nObservacoes: number;
+  /**
+   * `observado_em_max` — a observação regular mais recente que sustenta a
+   * mediana (a idade do PREÇO). `null` = idade DESCONHECIDA, nunca "recente"
+   * (ver `dadoRecente` em `estatistica/frescor.ts`).
+   */
+  observadoEmMaisRecente: string | null;
+  atualizadoEm: string;
+}
+
 /** Faixas agregadas por produto × escopo. Veredito usa mediana/percentis. */
 export interface PrecoEstatistica {
   produtoCanonicoId: string;
