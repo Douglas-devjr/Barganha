@@ -234,6 +234,20 @@ export const SCHEMA_CASAMENTO = {
   },
 } as const;
 
+// Confirmação de casamento por texto (C3.5) — curadoria.
+export const SCHEMA_CONFIRMACAO_CASAMENTO = {
+  body: {
+    type: 'object',
+    required: ['produtoCanonicoId', 'confianca', 'textoOriginal'],
+    additionalProperties: false,
+    properties: {
+      produtoCanonicoId: { type: 'string', minLength: 1, format: 'uuid' },
+      confianca: { type: 'number', minimum: 0, maximum: 1 },
+      textoOriginal: { type: 'string', minLength: 1 },
+    },
+  },
+} as const;
+
 // Gatilho de reprocessamento retroativo por UF (C11.1/C2.5).
 export const SCHEMA_REPROCESSAR = {
   body: {

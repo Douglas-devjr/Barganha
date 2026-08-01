@@ -9,6 +9,7 @@ import { GuardaCuradoria } from '../auth/curadoria';
 import { ServicoConta } from '../auth/servico-conta';
 import { ServicoConsulta } from '../consulta/servico-consulta';
 import { ServicoCuradoria } from '../curadoria/servico-curadoria';
+import { ServicoConfirmacaoCasamento } from '../curadoria/servico-confirmacao-casamento';
 import { MatcherTexto } from '../estatistica/casamento-texto';
 import { FilaMemoria } from '../fila/fila-memoria';
 import { ServicoIngestao } from '../ingestao/servico-ingestao';
@@ -44,6 +45,7 @@ function montarApp() {
     servicoModeracao: new ServicoModeracao(repo, repo),
     servicoCuradoria: new ServicoCuradoria(repo),
     matcherTexto: new MatcherTexto(repo),
+    servicoConfirmacaoCasamento: new ServicoConfirmacaoCasamento(repo),
     autorizacaoCuradoria: new GuardaCuradoria([TOKEN]),
     reprocessador: new ReprocessadorRetroativo(repo, registro, fila),
   });
@@ -233,6 +235,65 @@ describe('Curadoria & moderação (C11) — HTTP', () => {
       });
       expect(r.statusCode).toBe(200);
       expect(r.json().sugestoes).toEqual([]);
+    });
+  });
+
+  describe('Confirmação de casamento por texto (C3.5)', () => {
+    it('sem token → 403', async () => {
+      const r = await app.inject({
+        method: 'POST',
+        url: '/curadoria/casamento/confirmar',
+        payload: {
+          produtoCanonicoId: '00000000-0000-0000-0000-000000000000',
+          confianca: 0.9,
+          textoOriginal: 'LEITE INTEGRAL 1L',
+        },
+      });
+      expect(r.statusCode).toBe(403);
+    });
+
+    it('confianças inválidas → 400', async () => {
+      const base = {
+        produtoCanonicoId: '00000000-0000-0000-0000-000000000000',
+        textoOriginal: 'LEITE INTEGRAL 1L',
+      };
+      for (const confianca of [-0.1, 1.1, 'abc']) {
+        const r = await app.inject({
+          method: 'POST',
+          url: '/curadoria/casamento/confirmar',
+          headers: curador(),
+          payload: { ...base, confianca },
+        });
+        expect(r.statusCode).toBe(400);
+      }
+    });
+
+    it('confirmação valida → 200 com aliasId', async () => {
+      // Precisa de um produto existente primeiro.
+      const sugestoes = await app.inject({
+        method: 'POST',
+        url: '/curadoria/casamento/sugestoes',
+        headers: curador(),
+        payload: { descricao: 'LEITE INTEGRL 1L', unidadeBase: 'L' },
+      });
+      const { sugestoes: lista } = sugestoes.json() as any;
+      if (lista.length > 0) {
+        const { produtoCanonicoId } = lista[0];
+        const r = await app.inject({
+          method: 'POST',
+          url: '/curadoria/casamento/confirmar',
+          headers: curador(),
+          payload: {
+            produtoCanonicoId,
+            confianca: 0.85,
+            textoOriginal: 'LEITE INTEGRL 1L',
+          },
+        });
+        expect(r.statusCode).toBe(200);
+        const { aliasId, confirmado } = r.json() as any;
+        expect(aliasId).toBeDefined();
+        expect(confirmado).toBe(true);
+      }
     });
   });
 

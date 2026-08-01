@@ -99,6 +99,15 @@ export function sugerirCasamento(
 export interface FonteCandidatosTexto {
   /** Candidatos da mesma unidade-base (kg/L/un) reduzem falso positivo. */
   listarCandidatos(unidadeBase: string): Promise<CandidatoCanonico[]>;
+  /**
+   * Confirma uma sugestão de casamento, gravando um `produto_alias` confirmado.
+   * Devolve o `aliasId` para referência.
+   */
+  confirmarCasamento(
+    produtoCanonicoId: string,
+    confianca: number,
+    textoOriginal: string,
+  ): Promise<string>;
 }
 
 /**

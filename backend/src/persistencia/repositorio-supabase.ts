@@ -904,6 +904,25 @@ export class RepositorioSupabase
     }));
   }
 
+  async confirmarCasamento(
+    produtoCanonicoId: string,
+    confianca: number,
+    textoOriginal: string,
+  ): Promise<string> {
+    const r = await this.db
+      .from('produto_alias')
+      .insert({
+        produto_canonico_id: produtoCanonicoId,
+        texto_original: textoOriginal,
+        confianca,
+        confirmado: true,
+      })
+      .select('id')
+      .single();
+    if (r.error) falhar('confirmação de casamento por texto', r.error);
+    return r.data.id;
+  }
+
   // ───────────────────────── RepositorioModeracao (C11.3) ─────────────
 
   async criar(dados: LancamentoModeracaoNovo): Promise<string> {

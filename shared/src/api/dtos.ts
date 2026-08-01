@@ -326,6 +326,24 @@ export interface CasamentoSugestoesResponse {
   sugestoes: CasamentoSugestaoDto[];
 }
 
+/**
+ * Confirma uma sugestão de casamento por texto, gravando um `produto_alias`
+ * confirmado. Depois disto, o job `republicar-pool` re-enfileira os cupons
+ * com itens órfãos (mesma descrição normalizada) para ganhar referência.
+ */
+export interface ConfirmacaoCasamentoRequest {
+  produtoCanonicoId: string;
+  confianca: number;
+  /** Texto original da descrição que foi sugerida (fica como histórico). */
+  textoOriginal: string;
+}
+
+export interface ConfirmacaoCasamentoResponse {
+  aliasId: string;
+  produtoCanonicoId: string;
+  confirmado: true;
+}
+
 // ──────────────────── Lançamento manual de gôndola (C11.3) ───────────────────
 
 /**

@@ -14,6 +14,7 @@
 
 import type {
   CasamentoSugestoesRequest,
+  ConfirmacaoCasamentoRequest,
   DecisaoModeracaoRequest,
   EnriquecimentoProdutoRequest,
 } from '@barganha/shared';
@@ -22,6 +23,7 @@ import type { FastifyInstance } from 'fastify';
 import { type ContextoRotas, exigeCuradoria } from '../contexto';
 import {
   SCHEMA_CASAMENTO,
+  SCHEMA_CONFIRMACAO_CASAMENTO,
   SCHEMA_DECISAO,
   SCHEMA_DECISAO_DENUNCIA,
   SCHEMA_ENRIQUECIMENTO,
@@ -35,6 +37,7 @@ export function registrarRotasCuradoria(app: FastifyInstance, ctx: ContextoRotas
     servicoDenuncia,
     servicoCuradoria,
     matcherTexto,
+    servicoConfirmacaoCasamento,
     reprocessador,
   } = ctx.deps;
 
@@ -134,6 +137,21 @@ export function registrarRotasCuradoria(app: FastifyInstance, ctx: ContextoRotas
         if (!autorizado(req, reply)) return reply;
         const sugestoes = await matcherTexto.sugerir(req.body.descricao, req.body.unidadeBase);
         return reply.send({ sugestoes });
+      },
+    );
+  }
+
+  if (servicoConfirmacaoCasamento) {
+    // Confirmação de casamento por texto (C3.5) — grava o alias confirmado
+    // depois que o curador aprova uma sugestão. O job `republicar-pool` refaz
+    // os cupons com itens órfãos (mesma descrição normalizada).
+    app.post<{ Body: ConfirmacaoCasamentoRequest }>(
+      '/curadoria/casamento/confirmar',
+      { schema: SCHEMA_CONFIRMACAO_CASAMENTO, ...opcoes },
+      async (req, reply) => {
+        if (!autorizado(req, reply)) return reply;
+        const resposta = await servicoConfirmacaoCasamento.confirmar(req.body);
+        return reply.send(resposta);
       },
     );
   }

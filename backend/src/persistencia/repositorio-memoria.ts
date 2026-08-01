@@ -599,6 +599,16 @@ export class RepositorioMemoria
     return Promise.resolve(r);
   }
 
+  confirmarCasamento(
+    produtoCanonicoId: string,
+    confianca: number,
+    textoOriginal: string,
+  ): Promise<string> {
+    // Simula a geração de ID (não usa repositório de aliases em memória, é só para testes).
+    const id = crypto.randomUUID?.() ?? `alias-${Date.now()}`;
+    return Promise.resolve(id);
+  }
+
   // ───────────────────────── RepositorioDenuncia (C12.5) ──────────────
 
   existeProduto(produtoCanonicoId: string): Promise<boolean> {
