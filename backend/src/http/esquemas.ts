@@ -248,6 +248,57 @@ export const SCHEMA_CONFIRMACAO_CASAMENTO = {
   },
 } as const;
 
+// Alerta de preço (C8.4) — sincronização TOTAL do conjunto do usuário. Teto de
+// itens espelha `MAX_ALERTAS_POR_USUARIO` do serviço (anti-abuso da fila).
+export const SCHEMA_SINCRONIZAR_ALERTAS = {
+  body: {
+    type: 'object',
+    required: ['alertas'],
+    additionalProperties: false,
+    properties: {
+      alertas: {
+        type: 'array',
+        maxItems: 200,
+        items: {
+          type: 'object',
+          required: ['produtoCanonicoId', 'nome', 'precoAlvo', 'escopoGeo'],
+          additionalProperties: false,
+          properties: {
+            produtoCanonicoId: { type: 'string', minLength: 1 },
+            nome: { type: 'string', minLength: 1 },
+            precoAlvo: { type: 'number', exclusiveMinimum: 0 },
+            escopoGeo: { type: 'string', minLength: 1 },
+          },
+        },
+      },
+    },
+  },
+} as const;
+
+// Dispositivo de push Expo (C8.4).
+export const SCHEMA_REGISTRAR_DISPOSITIVO = {
+  body: {
+    type: 'object',
+    required: ['token', 'plataforma'],
+    additionalProperties: false,
+    properties: {
+      token: { type: 'string', minLength: 1 },
+      plataforma: { type: 'string', enum: ['ios', 'android'] },
+    },
+  },
+} as const;
+
+export const SCHEMA_REMOVER_DISPOSITIVO = {
+  body: {
+    type: 'object',
+    required: ['token'],
+    additionalProperties: false,
+    properties: {
+      token: { type: 'string', minLength: 1 },
+    },
+  },
+} as const;
+
 // Gatilho de reprocessamento retroativo por UF (C11.1/C2.5).
 export const SCHEMA_REPROCESSAR = {
   body: {

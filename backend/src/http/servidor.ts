@@ -30,6 +30,7 @@ import { type DependenciasHttp, LIMITES_PADRAO } from './dependencias';
 import { tratarErro } from './erros-http';
 import { LimitadorJanelaFixaPostgres } from './limitador-postgres';
 import { barrarPorConta, guardaDeTaxa, LimitadorJanelaFixa } from './rate-limit';
+import { registrarRotasAlertas } from './rotas/alertas';
 import { registrarRotasConsulta } from './rotas/consulta';
 import { registrarRotasConta } from './rotas/conta';
 import { registrarRotasContribuicao } from './rotas/contribuicao';
@@ -155,6 +156,7 @@ export function construirServidor(deps: DependenciasHttp): FastifyInstance {
   registrarRotasIngestao(app, ctx);
   registrarRotasConsulta(app, ctx);
   registrarRotasContribuicao(app, ctx);
+  registrarRotasAlertas(app, ctx);
   registrarRotasCuradoria(app, ctx);
 
   app.setErrorHandler(tratarErro);

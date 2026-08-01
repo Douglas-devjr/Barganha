@@ -8,6 +8,7 @@
 import { randomUUID } from 'node:crypto';
 
 import {
+  type AlertaPrecoItem,
   type DenunciaCuradoria,
   garantirSemDadoPessoal,
   type Loja,
@@ -58,6 +59,7 @@ import type {
   DenunciaRegistrada,
   RepositorioDenuncia,
 } from '../moderacao/tipos-denuncia';
+import type { RepositorioAlertas } from '../servicos/tipos-alertas';
 import type { FiltroDeltaSync, FonteDeltaSync, LinhaDelta } from '../sync/tipos';
 import type {
   CupomComItens,
@@ -150,7 +152,8 @@ export class RepositorioMemoria
     FonteCandidatosTexto,
     RepositorioModeracao,
     RepositorioDenuncia,
-    RepositorioCuradoria
+    RepositorioCuradoria,
+    RepositorioAlertas
 {
   // Lado PRIVADO.
   private readonly usuarios = new Set<string>();
@@ -160,6 +163,11 @@ export class RepositorioMemoria
   private readonly lancamentos = new Map<string, LancamentoModeracaoInterno>();
   // Denúncias de preço (PRIVADO — tem usuario_id). C12.5.
   private readonly denuncias = new Map<string, DenunciaInterna>();
+  // Alertas de preço (PRIVADO — espelho do alerta local). C8.4.
+  // usuarioId → (produtoCanonicoId → alvo). Espelha a PK composta de alerta_preco.
+  private readonly alertasPreco = new Map<string, Map<string, { precoAlvo: number; escopoGeo: string }>>();
+  // Dispositivo de push (PRIVADO — identificador de aparelho). C8.4. token → dono.
+  private readonly dispositivosPush = new Map<string, { usuarioId: string; plataforma: 'ios' | 'android' }>();
   // Lado COMPARTILHADO (anônimo).
   private readonly lojas = new Map<string, Loja>();
   private readonly produtosPorEan = new Map<string, ProdutoCanonicoInterno>();
@@ -790,6 +798,51 @@ export class RepositorioMemoria
       status: l.status,
       criadoEm: l.criadoEm,
     };
+  }
+
+  // ───────────────────────── RepositorioAlertas (C8.4) ────────────────
+
+  sincronizarAlertas(usuarioId: string, itens: readonly AlertaPrecoItem[]): Promise<void> {
+    // Substituição TOTAL: o mapa novo troca o anterior por inteiro, como o
+    // `delete + upsert` faz na função SQL `sincronizar_alertas`.
+    const mapa = new Map(
+      itens.map((i) => [i.produtoCanonicoId, { precoAlvo: i.precoAlvo, escopoGeo: i.escopoGeo }]),
+    );
+    this.alertasPreco.set(usuarioId, mapa);
+    return Promise.resolve();
+  }
+
+  apagarAlertas(usuarioId: string): Promise<void> {
+    this.alertasPreco.delete(usuarioId);
+    return Promise.resolve();
+  }
+
+  registrarDispositivoPush(
+    usuarioId: string,
+    token: string,
+    plataforma: 'ios' | 'android',
+  ): Promise<void> {
+    this.dispositivosPush.set(token, { usuarioId, plataforma });
+    return Promise.resolve();
+  }
+
+  removerDispositivoPush(token: string): Promise<void> {
+    this.dispositivosPush.delete(token);
+    return Promise.resolve();
+  }
+
+  /** Inspeção (testes): alvos ativos de um usuário. */
+  alertasDoUsuario(usuarioId: string): { produtoCanonicoId: string; precoAlvo: number; escopoGeo: string }[] {
+    const mapa = this.alertasPreco.get(usuarioId);
+    if (!mapa) return [];
+    return [...mapa.entries()].map(([produtoCanonicoId, alvo]) => ({ produtoCanonicoId, ...alvo }));
+  }
+
+  /** Inspeção (testes): tokens de push registrados de um usuário. */
+  dispositivosDoUsuario(usuarioId: string): string[] {
+    return [...this.dispositivosPush.entries()]
+      .filter(([, d]) => d.usuarioId === usuarioId)
+      .map(([token]) => token);
   }
 
   // ───────────────────────── Inspeção (testes) ────────────────────────

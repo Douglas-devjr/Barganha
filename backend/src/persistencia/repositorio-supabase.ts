@@ -13,6 +13,7 @@
  */
 
 import {
+  type AlertaPrecoItem,
   type DenunciaCuradoria,
   garantirSemDadoPessoal,
   type MotivoDenuncia,
@@ -40,6 +41,7 @@ import type {
   EnriquecimentoProduto,
   RepositorioCuradoria,
 } from '../curadoria/tipos';
+import { LancamentoInvalidoError } from '../erros';
 import {
   type CandidatoCanonico,
   type FonteCandidatosTexto,
@@ -63,6 +65,7 @@ import type {
   DenunciaRegistrada,
   RepositorioDenuncia,
 } from '../moderacao/tipos-denuncia';
+import type { RepositorioAlertas } from '../servicos/tipos-alertas';
 import type { FiltroDeltaSync, FonteDeltaSync, LinhaDelta } from '../sync/tipos';
 import type {
   CupomComItens,
@@ -78,6 +81,7 @@ import type {
 } from './tipos';
 
 const COD_UNIQUE_VIOLATION = '23505';
+const COD_FOREIGN_KEY_VIOLATION = '23503';
 
 function falhar(contexto: string, erro: PostgrestError): never {
   throw new Error(`Supabase: ${contexto} — ${erro.message} (${erro.code ?? 's/ código'}).`);
@@ -228,7 +232,8 @@ export class RepositorioSupabase
     FonteCandidatosTexto,
     RepositorioModeracao,
     RepositorioDenuncia,
-    RepositorioCuradoria
+    RepositorioCuradoria,
+    RepositorioAlertas
 {
   constructor(private readonly db: SupabaseClient) {}
 
@@ -1158,5 +1163,48 @@ export class RepositorioSupabase
       .maybeSingle();
     if (r.error) falhar('decisão de denúncia', r.error);
     return r.data != null;
+  }
+
+  // ───────────────────────── RepositorioAlertas (C8.4) ────────────────
+
+  async sincronizarAlertas(usuarioId: string, itens: readonly AlertaPrecoItem[]): Promise<void> {
+    // Delete do removido + upsert do enviado numa transação única (ver
+    // `sincronizar_alertas` em supabase/migrations) — evita a janela de duas
+    // chamadas REST separadas perderem alertas numa falha parcial.
+    const r = await this.db.rpc('sincronizar_alertas', {
+      p_usuario_id: usuarioId,
+      p_itens: itens.map((i) => ({
+        produtoCanonicoId: i.produtoCanonicoId,
+        precoAlvo: i.precoAlvo,
+        escopoGeo: i.escopoGeo,
+      })),
+    });
+    // produtoCanonicoId inexistente — erro do CLIENTE (400), não do banco (500):
+    // a FK de alerta_preco recusou um id que não existe em produto_canonico.
+    if (r.error?.code === COD_FOREIGN_KEY_VIOLATION) {
+      throw new LancamentoInvalidoError('produtoCanonicoId inválido — produto não encontrado.');
+    }
+    if (r.error) falhar('sincronização transacional de alertas', r.error);
+  }
+
+  async apagarAlertas(usuarioId: string): Promise<void> {
+    const r = await this.db.from('alerta_preco').delete().eq('usuario_id', usuarioId);
+    if (r.error) falhar('apagamento de alertas de preço', r.error);
+  }
+
+  async registrarDispositivoPush(
+    usuarioId: string,
+    token: string,
+    plataforma: 'ios' | 'android',
+  ): Promise<void> {
+    const r = await this.db
+      .from('dispositivo_push')
+      .upsert({ token, usuario_id: usuarioId, plataforma }, { onConflict: 'token' });
+    if (r.error) falhar('registro de dispositivo de push', r.error);
+  }
+
+  async removerDispositivoPush(token: string): Promise<void> {
+    const r = await this.db.from('dispositivo_push').delete().eq('token', token);
+    if (r.error) falhar('remoção de dispositivo de push', r.error);
   }
 }

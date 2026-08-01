@@ -44,6 +44,7 @@ import { ProcessadorCupom } from './processamento/processador-cupom';
 import { ReprocessadorRetroativo } from './processamento/reprocessamento';
 import { ControleRollout } from './rollout/controle-rollout';
 import { ClienteSefazHttp } from './sefaz/cliente-sefaz-http';
+import { ServicoAlertas } from './servicos/servico-alertas';
 import { ServicoSync } from './sync/servico-sync';
 import { ServicoSyncCatalogo } from './sync/servico-sync-catalogo';
 
@@ -87,6 +88,8 @@ export interface Backend {
   servicoModeracao: ServicoModeracao;
   /** Denúncia de preço + fila da curadoria (C12.5). */
   servicoDenuncia: ServicoDenuncia;
+  /** Alerta de preço + dispositivo de push (C8.4) — espelho no servidor do alerta local. */
+  servicoAlertas: ServicoAlertas;
   /** Enriquecimento de produto pela curadoria (C11.5). */
   servicoCuradoria: ServicoCuradoria;
   /** Confirmação de casamento por texto (C3.5) — curadoria. */
@@ -219,6 +222,9 @@ export function montarBackend(config: ConfigBackend): Backend {
   const servicoModeracao = new ServicoModeracao(repo, repo);
   // C12.5 — denúncia: só enfileira sinal; não tem caminho de escrita no pool.
   const servicoDenuncia = new ServicoDenuncia(repo);
+  // C8.4 — espelho no servidor do alerta local (PRIVADO); o job de push
+  // (`jobs/alerta-preco.ts`) é quem decide disparar, lendo `preco_estatistica`.
+  const servicoAlertas = new ServicoAlertas(repo);
   const servicoCuradoria = new ServicoCuradoria(repo);
   const servicoConfirmacaoCasamento = new ServicoConfirmacaoCasamento(repo);
   const guardaCuradoria = new GuardaCuradoria(config.curadoriaTokens);
@@ -264,6 +270,7 @@ export function montarBackend(config: ConfigBackend): Backend {
     telemetria,
     servicoModeracao,
     servicoDenuncia,
+    servicoAlertas,
     servicoCuradoria,
     servicoConfirmacaoCasamento,
     guardaCuradoria,

@@ -28,6 +28,7 @@ import type { FonteResumoMetricas, Metricas } from '../observabilidade/metricas'
 import type { MonitorSaude } from '../observabilidade/saude';
 import type { FonteMetricas } from '../observabilidade/telemetria';
 import type { ReprocessadorRetroativo } from '../processamento/reprocessamento';
+import type { ServicoAlertas } from '../servicos/servico-alertas';
 import type { ServicoSync } from '../sync/servico-sync';
 import type { ServicoSyncCatalogo } from '../sync/servico-sync-catalogo';
 import type { OpcoesLimite } from './rate-limit';
@@ -98,6 +99,12 @@ export interface DependenciasHttp {
   servicoModeracao?: ServicoModeracao;
   /** Denúncia de preço + fila da curadoria (C12.5). Omitido → rotas não sobem. */
   servicoDenuncia?: ServicoDenuncia;
+  /**
+   * Alerta de preço + dispositivo de push (C8.4) — espelho no servidor do
+   * alerta local, para permitir push com o app fechado. Omitido → rotas não
+   * sobem (o alerta local no SQLite continua funcionando sem push).
+   */
+  servicoAlertas?: ServicoAlertas;
   /** Enriquecimento de produto pela curadoria (C11.5). Omitido → rota não sobe. */
   servicoCuradoria?: ServicoCuradoria;
   /** Sugestões de casamento por texto p/ a curadoria (C3.5). Omitido → rota não sobe. */

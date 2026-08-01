@@ -26,6 +26,7 @@ export async function main(): Promise<void> {
     telemetria,
     servicoModeracao,
     servicoDenuncia,
+    servicoAlertas,
     servicoCuradoria,
     guardaCuradoria,
     reprocessador,
@@ -51,6 +52,7 @@ export async function main(): Promise<void> {
     // + sugestões de casamento por texto (C3.5) para a curadoria.
     servicoModeracao,
     servicoDenuncia,
+    servicoAlertas,
     servicoCuradoria,
     autorizacaoCuradoria: guardaCuradoria,
     reprocessador,

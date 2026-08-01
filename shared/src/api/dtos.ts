@@ -496,3 +496,48 @@ export interface DenunciaCuradoria {
   /** Quantas denúncias abertas o mesmo produto acumula (prioriza a fila). */
   abertasNoProduto: number;
 }
+
+// ───────────────── Alerta de preço + push de verdade (C8.4) ──────────────────
+
+/**
+ * Um alvo de alerta ("avise quando X chegar a este preço"). Espelho no
+ * servidor do alerta local (PRIVADO, como `cupom`/`item_cupom`): nunca cruza
+ * para `observacao_preco` nem entra na mediana compartilhada (docs/04, decisão
+ * travada #8). `nome` é só para o corpo da notificação — o servidor não usa
+ * para casar nada (o alvo é `produtoCanonicoId`).
+ */
+export interface AlertaPrecoItem {
+  produtoCanonicoId: string;
+  nome: string;
+  precoAlvo: number;
+  /** Mesma chave normalizada de `chaveMunicipio()`/`UF` usada na resolução regional. */
+  escopoGeo: string;
+}
+
+/**
+ * Sincroniza o conjunto COMPLETO de alertas do usuário — substituição TOTAL, não
+ * incremental: o que não vier aqui é removido do espelho no servidor. Evita
+ * drift entre o SQLite do aparelho (fonte da verdade local) e o servidor.
+ */
+export interface SincronizarAlertasRequest {
+  alertas: AlertaPrecoItem[];
+}
+
+export interface SincronizarAlertasResponse {
+  /** Quantos alvos ficaram registrados após a sincronização. */
+  total: number;
+}
+
+/**
+ * Registra o token de push Expo do aparelho (após a pessoa aceitar a
+ * permissão). PRIVADO — identificador de dispositivo, nunca do pool (docs/04).
+ */
+export interface RegistrarDispositivoPushRequest {
+  token: string;
+  plataforma: 'ios' | 'android';
+}
+
+/** Remove o token de push (logout, permissão revogada, reinstalação). */
+export interface RemoverDispositivoPushRequest {
+  token: string;
+}
