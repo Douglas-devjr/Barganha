@@ -1703,7 +1703,7 @@ export const funcoes = [
     detalhe:
       'A regra mora em shared (uma só, testada) e vale para app e backend. Duas travas: escanear cupom é ilimitado no grátis PARA SEMPRE, e o veredito é idêntico nos dois planos — pagar não compra uma verdade melhor. Um teste cruza a lista do que nunca pode ser cobrado com a dos recursos pagos e reprova o build se alguém trocar um de lado.',
     falta:
-      'Ninguém paga nada: não há cobrança nem Google Play Billing (C13.3), e o plano vive só no aparelho, alternado por um interruptor de teste nas Configurações da conta. O servidor ainda não conhece plano (C13.2), nem existe o plus por contribuição (C13.4).',
+      'Ninguém paga nada: não há cobrança nem Google Play Billing (C13.3), e o plano vive só no aparelho, alternado por um interruptor de teste nas Configurações da conta. O servidor ainda não conhece plano (C13.2) nem existe o plus por contribuição (C13.4). Dos cortes da tabela, quatro estão declarados sem gate aplicado — dependem de telas que ainda não existem. E os gates das telas não têm teste próprio.',
     ligacoes: ['compras', 'produtos', 'alertas', 'comparar-mercados', 'perfil'],
     arquivos: [
       'shared/src/plano/direitos.ts',
@@ -3010,7 +3010,7 @@ export const etapas = [
     status: 'parcial',
     oque: 'Cadeados com prévia do valor no histórico, no gráfico do produto, nos alertas e no ranking de mercados; a folha do Barganha+ abre de qualquer um deles.',
     falta:
-      'O plano é lido do aparelho e nunca do servidor, então a folga de 7 dias sem rede ainda não existe (não há o que revalidar até o C13.2). Faltam os cadeados de estatísticas e economia detalhada, cujas telas ainda não foram construídas (C8.3/C8.4.1).',
+      'Quatro recursos estão DECLARADOS e não consultados — nenhuma tela chama podeUsar(). Três dependem de telas que não existem (estatísticas C8.3, economia detalhada C8.4.1, ocultar ofertas C12.4) e o quarto, trocar de região livremente, precisa guardar a data da última troca. "Listas ilimitadas" não é um cadeado: o app tem UMA lista, sem id. E a folga de 7 dias sem rede não existe porque o plano ainda não vem do servidor (C13.2). Os gates das telas não têm teste.',
   },
 ];
 

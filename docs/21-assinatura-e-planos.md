@@ -47,7 +47,14 @@ julgamento de preço em si.
 | Economia real (C8.4.1) | o número acumulado | o detalhe item a item |
 | Regiões | 1, troca a cada 30 dias | várias, troca livre |
 | Ofertas anunciadas (C12.4) | exibidas | ocultáveis |
-| Backup do histórico / trocar de aparelho | não | sim |
+
+> **Backup do histórico / trocar de aparelho NÃO entra no plano pago.** A versão
+> anterior deste documento o listava como benefício do Barganha+ — está errado:
+> o restore no login **já existe e já é grátis** (docs/04, `sincronizador`), e a
+> própria tela de sair promete isso ao usuário ("seu histórico volta quando você
+> entrar de novo, aqui ou em outro aparelho"). Passar para o pago seria **tirar
+> algo que as pessoas já têm** — a forma mais rápida de queimar a confiança que
+> sustenta o app. Fica grátis.
 
 A lógica: o **grátis entrega a decisão na gôndola** — o motivo pelo qual alguém
 baixa o app e o motivo pelo qual manda cupom. O **pago entrega o retrospecto e o
@@ -185,9 +192,45 @@ O teste `direitos.test.ts` cruza `NUNCA_COBRAVEL` com `RECURSOS`: mover
 "escanear cupom" ou "veredito" para o lado pago **reprova o build**. As duas
 regras travadas deste documento deixaram de depender de alguém lembrar delas.
 
-O que **não** existe: cobrança, Google Play Billing (C13.3), plano vindo do
-servidor (C13.2), plus por contribuição (C13.4) e a folga de 7 dias sem rede —
-que só faz sentido quando houver o que revalidar.
+### Linha a linha do corte: o que está de pé e o que não está
+
+| Linha do corte | Estado |
+|---|---|
+| Cupom ilimitado, veredito, faixa típica, busca, catálogo | **garantido** — e travado por teste |
+| Histórico de 3 meses | **aplicado** na tela Minhas compras |
+| Gráfico de 30 dias | **aplicado** no detalhe do produto |
+| 3 alertas | **aplicado** (criar novo; editar/desligar nunca esbarra) |
+| 3 mercados no ranking | **aplicado** na Comparar mercados |
+| Estatísticas de gasto | **sem gate** — a tela não existe (C8.3) |
+| Economia real detalhada | **sem gate** — a UI não existe (C8.4.1) |
+| Ofertas ocultáveis | **sem gate** — a camada não existe (C12.4) |
+| Listas ilimitadas / compartilhadas | **sem gate e sem feature** — o app tem UMA lista, sem `id`; virar várias é mudança de esquema local, não é um cadeado |
+| Trocar de região livremente | **sem gate** — o recurso está declarado em `direitos.ts`, mas ninguém o consulta: falta guardar a data da última troca e barrar em `EditorRegiao` |
+
+Os quatro recursos de `RECURSOS` (`estatisticas_detalhadas`,
+`economia_detalhada`, `exportar_historico`, `trocar_regiao_livre`) estão
+**declarados e não consultados** — `podeUsar()` existe e nenhuma tela chama.
+É de propósito: três dependem de telas que ainda não foram construídas, e o
+quarto (região) precisa de estado novo. Ficam declarados para a tela nascer já
+perguntando ao lugar certo, mas **não confunda declaração com corte aplicado**.
+
+### O que não existe de jeito nenhum
+
+- **Cobrança** — nada é cobrado, não há preço em lugar nenhum do app.
+- **Google Play Billing** (C13.3) — sem compra, sem webhook, sem estado do Google.
+- **Plano vindo do servidor** (C13.2) — não há tabela `assinatura`, nem RLS, nem
+  plano na resposta da conta. O plano é local e some no logout.
+- **Plus por contribuição** (C13.4) — ninguém conta cupons do mês.
+- **Folga de 7 dias sem rede** — só faz sentido quando houver o que revalidar (C13.2).
+- **Testes do lado do app** — a regra em `shared/` é testada; os gates das telas
+  e o `usePlano()` não têm teste. O risco real é uma tela passar a ler o plano
+  errado sem nada acusar.
+
+### O pré-requisito que continua de pé
+
+**C4.3.1.** Enquanto o Bearer for o próprio `usuarioId`, nada disto pode virar
+cobrança de verdade. O interruptor de teste não muda isso — ele existe
+justamente porque não há nada a proteger ainda.
 
 ## Armadilhas a evitar
 

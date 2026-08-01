@@ -63,9 +63,11 @@ export type CapacidadeLivre = (typeof NUNCA_COBRAVEL)[number];
  * Recursos que existem inteiros no Barganha+ e não existem no grátis. Só entra
  * aqui o que é PROFUNDIDADE ou CONVENIÊNCIA — nunca o julgamento de preço.
  *
- * `exportar_historico` e `estatisticas_detalhadas` dependem do C8.3, que ainda
- * não foi construído; ficam declarados para o corte nascer inteiro e a tela
- * nascer já perguntando ao lugar certo.
+ * ATENÇÃO: hoje os quatro estão DECLARADOS e nenhuma tela os consulta — três
+ * dependem de telas que ainda não existem (C8.3, C8.4.1, C12.4) e o de região
+ * precisa que alguém guarde a data da última troca. Ficam aqui para a tela
+ * nascer já perguntando ao lugar certo, mas declaração não é corte aplicado: o
+ * mapa do que está de pé está em `docs/21` §"Linha a linha do corte".
  */
 export const RECURSOS = [
   /** Gastos por categoria, por mercado e tendência (C8.3). */
