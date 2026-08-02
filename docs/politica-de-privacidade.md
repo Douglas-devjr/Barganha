@@ -1,6 +1,6 @@
 # Política de Privacidade — Barganha
 
-**Última atualização:** 24/07/2026 · **Versão:** 1.2
+**Última atualização:** 01/08/2026 · **Versão:** 1.3
 
 O **Barganha** ajuda você a saber, na gôndola, se um preço está bom — comparando preços de mercado por unidade (R$/kg, R$/L, R$/un) a partir de uma base **colaborativa e anônima**. Privacidade não é promessa: é como o app foi **construído**. Esta política explica, em linguagem direta, o que coletamos, o que **nunca** coletamos e quais são os seus direitos.
 
@@ -26,6 +26,8 @@ Seu histórico fica guardado **na sua conta**. Se você **sair** (logout), ele �
 - **Email e senha de login** (ou sua **conta Google**, se você escolher entrar com o Google). É o **mínimo** para criar e proteger sua conta. A senha é guardada **criptografada**; nunca a vemos em texto puro. Esse dado serve **só para autenticar** — nunca entra na base de preços.
 - **Conteúdo do QR Code da nota fiscal (NFC-e)** que você escaneia. Ele é processado nos nossos servidores para extrair **loja, produtos, preços e data**.
 - **Dados de uso técnicos mínimos** necessários para o serviço funcionar e para evitar abuso (ex.: limites de requisição).
+- **Se você criar um alerta de preço:** o produto e o preço-alvo que você escolheu, mais a **cidade/estado** que você selecionou como sua região. Guardamos isso na sua conta porque, para te avisar **com o app fechado**, a comparação precisa acontecer no servidor. Fica no seu lado privado — nunca vai para a base de preços.
+- **Se você aceitar receber notificações:** um **código de notificação do seu aparelho** (token de push), usado só para entregar esses avisos — nunca para publicidade nem para perfilar você. Ele é apagado quando o aparelho deixa de aceitar as notificações, quando você exclui a conta e, automaticamente, após **90 dias** sem sinal de uso. Se você não aceitar as notificações, nenhum código é guardado — e o alerta continua funcionando com o app aberto.
 
 ## 4. O que NUNCA coletamos nem guardamos
 - **Seu CPF.** Mesmo quando ele aparece na nota fiscal, é **descartado no processamento** — nunca é salvo nem transmitido adiante.
@@ -58,6 +60,7 @@ Não vendemos seus dados. A base de preços é **coletiva e anônima** por const
 - Seu **email de login** e seu **histórico privado** ficam enquanto sua conta existir.
 - **Sair (logout) não apaga nada** no servidor: limpa só este aparelho e seu histórico **volta no próximo login**. Para apagar de vez, use **Excluir conta**.
 - **Inatividade:** se você não entrar na sua conta por **24 meses**, ela e o histórico podem ser **apagados**. Avisamos por email antes.
+- **Notificações:** o código de notificação do aparelho é apagado após **90 dias** sem sinal de uso, mesmo com a conta ativa.
 - A **base de preços anônima** é mantida para a comparação funcionar; como ela já não identifica ninguém, não há dado pessoal a remover nela.
 - **Apagar sua conta** (no Perfil) remove sua conta de login **e** todo o seu histórico — no aparelho e no servidor. Como os dois mundos são separados, isso não quebra a base coletiva de preços.
 
