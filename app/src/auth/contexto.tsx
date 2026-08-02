@@ -21,7 +21,9 @@ import { Alert, Linking } from 'react-native';
 
 import type { Session, User } from '@supabase/supabase-js';
 
+import { encerrarAlertasNoServidor } from '@/nucleo/alertas';
 import { enviarPendentesAntesDeSair, redefinirAppLocal } from '@/nucleo/conta';
+import { removerTokenPushAtual } from '@/nucleo/notificacoes-push';
 
 import { obterUrlCallbackEmail } from './config';
 import { supabase } from './supabase';
@@ -252,6 +254,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // registrada offline sumia sem aviso ao sair (a tela avisa quando
         // sobra algo — ver PerfilTela).
         await enviarPendentesAntesDeSair();
+        // Também ANTES de sair: revoga o espelho de alertas + o token de push
+        // no servidor, ainda com a sessão válida (as rotas exigem Bearer). Sem
+        // isto, um aparelho compartilhado continuaria recebendo "Preço baixou"
+        // depois que a pessoa saiu — furando a mesma higiene que
+        // `redefinirAppLocal` já faz do lado do SQLite. Best-effort: nenhuma
+        // das duas pode impedir o logout (offline, backend fora).
+        await Promise.all([encerrarAlertasNoServidor(), removerTokenPushAtual()]);
         await supabase.auth.signOut();
         // LGPD (docs/04): apaga o lado PRIVADO local deste aparelho. O pool
         // anônimo já enviado não é "seu" e permanece (sem vínculo com você).

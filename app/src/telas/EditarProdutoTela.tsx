@@ -22,6 +22,8 @@ import { Pressable, StyleSheet, Switch, TextInput, View } from 'react-native';
 
 import { Cartao, Dialogo, IconeLixeira, Tela, Texto, useToast } from '@/componentes';
 import { alertas, lista } from '@/dados';
+import { definirAlerta, removerAlerta } from '@/nucleo/alertas';
+import { usePermissaoNotificacao } from '@/nucleo/notificacoes-push';
 import { espaco, fontes, raio, tamanhos, useTema } from '@/tema';
 import type { RootStackParamList } from '@/navegacao/tipos';
 
@@ -37,6 +39,7 @@ export function EditarProdutoTela({ navigation, route }: Props) {
   const { nome, produtoCanonicoId, unidadeBase } = route.params;
   const { c } = useTema();
   const toast = useToast();
+  const permissaoNotificacao = usePermissaoNotificacao();
 
   const [avisar, setAvisar] = useState(false);
   const [alvo, setAlvo] = useState('');
@@ -80,9 +83,11 @@ export function EditarProdutoTela({ navigation, route }: Props) {
         setErro('Informe um preço válido para o aviso.');
         return;
       }
-      await alertas.definir(produtoCanonicoId, nome, valor);
+      const primeiroAlerta = (await alertas.listar()).length === 0;
+      await definirAlerta(produtoCanonicoId, nome, valor);
+      if (primeiroAlerta) permissaoNotificacao.solicitar();
     } else {
-      await alertas.remover(produtoCanonicoId);
+      await removerAlerta(produtoCanonicoId);
     }
 
     if (naLista) await lista.adicionar(produtoCanonicoId, nome);

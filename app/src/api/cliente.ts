@@ -11,6 +11,7 @@
  */
 
 import type {
+  AlertaPrecoItem,
   BuscaProdutosRequest,
   BuscaProdutosResponse,
   ComparacaoListaRequest,
@@ -28,6 +29,10 @@ import type {
   IngestaoQrResponse,
   LancamentoManualRequest,
   LancamentoManualResponse,
+  RegistrarDispositivoPushRequest,
+  RemoverDispositivoPushRequest,
+  SincronizarAlertasRequest,
+  SincronizarAlertasResponse,
   SyncProdutosRequest,
   SyncProdutosResponse,
 } from '@barganha/shared';
@@ -260,6 +265,48 @@ export class ClienteApi {
    */
   sincronizarProdutos(req: SyncProdutosRequest): Promise<SyncProdutosResponse> {
     return this.requisitar<SyncProdutosResponse>('POST', '/sync/produtos', req);
+  }
+
+  /**
+   * `PUT /alertas` (C8.4) — PRIVADO. Espelha no servidor o conjunto COMPLETO
+   * de alertas de preço locais — substituição total (o que não vier aqui é
+   * removido lá, ver `SincronizarAlertasRequest`). É o que permite o job de
+   * push avaliar os alvos com o app fechado. Exige Bearer.
+   */
+  async sincronizarAlertas(alertas: AlertaPrecoItem[]): Promise<SincronizarAlertasResponse> {
+    const token = await this.resolverToken();
+    if (!token) throw new ErroApi(401, 'Sem sessão para sincronizar alertas.');
+    const req: SincronizarAlertasRequest = { alertas };
+    return this.requisitar<SincronizarAlertasResponse>('PUT', '/alertas', req, token);
+  }
+
+  /** `DELETE /alertas` (C8.4) — PRIVADO. Apaga todos os alertas do usuário no servidor. */
+  async apagarAlertas(): Promise<void> {
+    const token = await this.resolverToken();
+    if (!token) throw new ErroApi(401, 'Sem sessão para apagar alertas.');
+    await this.requisitar<void>('DELETE', '/alertas', undefined, token);
+  }
+
+  /**
+   * `POST /dispositivos/push` (C8.4) — PRIVADO. Registra o Expo push token do
+   * aparelho após a pessoa aceitar a permissão de notificação. Exige Bearer.
+   */
+  async registrarTokenPush(token: string, plataforma: 'ios' | 'android'): Promise<void> {
+    const sessao = await this.resolverToken();
+    if (!sessao) throw new ErroApi(401, 'Sem sessão para registrar o token de push.');
+    const req: RegistrarDispositivoPushRequest = { token, plataforma };
+    await this.requisitar<void>('POST', '/dispositivos/push', req, sessao);
+  }
+
+  /**
+   * `DELETE /dispositivos/push` (C8.4) — PRIVADO. Remove o token de push
+   * (logout, permissão revogada, reinstalação). Exige Bearer.
+   */
+  async removerTokenPush(token: string): Promise<void> {
+    const sessao = await this.resolverToken();
+    if (!sessao) throw new ErroApi(401, 'Sem sessão para remover o token de push.');
+    const req: RemoverDispositivoPushRequest = { token };
+    await this.requisitar<void>('DELETE', '/dispositivos/push', req, sessao);
   }
 
   // ──────────────────────────────────────────────────────────────────────

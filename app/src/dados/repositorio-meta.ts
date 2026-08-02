@@ -25,6 +25,7 @@ const CHAVE_HISTORICO_RESTAURADO = 'historico_restaurado_em';
 const CHAVE_IDS_RECUPERADOS = 'ids_recuperados_delta';
 const CHAVE_ESCOPOS_SYNC = 'escopos_delta';
 const CHAVE_PLANO = 'plano';
+const CHAVE_NOTIFICACAO_PEDIDA = 'notificacao_permissao_pedida';
 
 export async function obterMeta(chave: string): Promise<string | null> {
   const linha = await getBd().getFirstAsync<{ valor: string | null }>(
@@ -194,11 +195,17 @@ export const definirRaioKm = (km: RaioKm): Promise<void> => definirMeta(CHAVE_RA
 
 /**
  * Localização ESCOLHIDA manualmente pelo usuário (cidade/UF) — o recorte
- * geográfico das consultas/sync de preço da região. Mora só aqui, no aparelho;
- * nunca viaja junto com dado privado e serve apenas para recortar a consulta
- * anônima (decisão travada #4: geo pela loja, sem rastrear o usuário). `municipio`
- * é opcional (UF já dá o fallback). Ausente = ainda não escolheu (cai na UF
+ * geográfico das consultas/sync de preço da região. É escolha, não GPS
+ * (decisão travada #4: geo pela loja, sem rastrear o usuário). `municipio` é
+ * opcional (UF já dá o fallback). Ausente = ainda não escolheu (cai na UF
  * derivada do histórico).
+ *
+ * ATENÇÃO (C8.4): esta chave deixou de morar SÓ no aparelho. Quem cria um
+ * alerta de preço envia a mesma chave normalizada como `escopoGeo` junto do
+ * `usuario_id` (`PUT /alertas` → `alerta_preco`), porque o push com o app
+ * fechado é avaliado no servidor. Continua sendo dado PRIVADO (nunca entra em
+ * `observacao_preco`), granularidade de município e declarado na política de
+ * privacidade — mas quem mexer aqui precisa saber que ela agora atravessa.
  */
 export interface LocalEscolhido {
   uf: string;
@@ -237,3 +244,16 @@ export async function definirLocalEscolhido(local: LocalEscolhido): Promise<void
   await definirMeta(CHAVE_LOCAL_UF, local.uf);
   await definirMeta(CHAVE_LOCAL_MUNICIPIO, local.municipio?.trim() ?? '');
 }
+
+/**
+ * C8.4 — Já pedimos a permissão de notificação push pelo menos uma vez NESTE
+ * aparelho (gatilho: o primeiro alerta de preço que o usuário criou)? Sem essa
+ * memória, apagar todos os alertas e criar um novo repetiria a condição
+ * "primeiro alerta" e o prompt do sistema voltaria a aparecer — nagging que um
+ * `useRef` em componente não evita, porque a tela desmonta entre uma criação e
+ * outra. Ausente = nunca pedimos.
+ */
+export const notificacaoPermissaoPedida = async (): Promise<boolean> =>
+  (await obterMeta(CHAVE_NOTIFICACAO_PEDIDA)) === '1';
+export const marcarNotificacaoPermissaoPedida = (): Promise<void> =>
+  definirMeta(CHAVE_NOTIFICACAO_PEDIDA, '1');

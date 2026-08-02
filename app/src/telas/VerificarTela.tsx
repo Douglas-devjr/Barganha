@@ -50,10 +50,12 @@ import {
 } from '@/componentes';
 import { clienteApi } from '@/api';
 import { alertas } from '@/dados';
+import { definirAlerta, removerAlerta } from '@/nucleo/alertas';
 import * as catalogo from '@/nucleo/catalogo';
 import type { ProdutoLocal } from '@/nucleo/catalogo';
 import { idadeTexto, parseMoeda, vezesCompradas } from '@/nucleo/formato';
 import { type LocalizacaoEfetiva, resolverLocalizacao } from '@/nucleo/localizacao';
+import { usePermissaoNotificacao } from '@/nucleo/notificacoes-push';
 import { consumirEanEscaneado } from '@/nucleo/scan-pendente';
 import {
   refinarRegionalOnline,
@@ -87,6 +89,7 @@ function referencias(faixa: FaixaPreco, preco: number) {
 export function VerificarTela({ navigation }: Props) {
   const { c } = useTema();
   const toast = useToast();
+  const permissaoNotificacao = usePermissaoNotificacao();
   const [lista, setLista] = useState<ProdutoLocal[]>([]);
   const [busca, setBusca] = useState('');
   const [selecionado, setSelecionado] = useState<ProdutoLocal | null>(null);
@@ -187,7 +190,7 @@ export function VerificarTela({ navigation }: Props) {
     const id = selecionado?.produtoCanonicoId;
     if (!id || !selecionado) return;
     if (alertaAtivo) {
-      await alertas.remover(id);
+      await removerAlerta(id);
       setAlertaAtivo(false);
       toast('Alerta de preço desativado');
       return;
@@ -195,9 +198,11 @@ export function VerificarTela({ navigation }: Props) {
     // Alvo: o preço digitado, se houver; senão ~90% do típico (um alvo realista).
     const alvo = valor ?? (selecionado.faixaPessoal?.mediana ?? 0) * 0.9;
     if (alvo <= 0) return;
-    await alertas.definir(id, selecionado.nome, alvo);
+    const primeiroAlerta = (await alertas.listar()).length === 0;
+    await definirAlerta(id, selecionado.nome, alvo);
     setAlertaAtivo(true);
     toast(`Avisamos quando baixar de ${moeda(alvo)}`);
+    if (primeiroAlerta) permissaoNotificacao.solicitar();
   }
 
   const alvoBusca = normalizarDescricao(busca);

@@ -43,9 +43,11 @@ import {
 } from '@/componentes';
 import { alertas, lista } from '@/dados';
 import type { AlertaPreco } from '@/dados/repositorio-alertas';
+import { definirAlerta, removerAlerta } from '@/nucleo/alertas';
 import * as catalogo from '@/nucleo/catalogo';
 import type { CompraHistorico, ProdutoLocal } from '@/nucleo/catalogo';
 import { moeda as moedaFmt, parseMoeda } from '@/nucleo/formato';
+import { usePermissaoNotificacao } from '@/nucleo/notificacoes-push';
 import { agora, completarPiso } from '@/nucleo/ritmo';
 import { resolverVeredito } from '@/nucleo/veredito-local';
 import { usePlano } from '@/plano';
@@ -97,6 +99,7 @@ export function ProdutoDetalheTela({ navigation, route }: Props) {
   const { c } = useTema();
   const toast = useToast();
   const { dentroDoGrafico, podeAdicionar, limiteDe, mostrarPlus } = usePlano();
+  const permissaoNotificacao = usePermissaoNotificacao();
   const { chave, nome } = route.params;
   const [carregando, setCarregando] = useState(true);
   const [produto, setProduto] = useState<ProdutoLocal | null>(null);
@@ -166,12 +169,14 @@ export function ProdutoDetalheTela({ navigation, route }: Props) {
     const id = produto?.produtoCanonicoId;
     const alvo = parseMoeda(alvoInput);
     if (!id || alvo == null || alvo <= 0) return;
-    await alertas.definir(id, produto?.nome ?? nome ?? 'Produto', alvo);
+    const primeiroAlerta = totalAlertas === 0;
+    await definirAlerta(id, produto?.nome ?? nome ?? 'Produto', alvo);
     const [atual, todos] = await Promise.all([alertas.obter(id), alertas.listar()]);
     setAlerta(atual);
     setTotalAlertas(todos.length);
     setEditandoAlerta(false);
     toast('Alerta de preço ativado');
+    if (primeiroAlerta) permissaoNotificacao.solicitar();
   }
 
   /**
@@ -192,7 +197,7 @@ export function ProdutoDetalheTela({ navigation, route }: Props) {
       abrirEditorAlerta();
       return;
     }
-    await alertas.remover(id);
+    await removerAlerta(id);
     const todos = await alertas.listar();
     setAlerta(null);
     setTotalAlertas(todos.length);

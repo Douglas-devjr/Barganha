@@ -22,6 +22,7 @@ import {
 } from '@/componentes';
 import { alertas as alertasRepo, meta } from '@/dados';
 import { PREFERENCIAS_ALERTA_PADRAO, type PreferenciasAlerta } from '@/dados/repositorio-meta';
+import { ressincronizarPreferenciaAlertas } from '@/nucleo/alertas';
 import type { RootStackParamList } from '@/navegacao/tipos';
 import { usePlano } from '@/plano';
 import { espaco } from '@/tema';
@@ -52,6 +53,10 @@ export function AlertasTela({ navigation }: Props) {
     setSalvando(true);
     try {
       await meta.definirPreferenciasAlerta(preferencias);
+      // Reflete a chave-mestra no servidor: desligou → apaga o espelho de
+      // push lá (senão o controle "mente" — continuaria disparando mesmo
+      // desligado); religou → sobe os alvos locais de novo. Best-effort.
+      void ressincronizarPreferenciaAlertas();
       toast('Preferências salvas');
       navigation.goBack();
     } finally {
