@@ -1197,14 +1197,22 @@ export class RepositorioSupabase
     token: string,
     plataforma: 'ios' | 'android',
   ): Promise<void> {
-    const r = await this.db
-      .from('dispositivo_push')
-      .upsert({ token, usuario_id: usuarioId, plataforma }, { onConflict: 'token' });
+    // `visto_em` é carimbado aqui também (não só na entrega do push): é o sinal
+    // de que o APARELHO ainda existe, e é sobre ele que a purga de 90 dias
+    // decide (docs/04). Sem isto, quem tem o app instalado mas nunca recebeu um
+    // push teria o token purgado como se tivesse sumido.
+    const r = await this.db.from('dispositivo_push').upsert(
+      { token, usuario_id: usuarioId, plataforma, visto_em: new Date().toISOString() },
+      { onConflict: 'token' },
+    );
     if (r.error) falhar('registro de dispositivo de push', r.error);
   }
 
-  async removerDispositivoPush(token: string): Promise<void> {
-    const r = await this.db.from('dispositivo_push').delete().eq('token', token);
+  async removerDispositivoPush(token: string, usuarioId?: string): Promise<void> {
+    // Com `usuarioId`, a remoção fica escopada ao dono (ver tipos-alertas): a
+    // service role ignora RLS, então o filtro precisa estar aqui.
+    const alvo = this.db.from('dispositivo_push').delete().eq('token', token);
+    const r = await (usuarioId ? alvo.eq('usuario_id', usuarioId) : alvo);
     if (r.error) falhar('remoção de dispositivo de push', r.error);
   }
 }

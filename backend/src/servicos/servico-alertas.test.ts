@@ -117,6 +117,19 @@ describe('ServicoAlertas (C8.4)', () => {
     expect(repo.dispositivosDoUsuario('u1')).toHaveLength(0);
   });
 
+  it('não deixa uma conta remover o token de push de OUTRA (escopo do dono)', async () => {
+    // O token viaja no corpo do DELETE; sem o escopo do dono, quem o conhecesse
+    // desligaria o push alheio (o backend fala pela service role, sem RLS).
+    const { repo, servico } = await montar();
+    await servico.registrarDispositivo('u1', 'ExponentPushToken[abc]', 'android');
+
+    await servico.removerDispositivo('ExponentPushToken[abc]', 'u2');
+    expect(repo.dispositivosDoUsuario('u1')).toEqual(['ExponentPushToken[abc]']);
+
+    await servico.removerDispositivo('ExponentPushToken[abc]', 'u1');
+    expect(repo.dispositivosDoUsuario('u1')).toHaveLength(0);
+  });
+
   it('recusa token de push vazio', async () => {
     const { servico } = await montar();
     await expect(servico.registrarDispositivo('u1', '   ', 'ios')).rejects.toBeInstanceOf(

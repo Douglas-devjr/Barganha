@@ -72,8 +72,15 @@ export class ServicoAlertas {
     await this.repo.registrarDispositivoPush(usuarioId, token.trim(), plataforma);
   }
 
-  /** Remove um token de push (logout, permissão revogada, reinstalação). */
-  async removerDispositivo(token: string): Promise<void> {
-    await this.repo.removerDispositivoPush(token);
+  /**
+   * Remove um token de push (logout, permissão revogada, reinstalação).
+   *
+   * `usuarioId` é OBRIGATÓRIO em qualquer caminho vindo de requisição — o token
+   * viaja no corpo do `DELETE`, e sem o escopo do dono quem o conhecesse
+   * desligaria o push de outra pessoa (o backend fala pela service role, então
+   * o RLS não filtra). Só o job pode omitir, e mesmo ele passa o dono.
+   */
+  async removerDispositivo(token: string, usuarioId?: string): Promise<void> {
+    await this.repo.removerDispositivoPush(token, usuarioId);
   }
 }

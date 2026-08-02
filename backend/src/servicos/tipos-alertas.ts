@@ -27,6 +27,13 @@ export interface RepositorioAlertas {
     token: string,
     plataforma: 'ios' | 'android',
   ): Promise<void>;
-  /** Remove um token (token inválido, logout, `DeviceNotRegistered` do Expo). */
-  removerDispositivoPush(token: string): Promise<void>;
+  /**
+   * Remove um token (token inválido, logout, `DeviceNotRegistered` do Expo).
+   *
+   * `usuarioId` ESCOPA a remoção ao dono e é obrigatório em todo caminho vindo
+   * de requisição: sem ele, quem conhecesse o token de outra pessoa (ele viaja
+   * no corpo do `DELETE /dispositivos/push`) desligaria o push dela, porque o
+   * backend fala pela service role e o RLS não filtra nada aqui.
+   */
+  removerDispositivoPush(token: string, usuarioId?: string): Promise<void>;
 }

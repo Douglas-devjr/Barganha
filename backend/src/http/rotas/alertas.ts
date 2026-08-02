@@ -68,7 +68,9 @@ export function registrarRotasAlertas(app: FastifyInstance, ctx: ContextoRotas):
     async (req, reply) => {
       const usuarioId = await ctx.contaDoRequest(req, reply);
       if (!usuarioId) return reply;
-      await servicoAlertas.removerDispositivo(req.body.token);
+      // Escopado ao dono: o token vem no corpo, então sem `usuarioId` qualquer
+      // sessão válida desligaria o push de outra pessoa (docs/04).
+      await servicoAlertas.removerDispositivo(req.body.token, usuarioId);
       return reply.code(204).send();
     },
   );

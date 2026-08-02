@@ -826,8 +826,12 @@ export class RepositorioMemoria
     return Promise.resolve();
   }
 
-  removerDispositivoPush(token: string): Promise<void> {
-    this.dispositivosPush.delete(token);
+  removerDispositivoPush(token: string, usuarioId?: string): Promise<void> {
+    // Escopado ao dono quando `usuarioId` vem (ver tipos-alertas).
+    const atual = this.dispositivosPush.get(token);
+    if (atual && (!usuarioId || atual.usuarioId === usuarioId)) {
+      this.dispositivosPush.delete(token);
+    }
     return Promise.resolve();
   }
 

@@ -1,0 +1,49 @@
+name: Push de alerta de preço
+
+# C8.4 — Avalia os alertas de preço do usuário contra `preco_estatistica` e
+# dispara push via Expo quando o preço cruza o alvo (app fechado incluso).
+# Roda logo APÓS o recálculo de estatística (`recalculo-estatistica.yml`,
+# `*/30 * * * *`), nos minutos 5 e 35, para nunca avaliar contra uma faixa
+# desatualizada.
+#
+# Segredos necessários (Settings → Secrets):
+#   • SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY — leitura/escrita de
+#     alerta_preco e dispositivo_push, leitura de preco_estatistica.
+
+on:
+  schedule:
+    - cron: '5,35 * * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: alerta-preco
+  cancel-in-progress: false
+
+jobs:
+  alerta-preco:
+    name: Avaliar e enviar alertas de preço
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+    steps:
+      - name: Falha cedo se faltar credencial do Supabase
+        if: ${{ env.SUPABASE_URL == '' || env.SUPABASE_SERVICE_ROLE_KEY == '' }}
+        run: |
+          echo "::error::Segredos SUPABASE_URL/SUPABASE_SERVICE_ROLE_KEY ausentes — configure em Settings → Secrets."
+          exit 1
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configura Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Instala dependências
+        run: npm ci
+
+      - name: Avalia e envia os alertas de preço
+        run: npm run job:alerta-preco --workspace @barganha/backend
