@@ -452,8 +452,8 @@ footer{max-width:1180px; margin:0 auto; padding:0 24px 72px; font-size:12px; col
   <div class="topo-in">
     <span class="marca">Barganha <span>painel do projeto</span></span>
     <span class="topo-meta">
-      <span class="selo">commit <code>bd4e551</code> · 01/08/2026</span>
-      <span class="selo sujo">10 arquivo(s) sem commit</span>
+      <span class="selo">commit <code>4302962</code> · 01/08/2026</span>
+      <span class="selo sujo">26 arquivo(s) sem commit</span>
       <span class="selo">gerado em 01 de agosto de 2026</span>
     </span>
   </div>
@@ -1704,7 +1704,7 @@ footer{max-width:1180px; margin:0 auto; padding:0 24px 72px; font-size:12px; col
       <span class="sec-num">05</span>
       <h2>O que ainda não existe</h2>
     </div>
-    <button class="ouvir" type="button" data-fala="São 4 coisas que o app não faz de jeito nenhum e 11 que existem pela metade. Cada uma diz exatamente o que falta. É desta lista que sai o próximo trabalho." aria-label="Ouvir o resumo desta seção">
+    <button class="ouvir" type="button" data-fala="São 4 coisas que o app não faz de jeito nenhum e 10 que existem pela metade. Cada uma diz exatamente o que falta. É desta lista que sai o próximo trabalho." aria-label="Ouvir o resumo desta seção">
       <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2 4.5 5H2v6h2.5L8 14zM11 5.5a3.5 3.5 0 0 1 0 5M13 3.5a6 6 0 0 1 0 9"/></svg>
       ouvir
     </button>
@@ -1814,7 +1814,7 @@ footer{max-width:1180px; margin:0 auto; padding:0 24px 72px; font-size:12px; col
         </div>
       </li></ol>
 
-  <h3 class="sub">Existe pela metade (11)</h3>
+  <h3 class="sub">Existe pela metade (10)</h3>
   <p class="legenda">Funciona, mas com um pedaço faltando — quase sempre é aqui que está o trabalho mais barato com maior efeito.</p>
   <div class="falta-grid">
     <article class="falta-card s-parcial">
@@ -1903,18 +1903,6 @@ footer{max-width:1180px; margin:0 auto; padding:0 24px 72px; font-size:12px; col
     </article>
     <article class="falta-card s-parcial">
       <header>
-        <h4>Alertas de preço</h4>
-        <span class="fn-area">Telas do app</span>
-      </header>
-      <p class="oque">Avisa quando um produto que você acompanha cai de preço na sua região.</p>
-      <p class="falta"><span class="rot">O que falta</span>Não existe notificação PUSH — o aviso só aparece quando o app é aberto e o sync roda. Um alerta que dispara com o app fechado é o comportamento que o usuário espera de &quot;alerta&quot;, e hoje ele não acontece.</p>
-      <div class="chips">
-        <button type="button" class="chip liga" data-ir="alertas">ver no mapa</button>
-        <a class="chip etapa" href="#etapa-C8.4">C8.4</a>
-      </div>
-    </article>
-    <article class="falta-card s-parcial">
-      <header>
         <h4>Plano grátis × Barganha+</h4>
         <span class="fn-area">Telas do app</span>
       </header>
@@ -1957,7 +1945,7 @@ footer{max-width:1180px; margin:0 auto; padding:0 24px 72px; font-size:12px; col
       <span class="sec-num">06</span>
       <h2>Cada função, em uma frase</h2>
     </div>
-    <button class="ouvir" type="button" data-fala="São 91 funções mapeadas, divididas em 8 áreas. Cada uma diz o que faz, com quem conversa, que regra obedece e onde mora no código. Use os filtros para ver só as que estão pela metade." aria-label="Ouvir o resumo desta seção">
+    <button class="ouvir" type="button" data-fala="São 92 funções mapeadas, divididas em 8 áreas. Cada uma diz o que faz, com quem conversa, que regra obedece e onde mora no código. Use os filtros para ver só as que estão pela metade." aria-label="Ouvir o resumo desta seção">
       <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2 4.5 5H2v6h2.5L8 14zM11 5.5a3.5 3.5 0 0 1 0 5M13 3.5a6 6 0 0 1 0 9"/></svg>
       ouvir
     </button>
@@ -2850,20 +2838,35 @@ footer{max-width:1180px; margin:0 auto; padding:0 24px 72px; font-size:12px; col
       <div class="chips"><span class="rot">Etapas</span><a class="chip etapa" href="#etapa-C12.2">C12.2</a></div>
       <details class="det"><summary>Onde mora no código</summary><ul class="arqs"><li class=""><code>app/src/telas/ConquistasTela.tsx</code></li><li class=""><code>app/src/telas/ConquistaDetalheTela.tsx</code></li><li class=""><code>app/src/nucleo/gamificacao.ts</code></li></ul></details>
     </article>
-    <article class="fn s-parcial" id="fn-alertas" data-area="app" data-status="parcial" data-busca="alertas de preço avisa quando um produto que você acompanha cai de preço na sua região. não existe notificação push — o aviso só aparece quando o app é aberto e o sync roda. um alerta que dispara com o app fechado é o comportamento que o usuário espera de &quot;alerta&quot;, e hoje ele não acontece. telas do app c8.4">
+    <article class="fn s-pronto" id="fn-alertas" data-area="app" data-status="pronto" data-busca="alertas de preço avisa quando um produto que você acompanha cai de preço na sua região — inclusive com o app fechado, por notificação push. o sqlite local continua sendo a fonte da verdade (funciona 100% offline, como antes); toda vez que o usuário cria/remove um alvo, um espelho é sincronizado no servidor (best-effort, nunca bloqueia o app) para o job alerta-preco-servidor avisar mesmo com o app fechado. desligar a chave-mestra ou sair da conta apaga esse espelho — o controle de privacidade não pode &quot;mentir&quot; continuando a avisar depois de desligado. telas do app c8.4">
       <header>
         <h3>Alertas de preço</h3>
-        <span class="pill p-parcial"><i></i>parcial</span>
+        <span class="pill p-pronto"><i></i>pronto</span>
       </header>
       <span class="fn-area">Telas do app</span>
-      <p class="oque">Avisa quando um produto que você acompanha cai de preço na sua região.</p>
-      <p class="falta"><span class="rot">Falta</span>Não existe notificação PUSH — o aviso só aparece quando o app é aberto e o sync roda. Um alerta que dispara com o app fechado é o comportamento que o usuário espera de &quot;alerta&quot;, e hoje ele não acontece.</p>
+      <p class="oque">Avisa quando um produto que você acompanha cai de preço na sua região — inclusive com o app fechado, por notificação push.</p>
       
+      <details class="det"><summary>Por que é assim</summary><p>O SQLite local continua sendo a fonte da verdade (funciona 100% offline, como antes); toda vez que o usuário cria/remove um alvo, um espelho é sincronizado no servidor (best-effort, nunca bloqueia o app) para o job <code>alerta-preco-servidor</code> avisar mesmo com o app fechado. Desligar a chave-mestra ou sair da conta apaga esse espelho — o controle de privacidade não pode &quot;mentir&quot; continuando a avisar depois de desligado.</p></details>
       
-      <div class="chips"><span class="rot">Conversa com</span><button type="button" class="chip liga" data-ir="notificacoes">Feed de avisos</button><button type="button" class="chip liga" data-ir="sincronizador">Sincronizador</button><button type="button" class="chip liga" data-ir="editar-produto">Editar produto</button></div>
+      <div class="chips"><span class="rot">Conversa com</span><button type="button" class="chip liga" data-ir="notificacoes">Feed de avisos</button><button type="button" class="chip liga" data-ir="sincronizador">Sincronizador</button><button type="button" class="chip liga" data-ir="editar-produto">Editar produto</button><button type="button" class="chip liga" data-ir="alerta-preco-servidor">Push de alerta de preço (servidor)</button></div>
       
       <div class="chips"><span class="rot">Etapas</span><a class="chip etapa" href="#etapa-C8.4">C8.4</a></div>
-      <details class="det"><summary>Onde mora no código</summary><ul class="arqs"><li class=""><code>app/src/telas/AlertasTela.tsx</code></li><li class=""><code>app/src/nucleo/alertas-regras.ts</code></li><li class=""><code>app/src/dados/repositorio-alertas.ts</code></li></ul></details>
+      <details class="det"><summary>Onde mora no código</summary><ul class="arqs"><li class=""><code>app/src/telas/AlertasTela.tsx</code></li><li class=""><code>app/src/nucleo/alertas.ts</code></li><li class=""><code>app/src/nucleo/alertas-regras.ts</code></li><li class=""><code>app/src/nucleo/notificacoes-push.ts</code></li><li class=""><code>app/src/dados/repositorio-alertas.ts</code></li><li class=""><code>shared/src/dominio/alertas-regras.ts</code></li></ul></details>
+    </article>
+    <article class="fn s-pronto" id="fn-alerta-preco-servidor" data-area="api" data-status="pronto" data-busca="push de alerta de preço (servidor) espelho no servidor do alerta local: registra o alvo do usuário e o token do aparelho, e um job periódico dispara a notificação push quando o preço bate. put /alertas substitui o conjunto inteiro do usuário a cada sync (sem drift entre sqlite e servidor). o job (job:alerta-preco, a cada 30min, logo após o recálculo) só lê preco_estatistica — nunca escreve nela; dedupe por disparado_em, com histerese de 5% para rearmar antes de avisar de novo. token de push tem ttl de 90 dias sem sinal de vida. api &amp; sync put /alertas delete /alertas post /dispositivos/push delete /dispositivos/push c8.4">
+      <header>
+        <h3>Push de alerta de preço (servidor)</h3>
+        <span class="pill p-pronto"><i></i>pronto</span>
+      </header>
+      <span class="fn-area">API &amp; sync</span>
+      <p class="oque">Espelho no servidor do alerta local: registra o alvo do usuário e o token do aparelho, e um job periódico dispara a notificação push quando o preço bate.</p>
+      
+      <details class="det"><summary>Por que é assim</summary><p><code>PUT /alertas</code> substitui o conjunto INTEIRO do usuário a cada sync (sem drift entre SQLite e servidor). O job (<code>job:alerta-preco</code>, a cada 30min, logo após o recálculo) só LÊ <code>preco_estatistica</code> — nunca escreve nela; dedupe por <code>disparado_em</code>, com histerese de 5% para rearmar antes de avisar de novo. Token de push tem TTL de 90 dias sem sinal de vida.</p></details>
+      <div class="rotas"><code class="rota">PUT /alertas</code><code class="rota">DELETE /alertas</code><code class="rota">POST /dispositivos/push</code><code class="rota">DELETE /dispositivos/push</code></div>
+      <div class="chips"><span class="rot">Conversa com</span><button type="button" class="chip liga" data-ir="alertas">Alertas de preço</button></div>
+      
+      <div class="chips"><span class="rot">Etapas</span><a class="chip etapa" href="#etapa-C8.4">C8.4</a></div>
+      <details class="det"><summary>Onde mora no código</summary><ul class="arqs"><li class=""><code>backend/src/servicos/servico-alertas.ts</code></li><li class=""><code>backend/src/servicos/tipos-alertas.ts</code></li><li class=""><code>backend/src/http/rotas/alertas.ts</code></li><li class=""><code>backend/src/jobs/alerta-preco.ts</code></li><li class=""><code>.github/workflows/alerta-preco.yml</code></li><li class=""><code>supabase/migrations/20260801130000_alerta_preco.sql</code></li></ul></details>
     </article>
     <article class="fn s-pronto" id="fn-notificacoes" data-area="app" data-status="pronto" data-busca="feed de avisos lista local de avisos: alerta disparado, conquista nova, resumo do mês. tabela privada e derivada, no aparelho. a chave de dedupe usa bucket de tempo para o mesmo aviso não inundar o feed a cada sync. telas do app c8.4">
       <header>
@@ -4657,13 +4660,13 @@ footer{max-width:1180px; margin:0 auto; padding:0 24px 72px; font-size:12px; col
       <span class="sec-num">12</span>
       <h2>Como este painel se mantém junto com o código</h2>
     </div>
-    <button class="ouvir" type="button" data-fala="Tudo em sincronia: as 311 evidências citadas existem no código e nenhuma rota ou tela ficou sem dono." aria-label="Ouvir o resumo desta seção">
+    <button class="ouvir" type="button" data-fala="Tudo em sincronia: as 324 evidências citadas existem no código e nenhuma rota ou tela ficou sem dono." aria-label="Ouvir o resumo desta seção">
       <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2 4.5 5H2v6h2.5L8 14zM11 5.5a3.5 3.5 0 0 1 0 5M13 3.5a6 6 0 0 1 0 9"/></svg>
       ouvir
     </button>
   </header>
   
-  <div class="medidos"><div class="medido"><b>26</b><span>rotas na API</span></div><div class="medido"><b>35</b><span>telas no app</span></div><div class="medido"><b>5</b><span>parsers de estado</span></div><div class="medido"><b>15</b><span>tabelas no servidor</span></div><div class="medido"><b>9</b><span>tabelas no aparelho</span></div><div class="medido"><b>29</b><span>migrações</span></div><div class="medido"><b>83</b><span>arquivos de teste</span></div><div class="medido"><b>9</b><span>rotinas agendadas</span></div></div>
+  <div class="medidos"><div class="medido"><b>30</b><span>rotas na API</span></div><div class="medido"><b>35</b><span>telas no app</span></div><div class="medido"><b>5</b><span>parsers de estado</span></div><div class="medido"><b>17</b><span>tabelas no servidor</span></div><div class="medido"><b>9</b><span>tabelas no aparelho</span></div><div class="medido"><b>32</b><span>migrações</span></div><div class="medido"><b>86</b><span>arquivos de teste</span></div><div class="medido"><b>10</b><span>rotinas agendadas</span></div></div>
   <p class="legenda">Os números acima são <strong>contados no repositório</strong> a cada geração — ninguém os digita. O que é curado à mão é só o status e o texto de cada item, em <code>painel/mapa.mjs</code>.</p>
   <div class="como">
     <h3 class="sub">Como este painel se mantém junto com o código</h3>
@@ -4674,14 +4677,14 @@ footer{max-width:1180px; margin:0 auto; padding:0 24px 72px; font-size:12px; col
       <li><strong>Se você esquecer</strong>, o <code>npm run check</code> (e o CI) roda <code>npm run painel:conferir</code> e reprova: evidência que sumiu e rota/tela nova sem dono aparecem por nome.</li>
     </ol>
   </div>
-  <div class="drift"><p class="ok-drift">&#10003; Tudo em sincronia — as 311 evidências citadas pelo painel existem no código, e nenhuma rota ou tela ficou sem dono.</p></div>
+  <div class="drift"><p class="ok-drift">&#10003; Tudo em sincronia — as 324 evidências citadas pelo painel existem no código, e nenhuma rota ou tela ficou sem dono.</p></div>
 </section>
 </main>
 
 <footer>
   Gerado por <code>npm run painel</code> a partir de <code>painel/mapa.mjs</code> + o estado real do repositório.
-  Último commit lido: <code>bd4e551</code> — “feat(backend): adiciona interface web de curadoria de produtos (C11.5)”.
-  Havia 10 arquivo(s) modificado(s) sem commit no momento da geração.
+  Último commit lido: <code>4302962</code> — “chore(painel): marca lançamento manual e moderação como prontos (C11.3/C12.5)”.
+  Havia 26 arquivo(s) modificado(s) sem commit no momento da geração.
 </footer>
 
 <script>
