@@ -774,7 +774,7 @@ export const jornadas = [
     ramos: [
       {
         titulo: 'Conta parada há muito tempo',
-        oque: 'Existe uma rotina que apaga contas inativas avisando antes por e-mail — mas ela não pode ser ligada enquanto não houver canal de e-mail transacional.',
+        oque: 'Existe uma rotina que apaga contas inativas avisando antes por e-mail (dois avisos, via Resend) — falta configurar os segredos em produção e concluir a revisão jurídica da transferência internacional antes de ligar de verdade.',
         status: 'parcial',
       },
     ],
@@ -1037,10 +1037,16 @@ export const funcoes = [
     area: 'privacidade',
     status: 'parcial',
     oque: 'Apaga automaticamente contas que ficaram muito tempo sem uso, avisando antes por e-mail.',
+    detalhe:
+      'Canal de e-mail (Resend, C9.2) via `enviarEmail` — fail-closed: sem `RESEND_API_KEY`/`EMAIL_REMETENTE` configurados, o aviso não sai e a purga fica travada por segurança (sem aviso, sem purga). O aviso é em DUAS etapas — um na janela de antecedência, um segundo mais perto da data prevista — porque a Resend aceitar o envio não garante a entrega, e essa é justamente a população com mais e-mail morto (inativa há 24 meses); a purga só avança com os DOIS aceitos. Job agendado 1×/dia (`.github/workflows/purga-inatividade.yml`), rodando em modo RELATÓRIO por padrão — só apaga de fato com a variável `PURGA_APLICAR=true`.',
     falta:
-      'O canal de e-mail transacional não está ligado — enquanto o aviso não sai de fato, a purga não pode ser ativada em produção.',
+      'Preencher `RESEND_API_KEY`/`EMAIL_REMETENTE` em produção (Settings → Secrets, free tier sem cartão) e concluir a revisão jurídica pendente (mecanismo de transferência internacional do art. 33, identidade do controlador/DPO — ver docs/04 §Operadores) antes de ligar `PURGA_APLICAR=true` de verdade.',
     ligacoes: ['apagar-conta'],
-    arquivos: ['backend/src/jobs/purga-inatividade.ts'],
+    arquivos: [
+      'backend/src/jobs/purga-inatividade.ts',
+      'backend/src/observabilidade/email-transacional.ts',
+      '.github/workflows/purga-inatividade.yml',
+    ],
     etapas: ['C9.2'],
   },
   {
@@ -1068,11 +1074,17 @@ export const funcoes = [
     status: 'parcial',
     oque: 'Converte todo preço para R$/kg, R$/L ou R$/un, para nunca comparar valor cru.',
     falta:
-      'Conferir a lista de abreviações contra notas reais de mais estados — cada portal escreve a unidade do seu jeito, e o que não está no mapa fica fora do pool em silêncio. Um contador de unidades recusadas na ingestão diria quais faltam.',
+      'O contador de unidades recusadas por UF já existe e aparece no /metricas (chave já normalizada — é literalmente a abreviação a acrescentar ao mapa). Falta usá-lo em produção com notas reais de mais estados para descobrir quais abreviações faltam.',
     detalhe:
-      'É a fonte ÚNICA do app e do backend (o backend só re-exporta). Se divergissem, o mesmo produto teria preço diferente offline e online. Pacote, bandeja, garrafa e lata entram como 1 item vendido; caixa e fardo (CX/FD/PACK) só entram quando a CONTAGEM é declarada na unidade ("CX12") ou na descrição ("12X350ML", "FD 6") — aí o preço vira R$/un do item de dentro. Sem contagem o item continua fora do pool, porque "R$ 36 a caixa" na mediana da lata é pior que observação nenhuma. A descrição só destrava embalagem múltipla: ela nunca muda o fator de KG/L/UN, e é isso que impede app e backend de divergirem se um dos lados não a passar.',
+      'É a fonte ÚNICA do app e do backend (o backend só re-exporta). Se divergissem, o mesmo produto teria preço diferente offline e online. Pacote, bandeja, garrafa e lata entram como 1 item vendido; caixa e fardo (CX/FD/PACK) só entram quando a CONTAGEM é declarada na unidade ("CX12") ou na descrição ("12X350ML", "FD 6") — aí o preço vira R$/un do item de dentro. Sem contagem o item continua fora do pool, porque "R$ 36 a caixa" na mediana da lata é pior que observação nenhuma. A descrição só destrava embalagem múltipla: ela nunca muda o fator de KG/L/UN, e é isso que impede app e backend de divergirem se um dos lados não a passar. Telemetria (C10.2) distingue as duas causas de um item cair fora do pool: unidade NUNCA VISTA pelo mapa (`unidadeConhecida` = falso, conta em `unidadesRecusadas` por UF) de embalagem múltipla conhecida sem contagem declarada (gap já esperado, não conta) — reaproveita a tabela `telemetria_parsing` existente, sem migração nova.',
     ligacoes: ['agregacao', 'veredito', 'faixa-pessoal'],
-    arquivos: ['shared/src/estatistica/normalizacao.ts'],
+    arquivos: [
+      'shared/src/estatistica/normalizacao.ts',
+      'backend/src/anonimizacao/anonimizador.ts',
+      'backend/src/observabilidade/telemetria.ts',
+      'backend/src/observabilidade/telemetria-memoria.ts',
+      'backend/src/observabilidade/telemetria-persistente.ts',
+    ],
     regras: ['r5'],
     etapas: ['C3.4'],
   },
@@ -1083,11 +1095,15 @@ export const funcoes = [
     status: 'parcial',
     oque: 'Calcula a faixa típica de cada produto: mediana, p25/p75, mínimo, máximo — dando mais peso aos preços recentes.',
     falta:
-      'Calibração com dados reais: meia-vida do decaimento (hoje 30 dias), fator do cerco de promoção (1,5×IQR) e o mínimo de observações por nível. Só o beta gera os dados para isso.',
+      'A calibração dos valores em produção (meia-vida 30 dias, cerco 1,5×IQR, mínimo de n por nível) segue pendente — mas não é mais trabalho de engenharia: a ferramenta de medição já existe (job:calibracao), mede o pool real por backtest/recall-FP/bootstrap e recomenda, sem aplicar nada sozinha. Falta é volume do beta para o resultado deixar de ser "dados insuficientes".',
     detalhe:
       'Percentis PONDERADOS pelo decaimento temporal: uma observação de 8 meses atrás pesa quase nada, e acima de 180 dias é descartada. A promoção é segregada em duas camadas: a flag de desconto da própria NFC-e e o cerco estatístico (preços abaixo de p25 − 1,5×IQR).',
     ligacoes: ['pipeline', 'escopos', 'normalizacao'],
-    arquivos: ['backend/src/estatistica/agregacao.ts'],
+    arquivos: [
+      'backend/src/estatistica/agregacao.ts',
+      'backend/src/estatistica/calibracao.ts',
+      'backend/src/jobs/calibracao-estatistica.ts',
+    ],
     regras: ['r6', 'r9', 'r20'],
     etapas: ['C3.1', 'C3.2', 'C3.6'],
   },
@@ -1222,11 +1238,11 @@ export const funcoes = [
     status: 'falta',
     oque: 'A métrica que mede o app: quanto você pagou a menos (ou a mais) que o típico da região.',
     falta:
-      'A UI inteira. E é para esperar: com o pool raso, o snapshot vem vazio para quase todo item e a tela mostraria "R$ 0,00 · 2 de 40 itens comparados" — uma prova visual de que o app não tem dados. O gatilho não é uma data, é cobertura MEDIDA: quando mais de ~60% dos itens de um cupom típico tiverem típico gravado.',
+      'A UI inteira. E é para esperar: com o pool raso, o snapshot vem vazio para quase todo item e a tela mostraria "R$ 0,00 · 2 de 40 itens comparados" — uma prova visual de que o app não tem dados. O gatilho não é uma data, é cobertura MEDIDA: quando mais de ~60% dos itens de um cupom típico tiverem típico gravado. A cobertura agora dá para medir: `npm run job:cobertura-tipico` (workspace @barganha/backend) calcula a fração mediana por cupom e diz se o gatilho de ~60% já foi atingido.',
     detalhe:
       'Três condições inegociáveis quando for a hora: pode dar negativo (é boletim, não troféu), declara a cobertura ("23 de 41 itens comparados") e cada real é rastreável até o item. Hoje o app mostra o DESCONTO do cupom, que é honesto — é a promoção que o mercado deu, não o mérito do app.',
     ligacoes: ['tipico-na-compra', 'dashboard'],
-    arquivos: ['docs/06-comparacao-estatistica.md'],
+    arquivos: ['docs/06-comparacao-estatistica.md', 'backend/src/jobs/cobertura-tipico.ts'],
     regras: ['r18'],
     etapas: ['C8.4.1'],
   },
@@ -1353,6 +1369,25 @@ export const funcoes = [
     etapas: ['C4.3'],
   },
   {
+    id: 'assinatura-backend',
+    nome: 'Backend da assinatura',
+    area: 'api',
+    status: 'pronto',
+    oque: 'Guarda o plano da conta (grátis ou Barganha+) e o expõe para o app consultar.',
+    detalhe:
+      'Tabela `assinatura` privada, com RLS que só permite ao dono LER a própria linha — nenhuma política de escrita, nem para o dono: só a service role do backend concede `plus` (diferente do `for all` de alerta_preco, porque autoconceder assinatura tem valor real, ao contrário de forjar um alerta). Um `plus` com `valido_ate` vencido (ou ilegível) responde como `gratis` — o serviço nunca confia num plano expirado por default.',
+    falta:
+      'Ainda não existe escritor: a tabela só ganha linha em C13.3 (compra confirmada pelo Google) e C13.4 (plus por contribuição). O app não chama o endpoint ainda — isso é C13.5.',
+    ligacoes: ['auth', 'plano'],
+    arquivos: [
+      'supabase/migrations/20260802090000_assinatura.sql',
+      'backend/src/servicos/tipos-assinatura.ts',
+      'backend/src/servicos/servico-assinatura.ts',
+    ],
+    rotas: ['GET /conta/estado'],
+    etapas: ['C13.2'],
+  },
+  {
     id: 'rate-limit',
     nome: 'Teto de requisições',
     area: 'api',
@@ -1374,22 +1409,24 @@ export const funcoes = [
     id: 'curadoria',
     nome: 'Curadoria de produtos',
     area: 'api',
-    status: 'parcial',
-    oque: 'Corrige nome, marca e categoria dos produtos, confirma casamentos e manda reprocessar cupons de uma UF — agora por uma página web (`/curadoria/painel`), não só por curl.',
-    falta:
-      'A página é deliberadamente simples (sem build step, HTML+JS puro) — ainda não tem paginação nem busca de produto por nome/EAN antes de editar; para volume alto de curadores, vale revisitar.',
+    status: 'pronto',
+    oque: 'Corrige nome, marca e categoria dos produtos, confirma casamentos e manda reprocessar cupons de uma UF — por uma página web (`/curadoria/painel`), não só por curl. Antes de editar, o curador BUSCA o produto por nome ou EAN (resultado paginado) e clica em "Editar" para carregar o formulário — não precisa mais saber o `produtoCanonicoId` de cor.',
     detalhe:
       'Existe também o enriquecimento AUTOMÁTICO pelo catálogo VTEX das redes conhecidas (`job:enriquecer`), que preenche nome e categoria sem ninguém digitar. A confirmação de casamento por texto (`POST /curadoria/casamento/confirmar`) grava `produto_alias` e é feita pela mesma tela.',
     ligacoes: ['casamento-texto', 'enriquecer-vtex'],
     arquivos: [
+      'backend/src/curadoria/tipos.ts',
       'backend/src/curadoria/servico-curadoria.ts',
       'backend/src/curadoria/servico-confirmacao-casamento.ts',
       'backend/src/auth/curadoria.ts',
       'backend/src/http/rotas/curadoria.ts',
       'backend/src/http/rotas/painel-curadoria-html.ts',
+      'backend/src/persistencia/repositorio-memoria.ts',
+      'backend/src/persistencia/repositorio-supabase.ts',
     ],
     rotas: [
       'GET /curadoria/painel',
+      'GET /curadoria/produtos',
       'POST /curadoria/produto',
       'POST /curadoria/casamento/sugestoes',
       'POST /curadoria/casamento/confirmar',
@@ -1746,8 +1783,15 @@ export const funcoes = [
     detalhe:
       'A regra mora em shared (uma só, testada) e vale para app e backend. Duas travas: escanear cupom é ilimitado no grátis PARA SEMPRE, e o veredito é idêntico nos dois planos — pagar não compra uma verdade melhor. Um teste cruza a lista do que nunca pode ser cobrado com a dos recursos pagos e reprova o build se alguém trocar um de lado.',
     falta:
-      'Ninguém paga nada: não há cobrança nem Google Play Billing (C13.3), e o plano vive só no aparelho, alternado por um interruptor de teste nas Configurações da conta. O servidor ainda não conhece plano (C13.2) nem existe o plus por contribuição (C13.4). Dos cortes da tabela, quatro estão declarados sem gate aplicado — dependem de telas que ainda não existem. E os gates das telas não têm teste próprio.',
-    ligacoes: ['compras', 'produtos', 'alertas', 'comparar-mercados', 'perfil'],
+      'Ninguém paga nada: não há cobrança nem Google Play Billing (C13.3), e o plano vive só no aparelho, alternado por um interruptor de teste nas Configurações da conta. O servidor já tem a tabela `assinatura` (com RLS) e expõe `GET /conta/estado` (C13.2), mas nenhuma tela do app chama esse endpoint ainda — a folga de 7 dias sem rede continua sem sentido enquanto não houver o que revalidar. Também não existe o plus por contribuição (C13.4). Dos cortes da tabela, quatro estão declarados sem gate aplicado — dependem de telas que ainda não existem. E os gates das telas não têm teste próprio.',
+    ligacoes: [
+      'compras',
+      'produtos',
+      'alertas',
+      'comparar-mercados',
+      'perfil',
+      'assinatura-backend',
+    ],
     arquivos: [
       'shared/src/plano/direitos.ts',
       'app/src/plano/contexto.tsx',
@@ -2011,7 +2055,7 @@ export const funcoes = [
     falta:
       'Não existe. O que está no código são "peças de encaixe" que FALHAM de propósito, devolvendo erro 501 — para o dia em que um motor de OCR entrar. Falta o OCR em si (imagem → texto), o parser de ECF e a tela de captura por foto.',
     detalhe:
-      'Falhar explicitamente é a escolha certa aqui: devolver dado vazio envenenaria a base em silêncio. O caminho oficial continua sendo o QR.',
+      'Falhar explicitamente é a escolha certa aqui: devolver dado vazio envenenaria a base em silêncio. O caminho oficial continua sendo o QR. Adiado de propósito: é Fase 5+ (pós-lançamento) e exige cupons ECF reais para calibrar o parser — sem fixtures reais, não há como fazer isso com confiança. Não é bloqueador de nada antes do lançamento.',
     ligacoes: ['parsers'],
     arquivos: ['backend/src/ocr/parser-ecf.ts'],
     regras: ['r1'],
@@ -2563,7 +2607,7 @@ export const etapas = [
     status: 'parcial',
     oque: 'Casamento direto pelo código de barras.',
     falta:
-      'O mapa de unidades já cobre pacote/garrafa/lata e multipack com contagem (CX/FD/PACK). Falta conferir as abreviações contra notas reais de mais estados.',
+      'O mapa de unidades já cobre pacote/garrafa/lata e multipack com contagem (CX/FD/PACK), e agora conta por UF a unidade que não bate no mapa (/metricas). Falta usar esse contador com notas reais de mais estados para completar as abreviações.',
   },
   {
     codigo: 'C3.5',
@@ -2789,7 +2833,7 @@ export const etapas = [
     status: 'parcial',
     oque: 'Checagem de re-identificação, piso de exposição, saneamento do QR.',
     falta:
-      'Cifrar as colunas privadas (chave de acesso e descrições) — gate pré-beta. E a purga de inativos espera o canal de e-mail.',
+      'Cifrar as colunas privadas (chave de acesso e descrições) — gate pré-beta. E a purga de inativos já tem o canal de e-mail no código, mas espera os segredos de produção e a revisão jurídica da transferência internacional (docs/04 §Operadores).',
   },
   {
     codigo: 'C9.2.1',
@@ -2957,7 +3001,7 @@ export const etapas = [
     status: 'falta',
     oque: 'Leria por foto os cupons de máquina antiga (ECF), que não têm QR.',
     falta:
-      'Tudo. O que existe são peças de encaixe que FALHAM de propósito (erro 501) — falhar explícito em vez de devolver dado vazio que envenenaria a base. Falta o motor de OCR, o parser de ECF e a tela de foto.',
+      'Tudo. O que existe são peças de encaixe que FALHAM de propósito (erro 501) — falhar explícito em vez de devolver dado vazio que envenenaria a base. Falta o motor de OCR, o parser de ECF e a tela de foto. Adiado de propósito: exige cupons ECF reais para calibrar o parser (o layout varia por fabricante de impressora e época) e não é bloqueador do lançamento — só entra em Fase 5+.',
   },
   {
     codigo: 'C11.5',
@@ -3018,10 +3062,16 @@ export const etapas = [
     codigo: 'C13.2',
     nome: 'Backend da assinatura',
     fase: 'Pós',
-    status: 'falta',
+    status: 'pronto',
     oque: 'Tabela privada de assinatura, com RLS, e o estado do plano exposto na conta.',
-    falta:
-      'Nada implementado — e depende de C4.3.1: não se vende assinatura sobre um Bearer que é o próprio id do usuário.',
+    detalhe:
+      'Tabela `assinatura` (usuario_id, plano, origem, valido_ate) com RLS só de SELECT do dono — sem política de escrita nem para o dono, porque só a service role do backend pode conceder `plus` (diferente do padrão `for all` de alerta_preco). `GET /conta/estado` devolve `{ plano, validoAte? }`, tratando um `plus` com `valido_ate` vencido (ou ilegível) como `gratis` — nunca confia num plano expirado. Ainda sem escritor: a tabela só ganha linhas em C13.3 (compra) e C13.4 (contribuição). O app não consome o endpoint ainda (C13.5).',
+    arquivos: [
+      'supabase/migrations/20260802090000_assinatura.sql',
+      'backend/src/servicos/servico-assinatura.ts',
+      'backend/src/http/rotas/conta.ts',
+    ],
+    rotas: ['GET /conta/estado'],
   },
   {
     codigo: 'C13.3',
