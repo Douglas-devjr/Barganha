@@ -11,12 +11,20 @@ const UF_DESCONHECIDA = 'desconhecida';
 
 export class TelemetriaMemoria implements Telemetria, FonteMetricas {
   private readonly porUf = new Map<string, Map<EventoParsing, number>>();
+  private readonly unidadesRecusadasPorUf = new Map<string, Map<string, number>>();
 
   registrarParsing(uf: string | undefined, evento: EventoParsing): void {
     const chave = (uf ?? '').trim().toUpperCase() || UF_DESCONHECIDA;
     const eventos = this.porUf.get(chave) ?? new Map<EventoParsing, number>();
     eventos.set(evento, (eventos.get(evento) ?? 0) + 1);
     this.porUf.set(chave, eventos);
+  }
+
+  registrarUnidadeRecusada(uf: string | undefined, unidadeChave: string): void {
+    const chaveUf = (uf ?? '').trim().toUpperCase() || UF_DESCONHECIDA;
+    const contagens = this.unidadesRecusadasPorUf.get(chaveUf) ?? new Map<string, number>();
+    contagens.set(unidadeChave, (contagens.get(unidadeChave) ?? 0) + 1);
+    this.unidadesRecusadasPorUf.set(chaveUf, contagens);
   }
 
   snapshot(): SnapshotTelemetria {
@@ -32,6 +40,16 @@ export class TelemetriaMemoria implements Telemetria, FonteMetricas {
       }
       porUf[uf] = contagens;
     }
-    return { geradoEm: new Date().toISOString(), totais, porUf };
+    const unidadesRecusadas: SnapshotTelemetria['unidadesRecusadas'] = {};
+    for (const uf of [...this.unidadesRecusadasPorUf.keys()].sort()) {
+      const contagens = this.unidadesRecusadasPorUf.get(uf);
+      if (!contagens) continue;
+      const porUnidade: Record<string, number> = {};
+      for (const [unidade, n] of [...contagens].sort((a, b) => b[1] - a[1])) {
+        porUnidade[unidade] = n;
+      }
+      unidadesRecusadas[uf] = porUnidade;
+    }
+    return { geradoEm: new Date().toISOString(), totais, porUf, unidadesRecusadas };
   }
 }

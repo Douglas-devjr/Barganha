@@ -167,6 +167,7 @@ describe('sondaTelemetria', () => {
       geradoEm: '2026-07-28T00:00:00.000Z',
       totais: {},
       porUf: {},
+      unidadesRecusadas: {},
       saude: { falhasPersistencia: falhas, ultimaFalhaMotivo: 'timeout' },
     }),
   });

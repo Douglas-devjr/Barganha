@@ -7,6 +7,7 @@ import {
   normalizarPreco,
   precoUnitarioEfetivo,
   resolverUnidade,
+  unidadeConhecida,
   unidadePadraoDaBase,
 } from './normalizacao';
 
@@ -224,6 +225,20 @@ describe('normalizarPreco — embalagem múltipla (C3.4)', () => {
     expect(resolverUnidade('CX', 'CERVEJA 12X350ML')).toEqual({ base: 'un', fator: 1 / 12 });
     expect(resolverUnidade('KG')).toEqual({ base: 'kg', fator: 1 });
     expect(resolverUnidade('CX')).toBeUndefined();
+  });
+});
+
+describe('unidadeConhecida (C3.4 — telemetria de ingestão)', () => {
+  it('unidade direta e prefixo de embalagem múltipla são conhecidos', () => {
+    expect(unidadeConhecida('KG')).toBe(true);
+    expect(unidadeConhecida('un.')).toBe(true); // pontuação/caixa não importa
+    expect(unidadeConhecida('CX')).toBe(true); // sem contagem, mas o prefixo é sabido
+    expect(unidadeConhecida('PCT12')).toBe(true); // contagem colada num prefixo sabido
+  });
+
+  it('abreviação nunca vista pelo mapa não é conhecida', () => {
+    expect(unidadeConhecida('XPTO')).toBe(false);
+    expect(unidadeConhecida('')).toBe(false);
   });
 });
 

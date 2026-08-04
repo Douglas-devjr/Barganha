@@ -145,7 +145,7 @@ export function montarBackend(config: ConfigBackend): Backend {
     },
   });
 
-  const anonimizador = new Anonimizador(repo);
+  const anonimizador = new Anonimizador(repo, telemetria);
   const processador = new ProcessadorCupom(repo, registro, anonimizador, {
     rollout,
     telemetria,

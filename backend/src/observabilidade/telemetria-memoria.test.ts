@@ -29,5 +29,19 @@ describe('TelemetriaMemoria (C10.2 — parsing por estado)', () => {
     const s = new TelemetriaMemoria().snapshot();
     expect(s.porUf).toEqual({});
     expect(s.totais).toEqual({});
+    expect(s.unidadesRecusadas).toEqual({});
+  });
+
+  it('C3.4 — conta unidade recusada por UF, da mais para a menos frequente', () => {
+    const tel = new TelemetriaMemoria();
+    tel.registrarUnidadeRecusada('RJ', 'XPTO');
+    tel.registrarUnidadeRecusada('RJ', 'XPTO');
+    tel.registrarUnidadeRecusada('RJ', 'ZBL');
+    tel.registrarUnidadeRecusada(undefined, 'FOO');
+
+    expect(tel.snapshot().unidadesRecusadas).toEqual({
+      RJ: { XPTO: 2, ZBL: 1 },
+      desconhecida: { FOO: 1 },
+    });
   });
 });

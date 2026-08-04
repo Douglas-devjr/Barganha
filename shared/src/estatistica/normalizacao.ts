@@ -166,7 +166,7 @@ export function itensPorEmbalagem(descricao: string): number | undefined {
  * números ("un." → UN, "PÇ" → PC, "Cx 12" → CX12). Os portais são inconsistentes
  * na pontuação e no acento; a chave absorve isso.
  */
-function chaveUnidade(unidade: string): string {
+export function chaveUnidade(unidade: string): string {
   return unidade
     .normalize('NFD')
     .replace(/\p{Diacritic}/gu, '')
@@ -207,6 +207,22 @@ export function resolverUnidade(unidade: string, descricao?: string): FatorUnida
   const dentro = itens ?? (descricao != null ? itensPorEmbalagem(descricao) : undefined);
   if (dentro == null) return undefined;
   return { base: 'un', fator: 1 / dentro };
+}
+
+/**
+ * A unidade (ou o prefixo dela, sem a contagem colada) é conhecida pelo mapa —
+ * mesmo quando `resolverUnidade` ainda devolve `undefined` por faltar a
+ * contagem do multipack. Distingue as duas causas de um item cair fora do
+ * pool: "unidade nunca vista" (o que falta ensinar ao mapa, C3.4) de
+ * "embalagem múltipla sem contagem declarada" (comportamento já esperado).
+ * Usada só pela telemetria de ingestão — nunca pelo próprio `resolverUnidade`.
+ */
+export function unidadeConhecida(unidade: string): boolean {
+  const chave = chaveUnidade(unidade);
+  if (!chave) return false;
+  if (MAPA_UNIDADES[chave]) return true;
+  const { prefixo } = separarContagem(chave);
+  return Boolean(MAPA_UNIDADES[prefixo]) || UNIDADES_EMBALAGEM_MULTIPLA.has(prefixo);
 }
 
 /** Arredonda para 4 casas (evita ruído de ponto flutuante no R$/base). */

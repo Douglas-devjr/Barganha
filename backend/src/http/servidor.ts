@@ -49,7 +49,7 @@ declare module 'fastify' {
 
 /** Snapshot vazio — quando o servidor sobe sem coletor de métricas (ex.: testes). */
 const SEM_METRICAS: FonteMetricas = {
-  snapshot: () => ({ geradoEm: new Date().toISOString(), totais: {}, porUf: {} }),
+  snapshot: () => ({ geradoEm: new Date().toISOString(), totais: {}, porUf: {}, unidadesRecusadas: {} }),
 };
 
 /**

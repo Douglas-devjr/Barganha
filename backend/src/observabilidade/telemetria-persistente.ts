@@ -33,6 +33,13 @@ export interface ClienteRpcTelemetria {
 
 const UF_DESCONHECIDA = 'desconhecida';
 
+/**
+ * Prefixo do `evento` (livre, `text`) na MESMA tabela `telemetria_parsing` —
+ * reaproveita a infra existente em vez de abrir uma migração/tabela nova só
+ * para isto. `unidade_recusada:CX` nunca colide com um `EventoParsing` real.
+ */
+const PREFIXO_UNIDADE_RECUSADA = 'unidade_recusada:';
+
 export class TelemetriaPersistente implements Telemetria, FonteMetricas {
   private readonly memoria = new TelemetriaMemoria();
 
@@ -58,12 +65,25 @@ export class TelemetriaPersistente implements Telemetria, FonteMetricas {
       });
   }
 
+  registrarUnidadeRecusada(uf: string | undefined, unidadeChave: string): void {
+    this.memoria.registrarUnidadeRecusada(uf, unidadeChave);
+    const chave = (uf ?? '').trim().toUpperCase() || UF_DESCONHECIDA;
+    const evento = `${PREFIXO_UNIDADE_RECUSADA}${unidadeChave}`;
+    void Promise.resolve(this.db.rpc('incrementar_telemetria_parsing', { p_uf: chave, p_evento: evento }))
+      .then((r) => {
+        if (r.error) this.registrarFalha(chave, evento, new Error(r.error.message));
+      })
+      .catch((erro: unknown) => {
+        this.registrarFalha(chave, evento, erro);
+      });
+  }
+
   /**
    * ACHADO (f): a falha ia só para o console. Agora ela também vira ESTADO
    * exposto no `/metricas` — quem olha o painel enxerga que o instrumento está
    * cego, em vez de confiar em números da memória que somem no próximo restart.
    */
-  private registrarFalha(chave: string, evento: EventoParsing, erro: unknown): void {
+  private registrarFalha(chave: string, evento: EventoParsing | string, erro: unknown): void {
     const { mensagem } = sanitizarErro(erro);
     this.falhasPersistencia += 1;
     this.ultimaFalhaEm = new Date().toISOString();

@@ -12,4 +12,6 @@ export {
   MAPA_UNIDADES,
   normalizarPreco,
   normalizarDescricao,
+  chaveUnidade,
+  unidadeConhecida,
 } from '@barganha/shared';

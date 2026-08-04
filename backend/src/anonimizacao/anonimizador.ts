@@ -24,8 +24,9 @@ import {
   precoUnitarioEfetivo,
 } from '@barganha/shared';
 
+import { telemetriaNula, type Telemetria } from '../observabilidade/telemetria';
 import type { CatalogoProdutos } from './casamento';
-import { normalizarDescricao, normalizarPreco } from './normalizacao';
+import { chaveUnidade, normalizarDescricao, normalizarPreco, unidadeConhecida } from './normalizacao';
 
 /** Contexto identificável do cupom — entra aqui, NUNCA sai para o pool. */
 export interface ContextoPrivado {
@@ -48,7 +49,10 @@ export interface ResultadoAnonimizacao {
 }
 
 export class Anonimizador {
-  constructor(private readonly catalogo: CatalogoProdutos) {}
+  constructor(
+    private readonly catalogo: CatalogoProdutos,
+    private readonly telemetria: Telemetria = telemetriaNula,
+  ) {}
 
   /**
    * @param ufCanonica UF derivada da CHAVE de acesso (cUF) — fonte mais
@@ -76,6 +80,12 @@ export class Anonimizador {
         valorUnitario: precoUnitarioEfetivo(item),
         descricao: item.descricao,
       });
+      // C3.4 — a unidade caiu fora do pool porque o mapa nunca a viu (não por
+      // faltar contagem de multipack, já esperado): conta por UF para a
+      // abreviação aparecer no /metricas em vez de sumir em silêncio.
+      if (!norm && !unidadeConhecida(item.unidade)) {
+        this.telemetria.registrarUnidadeRecusada(uf, chaveUnidade(item.unidade));
+      }
       // Sinal de promoção da própria NFC-e (docs/06, camada 1).
       const emPromocao = item.desconto != null && item.desconto > 0;
 

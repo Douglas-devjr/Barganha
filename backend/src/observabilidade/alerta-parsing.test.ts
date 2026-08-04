@@ -8,6 +8,7 @@ function snapshot(porUf: SnapshotTelemetria['porUf'], saude?: SnapshotTelemetria
     geradoEm: '2026-07-23T12:00:00.000Z',
     totais: {},
     porUf,
+    unidadesRecusadas: {},
     ...(saude ? { saude } : {}),
   } satisfies SnapshotTelemetria;
 }

@@ -79,6 +79,19 @@ describe('TelemetriaPersistente (C10.2)', () => {
     expect(telemetria.snapshot().saude?.ultimaFalhaMotivo).toContain('permission denied');
   });
 
+  it('C3.4 — unidade recusada persiste na MESMA tabela, com evento prefixado', async () => {
+    const { db, chamadas } = clienteQueGrava();
+    const telemetria = new TelemetriaPersistente(db);
+
+    telemetria.registrarUnidadeRecusada('rj', 'XPTO');
+    await Promise.resolve();
+
+    expect(telemetria.snapshot().unidadesRecusadas).toEqual({ RJ: { XPTO: 1 } });
+    expect(chamadas).toEqual([
+      ['incrementar_telemetria_parsing', { p_uf: 'RJ', p_evento: 'unidade_recusada:XPTO' }],
+    ]);
+  });
+
   it('o motivo da falha é SANITIZADO antes de virar estado exposto', async () => {
     // O `/metricas` é lido por humanos da curadoria; o motivo vem de uma
     // mensagem de erro do driver, que pode carregar trecho de query — e query

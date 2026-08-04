@@ -20,6 +20,14 @@ export type EventoParsing =
 export interface Telemetria {
   /** Registra o desfecho do parsing de um cupom. `uf` ausente → "desconhecida". */
   registrarParsing(uf: string | undefined, evento: EventoParsing): void;
+  /**
+   * C3.4 — conta, por UF, uma unidade de venda que a NFC-e trouxe e que o mapa
+   * de normalização não reconhece (nem como unidade direta, nem como prefixo
+   * de embalagem múltipla) — o item cai do pool em silêncio. `unidadeChave` é
+   * a chave já normalizada (`chaveUnidade`), então o valor aqui É a abreviação
+   * que falta acrescentar ao mapa ao conferir notas reais de mais estados.
+   */
+  registrarUnidadeRecusada(uf: string | undefined, unidadeChave: string): void;
 }
 
 /**
@@ -43,6 +51,12 @@ export interface SnapshotTelemetria {
   totais: Partial<Record<EventoParsing, number>>;
   /** Contadores por UF: `{ RJ: { processado: 10, falha_permanente: 1 } }`. */
   porUf: Record<string, Partial<Record<EventoParsing, number>>>;
+  /**
+   * Unidades cruas rejeitadas por UF, da mais para a menos frequente —
+   * `{ RJ: { CX: 12, PCT: 3 } }`. É a lista de abreviações que faltam no mapa
+   * (C3.4); vazio quando nenhuma UF teve item derrubado por unidade desconhecida.
+   */
+  unidadesRecusadas: Record<string, Record<string, number>>;
   /** Ausente no coletor puramente em memória (não há o que persistir). */
   saude?: SaudeTelemetria;
 }
@@ -52,4 +66,7 @@ export interface FonteMetricas {
 }
 
 /** Telemetria no-op — padrão para testes e fluxos que não observam. */
-export const telemetriaNula: Telemetria = { registrarParsing: () => {} };
+export const telemetriaNula: Telemetria = {
+  registrarParsing: () => {},
+  registrarUnidadeRecusada: () => {},
+};

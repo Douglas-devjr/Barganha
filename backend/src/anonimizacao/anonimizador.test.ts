@@ -1,6 +1,7 @@
 import type { NotaEstruturada } from '@barganha/shared';
 import { describe, expect, it, vi } from 'vitest';
 
+import type { Telemetria } from '../observabilidade/telemetria';
 import { Anonimizador, type ContextoPrivado } from './anonimizador';
 import type { CatalogoProdutos } from './casamento';
 
@@ -174,6 +175,28 @@ describe('Anonimizador (C2.4)', () => {
     expect(r.observacoes).toEqual([
       expect.objectContaining({ precoNormalizado: 3, unidadeBase: 'un' }),
     ]);
+  });
+
+  it('C3.4 — conta unidade DESCONHECIDA na telemetria (abreviação que falta no mapa)', async () => {
+    const telemetria: Telemetria = {
+      registrarParsing: vi.fn(),
+      registrarUnidadeRecusada: vi.fn(),
+    };
+    await new Anonimizador(catalogoFake(), telemetria).anonimizar(
+      notaDeUmItem('XPTO'),
+      CONTEXTO,
+      'RJ',
+    );
+    expect(telemetria.registrarUnidadeRecusada).toHaveBeenCalledWith('RJ', 'XPTO');
+  });
+
+  it('C3.4 — NÃO conta embalagem múltipla conhecida (CX) sem contagem: gap já esperado', async () => {
+    const telemetria: Telemetria = {
+      registrarParsing: vi.fn(),
+      registrarUnidadeRecusada: vi.fn(),
+    };
+    await new Anonimizador(catalogoFake(), telemetria).anonimizar(notaDeUmItem('CX'), CONTEXTO, 'RJ');
+    expect(telemetria.registrarUnidadeRecusada).not.toHaveBeenCalled();
   });
 });
 
