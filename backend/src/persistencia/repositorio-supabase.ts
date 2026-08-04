@@ -39,6 +39,8 @@ import type {
 import type {
   AlvoEnriquecimento,
   EnriquecimentoProduto,
+  PaginaProdutosBusca,
+  ProdutoResumoBusca,
   RepositorioCuradoria,
 } from '../curadoria/tipos';
 import { LancamentoInvalidoError } from '../erros';
@@ -181,6 +183,17 @@ function paraResumoProduto(p: Record<string, unknown>): ProdutoResumo {
     ...(p.categoria ? { categoria: p.categoria as string } : {}),
     ...(p.imagem_url ? { imagemUrl: p.imagem_url as string } : {}),
     unidadeBase: p.unidade_base as ProdutoResumo['unidadeBase'],
+  };
+}
+
+/** Uma linha de `produto_canonico` no resultado de BUSCA da curadoria (C11.5). */
+function paraResumoBusca(p: Record<string, unknown>): ProdutoResumoBusca {
+  return {
+    produtoCanonicoId: p.id as string,
+    ...(p.ean ? { ean: p.ean as string } : {}),
+    ...(p.nome_exibicao ? { nomeExibicao: p.nome_exibicao as string } : {}),
+    ...(p.marca ? { marca: p.marca as string } : {}),
+    ...(p.categoria ? { categoria: p.categoria as string } : {}),
   };
 }
 
@@ -1073,6 +1086,36 @@ export class RepositorioSupabase
     const r = await consulta.select('id').maybeSingle();
     if (r.error) falhar('enriquecimento de produto', r.error);
     return r.data?.id;
+  }
+
+  /**
+   * Busca por nome (`nome_exibicao`/`descricao_normalizada`, `ilike`) OU EAN
+   * (prefixo) — para o curador achar o alvo sem decorar o `produtoCanonicoId`.
+   * `count: 'exact'` para a UI calcular o total de páginas; `range()` pagina.
+   *
+   * O termo entra dentro de um `.or()` — aspas e vírgulas são removidas porque
+   * são caracteres de sintaxe da mini-linguagem de filtro do PostgREST (mesmo
+   * cuidado do `deltaEstatisticas`/`listarHistoricoDoUsuario` acima); um termo
+   * com esses caracteres perde só o caractere, nunca quebra a consulta.
+   */
+  async buscarProdutos(
+    termo: string,
+    pagina: number,
+    tamanhoPagina: number,
+  ): Promise<PaginaProdutosBusca> {
+    const seguro = termo.replace(/["(),]/g, ' ').trim();
+    const de = (pagina - 1) * tamanhoPagina;
+    const ate = de + tamanhoPagina - 1;
+    const r = await this.db
+      .from('produto_canonico')
+      .select('id, ean, nome_exibicao, marca, categoria', { count: 'exact' })
+      .or(
+        `nome_exibicao.ilike.%${seguro}%,descricao_normalizada.ilike.%${seguro}%,ean.ilike.${seguro}%`,
+      )
+      .order('id', { ascending: true })
+      .range(de, ate);
+    if (r.error) falhar('busca de produtos por nome/EAN (curadoria)', r.error);
+    return { itens: (r.data ?? []).map((p) => paraResumoBusca(p)), total: r.count ?? 0 };
   }
 
   // ───────────────────────── RepositorioDenuncia (C12.5) ──────────────

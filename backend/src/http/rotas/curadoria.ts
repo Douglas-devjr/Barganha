@@ -22,6 +22,7 @@ import type { FastifyInstance } from 'fastify';
 
 import { type ContextoRotas, exigeCuradoria } from '../contexto';
 import {
+  SCHEMA_BUSCA_CURADORIA,
   SCHEMA_CASAMENTO,
   SCHEMA_CONFIRMACAO_CASAMENTO,
   SCHEMA_DECISAO,
@@ -136,6 +137,24 @@ export function registrarRotasCuradoria(app: FastifyInstance, ctx: ContextoRotas
         if (!autorizado(req, reply)) return reply;
         const resposta = await servicoCuradoria.enriquecer(req.body);
         if (!resposta) return reply.code(404).send({ erro: 'Produto não encontrado.' });
+        return reply.send(resposta);
+      },
+    );
+
+    // Busca de produtos por nome/EAN, paginada (C11.5) — a lacuna do painel
+    // antes da edição: sem isto, o curador precisava já saber o
+    // `produtoCanonicoId` de cor para corrigir metadado.
+    app.get<{ Querystring: { q: string; pagina?: string; tamanho?: string } }>(
+      '/curadoria/produtos',
+      { schema: SCHEMA_BUSCA_CURADORIA, ...opcoes },
+      async (req, reply) => {
+        if (!autorizado(req, reply)) return reply;
+        const { q, pagina, tamanho } = req.query;
+        const resposta = await servicoCuradoria.buscar(
+          q,
+          pagina !== undefined ? Number(pagina) : undefined,
+          tamanho !== undefined ? Number(tamanho) : undefined,
+        );
         return reply.send(resposta);
       },
     );

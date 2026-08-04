@@ -312,6 +312,33 @@ export interface EnriquecimentoProdutoResponse {
   produtoCanonicoId: string;
 }
 
+// ──────────────── Busca de produtos — curadoria (C11.5) ──────────────────
+
+/**
+ * Um produto no resultado da busca de curadoria — identificação mínima para o
+ * curador escolher o alvo certo antes de abrir o formulário de enriquecimento.
+ * Deliberadamente sem preço/estatística (esta busca é só metadado, docs/04).
+ */
+export interface ProdutoBuscaCuradoria {
+  produtoCanonicoId: string;
+  ean?: string;
+  nomeExibicao?: string;
+  marca?: string;
+  categoria?: string;
+}
+
+/**
+ * Página de resultados da busca de curadoria por nome ou EAN. `pagina` é
+ * 1-based; `tamanhoPagina` é o efetivamente aplicado (já corrigido/limitado
+ * pelo servidor quando o pedido vier fora da faixa).
+ */
+export interface BuscaProdutosCuradoriaResponse {
+  itens: ProdutoBuscaCuradoria[];
+  total: number;
+  pagina: number;
+  tamanhoPagina: number;
+}
+
 // ──────────────── Casamento por texto — sugestões (C3.5, curadoria) ──────────
 
 /**

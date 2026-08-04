@@ -221,6 +221,22 @@ export const SCHEMA_ENRIQUECIMENTO = {
   },
 } as const;
 
+// Busca de produtos por nome/EAN, paginada (C11.5) — GET com querystring; a
+// validação FINA de pagina/tamanho (defaults, teto) fica no serviço, que
+// recebe a string já convertida pela rota.
+export const SCHEMA_BUSCA_CURADORIA = {
+  querystring: {
+    type: 'object',
+    required: ['q'],
+    additionalProperties: false,
+    properties: {
+      q: { type: 'string', minLength: 1 },
+      pagina: { type: 'string', pattern: '^[0-9]+$' },
+      tamanho: { type: 'string', pattern: '^[0-9]+$' },
+    },
+  },
+} as const;
+
 // Sugestões de casamento por texto (C3.5) — curadoria.
 export const SCHEMA_CASAMENTO = {
   body: {

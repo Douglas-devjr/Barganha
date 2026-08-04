@@ -35,6 +35,8 @@ import type {
 import type {
   AlvoEnriquecimento,
   EnriquecimentoProduto,
+  PaginaProdutosBusca,
+  ProdutoResumoBusca,
   RepositorioCuradoria,
 } from '../curadoria/tipos';
 import {
@@ -127,6 +129,17 @@ function resumoDe(p: ProdutoCanonicoInterno): ProdutoResumo {
     ...(p.categoria ? { categoria: p.categoria } : {}),
     ...(p.imagemUrl ? { imagemUrl: p.imagemUrl } : {}),
     unidadeBase: p.unidadeBase,
+  };
+}
+
+/** Resultado de BUSCA de curadoria (C11.5) — sem `imagemUrl`/`unidadeBase`, ver `ProdutoResumoBusca`. */
+function resumoBuscaDe(p: ProdutoCanonicoInterno): ProdutoResumoBusca {
+  return {
+    produtoCanonicoId: p.id,
+    ...(p.ean ? { ean: p.ean } : {}),
+    ...(p.nomeExibicao ? { nomeExibicao: p.nomeExibicao } : {}),
+    ...(p.marca ? { marca: p.marca } : {}),
+    ...(p.categoria ? { categoria: p.categoria } : {}),
   };
 }
 
@@ -775,6 +788,35 @@ export class RepositorioMemoria
     if (dados.categoria != null) alvo.categoria = dados.categoria;
     if (dados.imagemUrl != null) alvo.imagemUrl = dados.imagemUrl;
     return Promise.resolve(alvo.id);
+  }
+
+  /**
+   * Busca por nome (`nomeExibicao`/`descricaoNormalizada`, substring
+   * case-insensitive) OU EAN (prefixo) — espelha o `ilike`/`eq` do adaptador
+   * Supabase. Ordenado por nome (fallback: descrição) e desempatado por id,
+   * para a paginação ser estável entre chamadas.
+   */
+  buscarProdutos(
+    termo: string,
+    pagina: number,
+    tamanhoPagina: number,
+  ): Promise<PaginaProdutosBusca> {
+    const termoLower = termo.toLowerCase();
+    const casados = [...this.todosProdutos()].filter((p) => {
+      const nomeCasa = p.nomeExibicao?.toLowerCase().includes(termoLower) ?? false;
+      const descricaoCasa = p.descricaoNormalizada.toLowerCase().includes(termoLower);
+      const eanCasa = p.ean != null && p.ean.startsWith(termo);
+      return nomeCasa || descricaoCasa || eanCasa;
+    });
+    const ordenados = casados.sort((a, b) => {
+      const nomeA = a.nomeExibicao ?? a.descricaoNormalizada;
+      const nomeB = b.nomeExibicao ?? b.descricaoNormalizada;
+      return nomeA.localeCompare(nomeB) || a.id.localeCompare(b.id);
+    });
+    const total = ordenados.length;
+    const inicio = (pagina - 1) * tamanhoPagina;
+    const itens = ordenados.slice(inicio, inicio + tamanhoPagina).map((p) => resumoBuscaDe(p));
+    return Promise.resolve({ itens, total });
   }
 
   private acharProdutoPorId(id: string): ProdutoCanonicoInterno | undefined {

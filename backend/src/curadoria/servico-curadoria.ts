@@ -9,7 +9,18 @@
 import type { EnriquecimentoProdutoRequest, EnriquecimentoProdutoResponse } from '@barganha/shared';
 
 import { LancamentoInvalidoError } from '../erros';
-import type { RepositorioCuradoria } from './tipos';
+import type { PaginaProdutosBusca, RepositorioCuradoria } from './tipos';
+
+/** Tamanho de página quando o curador não pede um número. */
+export const TAMANHO_PAGINA_BUSCA_PADRAO = 20;
+/** Teto de servidor — pedido maior é cortado, não recusado (espelha C4.4). */
+export const TAMANHO_PAGINA_BUSCA_MAX = 100;
+
+/** Resposta paginada da busca de curadoria, já com a página efetivamente aplicada. */
+export interface ResultadoBuscaCuradoria extends PaginaProdutosBusca {
+  pagina: number;
+  tamanhoPagina: number;
+}
 
 export class ServicoCuradoria {
   constructor(private readonly repo: RepositorioCuradoria) {}
@@ -43,5 +54,32 @@ export class ServicoCuradoria {
     });
     if (!produtoCanonicoId) return undefined;
     return { produtoCanonicoId };
+  }
+
+  /**
+   * Busca produtos por nome ou EAN, paginada (C11.5) — a lacuna do painel de
+   * curadoria antes da edição: sem isto, o curador precisava já saber o
+   * `produtoCanonicoId` de cor para corrigir metadado.
+   *
+   * `pagina` é 1-based e nunca cai abaixo de 1; `tamanhoPagina` tem um padrão
+   * sensato e um teto de servidor — pedido fora da faixa é CORRIGIDO, não
+   * rejeitado (o curador não precisa acertar o número exato).
+   */
+  async buscar(
+    termo: string,
+    pagina?: number,
+    tamanhoPagina?: number,
+  ): Promise<ResultadoBuscaCuradoria> {
+    const termoLimpo = termo?.trim();
+    if (!termoLimpo) {
+      throw new LancamentoInvalidoError('Informe um termo de busca (nome ou EAN).');
+    }
+    const paginaValida = Math.max(Math.trunc(pagina ?? 1), 1);
+    const tamanhoValido = Math.min(
+      Math.max(Math.trunc(tamanhoPagina ?? TAMANHO_PAGINA_BUSCA_PADRAO), 1),
+      TAMANHO_PAGINA_BUSCA_MAX,
+    );
+    const { itens, total } = await this.repo.buscarProdutos(termoLimpo, paginaValida, tamanhoValido);
+    return { itens, total, pagina: paginaValida, tamanhoPagina: tamanhoValido };
   }
 }

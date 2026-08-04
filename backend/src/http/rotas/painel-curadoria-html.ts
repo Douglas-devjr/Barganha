@@ -57,6 +57,7 @@ export const PAINEL_CURADORIA_HTML = `<!DOCTYPE html>
   .badge { display: inline-block; background: #eee; border-radius: 4px; padding: 0.1rem 0.4rem; font-size: 0.75rem; margin-left: 0.4rem; }
   .token-status { font-size: 0.8rem; color: #555; margin-top: 0.3rem; }
   .token-status.ok { color: #1a5c3a; }
+  .pagina-info { font-size: 0.85rem; color: #555; }
   fieldset { border: none; padding: 0; margin: 0; }
 </style>
 </head>
@@ -79,6 +80,20 @@ export const PAINEL_CURADORIA_HTML = `<!DOCTYPE html>
 <section>
   <h2>Corrigir metadado de produto</h2>
   <p class="sub">Nome de exibição, marca, categoria e imagem — nunca preço nem casamento por descrição/EAN.</p>
+
+  <label for="buscaTermo">Buscar produto (nome ou EAN)</label>
+  <div class="linha-botoes">
+    <input id="buscaTermo" placeholder="ex.: arroz ou 7891234567890" style="flex: 1;" />
+    <button class="secundario pequeno" id="btnBuscarProduto">Buscar</button>
+  </div>
+  <div id="msgBusca"></div>
+  <div id="listaBusca" style="margin-top: 0.5rem;"></div>
+  <div class="linha-botoes" id="paginacaoBusca" style="display: none; align-items: center; margin-top: 0.5rem;">
+    <button class="secundario pequeno" id="btnBuscaAnterior">Anterior</button>
+    <span id="infoPaginaBusca" class="pagina-info"></span>
+    <button class="secundario pequeno" id="btnBuscaProxima">Próxima</button>
+  </div>
+
   <fieldset>
     <label for="prodId">produtoCanonicoId (ou preencha o EAN abaixo)</label>
     <input id="prodId" placeholder="uuid do produto" />
@@ -217,6 +232,103 @@ export const PAINEL_CURADORIA_HTML = `<!DOCTYPE html>
   function textoOuTraco(v) {
     return v === undefined || v === null || v === '' ? '—' : v;
   }
+
+  // ── Busca de produtos (curadoria) ─────────────────────────────────────
+  // Encontra o produto a corrigir sem exigir que o curador já saiba o
+  // produtoCanonicoId de cor: clicar em "Editar" preenche o formulário abaixo.
+  const buscaEstado = { termo: '', pagina: 1, tamanhoPagina: 20, total: 0 };
+
+  function preencherFormularioEdicao(produto) {
+    document.getElementById('prodId').value = produto.produtoCanonicoId || '';
+    document.getElementById('prodEan').value = produto.ean || '';
+    document.getElementById('prodNome').value = produto.nomeExibicao || '';
+    document.getElementById('prodMarca').value = produto.marca || '';
+    document.getElementById('prodCategoria').value = produto.categoria || '';
+    limparMsg('msgEnriquecer');
+  }
+
+  async function carregarPaginaBusca() {
+    limparMsg('msgBusca');
+    const lista = document.getElementById('listaBusca');
+    lista.innerHTML = '';
+    try {
+      const resp = await chamar(
+        '/curadoria/produtos?q=' + encodeURIComponent(buscaEstado.termo) + '&pagina=' + buscaEstado.pagina,
+        { method: 'GET' }
+      );
+      buscaEstado.total = resp.total;
+      buscaEstado.pagina = resp.pagina;
+      buscaEstado.tamanhoPagina = resp.tamanhoPagina;
+
+      if (!resp.itens || resp.itens.length === 0) {
+        mostrarMsg('msgBusca', 'Nenhum produto encontrado para esse termo.', 'ok');
+      } else {
+        resp.itens.forEach(function (p) {
+          const div = document.createElement('div');
+          div.className = 'sugestao';
+          const info = document.createElement('span');
+          info.textContent = textoOuTraco(p.nomeExibicao) + ' ';
+          if (p.ean) {
+            const badgeEan = document.createElement('span');
+            badgeEan.className = 'badge';
+            badgeEan.textContent = 'EAN ' + p.ean;
+            info.appendChild(badgeEan);
+          }
+          if (p.marca) {
+            const badgeMarca = document.createElement('span');
+            badgeMarca.className = 'badge';
+            badgeMarca.textContent = p.marca;
+            info.appendChild(badgeMarca);
+          }
+          if (p.categoria) {
+            const badgeCategoria = document.createElement('span');
+            badgeCategoria.className = 'badge';
+            badgeCategoria.textContent = p.categoria;
+            info.appendChild(badgeCategoria);
+          }
+          const btn = document.createElement('button');
+          btn.className = 'pequeno';
+          btn.textContent = 'Editar';
+          btn.addEventListener('click', function () { preencherFormularioEdicao(p); });
+          div.appendChild(info);
+          div.appendChild(btn);
+          lista.appendChild(div);
+        });
+      }
+
+      const totalPaginas = Math.max(Math.ceil(buscaEstado.total / buscaEstado.tamanhoPagina), 1);
+      document.getElementById('infoPaginaBusca').textContent =
+        'Página ' + buscaEstado.pagina + ' de ' + totalPaginas + ' (' + buscaEstado.total + ' produtos)';
+      document.getElementById('paginacaoBusca').style.display = 'flex';
+      document.getElementById('btnBuscaAnterior').disabled = buscaEstado.pagina <= 1;
+      document.getElementById('btnBuscaProxima').disabled = buscaEstado.pagina >= totalPaginas;
+    } catch (e) {
+      document.getElementById('paginacaoBusca').style.display = 'none';
+      mostrarMsg('msgBusca', e.message, 'erro');
+    }
+  }
+
+  document.getElementById('btnBuscarProduto').addEventListener('click', function () {
+    const termo = document.getElementById('buscaTermo').value.trim();
+    if (!termo) {
+      mostrarMsg('msgBusca', 'Informe um termo (nome ou EAN).', 'erro');
+      return;
+    }
+    buscaEstado.termo = termo;
+    buscaEstado.pagina = 1;
+    carregarPaginaBusca();
+  });
+
+  document.getElementById('btnBuscaAnterior').addEventListener('click', function () {
+    if (buscaEstado.pagina <= 1) return;
+    buscaEstado.pagina -= 1;
+    carregarPaginaBusca();
+  });
+
+  document.getElementById('btnBuscaProxima').addEventListener('click', function () {
+    buscaEstado.pagina += 1;
+    carregarPaginaBusca();
+  });
 
   // ── Enriquecimento de produto ─────────────────────────────────────────
   document.getElementById('btnEnriquecer').addEventListener('click', async function () {

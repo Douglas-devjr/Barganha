@@ -188,6 +188,76 @@ describe('Curadoria & moderação (C11) — HTTP', () => {
     });
   });
 
+  describe('Busca de produtos, paginada (C11.5)', () => {
+    it('sem token → 403', async () => {
+      const r = await app.inject({ method: 'GET', url: '/curadoria/produtos?q=leite' });
+      expect(r.statusCode).toBe(403);
+    });
+
+    it('sem `q` → 400', async () => {
+      const r = await app.inject({
+        method: 'GET',
+        url: '/curadoria/produtos',
+        headers: curador(),
+      });
+      expect(r.statusCode).toBe(400);
+    });
+
+    it('acha o produto por nome (nome de exibição já enriquecido acima)', async () => {
+      const r = await app.inject({
+        method: 'GET',
+        url: '/curadoria/produtos?q=Tirol',
+        headers: curador(),
+      });
+      expect(r.statusCode).toBe(200);
+      const body = r.json() as {
+        itens: { produtoCanonicoId: string; ean?: string; nomeExibicao?: string }[];
+        total: number;
+        pagina: number;
+        tamanhoPagina: number;
+      };
+      expect(body.total).toBeGreaterThanOrEqual(1);
+      expect(body.itens.some((i) => i.ean === '7891234567890')).toBe(true);
+      expect(body.pagina).toBe(1);
+      expect(body.tamanhoPagina).toBe(20);
+    });
+
+    it('acha o produto por EAN', async () => {
+      const r = await app.inject({
+        method: 'GET',
+        url: '/curadoria/produtos?q=7891234567890',
+        headers: curador(),
+      });
+      expect(r.statusCode).toBe(200);
+      const { itens } = r.json() as { itens: { ean?: string }[] };
+      expect(itens.some((i) => i.ean === '7891234567890')).toBe(true);
+    });
+
+    it('página sem resultados → itens vazio, total zero', async () => {
+      const r = await app.inject({
+        method: 'GET',
+        url: '/curadoria/produtos?q=produto-inexistente-zzz',
+        headers: curador(),
+      });
+      expect(r.statusCode).toBe(200);
+      const body = r.json() as { itens: unknown[]; total: number };
+      expect(body.itens).toEqual([]);
+      expect(body.total).toBe(0);
+    });
+
+    it('respeita pagina/tamanho da querystring', async () => {
+      const r = await app.inject({
+        method: 'GET',
+        url: '/curadoria/produtos?q=Tirol&pagina=1&tamanho=1',
+        headers: curador(),
+      });
+      expect(r.statusCode).toBe(200);
+      const body = r.json() as { itens: unknown[]; tamanhoPagina: number };
+      expect(body.itens.length).toBeLessThanOrEqual(1);
+      expect(body.tamanhoPagina).toBe(1);
+    });
+  });
+
   describe('Sugestões de casamento por texto (C3.5)', () => {
     it('sem token → 403', async () => {
       const r = await app.inject({

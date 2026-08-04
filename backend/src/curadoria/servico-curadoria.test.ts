@@ -96,3 +96,70 @@ describe('ServicoCuradoria (C11.5)', () => {
     expect(resposta?.produto).toEqual({ produtoCanonicoId, unidadeBase: 'L' });
   });
 });
+
+describe('ServicoCuradoria.buscar (C11.5 — busca paginada)', () => {
+  it('exige um termo não vazio', async () => {
+    const { servico } = await montar();
+    await expect(servico.buscar('')).rejects.toBeInstanceOf(LancamentoInvalidoError);
+    await expect(servico.buscar('   ')).rejects.toBeInstanceOf(LancamentoInvalidoError);
+  });
+
+  it('encontra por nome (nome de exibição), ignorando maiúsculas/minúsculas', async () => {
+    const { repo, servico, produtoCanonicoId } = await montar();
+    await repo.enriquecerProduto({ produtoCanonicoId, nomeExibicao: 'Leite Tirol 1L' });
+
+    const r = await servico.buscar('tirol');
+    expect(r.total).toBe(1);
+    expect(r.itens).toEqual([
+      { produtoCanonicoId, ean: '7891234567890', nomeExibicao: 'Leite Tirol 1L' },
+    ]);
+    expect(r.pagina).toBe(1);
+    expect(r.tamanhoPagina).toBe(20);
+  });
+
+  it('encontra por EAN (prefixo)', async () => {
+    const { servico } = await montar();
+    const r = await servico.buscar('789123');
+    expect(r.total).toBe(1);
+    expect(r.itens[0]?.ean).toBe('7891234567890');
+  });
+
+  it('encontra por descrição normalizada quando não há nome de exibição', async () => {
+    const { servico } = await montar();
+    const r = await servico.buscar('leite integral');
+    expect(r.total).toBe(1);
+  });
+
+  it('termo sem correspondência → página vazia, total zero', async () => {
+    const { servico } = await montar();
+    const r = await servico.buscar('produto-que-nao-existe-xyz');
+    expect(r.itens).toEqual([]);
+    expect(r.total).toBe(0);
+  });
+
+  it('pagina resultados e aplica defaults/teto de tamanho de página', async () => {
+    const repo = new RepositorioMemoria();
+    const servico = new ServicoCuradoria(repo);
+    for (let i = 0; i < 5; i++) {
+      await repo.casarPorEan(`700000000000${i}`, {
+        descricaoNormalizada: `PRODUTO TESTE ${i}`,
+        unidadeBase: 'un',
+      });
+    }
+
+    const pagina1 = await servico.buscar('produto teste', 1, 2);
+    expect(pagina1.itens.length).toBe(2);
+    expect(pagina1.total).toBe(5);
+    expect(pagina1.pagina).toBe(1);
+    expect(pagina1.tamanhoPagina).toBe(2);
+
+    const pagina3 = await servico.buscar('produto teste', 3, 2);
+    expect(pagina3.itens.length).toBe(1);
+    expect(pagina3.total).toBe(5);
+
+    // Página abaixo de 1 é corrigida para 1; tamanho acima do teto é cortado.
+    const corrigida = await servico.buscar('produto teste', 0, 10_000);
+    expect(corrigida.pagina).toBe(1);
+    expect(corrigida.tamanhoPagina).toBe(100);
+  });
+});

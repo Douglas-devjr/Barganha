@@ -31,6 +31,9 @@ function repoFake(alvos: AlvoEnriquecimento[]): {
         gravados.push(dados);
         return Promise.resolve(dados.produtoCanonicoId);
       },
+      // Não exercitado por este teste (é sobre o lote automático, não a busca
+      // manual da curadoria) — stub só para satisfazer a interface.
+      buscarProdutos: () => Promise.resolve({ itens: [], total: 0 }),
     },
   };
 }
