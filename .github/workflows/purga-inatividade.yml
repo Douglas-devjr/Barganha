@@ -1,0 +1,56 @@
+name: Purga de contas inativas
+
+# C9.2 — Avisa por e-mail e, com a carência cumprida, apaga contas sem login
+# há muito tempo (TTL, docs/04). SEGURO POR PADRÃO: roda em modo RELATÓRIO
+# (dry-run, não avisa nem apaga nada) a menos que a variável PURGA_APLICAR
+# esteja como 'true'. Mesmo com PURGA_APLICAR=true, sem RESEND_API_KEY/
+# EMAIL_REMETENTE configurados o canal de e-mail fica DESLIGADO e a purga
+# nunca avança — sem aviso, sem purga (ver backend/src/jobs/purga-inatividade.ts).
+#
+# Segredos necessários (Settings → Secrets):
+#   • SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY — leitura/escrita de auth.users.
+#   • RESEND_API_KEY / EMAIL_REMETENTE — canal de aviso por e-mail (Resend,
+#     free tier, sem cartão). Ausentes = o job só relata, nunca avisa nem apaga.
+# Variável opcional (Settings → Variables):
+#   • PURGA_APLICAR=true — liga a purga de verdade. Ausente = só relatório.
+
+on:
+  schedule:
+    - cron: '30 6 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: purga-inatividade
+  cancel-in-progress: false
+
+jobs:
+  purga-inatividade:
+    name: Avisar e apagar contas inativas
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+      EMAIL_REMETENTE: ${{ secrets.EMAIL_REMETENTE }}
+      PURGA_APLICAR: ${{ vars.PURGA_APLICAR }}
+    steps:
+      - name: Falha cedo se faltar credencial do Supabase
+        if: ${{ env.SUPABASE_URL == '' || env.SUPABASE_SERVICE_ROLE_KEY == '' }}
+        run: |
+          echo "::error::Segredos SUPABASE_URL/SUPABASE_SERVICE_ROLE_KEY ausentes — configure em Settings → Secrets."
+          exit 1
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configura Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Instala dependências
+        run: npm ci
+
+      - name: Roda a purga de contas inativas
+        run: npm run job:purga-inativos --workspace @barganha/backend

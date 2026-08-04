@@ -45,6 +45,18 @@ export interface ConfigBackend {
    * O Render injeta `RENDER_GIT_COMMIT` sozinho; fora dele, `desenvolvimento`.
    */
   versao: string;
+  /**
+   * Chave de API da Resend (docs/04 — canal de e-mail transacional, C9.2).
+   * Ausente por padrão: o canal fica DESLIGADO e `job:purga-inativos` nunca
+   * avança (sem aviso, sem purga). Preencher junto com `emailRemetente` é o
+   * que destrava o aviso de retenção por inatividade em produção.
+   */
+  emailApiKey?: string;
+  /**
+   * Remetente (`from`) verificado na Resend, usado no aviso de retenção por
+   * inatividade. Ausente → `enviarEmail` fail-closed (ver `emailApiKey`).
+   */
+  emailRemetente?: string;
 }
 
 export function lerConfig(env: NodeJS.ProcessEnv = process.env): ConfigBackend {
@@ -73,6 +85,8 @@ export function lerConfig(env: NodeJS.ProcessEnv = process.env): ConfigBackend {
     filaDuravel: env.FILA_DURAVEL !== 'false',
     filaPollMs: parsePollMs(env.FILA_POLL_MS),
     versao: (env.RENDER_GIT_COMMIT ?? env.APP_VERSAO ?? 'desenvolvimento').slice(0, 12),
+    emailApiKey: env.RESEND_API_KEY,
+    emailRemetente: env.EMAIL_REMETENTE,
   };
 }
 

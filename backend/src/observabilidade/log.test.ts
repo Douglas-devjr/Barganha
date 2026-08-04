@@ -61,6 +61,23 @@ describe('máscara do logger (redact do Pino)', () => {
     expect(saida).not.toContain('123.456.789-00');
   });
 
+  it('redige email/destinatario/corpoTexto/apiKey (rede de segurança do canal de e-mail, docs/04)', () => {
+    const saida = linhaDeLog({
+      conta: {
+        email: 'pessoa@example.com',
+        destinatario: 'outra-pessoa@example.com',
+        corpoTexto: 'Conteúdo sensível do aviso',
+        apiKey: 'chave-secreta-resend',
+        emailApiKey: 'outra-chave-secreta',
+      },
+    });
+    expect(saida).not.toContain('pessoa@example.com');
+    expect(saida).not.toContain('outra-pessoa@example.com');
+    expect(saida).not.toContain('Conteúdo sensível do aviso');
+    expect(saida).not.toContain('chave-secreta-resend');
+    expect(saida).not.toContain('outra-chave-secreta');
+  });
+
   it('emite o nível como TEXTO — nenhum coletor deveria precisar de tabela', () => {
     expect(linhaDeLog({ action: 'x' })).toContain('"level":"info"');
   });

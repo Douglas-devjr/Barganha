@@ -81,10 +81,61 @@ aqui, num aparelho novo ou após reinstalar — o app **reidrata** o histórico:
   conta existir**. Contas **inativas por 24 meses** (sem login) são elegíveis a
   **purga** (conta de auth + `cupom`/`item_cupom`), com aviso por email antes.
   > Estado: **job implementado** (`npm run job:purga-inativos`, agendado por cron
-  > externo) e **inofensivo por padrão** — sem `PURGA_APLICAR=true` é só relatório.
-  > Falta o **canal de email transacional**: enquanto o aviso não sai de fato, a
-  > purga fica travada por construção (sem aviso, sem purga). Ligar de verdade
-  > antes do beta aberto (docs/16). O número (24 meses) já vale para a política.
+  > externo, `.github/workflows/purga-inatividade.yml`) e **inofensivo por
+  > padrão** — sem `PURGA_APLICAR=true` é só relatório. O **canal de email
+  > transacional** (Resend) já está plugado no código, em **dois avisos**: um
+  > na janela de antecedência e um segundo mais perto da purga prevista (a API
+  > aceitar o envio não é garantia de entrega — a purga só avança com os DOIS
+  > aceitos). Falta **configurar `RESEND_API_KEY`/`EMAIL_REMETENTE`** em
+  > produção (segredos do workflow) — sem eles o canal fica desligado e a
+  > purga continua travada por construção — e **concluir a revisão jurídica**
+  > (ver seção seguinte: mecanismo do art. 33, controlador/DPO) antes de ligar
+  > `PURGA_APLICAR=true` de verdade, ambos antes do beta aberto (docs/16). O
+  > número (24 meses) já vale para a política.
+
+## Operadores e transferência internacional (art. 33 · pendente de revisão jurídica)
+
+O Barganha é o **controlador**; a infraestrutura toda é de terceiros, e **todo**
+serviço abaixo é **operador** — trata dado pessoal por conta e ordem do
+controlador. Nenhum deles está no Brasil: hoje o produto faz **transferência
+internacional de dados pessoais** em 100% dos casos, e isso **precisa estar
+declarado na política** (`docs/politica-de-privacidade.md` §8 e a versão
+publicada em
+`https://douglas-devjr.github.io/barganha-legal/politica-de-privacidade.html`).
+
+> Escopo: esta tabela cobre **dado pessoal**. O pool compartilhado
+> (`observacao_preco`, `preco_estatistica`) é anônimo de nascença — ele viaja
+> pelos mesmos serviços, mas não é dado pessoal e não conta como transferência
+> internacional de dado pessoal.
+
+| Operador | Dado pessoal que recebe | Finalidade | País |
+|---|---|---|---|
+| **Supabase** (Auth + Postgres) | email, hash de senha, identidade Google (`auth.users`); histórico privado (`cupom`/`item_cupom`, `chave_acesso`, `qr_payload`); token de push | operar a conta e o banco (fonte durável do lado privado) | **`[a confirmar]`** — a região do projeto não está declarada no repositório (`supabase/config.toml` só traz `project_id`); conferir no dashboard. Tratar como **fora do Brasil** até a confirmação |
+| **Render** (hospedagem do backend) | tudo que trafega pela API: JWT/email nas rotas de conta, QR cru da NFC-e, histórico privado, token de push | executar a API de ingestão e consulta | **EUA** — região `virginia`, fixada em `render.yaml` (o free não oferece América do Sul) |
+| **Resend** (email transacional) | email do titular + corpo do aviso | enviar o aviso de **retenção por inatividade** (24 meses) antes da purga — `backend/src/observabilidade/email-transacional.ts` | **EUA** |
+| **Expo** (Expo Push Service) | token de push (`ExponentPushToken`) + texto da notificação | entregar o alerta de preço com o app fechado (`expo-server-sdk`, job `alerta-preco`) | **EUA** |
+| **GitHub** (Actions — crons) | email do titular e token de push **em trânsito/memória** durante `job:purga-inativos` e `job:alerta-preco`, que rodam no runner e falam direto com o Supabase | executar os jobs agendados | **EUA** |
+| **Google** (Sign-In / OAuth) | email e identificador OAuth, quando o usuário **escolhe** entrar com o Google | autenticação federada opcional | **EUA** |
+
+**O que ainda falta (não é decisão de engenharia).** Declarar o operador é
+condição necessária, não suficiente: o art. 33 exige um **mecanismo** que
+legitime a transferência. A expectativa é **cláusulas-padrão contratuais**
+(art. 33, II, "d"), apoiadas nos DPAs que esses provedores oferecem — mas isso
+é **`[a confirmar]` na revisão jurídica** já prevista, não fato assentado:
+depende de aderir formalmente ao DPA de cada provedor e de verificar a
+adequação ao regulamento de transferência internacional da **ANPD**. Enquanto
+não fechar, a política nomeia os operadores e o país (transparência, art. 9º,
+V), e o registro do mecanismo fica em aberto junto com os campos
+`[a preencher]` de controlador e encarregado.
+
+**Canal de contato do titular.** O aviso de purga por inatividade responde para
+o próprio `EMAIL_REMETENTE` (caixa monitorada), e **não** para um endereço de
+DPO inventado — o contato do encarregado só passa a existir quando o campo
+`[e-mail — a preencher]` da política for preenchido na revisão jurídica.
+
+**Regra derivada.** Nenhum dado pessoal pode sair para um serviço novo sem
+(1) entrar nesta tabela, (2) entrar na §8 da política publicada e (3) ter a base
+do art. 33 registrada. Serviço novo sem os três = **gate bloqueado**.
 
 ## Dado em repouso (o que está cifrado, o que não está e por quê)
 
@@ -135,5 +186,6 @@ de gestão de chave junto: ver docs/19 §8.
 - [ ] Apagamento de item individual **propaga ao servidor** (não ressuscita no login/restore).
 - [ ] Nenhum caminho de leitura privada (ex.: restore) loga `qrPayload`/`chave_acesso`/EAN/descrição.
 - [ ] Nenhuma estatística de escopo `loja` sai (API, sync ou UI) abaixo do piso de exposição.
+- [ ] Nenhum dado pessoal sai para **terceiro** sem que ele esteja declarado como **operador** na política publicada (§8) e na tabela de operadores acima, com país e base do **art. 33** registrados — inclui provedor novo, SDK novo e job que só faz o dado *passar* por um runner de terceiro.
 
 > Toda PR que toca dados deve passar por este checklist e pela revisão do agente **privacy-lgpd-specialist**.

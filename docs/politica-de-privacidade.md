@@ -1,6 +1,6 @@
 # Política de Privacidade — Barganha
 
-**Última atualização:** 01/08/2026 · **Versão:** 1.3
+**Última atualização:** 02/08/2026 · **Versão:** 1.4
 
 O **Barganha** ajuda você a saber, na gôndola, se um preço está bom — comparando preços de mercado por unidade (R$/kg, R$/L, R$/un) a partir de uma base **colaborativa e anônima**. Privacidade não é promessa: é como o app foi **construído**. Esta política explica, em linguagem direta, o que coletamos, o que **nunca** coletamos e quais são os seus direitos.
 
@@ -53,8 +53,21 @@ A região de um preço vem do **endereço da loja** (derivado do CNPJ do estabel
   - **Dado de login (email/senha ou Google):** execução do contrato (prover e proteger sua conta).
   - **Compartilhamento dos preços anônimos:** seu **consentimento**, coletado de forma clara no primeiro uso (onboarding).
 
-## 8. Compartilhamento
-Não vendemos seus dados. A base de preços é **coletiva e anônima** por construção — preços agregados de uma região podem ser exibidos a outros usuários, mas **nunca** de forma que identifique quem registrou. Provedores de infraestrutura (ex.: hospedagem/banco de dados) processam dados apenas para operar o serviço, sob contrato.
+## 8. Compartilhamento e transferência internacional
+**Não vendemos seus dados** e não os cedemos para publicidade. A base de preços é **coletiva e anônima** por construção — preços agregados de uma região podem ser exibidos a outros usuários, mas **nunca** de forma que identifique quem registrou.
+
+Para o serviço funcionar, contamos com **prestadores de infraestrutura** que atuam como **operadores**: tratam dados **apenas** por nossa ordem, para a finalidade descrita, sob contrato, sem uso próprio:
+
+| Prestador | O que ele recebe | Para quê |
+|---|---|---|
+| **Supabase** | seu email e a senha criptografada; seu histórico privado de notas | guardar sua conta e seu histórico |
+| **Render** | tudo que passa pelo aplicativo: sua sessão, o QR da nota que você escaneia, seu histórico | rodar os servidores do Barganha |
+| **Resend** | seu email e o texto da mensagem | enviar o aviso de inatividade antes da exclusão (seção 9) |
+| **Expo** | o código de notificação do seu aparelho e o texto do aviso | entregar o alerta de preço com o app fechado |
+| **GitHub** | seu email e o código de notificação, apenas de passagem, enquanto as rotinas automáticas rodam | executar as rotinas agendadas (alerta de preço, aviso de inatividade) |
+| **Google** | seu email e o identificador da sua conta Google | só se **você escolher** entrar com o Google |
+
+**Transferência internacional.** Esses prestadores mantêm servidores **fora do Brasil**, principalmente nos **Estados Unidos**. Isso significa que seus dados pessoais são **transferidos e tratados no exterior**, nos termos do **art. 33 da LGPD**. A garantia usada para essa transferência é **[mecanismo do art. 33 — a preencher]**, e ela não reduz nenhum dos direitos descritos nesta política: eles continuam valendo integralmente. Você pode pedir informação sobre esses compartilhamentos a qualquer momento (seção 10).
 
 ## 9. Retenção e apagamento
 - Seu **email de login** e seu **histórico privado** ficam enquanto sua conta existir.
@@ -78,4 +91,4 @@ Podemos atualizar este texto. Mudanças relevantes serão comunicadas no app, co
 
 ---
 
-> Nota interna (não publicar): este texto deriva de `docs/04-privacidade-lgpd.md` e reflete a arquitetura do produto. **Antes da publicação na loja, passar por revisão jurídica** e preencher os campos `[a preencher]` (controlador e contato do encarregado).
+> Nota interna (não publicar): este texto deriva de `docs/04-privacidade-lgpd.md` e reflete a arquitetura do produto. **Antes da publicação na loja, passar por revisão jurídica** e preencher os campos `[a preencher]`: controlador, contato do encarregado e o **mecanismo do art. 33** para a transferência internacional da seção 8 (expectativa: cláusulas-padrão contratuais / DPA dos provedores — validar, inclusive quanto ao regulamento da ANPD). A tabela de operadores da seção 8 espelha `docs/04 → "Operadores e transferência internacional"`; a **região do Supabase** ainda está `[a confirmar]` no dashboard. Prestador novo = atualizar as duas fontes juntas.

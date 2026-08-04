@@ -58,6 +58,15 @@ export const CAMPOS_REDIGIDOS = [
   '*.chaveAcesso',
   '*.qrPayload',
   '*.html',
+  // Rede de segurança do canal de e-mail transacional (docs/04, C9.2): mesmo
+  // que um `log.warn({ conta })` futuro passe o objeto inteiro por engano, o
+  // Pino redige estes campos antes de sair. O caminho normal (email-
+  // transacional.ts) já não loga nenhum deles — isto é defesa em profundidade.
+  '*.email',
+  '*.destinatario',
+  '*.corpoTexto',
+  '*.apiKey',
+  '*.emailApiKey',
 ];
 
 const ehTeste = process.env.NODE_ENV === 'test';
