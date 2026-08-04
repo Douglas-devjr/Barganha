@@ -2623,7 +2623,7 @@ export const etapas = [
     status: 'parcial',
     oque: 'Promoção segregada, dois ângulos lado a lado, zona morta e frescor.',
     falta:
-      'O frescor está em desenvolvimento (não commitado) e a zona morta precisa de calibração por categoria.',
+      'O frescor já está pronto (C12.1). Falta calibrar a zona morta por categoria — a ferramenta de medição de meia-vida/cerco de promoção/mínimo de observações por nível já existe (`job:calibracao`), mas ela mede esses três parâmetros do motor de agregação, não a zona morta do veredito.',
   },
 
   {
@@ -2816,7 +2816,7 @@ export const etapas = [
     status: 'parcial',
     oque: 'O snapshot do típico já é gravado em cada item comprado.',
     falta:
-      'A UI inteira. Gatilho: cobertura medida acima de ~60% dos itens de um cupom típico — não uma data.',
+      'A UI inteira. Gatilho: cobertura medida acima de ~60% dos itens de um cupom típico — não uma data. A medição já dá para rodar (`job:cobertura-tipico`); falta o volume do beta para o gatilho ser atingido.',
   },
 
   {
