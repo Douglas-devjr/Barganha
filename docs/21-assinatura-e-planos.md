@@ -187,6 +187,7 @@ Construído o **gancho**, sem cobrança nenhuma — o passo 1 da sequência acim
 | Cadeado com prévia do valor | `app/src/componentes/BloqueioPlus.tsx` + `app/src/plano/FolhaPlus.tsx` |
 | Cortes aplicados | Minhas compras (3 meses), gráfico do produto (30 dias), alertas (3), ranking de mercados (3) |
 | Interruptor de teste | Perfil → Configurações da conta → "Simular Barganha+" |
+| Backend da assinatura (C13.2) | tabela `assinatura` (privada, RLS só de SELECT do dono) + `GET /conta/estado` — `backend/src/servicos/servico-assinatura.ts`, `supabase/migrations/20260802090000_assinatura.sql` |
 
 O teste `direitos.test.ts` cruza `NUNCA_COBRAVEL` com `RECURSOS`: mover
 "escanear cupom" ou "veredito" para o lado pago **reprova o build**. As duas
@@ -218,19 +219,27 @@ perguntando ao lugar certo, mas **não confunda declaração com corte aplicado*
 
 - **Cobrança** — nada é cobrado, não há preço em lugar nenhum do app.
 - **Google Play Billing** (C13.3) — sem compra, sem webhook, sem estado do Google.
-- **Plano vindo do servidor** (C13.2) — não há tabela `assinatura`, nem RLS, nem
-  plano na resposta da conta. O plano é local e some no logout.
-- **Plus por contribuição** (C13.4) — ninguém conta cupons do mês.
-- **Folga de 7 dias sem rede** — só faz sentido quando houver o que revalidar (C13.2).
+- **Plus por contribuição** (C13.4) — ninguém conta cupons do mês, e por isso
+  a tabela `assinatura` (C13.2) ainda não tem nenhum escritor: existe, tem RLS,
+  responde `GET /conta/estado`, mas toda conta lê `gratis` porque nada grava
+  linha nela ainda.
+- **O app consumindo o plano do servidor** — `GET /conta/estado` (C13.2)
+  existe no backend, mas nenhuma tela do app chama esse endpoint; o plano
+  local continua sendo só o interruptor de teste, e some no logout.
+- **Folga de 7 dias sem rede** — só faz sentido quando o app passar a
+  revalidar contra `GET /conta/estado`; sem consumidor, não há o que cachear.
 - **Testes do lado do app** — a regra em `shared/` é testada; os gates das telas
   e o `usePlano()` não têm teste. O risco real é uma tela passar a ler o plano
   errado sem nada acusar.
 
-### O pré-requisito que continua de pé
+### O pré-requisito que já foi resolvido
 
-**C4.3.1.** Enquanto o Bearer for o próprio `usuarioId`, nada disto pode virar
-cobrança de verdade. O interruptor de teste não muda isso — ele existe
-justamente porque não há nada a proteger ainda.
+**C4.3.1** (autenticação real via JWT do Supabase, em vez do Bearer opaco =
+`usuarioId`) está pronto — é o que destravou C13.2. A tabela `assinatura` tem
+RLS que só permite ao dono LER a própria linha (nenhuma política de escrita,
+nem para o dono): só a service role do backend pode conceder `plus`, o que
+significa que quando C13.3/C13.4 chegarem, a escrita passa exclusivamente
+pelo backend autenticado — nunca por um cliente falando direto com o Postgres.
 
 ## Armadilhas a evitar
 

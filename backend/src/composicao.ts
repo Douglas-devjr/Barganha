@@ -45,6 +45,7 @@ import { ReprocessadorRetroativo } from './processamento/reprocessamento';
 import { ControleRollout } from './rollout/controle-rollout';
 import { ClienteSefazHttp } from './sefaz/cliente-sefaz-http';
 import { ServicoAlertas } from './servicos/servico-alertas';
+import { ServicoAssinatura } from './servicos/servico-assinatura';
 import { ServicoSync } from './sync/servico-sync';
 import { ServicoSyncCatalogo } from './sync/servico-sync-catalogo';
 
@@ -90,6 +91,8 @@ export interface Backend {
   servicoDenuncia: ServicoDenuncia;
   /** Alerta de preço + dispositivo de push (C8.4) — espelho no servidor do alerta local. */
   servicoAlertas: ServicoAlertas;
+  /** Estado do plano da conta (C13.2) — leitura de `assinatura`, sem escritor ainda. */
+  servicoAssinatura: ServicoAssinatura;
   /** Enriquecimento de produto pela curadoria (C11.5). */
   servicoCuradoria: ServicoCuradoria;
   /** Confirmação de casamento por texto (C3.5) — curadoria. */
@@ -225,6 +228,9 @@ export function montarBackend(config: ConfigBackend): Backend {
   // C8.4 — espelho no servidor do alerta local (PRIVADO); o job de push
   // (`jobs/alerta-preco.ts`) é quem decide disparar, lendo `preco_estatistica`.
   const servicoAlertas = new ServicoAlertas(repo);
+  // C13.2 — estado do plano da conta. Só leitura: nenhum código do backend
+  // escreve em `assinatura` ainda (C13.3 Google Play Billing, C13.4 contribuição).
+  const servicoAssinatura = new ServicoAssinatura(repo);
   const servicoCuradoria = new ServicoCuradoria(repo);
   const servicoConfirmacaoCasamento = new ServicoConfirmacaoCasamento(repo);
   const guardaCuradoria = new GuardaCuradoria(config.curadoriaTokens);
@@ -271,6 +277,7 @@ export function montarBackend(config: ConfigBackend): Backend {
     servicoModeracao,
     servicoDenuncia,
     servicoAlertas,
+    servicoAssinatura,
     servicoCuradoria,
     servicoConfirmacaoCasamento,
     guardaCuradoria,

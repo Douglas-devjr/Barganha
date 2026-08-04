@@ -66,6 +66,7 @@ import type {
   RepositorioDenuncia,
 } from '../moderacao/tipos-denuncia';
 import type { RepositorioAlertas } from '../servicos/tipos-alertas';
+import type { LinhaAssinatura, RepositorioAssinatura } from '../servicos/tipos-assinatura';
 import type { FiltroDeltaSync, FonteDeltaSync, LinhaDelta } from '../sync/tipos';
 import type {
   CupomComItens,
@@ -233,7 +234,8 @@ export class RepositorioSupabase
     RepositorioModeracao,
     RepositorioDenuncia,
     RepositorioCuradoria,
-    RepositorioAlertas
+    RepositorioAlertas,
+    RepositorioAssinatura
 {
   constructor(private readonly db: SupabaseClient) {}
 
@@ -1214,5 +1216,23 @@ export class RepositorioSupabase
     const alvo = this.db.from('dispositivo_push').delete().eq('token', token);
     const r = await (usuarioId ? alvo.eq('usuario_id', usuarioId) : alvo);
     if (r.error) falhar('remoção de dispositivo de push', r.error);
+  }
+
+  // ───────────────────────── RepositorioAssinatura (C13.2) ────────────
+
+  async obterAssinatura(usuarioId: string): Promise<LinhaAssinatura | undefined> {
+    // Sem `origem` no select de propósito (minimização): o serviço não usa e o
+    // DTO não expõe — ver o comentário em tipos-assinatura.ts.
+    const r = await this.db
+      .from('assinatura')
+      .select('plano, valido_ate')
+      .eq('usuario_id', usuarioId)
+      .maybeSingle();
+    if (r.error) falhar('leitura de assinatura', r.error);
+    if (!r.data) return undefined;
+    return {
+      plano: r.data.plano as LinhaAssinatura['plano'],
+      validoAte: (r.data.valido_ate as string | null) ?? null,
+    };
   }
 }

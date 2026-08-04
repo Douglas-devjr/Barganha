@@ -60,6 +60,7 @@ import type {
   RepositorioDenuncia,
 } from '../moderacao/tipos-denuncia';
 import type { RepositorioAlertas } from '../servicos/tipos-alertas';
+import type { LinhaAssinatura, RepositorioAssinatura } from '../servicos/tipos-assinatura';
 import type { FiltroDeltaSync, FonteDeltaSync, LinhaDelta } from '../sync/tipos';
 import type {
   CupomComItens,
@@ -153,7 +154,8 @@ export class RepositorioMemoria
     RepositorioModeracao,
     RepositorioDenuncia,
     RepositorioCuradoria,
-    RepositorioAlertas
+    RepositorioAlertas,
+    RepositorioAssinatura
 {
   // Lado PRIVADO.
   private readonly usuarios = new Set<string>();
@@ -168,6 +170,9 @@ export class RepositorioMemoria
   private readonly alertasPreco = new Map<string, Map<string, { precoAlvo: number; escopoGeo: string }>>();
   // Dispositivo de push (PRIVADO — identificador de aparelho). C8.4. token → dono.
   private readonly dispositivosPush = new Map<string, { usuarioId: string; plataforma: 'ios' | 'android' }>();
+  // Assinatura (PRIVADO — plano por usuário). C13.2. Sem escritor de produção
+  // ainda (C13.3/C13.4) — semeada só via `semearAssinatura` (testes).
+  private readonly assinaturas = new Map<string, LinhaAssinatura>();
   // Lado COMPARTILHADO (anônimo).
   private readonly lojas = new Map<string, Loja>();
   private readonly produtosPorEan = new Map<string, ProdutoCanonicoInterno>();
@@ -847,6 +852,21 @@ export class RepositorioMemoria
     return [...this.dispositivosPush.entries()]
       .filter(([, d]) => d.usuarioId === usuarioId)
       .map(([token]) => token);
+  }
+
+  // ───────────────────────── RepositorioAssinatura (C13.2) ────────────
+
+  obterAssinatura(usuarioId: string): Promise<LinhaAssinatura | undefined> {
+    return Promise.resolve(this.assinaturas.get(usuarioId));
+  }
+
+  /**
+   * Semeia uma linha de `assinatura` direto (só testes — não há caminho de
+   * escrita de produção até C13.3/C13.4). Espelha o INSERT/UPSERT que a
+   * service role faria.
+   */
+  semearAssinatura(usuarioId: string, linha: LinhaAssinatura): void {
+    this.assinaturas.set(usuarioId, linha);
   }
 
   // ───────────────────────── Inspeção (testes) ────────────────────────

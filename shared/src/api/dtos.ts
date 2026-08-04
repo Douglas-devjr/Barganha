@@ -7,6 +7,7 @@
 import type { UnidadeBase } from '../core';
 import type { PrecoEstatistica, TipicoNaCompra } from '../dominio/entidades';
 import type { EscopoGeo, MotivoDenuncia, StatusCupom, StatusModeracao } from '../dominio/enums';
+import type { Plano } from '../plano/direitos';
 
 // ─────────────────────────── Ingestão (C2.1) ───────────────────────────
 
@@ -149,6 +150,16 @@ export interface HistoricoCuponsResponse {
  */
 export interface ContaAnonimaResponse {
   usuarioId: string;
+}
+
+/**
+ * Estado do plano da conta (C13.2). Toda conta autenticada tem um: quem nunca
+ * teve linha em `assinatura` é `gratis` por padrão (nunca o contrário).
+ */
+export interface EstadoContaResponse {
+  plano: Plano;
+  /** ISO 8601. Ausente = sem validade (plano `gratis`, ou `plus` vitalício). */
+  validoAte?: string;
 }
 
 // ───────────────────────── Consulta veredito (C4.1) ─────────────────────
