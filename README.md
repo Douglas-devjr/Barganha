@@ -20,7 +20,7 @@ npm install        # instala todas as workspaces
 npm run check      # formatação + lint + tipos + testes (o mesmo que a CI roda)
 ```
 
-Scripts úteis: `npm run lint`, `npm run typecheck`, `npm test`, `npm run format`. O passo a passo das etapas está em [`docs/11-catalogo-de-etapas.md`](docs/11-catalogo-de-etapas.md).
+Scripts úteis: `npm run lint`, `npm run typecheck`, `npm test`, `npm run format`. O passo a passo das etapas está em [`docs/11-catalogo-de-etapas.md`](docs/11-catalogo-de-etapas.md). Para rodar em dev, atualizar (OTA) e gerar build, veja [`COMANDOS.md`](COMANDOS.md); para o passo a passo completo do zero, [`COMO-RODAR.md`](COMO-RODAR.md).
 
 ## Documentação
 A documentação completa do produto e da arquitetura está em [`docs/`](docs/). Comece por [`docs/00-visao-produto.md`](docs/00-visao-produto.md).

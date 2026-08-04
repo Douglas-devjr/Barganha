@@ -8,14 +8,16 @@ o que impede publicar hoje e o passo a passo até a Google Play.
 cd C:\Users\exten\Desktop\Comparai
 npm run painel          # gera painel/index.html
 npm run painel:abrir    # abre no navegador
+npm run painel:observar # regera sozinho a cada mudança (dev local)
 ```
 
-## Os dois arquivos
+## Os três arquivos
 
 | Arquivo | O que é |
 |---|---|
 | `mapa.mjs` | **A única coisa que se escreve à mão.** Funções, regras, etapas, bloqueadores, roteiro de publicação, skills. |
 | `gerar.mjs` | Lê o mapa, **confere contra o repositório** e emite `index.html`. Não se edita para mudar conteúdo. |
+| `observar.mjs` | Observa `mapa.mjs` e o código-fonte (`app/src`, `backend/src`, `shared/src`, `supabase/migrations`, `docs`) e roda `gerar.mjs` de novo a cada mudança. Só para desenvolvimento local — o CI continua usando `painel:conferir`, que falha em vez de gerar. |
 
 `index.html` é gerado — nunca edite direto, a próxima geração sobrescreve. Ele
 está fora do gate do Prettier por isso.
@@ -49,6 +51,11 @@ npm run painel:conferir   # falha (exit 1) se houver deriva
 
 Esse comando roda dentro do `npm run check` e como passo do CI. Então mudar código
 sem atualizar o mapa **reprova o build**, com o nome de cada item fora de lugar.
+
+Isso é a rede de segurança, não geração automática: `index.html` só é reescrito
+quando alguém roda `npm run painel`. Para não ter que lembrar, deixe
+`npm run painel:observar` rodando enquanto trabalha — ele regera sozinho a cada
+save.
 
 ## O ciclo, na prática
 
