@@ -224,3 +224,33 @@ coexistirem é necessário.
 - Mínimo de `n_observacoes` por nível de escopo.
 - Heurística de detecção de promoção sem campo de desconto.
 - Abreviações de unidade por portal: o que não está no mapa fica fora do pool **em silêncio**. Contar as unidades recusadas na ingestão diz quais faltam.
+
+### Ferramenta de calibração (já pronta; falta é volume do beta)
+
+Os três primeiros itens acima (meia-vida, cerco IQR, mínimo de `n` por nível) já
+têm uma **ferramenta de medição**: `backend/src/estatistica/calibracao.ts` +
+o job `npm run job:calibracao` (workspace `@barganha/backend`). Ela não decide
+nada sozinha — só mede o pool real e recomenda; aplicar a recomendação
+(trocar `DECAIMENTO` ou `MIN_OBSERVACOES_FALLBACK`) continua sendo um commit
+humano separado, como qualquer outra mudança de comportamento do veredito.
+
+Método de cada medição:
+- **Meia-vida:** backtest walk-forward por grupo (produto × unidade × escopo) —
+  esconde a fatia final do tempo, calcula a mediana ponderada só com o
+  passado e mede o erro percentual contra o futuro escondido, para cada
+  meia-vida candidata. Vence a de menor erro agregado.
+- **Fator do cerco de promoção:** usa a flag `emPromocao` da própria NFC-e
+  (camada 1) como ground truth. Para cada `k` candidato, mede recall (quantas
+  promoções declaradas o cerco também pegaria) e falso-positivo (quanto preço
+  regular seria segregado por engano) e recomenda o menor `k` que atinge um
+  recall-alvo sem estourar o teto de falso-positivo.
+- **Mínimo de observações por nível:** bootstrap dentro de cada nível de
+  escopo — reamostra grupos com pool grande e mede o quanto a mediana
+  estimada balança em função de `n`; recomenda o menor `n` que estabiliza
+  abaixo de uma amplitude relativa alvo. Por nível porque a dispersão de
+  preço cresce com a amplitude geográfica (loja ≠ UF).
+
+Enquanto o pool do beta for raso, o job reporta honestamente "dados
+insuficientes" em vez de inventar número — a calibração de verdade só
+acontece quando alguém rodar o job com volume real e decidir aplicar (ou
+não) o que ele recomendar.

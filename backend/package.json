@@ -13,7 +13,9 @@
     "job:alerta-parsing": "node --env-file-if-exists=../.env --import tsx src/jobs/alerta-parsing.ts",
     "job:alerta-preco": "node --env-file-if-exists=../.env --import tsx src/jobs/alerta-preco.ts",
     "job:alerta-anomalias": "node --env-file-if-exists=../.env --import tsx src/jobs/alerta-anomalias.ts",
-    "job:purga-inativos": "node --env-file-if-exists=../.env --import tsx src/jobs/purga-inatividade.ts"
+    "job:purga-inativos": "node --env-file-if-exists=../.env --import tsx src/jobs/purga-inatividade.ts",
+    "job:cobertura-tipico": "node --env-file-if-exists=../.env --import tsx src/jobs/cobertura-tipico.ts",
+    "job:calibracao": "node --env-file-if-exists=../.env --import tsx src/jobs/calibracao-estatistica.ts"
   },
   "dependencies": {
     "@barganha/shared": "*",
