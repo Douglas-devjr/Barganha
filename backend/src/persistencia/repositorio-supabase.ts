@@ -17,17 +17,28 @@ import {
   type DenunciaCuradoria,
   garantirSemDadoPessoal,
   type MotivoDenuncia,
+  normalizarDescricao,
   type ObservacaoAnonima,
   type PrecoEstatistica,
   type ProdutoResumo,
   type StatusModeracao,
   type TipicoNaCompra,
   type TotaisNota,
+  type UnidadeBase,
 } from '@barganha/shared';
 import type { PostgrestError, SupabaseClient } from '@supabase/supabase-js';
 
 import type { ItemCupomNovo } from '../anonimizacao/anonimizador';
-import type { CatalogoProdutos, SugestaoProduto } from '../anonimizacao/casamento';
+import type {
+  CatalogoProdutos,
+  FonteAliasTexto,
+  MapaCodigoLoja,
+  MapeamentoCodigoLoja,
+  MapeamentoNovo,
+  StatusMapeamento,
+  SugestaoProduto,
+} from '../anonimizacao/casamento';
+import { diaDe } from '../anonimizacao/resolvedor-produto';
 import type { RepositorioUsuario } from '../auth/tipos';
 import type {
   EstatisticaLojaLinha,
@@ -36,6 +47,11 @@ import type {
   FonteComparacaoLojas,
   FonteProdutoConsulta,
 } from '../consulta/tipos';
+import type {
+  CanonicoParaFusao,
+  RepositorioFusao,
+  ResumoFusao,
+} from '../curadoria/servico-fusao-canonicos';
 import type {
   AlvoEnriquecimento,
   EnriquecimentoProduto,
@@ -165,12 +181,34 @@ function paraItemPrivado(i: Record<string, unknown>): ItemCupomNovo {
     ...(i.produto_canonico_id ? { produtoCanonicoId: i.produto_canonico_id as string } : {}),
     descricaoOriginal: i.descricao_original as string,
     ...(i.ean ? { ean: i.ean as string } : {}),
+    ...(i.codigo_loja ? { codigoLoja: i.codigo_loja as string } : {}),
     quantidade: Number(i.quantidade),
     unidade: i.unidade as string,
     valorUnitario: Number(i.valor_unitario),
     valorTotal: Number(i.valor_total),
     ...(i.desconto != null ? { desconto: Number(i.desconto) } : {}),
     ...(tipicoNaCompra ? { tipicoNaCompra } : {}),
+  };
+}
+
+/** Colunas de `produto_codigo_loja` que o casamento precisa (C3.6.1). */
+const COLUNAS_MAPEAMENTO =
+  'loja_cnpj, codigo, produto_canonico_id, unidade_base, descricao_referencia, preco_referencia, status, origem, ultimo_visto';
+
+/** Uma linha de `produto_codigo_loja` → o mapeamento do domínio. */
+function paraMapeamento(m: Record<string, unknown>): MapeamentoCodigoLoja {
+  const preco = num(m.preco_referencia);
+  return {
+    lojaCnpj: m.loja_cnpj as string,
+    codigo: m.codigo as string,
+    produtoCanonicoId: m.produto_canonico_id as string,
+    unidadeBase: m.unidade_base as UnidadeBase,
+    descricaoReferencia: (m.descricao_referencia as string) ?? '',
+    ...(preco != null ? { precoReferencia: preco } : {}),
+    status: m.status as StatusMapeamento,
+    origem: m.origem as MapeamentoCodigoLoja['origem'],
+    // `date` do Postgres volta como 'YYYY-MM-DD' — o mesmo formato de `diaDe`.
+    ultimoVisto: String(m.ultimo_visto ?? '').slice(0, 10),
   };
 }
 
@@ -244,6 +282,9 @@ export class RepositorioSupabase
     RepositorioEstatistica,
     FonteDeltaSync,
     FonteCandidatosTexto,
+    FonteAliasTexto,
+    MapaCodigoLoja,
+    RepositorioFusao,
     RepositorioModeracao,
     RepositorioDenuncia,
     RepositorioCuradoria,
@@ -341,7 +382,7 @@ export class RepositorioSupabase
     const itensR = await this.db
       .from('item_cupom')
       .select(
-        'produto_canonico_id, descricao_original, ean, quantidade, unidade, valor_unitario, valor_total, desconto, tipico_mediana, tipico_unidade_base, tipico_escopo, tipico_n_observacoes',
+        'produto_canonico_id, descricao_original, ean, codigo_loja, quantidade, unidade, valor_unitario, valor_total, desconto, tipico_mediana, tipico_unidade_base, tipico_escopo, tipico_n_observacoes',
       )
       .eq('cupom_id', cupomId);
     if (itensR.error) falhar('carga de itens do cupom', itensR.error);
@@ -408,7 +449,7 @@ export class RepositorioSupabase
     const itensR = await this.db
       .from('item_cupom')
       .select(
-        'cupom_id, produto_canonico_id, descricao_original, ean, quantidade, unidade, valor_unitario, valor_total, desconto, tipico_mediana, tipico_unidade_base, tipico_escopo, tipico_n_observacoes',
+        'cupom_id, produto_canonico_id, descricao_original, ean, codigo_loja, quantidade, unidade, valor_unitario, valor_total, desconto, tipico_mediana, tipico_unidade_base, tipico_escopo, tipico_n_observacoes',
       )
       .in('cupom_id', ids);
     if (itensR.error) falhar('carga de itens do histórico (restore)', itensR.error);
@@ -513,6 +554,8 @@ export class RepositorioSupabase
         produto_canonico_id: i.produtoCanonicoId ?? null,
         descricao_original: i.descricaoOriginal,
         ean: i.ean ?? null,
+        // Código interno da loja (SKU) — só quando NÃO há EAN válido (docs/03).
+        codigo_loja: i.codigoLoja ?? null,
         quantidade: i.quantidade,
         unidade: i.unidade,
         valor_unitario: i.valorUnitario,
@@ -929,18 +972,180 @@ export class RepositorioSupabase
     confianca: number,
     textoOriginal: string,
   ): Promise<string> {
+    // A unidade-base sai do CANÔNICO, não de quem chamou: é ela que impede um
+    // alias de "LEITE" ligar um produto de kg a um de L, e é o que o índice
+    // único parcial `(texto_original, unidade_base) where confirmado` protege.
+    const alvo = await this.db
+      .from('produto_canonico')
+      .select('unidade_base')
+      .eq('id', produtoCanonicoId)
+      .maybeSingle();
+    if (alvo.error) falhar('carga da unidade-base do produto alvo', alvo.error);
+
+    // O texto é gravado NORMALIZADO porque é assim que a ingestão o procura
+    // (`buscarAliasConfirmado`). Gravar cru deixaria o alias invisível para o
+    // casamento — que é exatamente o bug que a C3.6.1 fecha.
     const r = await this.db
       .from('produto_alias')
-      .insert({
-        produto_canonico_id: produtoCanonicoId,
-        texto_original: textoOriginal,
-        confianca,
-        confirmado: true,
-      })
+      .upsert(
+        {
+          produto_canonico_id: produtoCanonicoId,
+          texto_original: normalizarDescricao(textoOriginal),
+          unidade_base: alvo.data?.unidade_base ?? null,
+          confianca,
+          confirmado: true,
+        },
+        { onConflict: 'texto_original,unidade_base' },
+      )
       .select('id')
       .single();
     if (r.error) falhar('confirmação de casamento por texto', r.error);
     return r.data.id;
+  }
+
+  // ───────────────────────── FonteAliasTexto (C3.5) ───────────────────
+
+  async buscarAliasConfirmado(
+    textoNormalizado: string,
+    unidadeBase: UnidadeBase,
+  ): Promise<string | undefined> {
+    const r = await this.db
+      .from('produto_alias')
+      .select('produto_canonico_id')
+      .eq('texto_original', textoNormalizado)
+      .eq('unidade_base', unidadeBase)
+      .eq('confirmado', true)
+      .maybeSingle();
+    if (r.error) falhar('consulta de alias confirmado', r.error);
+    return r.data?.produto_canonico_id as string | undefined;
+  }
+
+  // ───────────────────────── MapaCodigoLoja (C3.6.1) ──────────────────
+
+  async buscarMapeamento(
+    lojaCnpj: string,
+    codigo: string,
+  ): Promise<MapeamentoCodigoLoja | undefined> {
+    const r = await this.db
+      .from('produto_codigo_loja')
+      .select(COLUNAS_MAPEAMENTO)
+      .eq('loja_cnpj', lojaCnpj)
+      .eq('codigo', codigo)
+      .maybeSingle();
+    if (r.error) falhar('consulta de mapeamento loja+código', r.error);
+    return r.data ? paraMapeamento(r.data) : undefined;
+  }
+
+  async buscarMapeamentoDaRede(
+    raiz: string,
+    codigo: string,
+  ): Promise<MapeamentoCodigoLoja | undefined> {
+    // Só linha `ativo`: herdar de uma filial cujo mapeamento já está sob
+    // suspeita espalharia o erro pela rede inteira. Mais recente primeiro —
+    // se duas filiais discordam, a evidência nova vale mais.
+    const r = await this.db
+      .from('produto_codigo_loja')
+      .select(COLUNAS_MAPEAMENTO)
+      .eq('raiz_cnpj', raiz)
+      .eq('codigo', codigo)
+      .eq('status', 'ativo')
+      .order('ultimo_visto', { ascending: false })
+      .limit(1);
+    if (r.error) falhar('consulta de mapeamento na rede', r.error);
+    const linha = (r.data ?? [])[0];
+    return linha ? paraMapeamento(linha) : undefined;
+  }
+
+  async registrarMapeamento(dados: MapeamentoNovo): Promise<void> {
+    const r = await this.db.from('produto_codigo_loja').upsert(
+      {
+        loja_cnpj: dados.lojaCnpj,
+        codigo: dados.codigo,
+        produto_canonico_id: dados.produtoCanonicoId,
+        unidade_base: dados.unidadeBase,
+        descricao_referencia: dados.descricaoReferencia,
+        ...(dados.precoReferencia !== undefined ? { preco_referencia: dados.precoReferencia } : {}),
+        origem: dados.origem,
+        status: 'ativo',
+        ...(dados.eanVisto ? { ean_visto: dados.eanVisto } : {}),
+        ultimo_visto: diaDe(new Date()),
+        atualizado_em: new Date().toISOString(),
+      },
+      { onConflict: 'loja_cnpj,codigo' },
+    );
+    if (r.error) falhar('registro de mapeamento loja+código', r.error);
+  }
+
+  async registrarUsoMapeamento(
+    lojaCnpj: string,
+    codigo: string,
+    dados: { descricaoReferencia: string; precoReferencia?: number },
+  ): Promise<void> {
+    // `hits` sobe no banco (RPC) para não perder contagem em duas ingestões
+    // simultâneas do mesmo código — um read-modify-write aqui perderia uma.
+    const r = await this.db.rpc('registrar_uso_codigo_loja', {
+      p_loja_cnpj: lojaCnpj,
+      p_codigo: codigo,
+      p_descricao_referencia: dados.descricaoReferencia,
+      p_preco_referencia: dados.precoReferencia ?? null,
+      p_dia: diaDe(new Date()),
+    });
+    if (r.error) falhar('registro de uso do mapeamento loja+código', r.error);
+  }
+
+  async marcarMapeamentoSuspeito(lojaCnpj: string, codigo: string, motivo: string): Promise<void> {
+    // Só marca. NUNCA reaponta `produto_canonico_id` — reapontar sozinho
+    // trocaria o produto de uma série histórica inteira sem ninguém ver.
+    const r = await this.db
+      .from('produto_codigo_loja')
+      .update({
+        status: 'suspeito' satisfies StatusMapeamento,
+        motivo_suspeita: motivo,
+        atualizado_em: new Date().toISOString(),
+      })
+      .eq('loja_cnpj', lojaCnpj)
+      .eq('codigo', codigo);
+    if (r.error) falhar('marcação de mapeamento suspeito', r.error);
+  }
+
+  // ───────────────────────── RepositorioFusao (C3.6.1) ────────────────
+
+  async obterCanonicoParaFusao(produtoCanonicoId: string): Promise<CanonicoParaFusao | undefined> {
+    const r = await this.db
+      .from('produto_canonico')
+      .select('id, ean, descricao_normalizada, unidade_base')
+      .eq('id', produtoCanonicoId)
+      .maybeSingle();
+    if (r.error) falhar('carga de produto para fusão', r.error);
+    if (!r.data) return undefined;
+    return {
+      id: r.data.id as string,
+      unidadeBase: r.data.unidade_base as UnidadeBase,
+      ...(r.data.ean ? { ean: r.data.ean as string } : {}),
+      ...(r.data.descricao_normalizada
+        ? { descricaoNormalizada: r.data.descricao_normalizada as string }
+        : {}),
+    };
+  }
+
+  async fundirCanonicos(perdedorId: string, vencedorId: string): Promise<ResumoFusao> {
+    // RPC porque a fusão TEM de ser atômica: metade feita (pool movido,
+    // histórico privado não) deixa o banco num estado que nenhuma tela sabe
+    // exibir e que nenhum job sabe consertar.
+    const r = await this.db.rpc('fundir_produto_canonico', {
+      p_perdedor: perdedorId,
+      p_vencedor: vencedorId,
+    });
+    if (r.error) falhar('fusão de produtos canônicos', r.error);
+    const d = (r.data ?? {}) as Record<string, unknown>;
+    return {
+      perdedorId,
+      vencedorId,
+      observacoesRepontadas: Number(d.observacoes ?? 0),
+      itensRepontados: Number(d.itens ?? 0),
+      aliasesRepontados: Number(d.aliases ?? 0),
+      codigosRepontados: Number(d.codigos ?? 0),
+    };
   }
 
   // ───────────────────────── RepositorioModeracao (C11.3) ─────────────
@@ -1246,10 +1451,12 @@ export class RepositorioSupabase
     // de que o APARELHO ainda existe, e é sobre ele que a purga de 90 dias
     // decide (docs/04). Sem isto, quem tem o app instalado mas nunca recebeu um
     // push teria o token purgado como se tivesse sumido.
-    const r = await this.db.from('dispositivo_push').upsert(
-      { token, usuario_id: usuarioId, plataforma, visto_em: new Date().toISOString() },
-      { onConflict: 'token' },
-    );
+    const r = await this.db
+      .from('dispositivo_push')
+      .upsert(
+        { token, usuario_id: usuarioId, plataforma, visto_em: new Date().toISOString() },
+        { onConflict: 'token' },
+      );
     if (r.error) falhar('registro de dispositivo de push', r.error);
   }
 

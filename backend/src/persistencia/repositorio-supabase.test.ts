@@ -38,7 +38,20 @@ const ITEM: ItemCupomNovo = {
   valorTotal: 16.9,
 };
 
-function dados(observacoes: ObservacaoAnonima[]): DadosNotaProcessada {
+/** Item sem EAN, só com o código interno da loja preservado (ver docs/03). */
+const ITEM_SEM_EAN: ItemCupomNovo = {
+  descricaoOriginal: 'BANANA PRATA',
+  codigoLoja: '2000123',
+  quantidade: 1.235,
+  unidade: 'KG',
+  valorUnitario: 6.99,
+  valorTotal: 8.63,
+};
+
+function dados(
+  observacoes: ObservacaoAnonima[],
+  itensPrivados: ItemCupomNovo[] = [ITEM],
+): DadosNotaProcessada {
   return {
     loja: {
       cnpj: '12345678000199',
@@ -49,7 +62,7 @@ function dados(observacoes: ObservacaoAnonima[]): DadosNotaProcessada {
     },
     emitidoEm: '2026-06-20T18:30:00.000Z',
     uf: 'RJ',
-    itensPrivados: [ITEM],
+    itensPrivados,
     observacoes,
   };
 }
@@ -84,6 +97,20 @@ describe('RepositorioSupabase.marcarProcessado (C9.3.1)', () => {
 
     const obs = args.p_observacoes as Record<string, unknown>[];
     expect(obs[0]).toMatchObject({ loja_cnpj: '12345678000199', preco_normalizado: 33.8 });
+  });
+
+  it('repassa o código interno da loja (codigoLoja → codigo_loja) para a RPC', async () => {
+    const { db, chamadas } = clienteFalso();
+    const repo = new RepositorioSupabase(db);
+
+    await repo.marcarProcessado('cupom-1', dados(observacoesValidas(), [ITEM, ITEM_SEM_EAN]));
+
+    const { args } = chamadas[0]!;
+    const itens = args.p_itens as Record<string, unknown>[];
+    // Item COM EAN não carrega codigo_loja (seria redundante).
+    expect(itens[0]).toMatchObject({ ean: '7891234567890', codigo_loja: null });
+    // Item SEM EAN leva o código interno preservado do parser.
+    expect(itens[1]).toMatchObject({ ean: null, codigo_loja: '2000123' });
   });
 
   it('aborta ANTES de escrever se uma observação carregar dado pessoal (gate C9.2)', async () => {

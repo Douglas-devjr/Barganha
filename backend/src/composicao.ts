@@ -16,6 +16,7 @@ import { ServicoComparacaoLista } from './consulta/servico-comparacao-lista';
 import { ServicoConsulta } from './consulta/servico-consulta';
 import { ServicoCuradoria } from './curadoria/servico-curadoria';
 import { ServicoConfirmacaoCasamento } from './curadoria/servico-confirmacao-casamento';
+import { ServicoFusaoCanonicos } from './curadoria/servico-fusao-canonicos';
 import { AgendadorRecalculo } from './estatistica/agendador-recalculo';
 import { MatcherTexto } from './estatistica/casamento-texto';
 import { PipelineEstatistica } from './estatistica/pipeline';
@@ -97,6 +98,7 @@ export interface Backend {
   servicoCuradoria: ServicoCuradoria;
   /** Confirmação de casamento por texto (C3.5) — curadoria. */
   servicoConfirmacaoCasamento: ServicoConfirmacaoCasamento;
+  servicoFusaoCanonicos: ServicoFusaoCanonicos;
   /** Autorização dos endpoints de curadoria (C11) — token estático do ambiente. */
   guardaCuradoria: GuardaCuradoria;
   /** Health check detalhado (C10.4) — fonte de `/saude` e do gate de deploy. */
@@ -148,7 +150,15 @@ export function montarBackend(config: ConfigBackend): Backend {
     },
   });
 
-  const anonimizador = new Anonimizador(repo, telemetria);
+  // C3.6.1 — o casamento passa a ler o que a curadoria decide: `produto_alias`
+  // confirmado (antes gravado e NUNCA lido) e o mapeamento (loja, código
+  // interno). `alargarPorRede` fica DESLIGADO: herdar mapeamento entre filiais
+  // da mesma raiz de CNPJ é hipótese ("filiais compartilham o ERP"), e ligar
+  // hipótese em produção antes de medir é como o dado errado entra em escala.
+  const anonimizador = new Anonimizador(repo, telemetria, {
+    mapaCodigoLoja: repo,
+    aliasTexto: repo,
+  });
   const processador = new ProcessadorCupom(repo, registro, anonimizador, {
     rollout,
     telemetria,
@@ -233,6 +243,11 @@ export function montarBackend(config: ConfigBackend): Backend {
   const servicoAssinatura = new ServicoAssinatura(repo);
   const servicoCuradoria = new ServicoCuradoria(repo);
   const servicoConfirmacaoCasamento = new ServicoConfirmacaoCasamento(repo);
+  // C3.6.1 — recalcula o vencedor DEPOIS da fusão: sem isso a faixa exibida
+  // continuaria sendo a de antes (mediana da amostra partida, n menor).
+  const servicoFusaoCanonicos = new ServicoFusaoCanonicos(repo, (id) =>
+    pipelineEstatistica.recalcularProduto(id),
+  );
   const guardaCuradoria = new GuardaCuradoria(config.curadoriaTokens);
 
   // C10.4 — health check detalhado. A ordem das sondas é a do relatório; as
@@ -280,6 +295,7 @@ export function montarBackend(config: ConfigBackend): Backend {
     servicoAssinatura,
     servicoCuradoria,
     servicoConfirmacaoCasamento,
+    servicoFusaoCanonicos,
     guardaCuradoria,
   };
 }

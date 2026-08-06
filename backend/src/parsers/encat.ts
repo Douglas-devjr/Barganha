@@ -32,6 +32,14 @@ function aposRotulo(texto: string | undefined): string {
   return textoLimpo(texto).replace(/^.*?:\s*/, '');
 }
 
+/**
+ * `.RCod` vem como "(Código: 0000000002)" — remove o rótulo (como `aposRotulo`
+ * já faz para `.Rqtd`/`.RUN`/`.RvlUnit`) e os parênteses que só o RCod tem.
+ */
+function codigoBrutoEncat(texto: string | undefined): string {
+  return aposRotulo(texto).replace(/[()]/g, '').trim();
+}
+
 /** `numeroBr` que não lança — para campos best-effort (totais). */
 function numeroBrSeguro(texto: string | undefined | null): number | undefined {
   if (!texto || !/\d/.test(texto)) return undefined;
@@ -78,11 +86,16 @@ function parseItemEncat(item: HTMLElement): ItemEstruturado {
   const unidade = exigir(aposRotulo(item.querySelector('.RUN')?.text), 'unidade do item');
   const valorUnitario = numeroBr(aposRotulo(item.querySelector('.RvlUnit')?.text));
   const valorTotal = numeroBr(item.querySelector('.valor')?.text);
-  const ean = eanDeCodigo(item.querySelector('.RCod')?.text);
+  const codigoTexto = codigoBrutoEncat(item.querySelector('.RCod')?.text);
+  const ean = eanDeCodigo(codigoTexto);
+  // Código interno da loja (SKU) preservado só quando NÃO é EAN — o mesmo
+  // texto como `ean` seria redundante (ver ItemEstruturado.codigoLoja).
+  const codigoLoja = !ean && codigoTexto ? codigoTexto : undefined;
 
   return {
     descricao,
     ...(ean ? { ean } : {}),
+    ...(codigoLoja ? { codigoLoja } : {}),
     quantidade,
     unidade,
     valorUnitario,

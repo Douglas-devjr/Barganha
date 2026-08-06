@@ -34,6 +34,9 @@ const NOTA: NotaEstruturada = {
     },
     {
       descricao: 'BANANA PRATA',
+      // Código interno da loja (SKU) — o RJ/ENCAT não expõe EAN para hortifruti,
+      // só este código próprio da loja (docs/03).
+      codigoLoja: '2000123',
       quantidade: 1.235,
       unidade: 'KG',
       valorUnitario: 6.99,
@@ -68,6 +71,18 @@ describe('Anonimizador (C2.4)', () => {
     });
     // Item sem EAN casa pela descrição normalizada exata (portal sem código de barras).
     expect(r.itensPrivados[2]?.produtoCanonicoId).toBe('canon-desc-BANANA PRATA');
+  });
+
+  it('preserva o código interno da loja (codigoLoja) só no lado PRIVADO', async () => {
+    const r = await new Anonimizador(catalogoFake()).anonimizar(NOTA, CONTEXTO);
+    // Sobrevive em item_cupom — é o dado que viabiliza casamento loja+código.
+    expect(r.itensPrivados[2]?.codigoLoja).toBe('2000123');
+    // NUNCA no pool: o gate (shared/anonimizacao/gate.ts) não tem slot para
+    // isso, e a extensão do casamento por código é decisão do data-scientist.
+    for (const obs of r.observacoes) {
+      expect(obs).not.toHaveProperty('codigoLoja');
+    }
+    expect(JSON.stringify(r.observacoes)).not.toContain('2000123');
   });
 
   it('envia ao pool itens casados (EAN ou descrição) com preço normalizável', async () => {
@@ -195,7 +210,11 @@ describe('Anonimizador (C2.4)', () => {
       registrarParsing: vi.fn(),
       registrarUnidadeRecusada: vi.fn(),
     };
-    await new Anonimizador(catalogoFake(), telemetria).anonimizar(notaDeUmItem('CX'), CONTEXTO, 'RJ');
+    await new Anonimizador(catalogoFake(), telemetria).anonimizar(
+      notaDeUmItem('CX'),
+      CONTEXTO,
+      'RJ',
+    );
     expect(telemetria.registrarUnidadeRecusada).not.toHaveBeenCalled();
   });
 });

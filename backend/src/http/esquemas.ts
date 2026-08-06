@@ -264,6 +264,21 @@ export const SCHEMA_CONFIRMACAO_CASAMENTO = {
   },
 } as const;
 
+// Fusão de canônicos fragmentados (C3.6.1). `format: uuid` nos dois porque um
+// id malformado aqui apagaria o produto errado — a validação barata vem antes
+// de qualquer coisa destrutiva chegar ao banco.
+export const SCHEMA_FUSAO_CANONICOS = {
+  body: {
+    type: 'object',
+    required: ['perdedorId', 'vencedorId'],
+    additionalProperties: false,
+    properties: {
+      perdedorId: { type: 'string', minLength: 1, format: 'uuid' },
+      vencedorId: { type: 'string', minLength: 1, format: 'uuid' },
+    },
+  },
+} as const;
+
 // Alerta de preço (C8.4) — sincronização TOTAL do conjunto do usuário. Teto de
 // itens espelha `MAX_ALERTAS_POR_USUARIO` do serviço (anti-abuso da fila).
 export const SCHEMA_SINCRONIZAR_ALERTAS = {

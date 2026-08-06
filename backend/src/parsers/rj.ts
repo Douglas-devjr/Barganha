@@ -44,13 +44,19 @@ function parseItemRj(linha: HTMLElement): ItemEstruturado {
         ? valorTotal / quantidade
         : valorTotal;
 
-  const ean = eanDeCodigo(linha.querySelector('.codItem')?.text);
+  const codigoTexto = linha.querySelector('.codItem')?.text;
+  const ean = eanDeCodigo(codigoTexto);
+  // Código interno da loja (SKU) preservado só quando NÃO é EAN — o mesmo
+  // texto como `ean` seria redundante (ver ItemEstruturado.codigoLoja).
+  const codigoBruto = textoLimpo(codigoTexto);
+  const codigoLoja = !ean && codigoBruto ? codigoBruto : undefined;
   const descontoTexto = linha.querySelector('.vlDescItem')?.text;
   const desconto = descontoTexto && /\d/.test(descontoTexto) ? numeroBr(descontoTexto) : undefined;
 
   return {
     descricao,
     ...(ean ? { ean } : {}),
+    ...(codigoLoja ? { codigoLoja } : {}),
     quantidade,
     unidade,
     valorUnitario,

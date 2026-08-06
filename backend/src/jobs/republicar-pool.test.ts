@@ -36,6 +36,10 @@ async function semearCupomSemPool(repo: RepositorioMemoria, usuarioId: string): 
       },
       {
         descricaoOriginal: 'BISTECA SUINA SADIA kg CONG',
+        // Código interno da loja preservado do parser (docs/03) — o backfill
+        // precisa reconstruir a NotaEstruturada SEM perder este dado, senão um
+        // cupom antigo silenciosamente esquece o que já tinha sido persistido.
+        codigoLoja: '881245',
         quantidade: 0.91,
         unidade: 'KG',
         valorUnitario: 14.98,
@@ -71,6 +75,12 @@ describe('republicarPool (backfill do pool)', () => {
     expect(pool.every((o) => o.lojaCnpj === LOJA.cnpj && o.uf === 'RJ')).toBe(true);
     // Itens privados foram regravados COM o canônico.
     expect(repo.itensDoCupom(cupomId).every((i) => i.produtoCanonicoId)).toBe(true);
+    // codigoLoja sobrevive à reconstrução da nota a partir do lado privado —
+    // sem isso, o backfill apagaria silenciosamente um dado já persistido.
+    const bisteca = repo
+      .itensDoCupom(cupomId)
+      .find((i) => i.descricaoOriginal === 'BISTECA SUINA SADIA kg CONG');
+    expect(bisteca?.codigoLoja).toBe('881245');
     expect(repo.statusDoCupom(cupomId)).toBe('processado');
     // Recalculou exatamente os produtos que entraram no pool.
     expect(new Set(recalculados)).toEqual(new Set(pool.map((o) => o.produtoCanonicoId)));

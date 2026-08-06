@@ -17,6 +17,7 @@ import type {
   ConfirmacaoCasamentoRequest,
   DecisaoModeracaoRequest,
   EnriquecimentoProdutoRequest,
+  FusaoCanonicosRequest,
 } from '@barganha/shared';
 import type { FastifyInstance } from 'fastify';
 
@@ -28,6 +29,7 @@ import {
   SCHEMA_DECISAO,
   SCHEMA_DECISAO_DENUNCIA,
   SCHEMA_ENRIQUECIMENTO,
+  SCHEMA_FUSAO_CANONICOS,
   SCHEMA_REPROCESSAR,
 } from '../esquemas';
 import { PAINEL_CURADORIA_HTML } from './painel-curadoria-html';
@@ -40,6 +42,7 @@ export function registrarRotasCuradoria(app: FastifyInstance, ctx: ContextoRotas
     servicoCuradoria,
     matcherTexto,
     servicoConfirmacaoCasamento,
+    servicoFusaoCanonicos,
     reprocessador,
   } = ctx.deps;
 
@@ -59,7 +62,7 @@ export function registrarRotasCuradoria(app: FastifyInstance, ctx: ContextoRotas
   app.get('/curadoria/painel', (_req, reply) => {
     try {
       return reply.type('text/html; charset=utf-8').send(PAINEL_CURADORIA_HTML);
-    } catch (e) {
+    } catch {
       return reply.code(500).send({ erro: 'Erro ao servir painel de curadoria' });
     }
   });
@@ -184,6 +187,30 @@ export function registrarRotasCuradoria(app: FastifyInstance, ctx: ContextoRotas
       async (req, reply) => {
         if (!autorizado(req, reply)) return reply;
         const resposta = await servicoConfirmacaoCasamento.confirmar(req.body);
+        return reply.send(resposta);
+      },
+    );
+  }
+
+  if (servicoFusaoCanonicos) {
+    // Fusão de canônicos fragmentados (C3.6.1) — junta duas séries de preço do
+    // MESMO produto físico que nasceram separadas (descrição escrita de dois
+    // jeitos, ou uma rede declarando EAN e outra não).
+    //
+    // Destrutiva e irreversível: apaga o perdedor e reaponta pool, histórico
+    // privado, aliases, mapeamentos loja+código, alertas e denúncias. O serviço
+    // RECUSA quando a intenção é ambígua (unidades diferentes, dois EANs
+    // distintos, perdedor com o único EAN) em vez de tentar adivinhar — os
+    // erros aqui não têm desfazer.
+    app.post<{ Body: FusaoCanonicosRequest }>(
+      '/curadoria/produto/fundir',
+      { schema: SCHEMA_FUSAO_CANONICOS, ...opcoes },
+      async (req, reply) => {
+        if (!autorizado(req, reply)) return reply;
+        const resposta = await servicoFusaoCanonicos.fundir(
+          req.body.perdedorId,
+          req.body.vencedorId,
+        );
         return reply.send(resposta);
       },
     );

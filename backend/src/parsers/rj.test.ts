@@ -65,6 +65,15 @@ describe('parseHtmlRj (C2.2)', () => {
     expect(banana.valorTotal).toBe(8.63);
   });
 
+  it('item sem EAN preserva o código INTERNO da loja em codigoLoja (não descarta)', () => {
+    const banana = nota.itens[2]!;
+    expect(banana.codigoLoja).toBe('2000123');
+  });
+
+  it('item COM EAN não duplica o código em codigoLoja (seria redundante)', () => {
+    expect(nota.itens[0]!.codigoLoja).toBeUndefined();
+  });
+
   it('NUNCA extrai o CPF do consumidor', () => {
     expect(JSON.stringify(nota)).not.toContain('111');
   });

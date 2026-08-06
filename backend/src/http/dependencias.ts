@@ -20,6 +20,7 @@ import type { ServicoComparacaoLista } from '../consulta/servico-comparacao-list
 import type { ServicoConsulta } from '../consulta/servico-consulta';
 import type { ServicoCuradoria } from '../curadoria/servico-curadoria';
 import type { ServicoConfirmacaoCasamento } from '../curadoria/servico-confirmacao-casamento';
+import type { ServicoFusaoCanonicos } from '../curadoria/servico-fusao-canonicos';
 import type { MatcherTexto } from '../estatistica/casamento-texto';
 import type { ServicoIngestao } from '../ingestao/servico-ingestao';
 import type { ServicoDenuncia } from '../moderacao/servico-denuncia';
@@ -118,6 +119,12 @@ export interface DependenciasHttp {
   matcherTexto?: Pick<MatcherTexto, 'sugerir'>;
   /** Confirmação de casamento por texto (C3.5). Omitido → rota não sobe. */
   servicoConfirmacaoCasamento?: ServicoConfirmacaoCasamento;
+  /**
+   * Fusão de produtos canônicos fragmentados (C3.6.1). Omitido → rota não sobe.
+   * É a operação mais destrutiva da curadoria (apaga um canônico e reaponta o
+   * pool), então segue o mesmo padrão "nega fechado" das outras.
+   */
+  servicoFusaoCanonicos?: ServicoFusaoCanonicos;
   /** Reprocessamento retroativo por UF (C11.1/C2.5) — gatilho operacional. */
   reprocessador?: ReprocessadorRetroativo;
   /** Autorização dos endpoints de CURADORIA (C11). Sem ela, as rotas não sobem. */

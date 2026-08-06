@@ -32,6 +32,8 @@ export async function main(): Promise<void> {
     guardaCuradoria,
     reprocessador,
     matcherTexto,
+    servicoConfirmacaoCasamento,
+    servicoFusaoCanonicos,
     saude,
     metricasPerformance,
     fila,
@@ -59,6 +61,13 @@ export async function main(): Promise<void> {
     autorizacaoCuradoria: guardaCuradoria,
     reprocessador,
     matcherTexto,
+    // C3.5/C3.6.1 — a confirmação de casamento por texto nunca chegou a subir em
+    // produção (o serviço era montado e não era passado adiante), o que deixava
+    // o `produto_alias` sem sequer um caminho de escrita real. Sobe junto com a
+    // fusão, que é o par dela: uma diz "este texto é aquele produto", a outra
+    // junta duas séries de preço que nasceram partidas.
+    servicoConfirmacaoCasamento,
+    servicoFusaoCanonicos,
     trustProxy: config.trustProxy,
     logger: true,
   });

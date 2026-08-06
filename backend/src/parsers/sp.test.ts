@@ -58,6 +58,16 @@ describe('parseHtmlSp (C2.3)', () => {
     expect(tomate.quantidade).toBe(0.85);
   });
 
+  it('item sem EAN preserva o código INTERNO da loja em codigoLoja, sem o rótulo/parênteses do ENCAT', () => {
+    // Fixture traz `.RCod` como "(Código: 0000000002)" — só 10 dígitos, não é
+    // EAN válido (8/12/13/14). codigoLoja guarda o valor sem "(Código: " / ")".
+    expect(nota.itens[2]!.codigoLoja).toBe('0000000002');
+  });
+
+  it('item COM EAN não duplica o código em codigoLoja (seria redundante)', () => {
+    expect(nota.itens[0]!.codigoLoja).toBeUndefined();
+  });
+
   it('NUNCA propaga o CPF do consumidor (nem no endereço)', () => {
     expect(JSON.stringify(nota)).not.toContain('222');
     expect(nota.loja.endereco).not.toMatch(/CPF/i);

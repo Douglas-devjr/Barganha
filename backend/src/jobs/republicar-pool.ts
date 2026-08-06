@@ -89,6 +89,10 @@ export async function republicarPool(
       itens: visao.itens.map((i): ItemEstruturado => ({
         descricao: i.descricaoOriginal,
         ...(i.ean ? { ean: i.ean } : {}),
+        // O código interno da loja já sobreviveu até aqui (item_cupom); sem
+        // repassá-lo, um cupom antigo perderia o dado no backfill mesmo tendo
+        // sido persistido — reconstruir a nota tem que ser fiel ao original.
+        ...(i.codigoLoja ? { codigoLoja: i.codigoLoja } : {}),
         quantidade: i.quantidade,
         unidade: i.unidade,
         valorUnitario: i.valorUnitario,
@@ -149,7 +153,13 @@ export async function rodarJobRepublicacao(
 ): Promise<ResumoRepublicacao> {
   const db = criarClienteSupabase(config.supabaseUrl, config.supabaseServiceRoleKey);
   const repo = new RepositorioSupabase(db);
-  const anonimizador = new AnonimizadorReal(repo);
+  // As MESMAS fontes de casamento da ingestão (C3.6.1): um backfill que resolve
+  // produto por um critério diferente do caminho normal produziria um pool
+  // internamente inconsistente — o pior tipo de dado, porque parece certo.
+  const anonimizador = new AnonimizadorReal(repo, undefined, {
+    mapaCodigoLoja: repo,
+    aliasTexto: repo,
+  });
   const pipeline = new PipelineEstatistica(repo, repo);
 
   const inicio = Date.now();

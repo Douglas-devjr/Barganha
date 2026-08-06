@@ -382,6 +382,34 @@ export interface ConfirmacaoCasamentoResponse {
   confirmado: true;
 }
 
+// ──────────────── Fusão de produtos canônicos (C3.6.1, curadoria) ────────────
+
+/**
+ * Funde dois `produto_canonico` que são o MESMO produto físico fragmentado
+ * (descrição escrita de dois jeitos, ou uma rede que declara EAN e outra não).
+ *
+ * Destrutiva e irreversível: o perdedor é apagado e tudo que o referenciava
+ * (pool, histórico privado, aliases, mapeamentos loja+código, alertas) passa a
+ * apontar para o vencedor. O serviço RECUSA em vez de adivinhar quando a
+ * intenção é ambígua — unidades-base diferentes, dois EANs distintos, ou o
+ * perdedor sendo o único com EAN.
+ */
+export interface FusaoCanonicosRequest {
+  /** Some ao fim da operação. */
+  perdedorId: string;
+  /** Sobrevive e herda todas as observações. */
+  vencedorId: string;
+}
+
+export interface FusaoCanonicosResponse {
+  perdedorId: string;
+  vencedorId: string;
+  observacoesRepontadas: number;
+  itensRepontados: number;
+  aliasesRepontados: number;
+  codigosRepontados: number;
+}
+
 // ──────────────────── Lançamento manual de gôndola (C11.3) ───────────────────
 
 /**

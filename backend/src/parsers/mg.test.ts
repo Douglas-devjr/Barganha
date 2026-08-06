@@ -59,6 +59,14 @@ describe('parseHtmlMg (C11.1)', () => {
     expect(manga.valorTotal).toBe(3.19);
   });
 
+  it('item sem EAN preserva o código INTERNO da loja em codigoLoja (não descarta)', () => {
+    expect(nota.itens[2]!.codigoLoja).toBe('0000456');
+  });
+
+  it('item COM EAN não duplica o código em codigoLoja (seria redundante)', () => {
+    expect(nota.itens[0]!.codigoLoja).toBeUndefined();
+  });
+
   it('NUNCA extrai o CPF do consumidor', () => {
     expect(JSON.stringify(nota)).not.toContain('333');
   });

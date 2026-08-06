@@ -66,6 +66,15 @@ export interface ItemCupom {
   produtoCanonicoId?: string;
   descricaoOriginal: string;
   ean?: string;
+  /**
+   * Código INTERNO do item na loja (SKU), preservado do parser SÓ quando o
+   * código da nota NÃO é um EAN válido (ver `ItemEstruturado.codigoLoja`,
+   * shared/dominio/nota-estruturada.ts, para o porquê e a evidência). PRIVADO
+   * como o resto de `item_cupom` — nunca cruza para o pool compartilhado; não é
+   * dado pessoal (é SKU da LOJA, não do consumidor), mas ainda sem modelagem no
+   * lado anônimo (produto_alias hoje só conhece `textoOriginal`).
+   */
+  codigoLoja?: string;
   quantidade: number;
   unidade: string;
   valorUnitario: number;

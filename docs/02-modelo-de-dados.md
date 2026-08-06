@@ -10,7 +10,7 @@
 - `usuario` · `cupom` · `item_cupom`
 
 **Lado COMPARTILHADO (anônimo):**
-- `loja` · `produto_canonico` · `produto_alias` · `observacao_preco` · `preco_estatistica`
+- `loja` · `produto_canonico` · `produto_alias` · `produto_codigo_loja` · `observacao_preco` · `preco_estatistica`
 
 ---
 
@@ -45,6 +45,7 @@ Mínimo possível. Sem nome, sem CPF.
 | produto_canonico_id | uuid | FK (pode ser nulo até casar) |
 | descricao_original | text | como veio na nota |
 | ean | text | código de barras, se houver |
+| codigo_loja | text | código interno da loja (SKU), quando o portal só mostra ele |
 | quantidade | numeric | |
 | unidade | text | UN / KG / L … |
 | valor_unitario | numeric | |
@@ -85,9 +86,39 @@ Para casar descrições variadas (itens sem EAN, ou variações de texto) ao can
 |---|---|---|
 | id | uuid | PK |
 | produto_canonico_id | uuid | FK |
-| texto_original | text | descrição vista em cupons |
+| texto_original | text | descrição vista em cupons, **normalizada** (é assim que a ingestão a busca) |
+| unidade_base | text | do canônico alvo; impede um alias ligar kg a L |
 | confianca | numeric | score de casamento |
 | confirmado | bool | confirmado por usuário/curadoria |
+
+> **Lido na ingestão** (passo 2 da ordem de casamento, ver `06`). Até a C3.6.1
+> esta tabela era **write-only**: a curadoria confirmava e nada lia — o cupom
+> seguinte recriava o fragmento. Índice único parcial em
+> `(texto_original, unidade_base) where confirmado`.
+
+### `produto_codigo_loja`
+Chave determinística `(loja + código interno/SKU) → produto_canonico`, para os
+portais que não expõem EAN (RJ/ENCAT, MG). **Catálogo**, não observação.
+
+| campo | tipo | nota |
+|---|---|---|
+| loja_cnpj | text | FK → loja; parte da PK (o mesmo código significa coisas diferentes em redes diferentes) |
+| codigo | text | como o portal mostra; parte da PK |
+| raiz_cnpj | text | gerado (8 díg.) — herança entre filiais, atrás de flag |
+| produto_canonico_id | uuid | FK |
+| unidade_base | text | guarda de veto barata |
+| descricao_referencia | text | base da guarda de similaridade |
+| preco_referencia | numeric | âncora (EWMA lenta) só para **sinalizar** troca de item |
+| ean_visto | text | ponte EAN ↔ código interno, quando a loja declara os dois |
+| origem | enum | `ean` · `descricao_exata` · `humano` |
+| status | enum | `ativo` · `suspeito` · `dormente` |
+| hits / ultimo_visto | int / **date** | métrica de cobertura e regra de dormência |
+
+> **LGPD:** CNPJ é estabelecimento, não pessoa; sem `usuario_id`/`cupom_id`/
+> `chave_acesso`. `ultimo_visto` é **date**, nunca timestamp — com hora, duas
+> linhas do mesmo instante reconstruiriam "estes itens estavam na mesma cesta"
+> (regra 2 de `04`, o mesmo motivo de o gate zerar a hora de `observado_em`).
+> Tabela **interna**: não sai na API do app nem no delta sync.
 
 ### `observacao_preco` — **o coração anônimo**
 Inserida **solta** (um item por linha, sem vínculo com a cesta, sem `usuario_id`, sem `chave_acesso`).

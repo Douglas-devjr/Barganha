@@ -23,6 +23,25 @@ export interface ItemEstruturado {
   descricao: string;
   /** Código de barras, quando houver (hortifruti/padaria/açougue não têm). */
   ean?: string;
+  /**
+   * Código INTERNO do item na loja (SKU), quando o campo de código da nota NÃO
+   * é um EAN válido. Vários portais (RJ legado/ENCAT, MG) mostram, para itens
+   * de hortifruti/padaria/açougue, um código curto PRÓPRIO da loja — não um
+   * código de barras (`eanDeCodigo`, em `backend/src/parsers/html.ts`,
+   * corretamente recusa esse valor como `ean`). Até este campo existir, esse
+   * texto era descartado sem deixar rastro.
+   *
+   * Evidência real: a MESMA loja usa sempre o MESMO código para o MESMO item
+   * (é o SKU/registro dela) — candidato a uma chave de casamento determinística
+   * "loja + código interno → produto_canonico" (decisão de modelagem do
+   * data-scientist, C3.x; aqui só preservamos o dado até lá).
+   *
+   * Texto CRU (só colapsando espaços, sem forçar dígitos — o `cProd` do NFe
+   * pode ser alfanumérico; ver docs/03), para não corromper um SKU que não seja
+   * puramente numérico. Ausente quando já há `ean` (o mesmo valor seria
+   * redundante) ou quando a nota não expõe nenhum código de item.
+   */
+  codigoLoja?: string;
   quantidade: number;
   /** Unidade da nota (UN, KG, L, …) — base para normalizar ao `unidade_base`. */
   unidade: string;

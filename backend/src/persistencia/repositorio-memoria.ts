@@ -13,6 +13,7 @@ import {
   garantirSemDadoPessoal,
   type Loja,
   type MotivoDenuncia,
+  normalizarDescricao,
   type ObservacaoAnonima,
   type PrecoEstatistica,
   type ProdutoResumo,
@@ -23,7 +24,15 @@ import {
 } from '@barganha/shared';
 
 import type { ItemCupomNovo } from '../anonimizacao/anonimizador';
-import type { CatalogoProdutos, SugestaoProduto } from '../anonimizacao/casamento';
+import type {
+  CatalogoProdutos,
+  FonteAliasTexto,
+  MapaCodigoLoja,
+  MapeamentoCodigoLoja,
+  MapeamentoNovo,
+  SugestaoProduto,
+} from '../anonimizacao/casamento';
+import { diaDe, raizCnpj } from '../anonimizacao/resolvedor-produto';
 import type { RepositorioUsuario } from '../auth/tipos';
 import type {
   EstatisticaLojaLinha,
@@ -32,6 +41,11 @@ import type {
   FonteComparacaoLojas,
   FonteProdutoConsulta,
 } from '../consulta/tipos';
+import type {
+  CanonicoParaFusao,
+  RepositorioFusao,
+  ResumoFusao,
+} from '../curadoria/servico-fusao-canonicos';
 import type {
   AlvoEnriquecimento,
   EnriquecimentoProduto,
@@ -107,6 +121,37 @@ interface DenunciaInterna {
   resolucao?: string;
 }
 
+/**
+ * Chave de alias. A unidade entra na chave porque o MESMO texto pode existir em
+ * duas escalas ("LEITE" a granel em L e em pó em kg) — espelha o índice único
+ * parcial `(texto_original, unidade_base) where confirmado` da migração.
+ */
+function chaveAlias(texto: string, unidadeBase?: UnidadeBase): string {
+  return `${texto}|${unidadeBase ?? ''}`;
+}
+
+/** Chave do mapeamento loja+código (espelha a PK de `produto_codigo_loja`). */
+function chaveMapeamento(lojaCnpj: string, codigo: string): string {
+  return `${lojaCnpj}|${codigo}`;
+}
+
+/** `produto_alias` em memória (C3.5) — casamento por texto já confirmado. */
+interface AliasInterno {
+  id: string;
+  produtoCanonicoId: string;
+  textoOriginal: string;
+  unidadeBase?: UnidadeBase;
+  confianca: number;
+  confirmado: boolean;
+}
+
+/** `produto_codigo_loja` em memória (C3.6.1). */
+interface MapeamentoInterno extends MapeamentoCodigoLoja {
+  hits: number;
+  eanVisto?: string;
+  motivoSuspeita?: string;
+}
+
 interface ProdutoCanonicoInterno {
   id: string;
   /** Ausente nos canônicos casados por descrição (portal sem EAN). */
@@ -164,6 +209,9 @@ export class RepositorioMemoria
     RepositorioEstatistica,
     FonteDeltaSync,
     FonteCandidatosTexto,
+    FonteAliasTexto,
+    MapaCodigoLoja,
+    RepositorioFusao,
     RepositorioModeracao,
     RepositorioDenuncia,
     RepositorioCuradoria,
@@ -180,9 +228,15 @@ export class RepositorioMemoria
   private readonly denuncias = new Map<string, DenunciaInterna>();
   // Alertas de preço (PRIVADO — espelho do alerta local). C8.4.
   // usuarioId → (produtoCanonicoId → alvo). Espelha a PK composta de alerta_preco.
-  private readonly alertasPreco = new Map<string, Map<string, { precoAlvo: number; escopoGeo: string }>>();
+  private readonly alertasPreco = new Map<
+    string,
+    Map<string, { precoAlvo: number; escopoGeo: string }>
+  >();
   // Dispositivo de push (PRIVADO — identificador de aparelho). C8.4. token → dono.
-  private readonly dispositivosPush = new Map<string, { usuarioId: string; plataforma: 'ios' | 'android' }>();
+  private readonly dispositivosPush = new Map<
+    string,
+    { usuarioId: string; plataforma: 'ios' | 'android' }
+  >();
   // Assinatura (PRIVADO — plano por usuário). C13.2. Sem escritor de produção
   // ainda (C13.3/C13.4) — semeada só via `semearAssinatura` (testes).
   private readonly assinaturas = new Map<string, LinhaAssinatura>();
@@ -191,6 +245,12 @@ export class RepositorioMemoria
   private readonly produtosPorEan = new Map<string, ProdutoCanonicoInterno>();
   // Canônicos sem EAN, chaveados por `descricao|unidade` (espelha o índice único parcial).
   private readonly produtosPorDescricao = new Map<string, ProdutoCanonicoInterno>();
+  // `produto_alias` (C3.5). Até a C3.6.1 nada guardava nem LIA isto — a
+  // confirmação da curadoria era descartada. Chave: `texto|unidade`, espelhando
+  // o índice único parcial dos aliases confirmados.
+  private readonly aliases = new Map<string, AliasInterno>();
+  // `produto_codigo_loja` (C3.6.1). Chave `cnpj|codigo`, espelhando a PK.
+  private readonly mapeamentosCodigo = new Map<string, MapeamentoInterno>();
   // Pool com o instante de INSERÇÃO (criadoEm), separado da emissão (observadoEm),
   // para o sinal incremental do pipeline ser por inserção (F1).
   private readonly poolEntradas: { obs: ObservacaoAnonima; criadoEm: string }[] = [];
@@ -308,6 +368,7 @@ export class RepositorioMemoria
           ...(i.produtoCanonicoId ? { produtoCanonicoId: i.produtoCanonicoId } : {}),
           descricaoOriginal: i.descricaoOriginal,
           ...(i.ean ? { ean: i.ean } : {}),
+          ...(i.codigoLoja ? { codigoLoja: i.codigoLoja } : {}),
           quantidade: i.quantidade,
           unidade: i.unidade,
           valorUnitario: i.valorUnitario,
@@ -626,13 +687,190 @@ export class RepositorioMemoria
   }
 
   confirmarCasamento(
-    _produtoCanonicoId: string,
-    _confianca: number,
-    _textoOriginal: string,
+    produtoCanonicoId: string,
+    confianca: number,
+    textoOriginal: string,
   ): Promise<string> {
-    // Simula a geração de ID (não usa repositório de aliases em memória, é só para testes).
-    const id = crypto.randomUUID?.() ?? `alias-${Date.now()}`;
+    // A unidade-base sai do CANÔNICO, não de quem chamou: é o que impede um
+    // alias de "LEITE" casar um produto de kg com um de L. O adaptador do
+    // Supabase faz o mesmo — a derivação é do domínio, não do transporte.
+    const alvo = this.acharProdutoPorId(produtoCanonicoId);
+    const id = randomUUID();
+    const texto = normalizarDescricao(textoOriginal);
+    this.aliases.set(chaveAlias(texto, alvo?.unidadeBase), {
+      id,
+      produtoCanonicoId,
+      textoOriginal: texto,
+      ...(alvo ? { unidadeBase: alvo.unidadeBase } : {}),
+      confianca,
+      confirmado: true,
+    });
     return Promise.resolve(id);
+  }
+
+  // ───────────────────────── FonteAliasTexto (C3.5) ───────────────────
+
+  buscarAliasConfirmado(
+    textoNormalizado: string,
+    unidadeBase: UnidadeBase,
+  ): Promise<string | undefined> {
+    const alias = this.aliases.get(chaveAlias(textoNormalizado, unidadeBase));
+    return Promise.resolve(alias?.confirmado ? alias.produtoCanonicoId : undefined);
+  }
+
+  // ───────────────────────── MapaCodigoLoja (C3.6.1) ──────────────────
+
+  buscarMapeamento(lojaCnpj: string, codigo: string): Promise<MapeamentoCodigoLoja | undefined> {
+    return Promise.resolve(this.mapeamentosCodigo.get(chaveMapeamento(lojaCnpj, codigo)));
+  }
+
+  buscarMapeamentoDaRede(raiz: string, codigo: string): Promise<MapeamentoCodigoLoja | undefined> {
+    // Mais recente primeiro: se duas filiais discordam, a evidência nova vale
+    // mais (a antiga pode ser de antes de a rede trocar o item).
+    const candidatos = [...this.mapeamentosCodigo.values()]
+      .filter((m) => m.codigo === codigo && raizCnpj(m.lojaCnpj) === raiz && m.status === 'ativo')
+      .sort((a, b) => b.ultimoVisto.localeCompare(a.ultimoVisto));
+    return Promise.resolve(candidatos[0]);
+  }
+
+  registrarMapeamento(dados: MapeamentoNovo): Promise<void> {
+    const chave = chaveMapeamento(dados.lojaCnpj, dados.codigo);
+    const anterior = this.mapeamentosCodigo.get(chave);
+    this.mapeamentosCodigo.set(chave, {
+      lojaCnpj: dados.lojaCnpj,
+      codigo: dados.codigo,
+      produtoCanonicoId: dados.produtoCanonicoId,
+      unidadeBase: dados.unidadeBase,
+      descricaoReferencia: dados.descricaoReferencia,
+      ...(dados.precoReferencia !== undefined
+        ? { precoReferencia: dados.precoReferencia }
+        : anterior?.precoReferencia !== undefined
+          ? { precoReferencia: anterior.precoReferencia }
+          : {}),
+      status: 'ativo',
+      origem: dados.origem,
+      ultimoVisto: diaDe(new Date()),
+      hits: (anterior?.hits ?? 0) + 1,
+      ...(dados.eanVisto ? { eanVisto: dados.eanVisto } : {}),
+    });
+    return Promise.resolve();
+  }
+
+  registrarUsoMapeamento(
+    lojaCnpj: string,
+    codigo: string,
+    dados: { descricaoReferencia: string; precoReferencia?: number },
+  ): Promise<void> {
+    const chave = chaveMapeamento(lojaCnpj, codigo);
+    const atual = this.mapeamentosCodigo.get(chave);
+    if (!atual) return Promise.resolve();
+    this.mapeamentosCodigo.set(chave, {
+      ...atual,
+      descricaoReferencia: dados.descricaoReferencia,
+      ...(dados.precoReferencia !== undefined ? { precoReferencia: dados.precoReferencia } : {}),
+      // Uso aceito reabilita a linha: é assim que um `suspeito` de uma
+      // descrição estranha isolada se recupera sozinho, sem curadoria.
+      status: 'ativo',
+      ultimoVisto: diaDe(new Date()),
+      hits: atual.hits + 1,
+    });
+    return Promise.resolve();
+  }
+
+  marcarMapeamentoSuspeito(lojaCnpj: string, codigo: string, motivo: string): Promise<void> {
+    const chave = chaveMapeamento(lojaCnpj, codigo);
+    const atual = this.mapeamentosCodigo.get(chave);
+    if (!atual) return Promise.resolve();
+    // NÃO reaponta o canônico: só sinaliza. Reapontar sozinho seria trocar o
+    // produto de uma série histórica inteira sem ninguém ver.
+    this.mapeamentosCodigo.set(chave, { ...atual, status: 'suspeito', motivoSuspeita: motivo });
+    return Promise.resolve();
+  }
+
+  // ───────────────────────── RepositorioFusao (C3.6.1) ────────────────
+
+  obterCanonicoParaFusao(produtoCanonicoId: string): Promise<CanonicoParaFusao | undefined> {
+    const p = this.acharProdutoPorId(produtoCanonicoId);
+    if (!p) return Promise.resolve(undefined);
+    return Promise.resolve({
+      id: p.id,
+      unidadeBase: p.unidadeBase,
+      ...(p.ean ? { ean: p.ean } : {}),
+      ...(p.descricaoNormalizada ? { descricaoNormalizada: p.descricaoNormalizada } : {}),
+    });
+  }
+
+  fundirCanonicos(perdedorId: string, vencedorId: string): Promise<ResumoFusao> {
+    const perdedor = this.acharProdutoPorId(perdedorId);
+    const resumo: ResumoFusao = {
+      perdedorId,
+      vencedorId,
+      observacoesRepontadas: 0,
+      itensRepontados: 0,
+      aliasesRepontados: 0,
+      codigosRepontados: 0,
+    };
+    if (!perdedor) return Promise.resolve(resumo);
+
+    for (const entrada of this.poolEntradas) {
+      if (entrada.obs.produtoCanonicoId === perdedorId) {
+        (entrada.obs as { produtoCanonicoId: string }).produtoCanonicoId = vencedorId;
+        resumo.observacoesRepontadas++;
+      }
+    }
+    for (const item of this.itensCupom) {
+      if (item.produtoCanonicoId === perdedorId) {
+        item.produtoCanonicoId = vencedorId;
+        resumo.itensRepontados++;
+      }
+    }
+    for (const [chave, alias] of this.aliases) {
+      if (alias.produtoCanonicoId === perdedorId) {
+        this.aliases.set(chave, { ...alias, produtoCanonicoId: vencedorId });
+        resumo.aliasesRepontados++;
+      }
+    }
+    for (const [chave, m] of this.mapeamentosCodigo) {
+      if (m.produtoCanonicoId === perdedorId) {
+        this.mapeamentosCodigo.set(chave, { ...m, produtoCanonicoId: vencedorId });
+        resumo.codigosRepontados++;
+      }
+    }
+    for (const alertas of this.alertasPreco.values()) {
+      const alvo = alertas.get(perdedorId);
+      // O alerta do vencedor, se já existir, PREVALECE — o usuário o definiu
+      // sobre o produto que sobrevive. Espelha o `on conflict do nothing` do SQL.
+      if (alvo && !alertas.has(vencedorId)) alertas.set(vencedorId, alvo);
+      alertas.delete(perdedorId);
+    }
+    for (const [id, d] of this.denuncias) {
+      if (d.produtoCanonicoId === perdedorId) {
+        this.denuncias.set(id, { ...d, produtoCanonicoId: vencedorId });
+      }
+    }
+
+    // Memória da fusão: sem este alias, o próximo cupom com a descrição antiga
+    // não acharia mais o canônico (apagado) e recriaria o fragmento.
+    if (perdedor.descricaoNormalizada) {
+      this.aliases.set(chaveAlias(perdedor.descricaoNormalizada, perdedor.unidadeBase), {
+        id: randomUUID(),
+        produtoCanonicoId: vencedorId,
+        textoOriginal: perdedor.descricaoNormalizada,
+        unidadeBase: perdedor.unidadeBase,
+        confianca: 1,
+        confirmado: true,
+      });
+    }
+
+    if (perdedor.ean) this.produtosPorEan.delete(perdedor.ean);
+    this.produtosPorDescricao.delete(`${perdedor.descricaoNormalizada}|${perdedor.unidadeBase}`);
+    for (const chave of [...this.estatisticas.keys()]) {
+      if (chave.startsWith(`${perdedorId}|`)) {
+        this.estatisticas.delete(chave);
+        this.seqEstatistica.delete(chave);
+      }
+    }
+    return Promise.resolve(resumo);
   }
 
   // ───────────────────────── RepositorioDenuncia (C12.5) ──────────────
@@ -883,7 +1121,9 @@ export class RepositorioMemoria
   }
 
   /** Inspeção (testes): alvos ativos de um usuário. */
-  alertasDoUsuario(usuarioId: string): { produtoCanonicoId: string; precoAlvo: number; escopoGeo: string }[] {
+  alertasDoUsuario(
+    usuarioId: string,
+  ): { produtoCanonicoId: string; precoAlvo: number; escopoGeo: string }[] {
     const mapa = this.alertasPreco.get(usuarioId);
     if (!mapa) return [];
     return [...mapa.entries()].map(([produtoCanonicoId, alvo]) => ({ produtoCanonicoId, ...alvo }));
@@ -944,6 +1184,17 @@ export class RepositorioMemoria
   /** Semeia uma loja direto (testes da comparação de lista, C12.1). */
   semearLoja(loja: Loja): void {
     this.lojas.set(loja.cnpj, loja);
+  }
+
+  /**
+   * Semeia o pool direto (testes de fusão, C3.6.1). Recebe `ObservacaoAnonima`
+   * — o tipo MARCADO que só o gate produz — de propósito: nem os testes têm
+   * atalho para o pool, senão a garantia de compilação de docs/04 viraria
+   * decoração.
+   */
+  semearObservacoes(observacoes: readonly ObservacaoAnonima[]): void {
+    const criadoEm = new Date().toISOString();
+    for (const obs of observacoes) this.poolEntradas.push({ obs, criadoEm });
   }
 
   private upsertLoja(loja: DadosNotaProcessada['loja']): void {

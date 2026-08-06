@@ -210,8 +210,53 @@ desconto. Renomear agora seria churn; renomear quando as duas métricas
 coexistirem é necessário.
 
 ## Casamento de produtos
-- **Com EAN:** casamento direto ao `produto_canonico`.
-- **Sem EAN** (hortifruti/padaria/açougue): casamento por **texto** (normalização + similaridade) gerando `produto_alias` com score, **confirmado** pelo usuário/curadoria antes de virar referência.
+
+**Ordem única de resolução** (`backend/src/anonimizacao/resolvedor-produto.ts`),
+compartilhada pela ingestão (C2) e pelo backfill (`job:republicar`):
+
+| # | Caminho | Cria canônico? |
+|---|---|---|
+| 0 | **EAN real** — identidade global, a mais forte que existe | sim (acha-ou-cria) |
+| 1 | **(loja_cnpj, código interno)** — SKU estável DENTRO daquela loja | **não** |
+| 2 | **`produto_alias` confirmado** — decisão humana sobre um texto | não |
+| 3 | **descrição normalizada exata** — o último recurso | sim (acha-ou-cria) |
+
+**Invariante do passo 1** (não negociável): o mapeamento `(loja, código)` é
+**cache de uma decisão tomada por um caminho igual ou mais forte** — só nasce
+de 0, 2 ou 3, e **nunca cria** `produto_canonico`. Sem isso, a chave viraria
+porta lateral para casar por similaridade sem confirmação.
+
+**Por que o passo 1 existe.** Não é economia de CPU (o passo 3 já é um SELECT
+indexado). Para item sem EAN, a identidade do produto **era** a string exata:
+qualquer mudança de escrita no PDV (abreviação nova, "PROMO" no nome, troca de
+sistema) criava um canônico novo e **partia a série de preço em duas, em
+silêncio** — a mediana voltava a `n=1` e o veredito seguia exibindo número com
+cara de confiança. Evidência de que a chave é estável: dois cupons da mesma
+loja, mesmo item, mesmo código interno.
+
+**Guardas do passo 1** (o código pode ser reciclado pela loja depois de
+descontinuar o item antigo):
+
+| Guarda | Regra | Ação |
+|---|---|---|
+| Unidade-base | `mapeamento.unidadeBase ≠ item.unidadeBase` | **veto duro** |
+| Similaridade | `≥ 0,55` (linha `ativo`) ou `≥ 0,65` (`suspeito`/`dormente`/herdada da rede) | abaixo: não usa, marca e cai para o passo seguinte |
+| Salto de preço | fora de `[1/3, 3] ×` a âncora | **só sinaliza**, nunca veta |
+
+Faixa de dúvida (`0,35 ≤ s < 0,55`) **com** salto de preço = `reuso_provavel`,
+a assinatura do SKU reciclado. Recusa **nunca reaponta** o canônico sozinho —
+marca a linha para a curadoria e degrada para o passo 3. Um uso aceito devolve
+a linha a `ativo`, então uma descrição estranha isolada se corrige sem humano.
+
+- **Sem EAN** (hortifruti/padaria/açougue): a **similaridade** continua sendo só
+  **sugestão** (`POST /curadoria/casamento/sugestoes`), confirmada pelo
+  usuário/curadoria antes de virar referência — nunca casa sozinha.
+- **Fragmentação** (mesmo produto em dois canônicos): resolvida pela **fusão**
+  (`POST /curadoria/produto/fundir`), que reaponta pool, histórico privado,
+  aliases, mapeamentos, alertas e denúncias numa transação, e grava o alias da
+  descrição do perdedor — sem esse alias a fusão se desfaz no cupom seguinte.
+  Recusa quando a intenção é ambígua (unidades diferentes, dois EANs distintos,
+  perdedor com o único EAN) em vez de adivinhar: não há desfazer.
 
 ## Qualidade e abuso
 - Mediana + decaimento temporal já absorvem boa parte de erros e outliers.
@@ -223,6 +268,22 @@ coexistirem é necessário.
 - Meia-vida do decaimento temporal.
 - Mínimo de `n_observacoes` por nível de escopo.
 - Heurística de detecção de promoção sem campo de desconto.
+- **Guardas da chave (loja, código)** — `LIMIARES_CODIGO_LOJA` em
+  `backend/src/anonimizacao/resolvedor-produto.ts`. Os valores de hoje (0,55 /
+  0,35 / 0,65 / fator 3 / 548 dias) são **chute fundamentado, não calibração**.
+  Como medir, quando houver volume: (a) **canônicos distintos por `(loja,
+  código)`** deve ficar ≈ 1,0 — é a medida direta de a chave estar funcionando;
+  (b) **cobertura** = % de itens sem EAN resolvidos pelo passo 1 (platô muito
+  abaixo de ~70% em lojas recorrentes = o código não é tão estável quanto
+  parece); (c) **taxa de suspeita** = linhas marcadas / hits, alvo < 1–2%;
+  (d) **fragmentação** = nº de canônicos com descrição ≥ 0,8 de similaridade e
+  mesma unidade-base, antes/depois da fusão.
+- **Herança de código entre filiais da mesma rede** (`alargarPorRede`, hoje
+  **desligada**). A hipótese é que filiais com a mesma raiz de CNPJ compartilhem
+  o ERP e portanto o código. Contra-prova antes de ligar: por `codigo`, contar
+  raízes distintas; entre as com ≥ 2, comparar descrições. Discordância alta
+  entre raízes confirma a chave por CNPJ completo; concordância alta **dentro**
+  da mesma raiz valida o alargamento.
 - Abreviações de unidade por portal: o que não está no mapa fica fora do pool **em silêncio**. Contar as unidades recusadas na ingestão diz quais faltam.
 
 ### Ferramenta de calibração (já pronta; falta é volume do beta)

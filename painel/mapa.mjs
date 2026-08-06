@@ -1154,13 +1154,47 @@ export const funcoes = [
     oque: 'Quando o item vem sem código de barras, sugere a qual produto ele corresponde comparando as descrições, e permite confirmar a sugestão.',
     detalhe:
       'Crítico para os dados do RJ, que costumam nascer sem EAN. Depois que o casamento é confirmado, o job `republicar-pool` volta e preenche o pool com as observações que estavam órfãs. Sugestões via `POST /curadoria/casamento/sugestoes` e confirmação via `POST /curadoria/casamento/confirmar`.',
-    ligacoes: ['republicar', 'curadoria', 'busca-produtos'],
+    ligacoes: ['republicar', 'curadoria', 'busca-produtos', 'resolvedor-produto'],
     arquivos: [
       'backend/src/estatistica/casamento-texto.ts',
       'backend/src/curadoria/servico-confirmacao-casamento.ts',
     ],
     rotas: ['POST /curadoria/casamento/sugestoes', 'POST /curadoria/casamento/confirmar'],
     etapas: ['C3.5'],
+  },
+  {
+    id: 'resolvedor-produto',
+    nome: 'Quem é este produto',
+    area: 'estatistica',
+    status: 'pronto',
+    oque: 'Decide, para cada item do cupom, a qual produto de referência ele pertence — na ordem: código de barras, código interno da loja, decisão da curadoria, descrição.',
+    detalhe:
+      'Para item SEM código de barras, a identidade do produto ERA a descrição exata: bastava o mercado abreviar o nome para nascer um produto novo e o histórico de preço se partir em dois, em silêncio — com a mediana voltando a "1 observação" e o app opinando com a mesma cara de confiança. O código interno da loja (o mesmo item tem sempre o mesmo código naquele mercado) segura essa identidade. Três guardas evitam o casamento errado quando a loja recicla um código: unidade diferente barra na hora, descrição muito diferente barra, e salto de preço só levanta suspeita (promoção e inflação existem). Nada disso cria produto novo — a chave é só memória de uma decisão já tomada por um caminho mais forte.',
+    ligacoes: ['anonimizador', 'fusao-canonicos', 'casamento-texto'],
+    arquivos: [
+      'backend/src/anonimizacao/resolvedor-produto.ts',
+      'backend/src/anonimizacao/casamento.ts',
+      'supabase/migrations/20260804090000_item_cupom_codigo_loja.sql',
+      'supabase/migrations/20260805090000_casamento_codigo_loja_e_fusao.sql',
+    ],
+    regras: ['r6'],
+    etapas: ['C3.6.1'],
+  },
+  {
+    id: 'fusao-canonicos',
+    nome: 'Juntar produtos repetidos',
+    area: 'estatistica',
+    status: 'pronto',
+    oque: 'Junta dois cadastros que são o mesmo produto físico, somando os preços dos dois numa série só.',
+    detalhe:
+      'O mesmo produto vira dois cadastros quando um mercado escreve "CR LEITE X 200G" e outro "CREME DE LEITE X 200G", ou quando uma rede informa o código de barras e outra não. Cada metade fica com poucos preços, e o app diz "poucos dados ainda" sobre um produto do qual tem dados de sobra. A junção reaponta tudo (preços, histórico do usuário, alertas) e guarda o nome antigo, senão o próximo cupom recria o cadastro repetido. Recusa quando a intenção é ambígua (unidades diferentes, dois códigos de barras distintos) em vez de adivinhar — não há como desfazer.',
+    ligacoes: ['resolvedor-produto', 'curadoria', 'pipeline'],
+    arquivos: [
+      'backend/src/curadoria/servico-fusao-canonicos.ts',
+      'supabase/migrations/20260805090000_casamento_codigo_loja_e_fusao.sql',
+    ],
+    rotas: ['POST /curadoria/produto/fundir'],
+    etapas: ['C3.6.1'],
   },
   {
     id: 'republicar',
@@ -2615,6 +2649,15 @@ export const etapas = [
     fase: 'MVP',
     status: 'pronto',
     oque: 'Sugestão por similaridade para itens sem EAN, com confirmação via API.',
+  },
+  {
+    codigo: 'C3.6.1',
+    nome: 'Identidade do produto sem EAN',
+    fase: 'MVP',
+    status: 'parcial',
+    oque: 'Ordem única de casamento (EAN → código interno da loja → decisão da curadoria → descrição) e a junção de cadastros repetidos.',
+    falta:
+      'Os limiares das guardas (similaridade de 0,55, faixa de dúvida em 0,35, banda de preço de 3×, dormência de 18 meses) são chute fundamentado, não calibração: precisam de volume do beta para medir. E a herança de código entre filiais da mesma rede está DESLIGADA — é hipótese ("filiais compartilham o mesmo sistema"), e ligar hipótese antes de medir é como dado errado entra em escala.',
   },
   {
     codigo: 'C3.6',

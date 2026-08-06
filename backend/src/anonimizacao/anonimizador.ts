@@ -8,10 +8,10 @@
  *                     gate único de `@barganha/shared` (C1.4). CPF/chave/usuário
  *                     nunca cruzam: o gate copia só os campos permitidos.
  *
- * Só entra no pool o item que tem produto canônico E preço normalizável — o
- * casamento é por EAN quando o portal o expõe, ou pela descrição normalizada
- * exata quando não (portais como o RJ/ENCAT só mostram código interno da loja).
- * O resto fica apenas no histórico privado.
+ * Só entra no pool o item que tem produto canônico E preço normalizável. A
+ * ORDEM do casamento (EAN → loja+código interno → alias confirmado → descrição
+ * exata) não mora aqui: mora no `ResolvedorProduto`, fonte única compartilhada
+ * com o backfill (`job:republicar`). O resto fica apenas no histórico privado.
  */
 
 import {
@@ -25,8 +25,14 @@ import {
 } from '@barganha/shared';
 
 import { telemetriaNula, type Telemetria } from '../observabilidade/telemetria';
-import type { CatalogoProdutos } from './casamento';
-import { chaveUnidade, normalizarDescricao, normalizarPreco, unidadeConhecida } from './normalizacao';
+import type { CatalogoProdutos, FonteAliasTexto, MapaCodigoLoja } from './casamento';
+import {
+  chaveUnidade,
+  normalizarDescricao,
+  normalizarPreco,
+  unidadeConhecida,
+} from './normalizacao';
+import { type OpcoesResolvedor, ResolvedorProduto } from './resolvedor-produto';
 
 /** Contexto identificável do cupom — entra aqui, NUNCA sai para o pool. */
 export interface ContextoPrivado {
@@ -48,11 +54,30 @@ export interface ResultadoAnonimizacao {
   observacoes: ObservacaoAnonima[];
 }
 
+/** Fontes opcionais do casamento. Ausentes = comportamento anterior à C3.6.1. */
+export interface FontesCasamento extends OpcoesResolvedor {
+  mapaCodigoLoja?: MapaCodigoLoja;
+  aliasTexto?: FonteAliasTexto;
+}
+
 export class Anonimizador {
+  private readonly resolvedor: ResolvedorProduto;
+
   constructor(
-    private readonly catalogo: CatalogoProdutos,
+    catalogo: CatalogoProdutos,
     private readonly telemetria: Telemetria = telemetriaNula,
-  ) {}
+    fontes: FontesCasamento = {},
+  ) {
+    const { mapaCodigoLoja, aliasTexto, ...opcoes } = fontes;
+    this.resolvedor = new ResolvedorProduto(
+      catalogo,
+      {
+        ...(mapaCodigoLoja ? { mapaCodigoLoja } : {}),
+        ...(aliasTexto ? { aliasTexto } : {}),
+      },
+      opcoes,
+    );
+  }
 
   /**
    * @param ufCanonica UF derivada da CHAVE de acesso (cUF) — fonte mais
@@ -91,23 +116,30 @@ export class Anonimizador {
 
       let produtoCanonicoId: string | undefined;
       if (norm) {
-        const sugestao = {
+        // Ordem única em `ResolvedorProduto`: EAN → (loja, código interno) →
+        // alias confirmado → descrição exata. O preço normalizado entra só
+        // para alimentar o SINAL de salto de preço da guarda do código; ele
+        // nunca decide casamento sozinho.
+        const resolucao = await this.resolvedor.resolver({
           descricaoNormalizada: normalizarDescricao(item.descricao),
           unidadeBase: norm.unidadeBase,
-        };
-        if (item.ean) {
-          produtoCanonicoId = await this.catalogo.casarPorEan(item.ean, sugestao);
-        } else if (sugestao.descricaoNormalizada) {
-          // Sem EAN (portal só expõe código interno, ou item de balança):
-          // identidade exata pela descrição — nunca por similaridade (C3.5).
-          produtoCanonicoId = await this.catalogo.casarPorDescricao(sugestao);
-        }
+          lojaCnpj: loja.cnpj,
+          ...(item.ean ? { ean: item.ean } : {}),
+          ...(item.codigoLoja ? { codigoLoja: item.codigoLoja } : {}),
+          precoNormalizado: norm.precoNormalizado,
+        });
+        produtoCanonicoId = resolucao.produtoCanonicoId;
       }
 
       itensPrivados.push({
         ...(produtoCanonicoId ? { produtoCanonicoId } : {}),
         descricaoOriginal: item.descricao,
         ...(item.ean ? { ean: item.ean } : {}),
+        // PRIVADO só (item_cupom) — nunca entra em itensPool/observações: o
+        // gate (shared/anonimizacao/gate.ts) não tem slot para ele. O código
+        // já foi USADO no casamento acima; o que vive no lado compartilhado é
+        // o mapeamento em `produto_codigo_loja`, não a linha do cupom.
+        ...(item.codigoLoja ? { codigoLoja: item.codigoLoja } : {}),
         quantidade: item.quantidade,
         unidade: item.unidade,
         valorUnitario: item.valorUnitario,
