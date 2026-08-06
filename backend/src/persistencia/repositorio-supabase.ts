@@ -59,6 +59,11 @@ import type {
   ProdutoResumoBusca,
   RepositorioCuradoria,
 } from '../curadoria/tipos';
+import type {
+  ItemFilaCodigoLoja,
+  RepositorioFilaCodigoLoja,
+  ResultadoReaponte,
+} from '../curadoria/tipos-fila-codigo-loja';
 import { LancamentoInvalidoError } from '../erros';
 import {
   type CandidatoCanonico,
@@ -288,6 +293,7 @@ export class RepositorioSupabase
     RepositorioModeracao,
     RepositorioDenuncia,
     RepositorioCuradoria,
+    RepositorioFilaCodigoLoja,
     RepositorioAlertas,
     RepositorioAssinatura
 {
@@ -1106,6 +1112,138 @@ export class RepositorioSupabase
       .eq('loja_cnpj', lojaCnpj)
       .eq('codigo', codigo);
     if (r.error) falhar('marcação de mapeamento suspeito', r.error);
+  }
+
+  // ───────────────────────── RepositorioFilaCodigoLoja (C3.6.2) ───────
+
+  /**
+   * `status <> 'ativo'`, mais recentemente alteradas primeiro. Três consultas
+   * (a fila + lote de lojas + lote de canônicos) em vez de um embed do
+   * PostgREST: o resto do adaptador não usa `select('*, tabela(...)')` em
+   * lugar nenhum (ver nota de `paginar`/`falhar` acima), e a fila é de baixo
+   * volume — o custo de N+2 aqui é irrelevante perto de manter um padrão só.
+   */
+  async listarSuspeitos(limite: number): Promise<ItemFilaCodigoLoja[]> {
+    const r = await this.db
+      .from('produto_codigo_loja')
+      .select(
+        'loja_cnpj, codigo, produto_canonico_id, unidade_base, descricao_referencia, status, motivo_suspeita, hits, ultimo_visto, atualizado_em',
+      )
+      .neq('status', 'ativo')
+      .order('atualizado_em', { ascending: false })
+      .limit(limite);
+    if (r.error) falhar('listagem da fila de códigos-loja suspeitos', r.error);
+    const linhas = r.data ?? [];
+    if (linhas.length === 0) return [];
+
+    const cnpjs = [...new Set(linhas.map((l) => l.loja_cnpj as string))];
+    const produtoIds = [...new Set(linhas.map((l) => l.produto_canonico_id as string))];
+
+    const [lojasR, produtosR] = await Promise.all([
+      this.db.from('loja').select('cnpj, razao_social, nome_fantasia').in('cnpj', cnpjs),
+      this.db
+        .from('produto_canonico')
+        .select('id, ean, nome_exibicao, descricao_normalizada')
+        .in('id', produtoIds),
+    ]);
+    if (lojasR.error) falhar('carga de lojas da fila de códigos-loja', lojasR.error);
+    if (produtosR.error) falhar('carga de produtos da fila de códigos-loja', produtosR.error);
+
+    const lojasPorCnpj = new Map((lojasR.data ?? []).map((l) => [l.cnpj as string, l]));
+    const produtosPorId = new Map((produtosR.data ?? []).map((p) => [p.id as string, p]));
+
+    const itens: ItemFilaCodigoLoja[] = [];
+    for (const l of linhas) {
+      const produto = produtosPorId.get(l.produto_canonico_id as string);
+      // Canônico apagado (fusão) entre a marcação e a leitura — não deveria
+      // acontecer (FK cascade removeria a linha também), mas pular é mais
+      // seguro que derrubar a fila inteira por uma linha órfã.
+      if (!produto) continue;
+      const loja = lojasPorCnpj.get(l.loja_cnpj as string);
+      itens.push({
+        lojaCnpj: l.loja_cnpj as string,
+        ...(loja?.razao_social ? { lojaRazaoSocial: loja.razao_social as string } : {}),
+        ...(loja?.nome_fantasia ? { lojaNomeFantasia: loja.nome_fantasia as string } : {}),
+        codigo: l.codigo as string,
+        descricaoReferencia: (l.descricao_referencia as string) ?? '',
+        unidadeBase: l.unidade_base as UnidadeBase,
+        status: l.status as 'suspeito' | 'dormente',
+        ...(l.motivo_suspeita ? { motivoSuspeita: l.motivo_suspeita as string } : {}),
+        hits: Number(l.hits ?? 0),
+        ultimoVisto: String(l.ultimo_visto ?? '').slice(0, 10),
+        atualizadoEm: l.atualizado_em as string,
+        produtoCanonico: {
+          id: produto.id as string,
+          ...(produto.ean ? { ean: produto.ean as string } : {}),
+          ...(produto.nome_exibicao ? { nomeExibicao: produto.nome_exibicao as string } : {}),
+          descricaoNormalizada: (produto.descricao_normalizada as string) ?? '',
+        },
+      });
+    }
+    return itens;
+  }
+
+  async confirmarMapeamento(lojaCnpj: string, codigo: string): Promise<boolean> {
+    const r = await this.db
+      .from('produto_codigo_loja')
+      .update({
+        status: 'ativo',
+        motivo_suspeita: null,
+        atualizado_em: new Date().toISOString(),
+      })
+      .eq('loja_cnpj', lojaCnpj)
+      .eq('codigo', codigo)
+      .select('loja_cnpj')
+      .maybeSingle();
+    if (r.error) falhar('confirmação de mapeamento suspeito', r.error);
+    return r.data != null;
+  }
+
+  /**
+   * Não é uma RPC: ao contrário da fusão (que reaponta um produto INTEIRO —
+   * pool, histórico, aliases — numa transação), aqui é UMA linha só, e o pior
+   * cenário de uma corrida (dois curadores reapontando o mesmo par ao mesmo
+   * tempo) é a última escrita vencer — o mesmo risco que `enriquecerProduto`
+   * já assume. As duas leituras antes do update são só para devolver um motivo
+   * de recusa explicável (o mesmo veto de integridade da fusão: unidade
+   * divergente não tem conserto depois).
+   */
+  async reapontarMapeamento(
+    lojaCnpj: string,
+    codigo: string,
+    produtoCanonicoId: string,
+  ): Promise<ResultadoReaponte> {
+    const atual = await this.db
+      .from('produto_codigo_loja')
+      .select('unidade_base')
+      .eq('loja_cnpj', lojaCnpj)
+      .eq('codigo', codigo)
+      .maybeSingle();
+    if (atual.error) falhar('carga de mapeamento para reaponte', atual.error);
+    if (!atual.data) return 'nao_encontrado';
+
+    const alvo = await this.db
+      .from('produto_canonico')
+      .select('unidade_base')
+      .eq('id', produtoCanonicoId)
+      .maybeSingle();
+    if (alvo.error) falhar('carga de produto-alvo para reaponte', alvo.error);
+    if (!alvo.data) return 'produto_nao_encontrado';
+
+    if (alvo.data.unidade_base !== atual.data.unidade_base) return 'unidade_divergente';
+
+    const r = await this.db
+      .from('produto_codigo_loja')
+      .update({
+        produto_canonico_id: produtoCanonicoId,
+        status: 'ativo',
+        motivo_suspeita: null,
+        atualizado_em: new Date().toISOString(),
+      })
+      .eq('loja_cnpj', lojaCnpj)
+      .eq('codigo', codigo);
+    if (r.error) falhar('reaponte de mapeamento loja+código', r.error);
+    return 'ok';
   }
 
   // ───────────────────────── RepositorioFusao (C3.6.1) ────────────────

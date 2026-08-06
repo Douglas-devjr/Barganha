@@ -143,6 +143,14 @@ export const PAINEL_CURADORIA_HTML = `<!DOCTYPE html>
 </section>
 
 <section>
+  <h2>Fila de códigos-loja suspeitos</h2>
+  <p class="sub">O casamento por (loja + código interno) recusou estas linhas — a descrição/preço mudou o bastante para desconfiar que a loja reciclou o código para outro produto. Enquanto isso, o item continua resolvendo por descrição/alias normalmente. <strong>Confirmar</strong> mantém o produto atual (a descrição só variou); <strong>Reapontar</strong> aponta para outro produto (use a busca "Corrigir metadado de produto" acima para achar o produtoCanonicoId certo).</p>
+  <div class="linha-botoes"><button class="secundario pequeno" id="btnCarregarFilaCodigoLoja">Carregar fila</button></div>
+  <div id="msgFilaCodigoLoja"></div>
+  <div id="listaFilaCodigoLoja" style="margin-top: 0.75rem;"></div>
+</section>
+
+<section>
   <h2>Reprocessamento retroativo</h2>
   <p class="sub">Re-enfileira QRs represados de uma UF (ou todas as suportadas, se em branco).</p>
   <label for="reprocUf">UF (opcional, 2 letras)</label>
@@ -526,6 +534,89 @@ export const PAINEL_CURADORIA_HTML = `<!DOCTYPE html>
       });
     } catch (e) {
       mostrarMsg('msgDenuncias', e.message, 'erro');
+    }
+  });
+
+  // ── Fila de códigos-loja suspeitos (C3.6.2) ───────────────────────────
+  function tempoDecorrido(iso) {
+    if (!iso) return '—';
+    var ms = Date.now() - new Date(iso).getTime();
+    var minutos = Math.floor(ms / 60000);
+    if (minutos < 60) return 'há ' + Math.max(minutos, 0) + ' min';
+    var horas = Math.floor(minutos / 60);
+    if (horas < 24) return 'há ' + horas + 'h';
+    var dias = Math.floor(horas / 24);
+    return 'há ' + dias + ' dia' + (dias === 1 ? '' : 's');
+  }
+
+  document.getElementById('btnCarregarFilaCodigoLoja').addEventListener('click', async function () {
+    limparMsg('msgFilaCodigoLoja');
+    const lista = document.getElementById('listaFilaCodigoLoja');
+    lista.innerHTML = '';
+    try {
+      const resp = await chamar('/curadoria/fila-codigo-loja', { method: 'GET' });
+      if (!resp.itens || resp.itens.length === 0) {
+        mostrarMsg('msgFilaCodigoLoja', 'Fila vazia.', 'ok');
+        return;
+      }
+      resp.itens.forEach(function (it) {
+        const div = document.createElement('div');
+        div.className = 'item-fila';
+        const loja = it.lojaRazaoSocial || it.lojaNomeFantasia || it.lojaCnpj;
+        const produtoAtual = it.produtoCanonico.nomeExibicao || it.produtoCanonico.descricaoNormalizada;
+        const pre = document.createElement('pre');
+        pre.textContent =
+          loja + ' (' + it.lojaCnpj + ') · código ' + it.codigo +
+          '\\nstatus: ' + it.status + (it.motivoSuspeita ? ' — ' + it.motivoSuspeita : '') +
+          '\\ndescrição de referência: ' + it.descricaoReferencia + ' (' + it.unidadeBase + ')' +
+          '\\nproduto atual: ' + produtoAtual + textoOuTraco(it.produtoCanonico.ean ? ' · EAN ' + it.produtoCanonico.ean : '') +
+          '\\nhits: ' + it.hits + ' · último uso: ' + it.ultimoVisto + ' · atualizado ' + tempoDecorrido(it.atualizadoEm);
+        div.appendChild(pre);
+        const botoes = document.createElement('div');
+        botoes.className = 'linha-botoes';
+        const btnConfirmar = document.createElement('button');
+        btnConfirmar.className = 'pequeno';
+        btnConfirmar.textContent = 'Confirmar (produto atual está certo)';
+        const btnReapontar = document.createElement('button');
+        btnReapontar.className = 'pequeno secundario';
+        btnReapontar.textContent = 'Reapontar para outro produto';
+        btnConfirmar.addEventListener('click', async function () {
+          limparMsg('msgFilaCodigoLoja');
+          try {
+            await chamar('/curadoria/fila-codigo-loja/confirmar', {
+              method: 'POST',
+              body: JSON.stringify({ lojaCnpj: it.lojaCnpj, codigo: it.codigo }),
+            });
+            mostrarMsg('msgFilaCodigoLoja', 'Mapeamento confirmado.', 'ok');
+            div.remove();
+          } catch (e) {
+            mostrarMsg('msgFilaCodigoLoja', e.message, 'erro');
+          }
+        });
+        btnReapontar.addEventListener('click', async function () {
+          limparMsg('msgFilaCodigoLoja');
+          const novoId = window.prompt(
+            'produtoCanonicoId do produto correto (use a busca "Corrigir metadado de produto" acima para achar):'
+          );
+          if (!novoId) return;
+          try {
+            const resp = await chamar('/curadoria/fila-codigo-loja/reapontar', {
+              method: 'POST',
+              body: JSON.stringify({ lojaCnpj: it.lojaCnpj, codigo: it.codigo, produtoCanonicoId: novoId.trim() }),
+            });
+            mostrarMsg('msgFilaCodigoLoja', 'Reapontado (' + resp.resultado + ').', 'ok');
+            div.remove();
+          } catch (e) {
+            mostrarMsg('msgFilaCodigoLoja', e.message, 'erro');
+          }
+        });
+        botoes.appendChild(btnConfirmar);
+        botoes.appendChild(btnReapontar);
+        div.appendChild(botoes);
+        lista.appendChild(div);
+      });
+    } catch (e) {
+      mostrarMsg('msgFilaCodigoLoja', e.message, 'erro');
     }
   });
 

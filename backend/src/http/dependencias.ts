@@ -20,6 +20,7 @@ import type { ServicoComparacaoLista } from '../consulta/servico-comparacao-list
 import type { ServicoConsulta } from '../consulta/servico-consulta';
 import type { ServicoCuradoria } from '../curadoria/servico-curadoria';
 import type { ServicoConfirmacaoCasamento } from '../curadoria/servico-confirmacao-casamento';
+import type { ServicoFilaCodigoLoja } from '../curadoria/servico-fila-codigo-loja';
 import type { ServicoFusaoCanonicos } from '../curadoria/servico-fusao-canonicos';
 import type { MatcherTexto } from '../estatistica/casamento-texto';
 import type { ServicoIngestao } from '../ingestao/servico-ingestao';
@@ -125,6 +126,12 @@ export interface DependenciasHttp {
    * pool), então segue o mesmo padrão "nega fechado" das outras.
    */
   servicoFusaoCanonicos?: ServicoFusaoCanonicos;
+  /**
+   * Fila de códigos-loja suspeitos/dormentes (C3.6.2) — o que o casamento por
+   * (loja, código) recusou e deixou esperando revisão humana. Omitido → rotas
+   * `/curadoria/fila-codigo-loja*` não sobem.
+   */
+  servicoFilaCodigoLoja?: ServicoFilaCodigoLoja;
   /** Reprocessamento retroativo por UF (C11.1/C2.5) — gatilho operacional. */
   reprocessador?: ReprocessadorRetroativo;
   /** Autorização dos endpoints de CURADORIA (C11). Sem ela, as rotas não sobem. */

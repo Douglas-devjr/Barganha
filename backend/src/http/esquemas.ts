@@ -330,6 +330,44 @@ export const SCHEMA_REMOVER_DISPOSITIVO = {
   },
 } as const;
 
+// Fila de códigos-loja suspeitos (C3.6.2) — GET com querystring opcional.
+export const SCHEMA_FILA_CODIGO_LOJA = {
+  querystring: {
+    type: 'object',
+    additionalProperties: false,
+    properties: {
+      limite: { type: 'string', pattern: '^[0-9]+$' },
+    },
+  },
+} as const;
+
+// Confirma o mapeamento loja+código como estava (C3.6.2).
+export const SCHEMA_CONFIRMAR_CODIGO_LOJA = {
+  body: {
+    type: 'object',
+    required: ['lojaCnpj', 'codigo'],
+    additionalProperties: false,
+    properties: {
+      lojaCnpj: { type: 'string', minLength: 1 },
+      codigo: { type: 'string', minLength: 1 },
+    },
+  },
+} as const;
+
+// Reaponta o mapeamento loja+código para outro produto canônico (C3.6.2).
+export const SCHEMA_REAPONTAR_CODIGO_LOJA = {
+  body: {
+    type: 'object',
+    required: ['lojaCnpj', 'codigo', 'produtoCanonicoId'],
+    additionalProperties: false,
+    properties: {
+      lojaCnpj: { type: 'string', minLength: 1 },
+      codigo: { type: 'string', minLength: 1 },
+      produtoCanonicoId: { type: 'string', minLength: 1, format: 'uuid' },
+    },
+  },
+} as const;
+
 // Gatilho de reprocessamento retroativo por UF (C11.1/C2.5).
 export const SCHEMA_REPROCESSAR = {
   body: {

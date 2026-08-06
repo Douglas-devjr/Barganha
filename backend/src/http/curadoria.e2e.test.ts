@@ -10,6 +10,7 @@ import { ServicoConta } from '../auth/servico-conta';
 import { ServicoConsulta } from '../consulta/servico-consulta';
 import { ServicoCuradoria } from '../curadoria/servico-curadoria';
 import { ServicoConfirmacaoCasamento } from '../curadoria/servico-confirmacao-casamento';
+import { ServicoFilaCodigoLoja } from '../curadoria/servico-fila-codigo-loja';
 import { MatcherTexto } from '../estatistica/casamento-texto';
 import { FilaMemoria } from '../fila/fila-memoria';
 import { ServicoIngestao } from '../ingestao/servico-ingestao';
@@ -46,6 +47,7 @@ function montarApp() {
     servicoCuradoria: new ServicoCuradoria(repo),
     matcherTexto: new MatcherTexto(repo),
     servicoConfirmacaoCasamento: new ServicoConfirmacaoCasamento(repo),
+    servicoFilaCodigoLoja: new ServicoFilaCodigoLoja(repo),
     autorizacaoCuradoria: new GuardaCuradoria([TOKEN]),
     reprocessador: new ReprocessadorRetroativo(repo, registro, fila),
   });
@@ -382,6 +384,149 @@ describe('Curadoria & moderação (C11) — HTTP', () => {
       });
       expect(r.statusCode).toBe(200);
       expect(typeof r.json().reenfileirados).toBe('number');
+    });
+  });
+
+  describe('Fila de códigos-loja suspeitos (C3.6.2)', () => {
+    const LOJA_CNPJ_FILA = '31698759001780';
+
+    it('sem token → 403 (GET e POSTs)', async () => {
+      const get = await app.inject({ method: 'GET', url: '/curadoria/fila-codigo-loja' });
+      expect(get.statusCode).toBe(403);
+      const confirmar = await app.inject({
+        method: 'POST',
+        url: '/curadoria/fila-codigo-loja/confirmar',
+        payload: { lojaCnpj: LOJA_CNPJ_FILA, codigo: 'X' },
+      });
+      expect(confirmar.statusCode).toBe(403);
+      const reapontar = await app.inject({
+        method: 'POST',
+        url: '/curadoria/fila-codigo-loja/reapontar',
+        payload: {
+          lojaCnpj: LOJA_CNPJ_FILA,
+          codigo: 'X',
+          produtoCanonicoId: '00000000-0000-0000-0000-000000000000',
+        },
+      });
+      expect(reapontar.statusCode).toBe(403);
+    });
+
+    it('lista, confirma e reaponta uma linha suspeita', async () => {
+      // Fixture: um mapeamento (loja, código) marcado suspeito pelo casamento —
+      // o mesmo que `resolvedor-produto.ts` faz quando a descrição diverge.
+      const produtoAtual = await repo.casarPorDescricao({
+        descricaoNormalizada: 'CR LEITE X 200G',
+        unidadeBase: 'un',
+      });
+      const produtoCorreto = await repo.casarPorDescricao({
+        descricaoNormalizada: 'CREME DE LEITE X 200G',
+        unidadeBase: 'un',
+      });
+      await repo.registrarMapeamento({
+        lojaCnpj: LOJA_CNPJ_FILA,
+        codigo: 'SKU-C3.6.2',
+        produtoCanonicoId: produtoAtual,
+        unidadeBase: 'un',
+        descricaoReferencia: 'CR LEITE X 200G',
+        origem: 'descricao_exata',
+      });
+      await repo.marcarMapeamentoSuspeito(LOJA_CNPJ_FILA, 'SKU-C3.6.2', 'descricao_divergente');
+
+      const fila = await app.inject({
+        method: 'GET',
+        url: '/curadoria/fila-codigo-loja',
+        headers: curador(),
+      });
+      expect(fila.statusCode).toBe(200);
+      const { itens } = fila.json() as {
+        itens: {
+          lojaCnpj: string;
+          codigo: string;
+          status: string;
+          produtoCanonico: { id: string };
+        }[];
+      };
+      const item = itens.find((i) => i.codigo === 'SKU-C3.6.2');
+      expect(item).toBeDefined();
+      expect(item?.status).toBe('suspeito');
+      expect(item?.produtoCanonico.id).toBe(produtoAtual);
+
+      // Confirmar em par inexistente → 404.
+      const confirmarInexistente = await app.inject({
+        method: 'POST',
+        url: '/curadoria/fila-codigo-loja/confirmar',
+        headers: curador(),
+        payload: { lojaCnpj: LOJA_CNPJ_FILA, codigo: 'nao-existe' },
+      });
+      expect(confirmarInexistente.statusCode).toBe(404);
+
+      // Reapontar para produto inexistente → 400.
+      const reapontarProdutoInexistente = await app.inject({
+        method: 'POST',
+        url: '/curadoria/fila-codigo-loja/reapontar',
+        headers: curador(),
+        payload: {
+          lojaCnpj: LOJA_CNPJ_FILA,
+          codigo: 'SKU-C3.6.2',
+          produtoCanonicoId: '00000000-0000-0000-0000-000000000000',
+        },
+      });
+      expect(reapontarProdutoInexistente.statusCode).toBe(400);
+
+      // Reaponta para o produto certo → 200, some da fila.
+      const reapontar = await app.inject({
+        method: 'POST',
+        url: '/curadoria/fila-codigo-loja/reapontar',
+        headers: curador(),
+        payload: {
+          lojaCnpj: LOJA_CNPJ_FILA,
+          codigo: 'SKU-C3.6.2',
+          produtoCanonicoId: produtoCorreto,
+        },
+      });
+      expect(reapontar.statusCode).toBe(200);
+      expect(reapontar.json().resultado).toBe('ok');
+
+      const m = await repo.buscarMapeamento(LOJA_CNPJ_FILA, 'SKU-C3.6.2');
+      expect(m?.status).toBe('ativo');
+      expect(m?.produtoCanonicoId).toBe(produtoCorreto);
+
+      const filaDepois = await app.inject({
+        method: 'GET',
+        url: '/curadoria/fila-codigo-loja',
+        headers: curador(),
+      });
+      const itensDepois = filaDepois.json().itens as { codigo: string }[];
+      expect(itensDepois.some((i) => i.codigo === 'SKU-C3.6.2')).toBe(false);
+    });
+
+    it('confirmar mantém o produto atual', async () => {
+      const produtoId = await repo.casarPorDescricao({
+        descricaoNormalizada: 'PAO FRANCES',
+        unidadeBase: 'kg',
+      });
+      await repo.registrarMapeamento({
+        lojaCnpj: LOJA_CNPJ_FILA,
+        codigo: 'SKU-CONFIRMA',
+        produtoCanonicoId: produtoId,
+        unidadeBase: 'kg',
+        descricaoReferencia: 'PAO FRANCES',
+        origem: 'descricao_exata',
+      });
+      await repo.marcarMapeamentoSuspeito(LOJA_CNPJ_FILA, 'SKU-CONFIRMA', 'descricao_divergente');
+
+      const r = await app.inject({
+        method: 'POST',
+        url: '/curadoria/fila-codigo-loja/confirmar',
+        headers: curador(),
+        payload: { lojaCnpj: LOJA_CNPJ_FILA, codigo: 'SKU-CONFIRMA' },
+      });
+      expect(r.statusCode).toBe(200);
+      expect(r.json().confirmado).toBe(true);
+
+      const m = await repo.buscarMapeamento(LOJA_CNPJ_FILA, 'SKU-CONFIRMA');
+      expect(m?.status).toBe('ativo');
+      expect(m?.produtoCanonicoId).toBe(produtoId);
     });
   });
 });

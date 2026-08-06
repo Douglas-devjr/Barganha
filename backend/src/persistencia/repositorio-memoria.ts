@@ -53,6 +53,11 @@ import type {
   ProdutoResumoBusca,
   RepositorioCuradoria,
 } from '../curadoria/tipos';
+import type {
+  ItemFilaCodigoLoja,
+  RepositorioFilaCodigoLoja,
+  ResultadoReaponte,
+} from '../curadoria/tipos-fila-codigo-loja';
 import {
   type CandidatoCanonico,
   type FonteCandidatosTexto,
@@ -150,6 +155,8 @@ interface MapeamentoInterno extends MapeamentoCodigoLoja {
   hits: number;
   eanVisto?: string;
   motivoSuspeita?: string;
+  /** Espelha `atualizado_em` — ordena a fila de suspeitos (C3.6.2) por recência. */
+  atualizadoEm: string;
 }
 
 interface ProdutoCanonicoInterno {
@@ -188,6 +195,21 @@ function resumoBuscaDe(p: ProdutoCanonicoInterno): ProdutoResumoBusca {
   };
 }
 
+/** Contexto do canônico-alvo (C3.6.2) — o que o curador vê na fila de suspeitos. */
+function produtoResumoFilaDe(p: ProdutoCanonicoInterno): {
+  id: string;
+  ean?: string;
+  nomeExibicao?: string;
+  descricaoNormalizada: string;
+} {
+  return {
+    id: p.id,
+    ...(p.ean ? { ean: p.ean } : {}),
+    ...(p.nomeExibicao ? { nomeExibicao: p.nomeExibicao } : {}),
+    descricaoNormalizada: p.descricaoNormalizada,
+  };
+}
+
 /** Lançamento manual armazenado (PRIVADO — tem o autor). C11.3. */
 interface LancamentoModeracaoInterno extends LancamentoModeracaoNovo {
   id: string;
@@ -215,6 +237,7 @@ export class RepositorioMemoria
     RepositorioModeracao,
     RepositorioDenuncia,
     RepositorioCuradoria,
+    RepositorioFilaCodigoLoja,
     RepositorioAlertas,
     RepositorioAssinatura
 {
@@ -750,6 +773,7 @@ export class RepositorioMemoria
       status: 'ativo',
       origem: dados.origem,
       ultimoVisto: diaDe(new Date()),
+      atualizadoEm: new Date().toISOString(),
       hits: (anterior?.hits ?? 0) + 1,
       ...(dados.eanVisto ? { eanVisto: dados.eanVisto } : {}),
     });
@@ -772,6 +796,7 @@ export class RepositorioMemoria
       // descrição estranha isolada se recupera sozinho, sem curadoria.
       status: 'ativo',
       ultimoVisto: diaDe(new Date()),
+      atualizadoEm: new Date().toISOString(),
       hits: atual.hits + 1,
     });
     return Promise.resolve();
@@ -783,8 +808,84 @@ export class RepositorioMemoria
     if (!atual) return Promise.resolve();
     // NÃO reaponta o canônico: só sinaliza. Reapontar sozinho seria trocar o
     // produto de uma série histórica inteira sem ninguém ver.
-    this.mapeamentosCodigo.set(chave, { ...atual, status: 'suspeito', motivoSuspeita: motivo });
+    this.mapeamentosCodigo.set(chave, {
+      ...atual,
+      status: 'suspeito',
+      motivoSuspeita: motivo,
+      atualizadoEm: new Date().toISOString(),
+    });
     return Promise.resolve();
+  }
+
+  // ───────────────────────── RepositorioFilaCodigoLoja (C3.6.2) ───────
+
+  listarSuspeitos(limite: number): Promise<ItemFilaCodigoLoja[]> {
+    const suspeitos = [...this.mapeamentosCodigo.values()]
+      .filter((m) => m.status !== 'ativo')
+      // Mais recentemente alteradas primeiro — o que pediu atenção por último.
+      .sort((a, b) => b.atualizadoEm.localeCompare(a.atualizadoEm))
+      .slice(0, limite);
+
+    const itens: ItemFilaCodigoLoja[] = [];
+    for (const m of suspeitos) {
+      const produto = this.acharProdutoPorId(m.produtoCanonicoId);
+      // Não deveria acontecer (FK), mas um canônico apagado por fusão entre a
+      // marcação e a leitura não deve derrubar a fila inteira — pula a linha.
+      if (!produto) continue;
+      const loja = this.lojas.get(m.lojaCnpj);
+      itens.push({
+        lojaCnpj: m.lojaCnpj,
+        ...(loja?.razaoSocial ? { lojaRazaoSocial: loja.razaoSocial } : {}),
+        ...(loja?.nomeFantasia ? { lojaNomeFantasia: loja.nomeFantasia } : {}),
+        codigo: m.codigo,
+        descricaoReferencia: m.descricaoReferencia,
+        unidadeBase: m.unidadeBase,
+        status: m.status as 'suspeito' | 'dormente',
+        ...(m.motivoSuspeita ? { motivoSuspeita: m.motivoSuspeita } : {}),
+        hits: m.hits,
+        ultimoVisto: m.ultimoVisto,
+        atualizadoEm: m.atualizadoEm,
+        produtoCanonico: produtoResumoFilaDe(produto),
+      });
+    }
+    return Promise.resolve(itens);
+  }
+
+  confirmarMapeamento(lojaCnpj: string, codigo: string): Promise<boolean> {
+    const chave = chaveMapeamento(lojaCnpj, codigo);
+    const atual = this.mapeamentosCodigo.get(chave);
+    if (!atual) return Promise.resolve(false);
+    // Mantém o produto_canonico_id — o curador confirmou que o casamento
+    // atual está certo, só a linha estava marcada por engano/dúvida.
+    this.mapeamentosCodigo.set(chave, {
+      ...atual,
+      status: 'ativo',
+      motivoSuspeita: undefined,
+      atualizadoEm: new Date().toISOString(),
+    });
+    return Promise.resolve(true);
+  }
+
+  reapontarMapeamento(
+    lojaCnpj: string,
+    codigo: string,
+    produtoCanonicoId: string,
+  ): Promise<ResultadoReaponte> {
+    const chave = chaveMapeamento(lojaCnpj, codigo);
+    const atual = this.mapeamentosCodigo.get(chave);
+    if (!atual) return Promise.resolve('nao_encontrado');
+    const alvo = this.acharProdutoPorId(produtoCanonicoId);
+    if (!alvo) return Promise.resolve('produto_nao_encontrado');
+    // Mesmo veto de integridade da fusão: kg ≠ un não tem conserto depois.
+    if (alvo.unidadeBase !== atual.unidadeBase) return Promise.resolve('unidade_divergente');
+    this.mapeamentosCodigo.set(chave, {
+      ...atual,
+      produtoCanonicoId,
+      status: 'ativo',
+      motivoSuspeita: undefined,
+      atualizadoEm: new Date().toISOString(),
+    });
+    return Promise.resolve('ok');
   }
 
   // ───────────────────────── RepositorioFusao (C3.6.1) ────────────────

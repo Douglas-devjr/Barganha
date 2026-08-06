@@ -410,6 +410,74 @@ export interface FusaoCanonicosResponse {
   codigosRepontados: number;
 }
 
+// ────────────── Fila de códigos-loja suspeitos (C3.6.2, curadoria) ───────────
+
+/**
+ * Uma linha de `produto_codigo_loja` com `status <> 'ativo'` — o casamento
+ * recusou o mapeamento (unidade divergente, descrição na faixa de dúvida, ou
+ * dormência por falta de uso) e a deixou esperando um humano. Enquanto isso, o
+ * item resolve pelos caminhos normais (alias/descrição) e o mapeamento fica
+ * CONGELADO como estava — nada aqui é publicado sozinho.
+ */
+export interface ItemFilaCodigoLoja {
+  lojaCnpj: string;
+  /** Razão social da loja, quando o cadastro (`loja`) já tem. */
+  lojaRazaoSocial?: string;
+  lojaNomeFantasia?: string;
+  codigo: string;
+  descricaoReferencia: string;
+  unidadeBase: UnidadeBase;
+  status: 'suspeito' | 'dormente';
+  /** Motivo textual da recusa mais recente (`reuso_provavel`, etc.), quando houver. */
+  motivoSuspeita?: string;
+  hits: number;
+  /** Dia (YYYY-MM-DD) do último uso ACEITO — granularidade de dia por LGPD. */
+  ultimoVisto: string;
+  atualizadoEm: string;
+  /** O canônico que o mapeamento aponta HOJE — contexto para o curador decidir. */
+  produtoCanonico: {
+    id: string;
+    ean?: string;
+    nomeExibicao?: string;
+    descricaoNormalizada: string;
+  };
+}
+
+export interface ListaFilaCodigoLojaResponse {
+  itens: ItemFilaCodigoLoja[];
+}
+
+/** Confirma o mapeamento como estava: o curador olhou e concluiu que está certo. */
+export interface ConfirmarCodigoLojaRequest {
+  lojaCnpj: string;
+  codigo: string;
+}
+
+export interface ConfirmarCodigoLojaResponse {
+  confirmado: boolean;
+}
+
+/**
+ * O curador decidiu que o código passou a significar OUTRO produto (a loja
+ * reciclou o SKU) — reaponta o mapeamento e o reabilita.
+ */
+export interface ReapontarCodigoLojaRequest {
+  lojaCnpj: string;
+  codigo: string;
+  /** O `produto_canonico` correto para este (loja, código) daqui em diante. */
+  produtoCanonicoId: string;
+}
+
+/**
+ * `resultado` distingue por que a operação não foi feita: `nao_encontrado` (o
+ * par loja+código não existe), `produto_nao_encontrado` (o alvo não existe) ou
+ * `unidade_divergente` (kg ≠ un — reapontar misturaria escalas de preço, o
+ * mesmo veto que a fusão de canônicos aplica).
+ */
+export interface ReapontarCodigoLojaResponse {
+  resultado: 'ok' | 'nao_encontrado' | 'produto_nao_encontrado' | 'unidade_divergente';
+}
+
 // ──────────────────── Lançamento manual de gôndola (C11.3) ───────────────────
 
 /**

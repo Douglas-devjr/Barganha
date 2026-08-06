@@ -16,6 +16,7 @@ import { ServicoComparacaoLista } from './consulta/servico-comparacao-lista';
 import { ServicoConsulta } from './consulta/servico-consulta';
 import { ServicoCuradoria } from './curadoria/servico-curadoria';
 import { ServicoConfirmacaoCasamento } from './curadoria/servico-confirmacao-casamento';
+import { ServicoFilaCodigoLoja } from './curadoria/servico-fila-codigo-loja';
 import { ServicoFusaoCanonicos } from './curadoria/servico-fusao-canonicos';
 import { AgendadorRecalculo } from './estatistica/agendador-recalculo';
 import { MatcherTexto } from './estatistica/casamento-texto';
@@ -99,6 +100,8 @@ export interface Backend {
   /** Confirmação de casamento por texto (C3.5) — curadoria. */
   servicoConfirmacaoCasamento: ServicoConfirmacaoCasamento;
   servicoFusaoCanonicos: ServicoFusaoCanonicos;
+  /** Fila de códigos-loja suspeitos/dormentes (C3.6.2) — revisão humana do casamento por (loja, código). */
+  servicoFilaCodigoLoja: ServicoFilaCodigoLoja;
   /** Autorização dos endpoints de curadoria (C11) — token estático do ambiente. */
   guardaCuradoria: GuardaCuradoria;
   /** Health check detalhado (C10.4) — fonte de `/saude` e do gate de deploy. */
@@ -248,6 +251,10 @@ export function montarBackend(config: ConfigBackend): Backend {
   const servicoFusaoCanonicos = new ServicoFusaoCanonicos(repo, (id) =>
     pipelineEstatistica.recalcularProduto(id),
   );
+  // C3.6.2 — a fila de `produto_codigo_loja` que o casamento marcou
+  // `suspeito`/`dormente` e ninguém tinha como ver (o índice existia sem
+  // tela nenhuma por trás).
+  const servicoFilaCodigoLoja = new ServicoFilaCodigoLoja(repo);
   const guardaCuradoria = new GuardaCuradoria(config.curadoriaTokens);
 
   // C10.4 — health check detalhado. A ordem das sondas é a do relatório; as
@@ -296,6 +303,7 @@ export function montarBackend(config: ConfigBackend): Backend {
     servicoCuradoria,
     servicoConfirmacaoCasamento,
     servicoFusaoCanonicos,
+    servicoFilaCodigoLoja,
     guardaCuradoria,
   };
 }

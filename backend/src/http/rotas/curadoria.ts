@@ -14,10 +14,12 @@
 
 import type {
   CasamentoSugestoesRequest,
+  ConfirmarCodigoLojaRequest,
   ConfirmacaoCasamentoRequest,
   DecisaoModeracaoRequest,
   EnriquecimentoProdutoRequest,
   FusaoCanonicosRequest,
+  ReapontarCodigoLojaRequest,
 } from '@barganha/shared';
 import type { FastifyInstance } from 'fastify';
 
@@ -26,10 +28,13 @@ import {
   SCHEMA_BUSCA_CURADORIA,
   SCHEMA_CASAMENTO,
   SCHEMA_CONFIRMACAO_CASAMENTO,
+  SCHEMA_CONFIRMAR_CODIGO_LOJA,
   SCHEMA_DECISAO,
   SCHEMA_DECISAO_DENUNCIA,
   SCHEMA_ENRIQUECIMENTO,
+  SCHEMA_FILA_CODIGO_LOJA,
   SCHEMA_FUSAO_CANONICOS,
+  SCHEMA_REAPONTAR_CODIGO_LOJA,
   SCHEMA_REPROCESSAR,
 } from '../esquemas';
 import { PAINEL_CURADORIA_HTML } from './painel-curadoria-html';
@@ -43,6 +48,7 @@ export function registrarRotasCuradoria(app: FastifyInstance, ctx: ContextoRotas
     matcherTexto,
     servicoConfirmacaoCasamento,
     servicoFusaoCanonicos,
+    servicoFilaCodigoLoja,
     reprocessador,
   } = ctx.deps;
 
@@ -212,6 +218,70 @@ export function registrarRotasCuradoria(app: FastifyInstance, ctx: ContextoRotas
           req.body.vencedorId,
         );
         return reply.send(resposta);
+      },
+    );
+  }
+
+  if (servicoFilaCodigoLoja) {
+    // Fila de códigos-loja suspeitos/dormentes (C3.6.2) — o que o casamento
+    // por (loja, código) recusou (`avaliarMapeamento`) e deixou esperando
+    // revisão humana em vez de reapontar sozinho. Até esta etapa a fila só
+    // se acumulava: existia índice (`produto_codigo_loja_suspeito_idx`) e
+    // nenhuma tela.
+    app.get<{ Querystring: { limite?: string } }>(
+      '/curadoria/fila-codigo-loja',
+      { schema: SCHEMA_FILA_CODIGO_LOJA, ...opcoes },
+      async (req, reply) => {
+        if (!autorizado(req, reply)) return reply;
+        const { limite } = req.query;
+        const itens = await servicoFilaCodigoLoja.listar(
+          limite !== undefined ? Number(limite) : undefined,
+        );
+        return reply.send({ itens });
+      },
+    );
+
+    // Confirma o mapeamento como estava — o curador olhou e concluiu que o
+    // produto atual está certo mesmo (a descrição só variou).
+    app.post<{ Body: ConfirmarCodigoLojaRequest }>(
+      '/curadoria/fila-codigo-loja/confirmar',
+      { schema: SCHEMA_CONFIRMAR_CODIGO_LOJA, ...opcoes },
+      async (req, reply) => {
+        if (!autorizado(req, reply)) return reply;
+        const confirmado = await servicoFilaCodigoLoja.confirmar(
+          req.body.lojaCnpj,
+          req.body.codigo,
+        );
+        if (!confirmado) return reply.code(404).send({ erro: 'Mapeamento não encontrado.' });
+        return reply.send({ confirmado: true });
+      },
+    );
+
+    // Reaponta para outro canônico (a loja reciclou o SKU) e reabilita a
+    // linha. Recusa (400) quando o alvo não existe ou tem unidade-base
+    // diferente — mesmo veto de integridade da fusão de canônicos.
+    app.post<{ Body: ReapontarCodigoLojaRequest }>(
+      '/curadoria/fila-codigo-loja/reapontar',
+      { schema: SCHEMA_REAPONTAR_CODIGO_LOJA, ...opcoes },
+      async (req, reply) => {
+        if (!autorizado(req, reply)) return reply;
+        const resultado = await servicoFilaCodigoLoja.reapontar(
+          req.body.lojaCnpj,
+          req.body.codigo,
+          req.body.produtoCanonicoId,
+        );
+        if (resultado === 'nao_encontrado') {
+          return reply.code(404).send({ erro: 'Mapeamento não encontrado.' });
+        }
+        if (resultado === 'produto_nao_encontrado') {
+          return reply.code(400).send({ erro: 'Produto-alvo não encontrado.' });
+        }
+        if (resultado === 'unidade_divergente') {
+          return reply.code(400).send({
+            erro: 'Unidade-base do produto-alvo diverge da linha — reapontar misturaria escalas de preço.',
+          });
+        }
+        return reply.send({ resultado });
       },
     );
   }

@@ -34,6 +34,7 @@ export async function main(): Promise<void> {
     matcherTexto,
     servicoConfirmacaoCasamento,
     servicoFusaoCanonicos,
+    servicoFilaCodigoLoja,
     saude,
     metricasPerformance,
     fila,
@@ -68,6 +69,7 @@ export async function main(): Promise<void> {
     // junta duas séries de preço que nasceram partidas.
     servicoConfirmacaoCasamento,
     servicoFusaoCanonicos,
+    servicoFilaCodigoLoja,
     trustProxy: config.trustProxy,
     logger: true,
   });

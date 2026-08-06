@@ -452,8 +452,8 @@ footer{max-width:1180px; margin:0 auto; padding:0 24px 72px; font-size:12px; col
   <div class="topo-in">
     <span class="marca">Barganha <span>painel do projeto</span></span>
     <span class="topo-meta">
-      <span class="selo">commit <code>a0a076f</code> · 06/08/2026</span>
-      <span class="selo sujo">27 arquivo(s) sem commit</span>
+      <span class="selo">commit <code>790e05c</code> · 06/08/2026</span>
+      <span class="selo sujo">14 arquivo(s) sem commit</span>
       <span class="selo">gerado em 06 de agosto de 2026</span>
     </span>
   </div>
@@ -470,7 +470,7 @@ footer{max-width:1180px; margin:0 auto; padding:0 24px 72px; font-size:12px; col
       <span class="sec-num">01</span>
       <h2>Onde estou</h2>
     </div>
-    <button class="ouvir" type="button" data-fala="54 de 82 etapas estão prontas, 20 estão pela metade e 8 não começaram. A Google Play exige, para conta pessoal nova, 12+ testadores ativos por 14 dias corridos antes de liberar produção. O relógio só começa quando a faixa de teste fechado existe e as pessoas entram — então tudo que vem antes é caminho crítico." aria-label="Ouvir o resumo desta seção">
+    <button class="ouvir" type="button" data-fala="55 de 83 etapas estão prontas, 20 estão pela metade e 8 não começaram. A Google Play exige, para conta pessoal nova, 12+ testadores ativos por 14 dias corridos antes de liberar produção. O relógio só começa quando a faixa de teste fechado existe e as pessoas entram — então tudo que vem antes é caminho crítico." aria-label="Ouvir o resumo desta seção">
       <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2 4.5 5H2v6h2.5L8 14zM11 5.5a3.5 3.5 0 0 1 0 5M13 3.5a6 6 0 0 1 0 9"/></svg>
       ouvir
     </button>
@@ -479,9 +479,9 @@ footer{max-width:1180px; margin:0 auto; padding:0 24px 72px; font-size:12px; col
   <p class="lede">A Google Play exige, para conta pessoal nova, 12+ testadores ativos por 14 dias corridos antes de liberar produção. O relógio só começa quando a faixa de teste fechado existe e as pessoas entram — então tudo que vem antes é caminho crítico.</p>
   <div class="tiles">
     <div class="tile t-ok">
-      <span class="tile-n">54</span>
+      <span class="tile-n">55</span>
       <span class="tile-r">etapas prontas</span>
-      <span class="tile-s">de 82</span>
+      <span class="tile-s">de 83</span>
     </div>
     <div class="tile t-warn">
       <span class="tile-n">20</span>
@@ -1925,7 +1925,7 @@ footer{max-width:1180px; margin:0 auto; padding:0 24px 72px; font-size:12px; col
       <span class="sec-num">06</span>
       <h2>Cada função, em uma frase</h2>
     </div>
-    <button class="ouvir" type="button" data-fala="São 95 funções mapeadas, divididas em 8 áreas. Cada uma diz o que faz, com quem conversa, que regra obedece e onde mora no código. Use os filtros para ver só as que estão pela metade." aria-label="Ouvir o resumo desta seção">
+    <button class="ouvir" type="button" data-fala="São 96 funções mapeadas, divididas em 8 áreas. Cada uma diz o que faz, com quem conversa, que regra obedece e onde mora no código. Use os filtros para ver só as que estão pela metade." aria-label="Ouvir o resumo desta seção">
       <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2 4.5 5H2v6h2.5L8 14zM11 5.5a3.5 3.5 0 0 1 0 5M13 3.5a6 6 0 0 1 0 9"/></svg>
       ouvir
     </button>
@@ -2352,6 +2352,21 @@ footer{max-width:1180px; margin:0 auto; padding:0 24px 72px; font-size:12px; col
       
       <div class="chips"><span class="rot">Etapas</span><a class="chip etapa" href="#etapa-C3.6.1">C3.6.1</a></div>
       <details class="det"><summary>Onde mora no código</summary><ul class="arqs"><li class=""><code>backend/src/curadoria/servico-fusao-canonicos.ts</code></li><li class=""><code>supabase/migrations/20260805090000_casamento_codigo_loja_e_fusao.sql</code></li></ul></details>
+    </article>
+    <article class="fn s-pronto" id="fn-fila-codigo-loja" data-area="estatistica" data-status="pronto" data-busca="fila de códigos-loja suspeitos tela de curadoria para revisar mapeamentos (loja + código interno) que avaliarmapeamento marcou como suspeitos ou dormentes, com ações de confirmar (o canônico atual está certo) ou reapontar (a loja reciclou o código para outro produto). até esta etapa a fila só se acumulava: existia o índice (produto_codigo_loja_suspeito_idx) e nenhuma tela que o lesse. reapontar recusa (400) quando o canônico-alvo não existe ou tem unidade-base diferente da linha — o mesmo veto de integridade da fusão de canônicos, pelo mesmo motivo: misturar kg com un não tem conserto depois. fundir dois canônicos continua sendo uma decisão diferente, feita em /curadoria/produto/fundir (c3.6.1). estatística get /curadoria/fila-codigo-loja post /curadoria/fila-codigo-loja/confirmar post /curadoria/fila-codigo-loja/reapontar c3.6.2">
+      <header>
+        <h3>Fila de códigos-loja suspeitos</h3>
+        <span class="pill p-pronto"><i></i>pronto</span>
+      </header>
+      <span class="fn-area">Estatística</span>
+      <p class="oque">Tela de curadoria para revisar mapeamentos (loja + código interno) que <code>avaliarMapeamento</code> marcou como suspeitos ou dormentes, com ações de confirmar (o canônico atual está certo) ou reapontar (a loja reciclou o código para outro produto).</p>
+      
+      <details class="det"><summary>Por que é assim</summary><p>Até esta etapa a fila só se acumulava: existia o índice (<code>produto_codigo_loja_suspeito_idx</code>) e nenhuma tela que o lesse. Reapontar recusa (400) quando o canônico-alvo não existe ou tem unidade-base diferente da linha — o mesmo veto de integridade da fusão de canônicos, pelo mesmo motivo: misturar kg com un não tem conserto depois. Fundir dois canônicos continua sendo uma decisão diferente, feita em <code>/curadoria/produto/fundir</code> (C3.6.1).</p></details>
+      <div class="rotas"><code class="rota">GET /curadoria/fila-codigo-loja</code><code class="rota">POST /curadoria/fila-codigo-loja/confirmar</code><code class="rota">POST /curadoria/fila-codigo-loja/reapontar</code></div>
+      <div class="chips"><span class="rot">Conversa com</span><button type="button" class="chip liga" data-ir="resolvedor-produto">Quem é este produto</button><button type="button" class="chip liga" data-ir="curadoria">Curadoria de produtos</button></div>
+      
+      <div class="chips"><span class="rot">Etapas</span><a class="chip etapa" href="#etapa-C3.6.2">C3.6.2</a></div>
+      <details class="det"><summary>Onde mora no código</summary><ul class="arqs"><li class=""><code>backend/src/curadoria/servico-fila-codigo-loja.ts</code></li><li class=""><code>backend/src/curadoria/tipos-fila-codigo-loja.ts</code></li></ul></details>
     </article>
     <article class="fn s-pronto" id="fn-republicar" data-area="estatistica" data-status="pronto" data-busca="republicar o pool uma vez por dia, entra no pool as observações de itens que finalmente ganharam um casamento de produto. estatística c3.5">
       <header>
@@ -3602,7 +3617,7 @@ footer{max-width:1180px; margin:0 auto; padding:0 24px 72px; font-size:12px; col
       <span class="sec-num">08</span>
       <h2>Etapas, do C0 ao C12</h2>
     </div>
-    <button class="ouvir" type="button" data-fala="O catálogo completo com o status real de cada sub-etapa. 54 prontas, 20 pela metade — todas com o que falta escrito — e 8 que não começaram." aria-label="Ouvir o resumo desta seção">
+    <button class="ouvir" type="button" data-fala="O catálogo completo com o status real de cada sub-etapa. 55 prontas, 20 pela metade — todas com o que falta escrito — e 8 que não começaram." aria-label="Ouvir o resumo desta seção">
       <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2 4.5 5H2v6h2.5L8 14zM11 5.5a3.5 3.5 0 0 1 0 5M13 3.5a6 6 0 0 1 0 9"/></svg>
       ouvir
     </button>
@@ -3771,7 +3786,7 @@ footer{max-width:1180px; margin:0 auto; padding:0 24px 72px; font-size:12px; col
         <header>
           <h3><code>C3</code> Estatística</h3>
           <span>O motor do veredito.</span>
-          <span class="mini">3 pronto · 4 parcial · 0 falta</span>
+          <span class="mini">4 pronto · 4 parcial · 0 falta</span>
         </header>
         <ol class="etapas">
         <li class="etapa s-pronto" id="etapa-C3.1">
@@ -3827,6 +3842,15 @@ footer{max-width:1180px; margin:0 auto; padding:0 24px 72px; font-size:12px; col
             <p class="falta"><span class="rot">Falta</span>Os limiares das guardas (similaridade de 0,55, faixa de dúvida em 0,35, banda de preço de 3×, dormência de 18 meses) são chute fundamentado, não calibração: precisam de volume do beta para medir. E a herança de código entre filiais da mesma rede está DESLIGADA — é hipótese (&quot;filiais compartilham o mesmo sistema&quot;), e ligar hipótese antes de medir é como dado errado entra em escala.</p>
           </div>
           <span class="pill p-parcial"><i></i>parcial</span>
+        </li>
+        <li class="etapa s-pronto" id="etapa-C3.6.2">
+          <code class="cod">C3.6.2</code>
+          <div class="etapa-corpo">
+            <h4>Fila de curadoria dos códigos-loja suspeitos <span class="fase-tag mvp">MVP</span></h4>
+            <p>Tela para revisar as linhas que o casamento por (loja, código) recusou e deixou esperando: confirmar o canônico atual ou reapontar para outro.</p>
+            
+          </div>
+          <span class="pill p-pronto"><i></i>pronto</span>
         </li>
         <li class="etapa s-parcial" id="etapa-C3.6">
           <code class="cod">C3.6</code>
@@ -4694,7 +4718,7 @@ footer{max-width:1180px; margin:0 auto; padding:0 24px 72px; font-size:12px; col
       <span class="sec-num">12</span>
       <h2>Como este painel se mantém junto com o código</h2>
     </div>
-    <button class="ouvir" type="button" data-fala="Atenção: existem 6 pontos de deriva entre o código e o mapa do painel." aria-label="Ouvir o resumo desta seção">
+    <button class="ouvir" type="button" data-fala="Tudo em sincronia: as 354 evidências citadas existem no código e nenhuma rota ou tela ficou sem dono." aria-label="Ouvir o resumo desta seção">
       <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2 4.5 5H2v6h2.5L8 14zM11 5.5a3.5 3.5 0 0 1 0 5M13 3.5a6 6 0 0 1 0 9"/></svg>
       ouvir
     </button>
@@ -4711,22 +4735,14 @@ footer{max-width:1180px; margin:0 auto; padding:0 24px 72px; font-size:12px; col
       <li><strong>Se você esquecer</strong>, o <code>npm run check</code> (e o CI) roda <code>npm run painel:conferir</code> e reprova: evidência que sumiu e rota/tela nova sem dono aparecem por nome.</li>
     </ol>
   </div>
-  <div class="drift">
-      <p class="alerta-drift">6 ponto(s) de deriva entre o código e o mapa do painel. Corrija <code>painel/mapa.mjs</code> e rode <code>npm run painel</code>.</p>
-      
-      
-      <div class="drift-grupo"><h4>Rota nova no código, sem dono no painel</h4><ul><li><code>GET /curadoria/fila-codigo-loja</code></li><li><code>POST /curadoria/fila-codigo-loja/confirmar</code></li><li><code>POST /curadoria/fila-codigo-loja/reapontar</code></li></ul></div>
-      
-      
-      <div class="drift-grupo"><h4>Arquivo de código que ninguém descreve</h4><ul><li><code>backend/src/curadoria/servico-fila-codigo-loja.ts</code></li><li><code>backend/src/curadoria/tipos-fila-codigo-loja.ts</code></li></ul></div>
-      <div class="drift-grupo"><h4>Etapa citada no repositório e ausente do catálogo</h4><ul><li><code>C3.6.2</code></li></ul></div></div>
+  <div class="drift"><p class="ok-drift">&#10003; Tudo em sincronia — as 354 evidências citadas pelo painel existem no código, e nenhuma rota ou tela ficou sem dono.</p></div>
 </section>
 </main>
 
 <footer>
   Gerado por <code>npm run painel</code> a partir de <code>painel/mapa.mjs</code> + o estado real do repositório.
-  Último commit lido: <code>a0a076f</code> — “docs(sefaz): registra que loja sem EAN varia por rede, não só perecível”.
-  Havia 27 arquivo(s) modificado(s) sem commit no momento da geração.
+  Último commit lido: <code>790e05c</code> — “feat(app): item da lista sem marca definida, resolvido depois no mercado”.
+  Havia 14 arquivo(s) modificado(s) sem commit no momento da geração.
 </footer>
 
 <script>

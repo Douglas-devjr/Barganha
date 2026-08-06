@@ -1197,6 +1197,26 @@ export const funcoes = [
     etapas: ['C3.6.1'],
   },
   {
+    id: 'fila-codigo-loja',
+    nome: 'Fila de códigos-loja suspeitos',
+    area: 'estatistica',
+    status: 'pronto',
+    oque: 'Tela de curadoria para revisar mapeamentos (loja + código interno) que `avaliarMapeamento` marcou como suspeitos ou dormentes, com ações de confirmar (o canônico atual está certo) ou reapontar (a loja reciclou o código para outro produto).',
+    detalhe:
+      'Até esta etapa a fila só se acumulava: existia o índice (`produto_codigo_loja_suspeito_idx`) e nenhuma tela que o lesse. Reapontar recusa (400) quando o canônico-alvo não existe ou tem unidade-base diferente da linha — o mesmo veto de integridade da fusão de canônicos, pelo mesmo motivo: misturar kg com un não tem conserto depois. Fundir dois canônicos continua sendo uma decisão diferente, feita em `/curadoria/produto/fundir` (C3.6.1).',
+    ligacoes: ['resolvedor-produto', 'curadoria'],
+    arquivos: [
+      'backend/src/curadoria/servico-fila-codigo-loja.ts',
+      'backend/src/curadoria/tipos-fila-codigo-loja.ts',
+    ],
+    rotas: [
+      'GET /curadoria/fila-codigo-loja',
+      'POST /curadoria/fila-codigo-loja/confirmar',
+      'POST /curadoria/fila-codigo-loja/reapontar',
+    ],
+    etapas: ['C3.6.2'],
+  },
+  {
     id: 'republicar',
     nome: 'Republicar o pool',
     area: 'estatistica',
@@ -2659,6 +2679,13 @@ export const etapas = [
     oque: 'Ordem única de casamento (EAN → código interno da loja → decisão da curadoria → descrição) e a junção de cadastros repetidos.',
     falta:
       'Os limiares das guardas (similaridade de 0,55, faixa de dúvida em 0,35, banda de preço de 3×, dormência de 18 meses) são chute fundamentado, não calibração: precisam de volume do beta para medir. E a herança de código entre filiais da mesma rede está DESLIGADA — é hipótese ("filiais compartilham o mesmo sistema"), e ligar hipótese antes de medir é como dado errado entra em escala.',
+  },
+  {
+    codigo: 'C3.6.2',
+    nome: 'Fila de curadoria dos códigos-loja suspeitos',
+    fase: 'MVP',
+    status: 'pronto',
+    oque: 'Tela para revisar as linhas que o casamento por (loja, código) recusou e deixou esperando: confirmar o canônico atual ou reapontar para outro.',
   },
   {
     codigo: 'C3.6',
