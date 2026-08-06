@@ -5,7 +5,9 @@ A **NFC-e** (Nota Fiscal de Consumidor Eletrônica, modelo 65) é o cupom usado 
 - Um **QR code** que aponta para o portal de consulta da **SEFAZ do estado**.
 - Uma **chave de acesso** de 44 dígitos.
 
-A página de consulta da SEFAZ contém os dados **estruturados**: estabelecimento (CNPJ, razão social, endereço), data/hora e cada item com descrição, **código de barras (EAN/GTIN)**, quantidade, unidade, valor unitário e total.
+A página de consulta da SEFAZ contém os dados **estruturados**: estabelecimento (CNPJ, razão social, endereço), data/hora e cada item com descrição, um **código**, quantidade, unidade, valor unitário e total.
+
+> **O código nem sempre é o EAN/GTIN real.** Confirmado com cupom real (ago/2026): o campo "Código" que o portal mostra é o que a LOJA declarou à SEFAZ — algumas redes declaram o EAN de fábrica, outras declaram só o SKU/código interno delas (curto, sem formato de código de barras). Isso varia **por loja**, não só por tipo de item (não é só hortifruti/açougue — mercado de rede grande também faz isso para item embalado comum). O papel físico do cupom pode ter o EAN correto mesmo quando o portal não mostra — mas o app não lê o papel (ver "Estratégia: QR-first" abaixo), então esse EAN fica fora de alcance quando a loja não o declara à SEFAZ.
 
 ## Estratégia: QR-first
 1. O app lê o **QR code** e guarda o **payload cru** imediatamente (offline-safe).
@@ -49,5 +51,5 @@ Cada estado tem um portal SEFAZ diferente (HTML/estrutura diferentes). Por isso:
 
 ## Pontos de atenção
 - Disponibilidade do portal SEFAZ varia por estado e horário → nunca bloquear o usuário; processar em background.
-- Itens **sem EAN** (hortifruti, padaria, açougue) → encaminhados ao casamento por texto (ver `06`).
+- Itens **sem EAN real** — que inclui hortifruti/padaria/açougue (sem código de fábrica por natureza) **e também item embalado comum de loja que não declara o EAN à SEFAZ** (varia por rede, não é exceção rara) — usam o código interno da loja como chave (loja + código, ver `06`) quando ele se repete entre cupons; sem repetição ainda, caem no casamento por texto.
 - A **chave de acesso** fica **somente** no lado privado (liga a CPF via SEFAZ) — ver `04`.
