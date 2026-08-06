@@ -1,0 +1,23 @@
+-- Fecha o furo apontado pelo guard de CI (rls-migracoes.test.ts): a migração
+-- original (20260801090000) criou `rate_limit_janela` sem RLS, com o
+-- raciocínio "é dado operacional puro, sem dono, o banco public é de
+-- confiança interna" — esse raciocínio está errado no modelo do Supabase:
+-- QUALQUER tabela em `public` sem RLS fica legível e ESCRITÍVEL pela anon key,
+-- que vive dentro do app (é pública por natureza, extraível do bundle).
+--
+-- Sem isto, qualquer pessoa com a anon key pode apagar sua própria linha em
+-- `rate_limit_janela` (zera o próprio contador e furou o rate-limit) ou, pior,
+-- escrever/apagar a linha de OUTRA chave (nega serviço a outro IP/conta). Não
+-- é dado pessoal, mas é a integridade do próprio mecanismo de proteção.
+--
+-- Migração NOVA em vez de editar 20260801090000 de propósito: aquela já foi
+-- commitada, e reescrever migração já publicada é o tipo de mudança que quebra
+-- silenciosamente quem já aplicou (o hash/nome não bate mais). O padrão do
+-- projeto para "esqueci algo" é sempre um ALTER novo.
+--
+-- Sem política nenhuma: o backend acessa esta tabela com o cliente
+-- service_role (`criarClienteSupabase`, único lugar que a usa —
+-- `backend/src/composicao.ts`), que ignora RLS por definição. Ligar RLS sem
+-- política nega tudo para anon/authenticated e não muda nada para o backend.
+
+alter table public.rate_limit_janela enable row level security;
