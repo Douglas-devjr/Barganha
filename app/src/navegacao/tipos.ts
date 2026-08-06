@@ -24,8 +24,14 @@ export type TabParamList = {
 export type RootStackParamList = {
   Abas: NavigatorScreenParams<TabParamList> | undefined;
   Scanner: undefined;
-  /** Scan de código de barras na gôndola (C7.1); devolve o EAN à aba Verificar. */
-  EscanearBarras: undefined;
+  /**
+   * Scan de código de barras na gôndola (C7.1); devolve o EAN à aba Verificar
+   * pelo correio `nucleo/scan-pendente`. Quando vem de um item PENDENTE da lista
+   * de compras ("a escolher no mercado", C12.1), `resolveItemListaId` viaja
+   * junto (para a Verificar promover a linha) e `nomeItemPendente` só rotula o
+   * título desta tela — não é dado, é o nome que a própria pessoa já digitou.
+   */
+  EscanearBarras: { resolveItemListaId?: string; nomeItemPendente?: string } | undefined;
   /**
    * `recemCapturado` marca a nota que acabou de ser escaneada/digitada: quando
    * ela terminar de processar, a NotaFiscal mostra a confirmação (`CupomLido`)

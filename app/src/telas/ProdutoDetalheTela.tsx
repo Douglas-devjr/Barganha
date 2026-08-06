@@ -208,7 +208,7 @@ export function ProdutoDetalheTela({ navigation, route }: Props) {
     const id = produto?.produtoCanonicoId;
     if (!id) return;
     if (naLista) {
-      await lista.remover(id);
+      await lista.removerPorProdutoCanonicoId(id);
       toast('Removido da lista');
     } else {
       await lista.adicionar(id, produto?.nome ?? nome ?? 'Produto');

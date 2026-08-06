@@ -452,9 +452,9 @@ footer{max-width:1180px; margin:0 auto; padding:0 24px 72px; font-size:12px; col
   <div class="topo-in">
     <span class="marca">Barganha <span>painel do projeto</span></span>
     <span class="topo-meta">
-      <span class="selo">commit <code>97baf66</code> · 03/08/2026</span>
-      <span class="selo sujo">32 arquivo(s) sem commit</span>
-      <span class="selo">gerado em 05 de agosto de 2026</span>
+      <span class="selo">commit <code>a0a076f</code> · 06/08/2026</span>
+      <span class="selo sujo">27 arquivo(s) sem commit</span>
+      <span class="selo">gerado em 06 de agosto de 2026</span>
     </span>
   </div>
   <nav class="abas" aria-label="Seções">
@@ -2771,7 +2771,7 @@ footer{max-width:1180px; margin:0 auto; padding:0 24px 72px; font-size:12px; col
       <div class="chips"><span class="rot">Conversa com</span><button type="button" class="chip liga" data-ir="busca-produtos">Buscar produtos no pool</button><button type="button" class="chip liga" data-ir="comparar-mercados">Comparar mercados</button><button type="button" class="chip liga" data-ir="delta-sync">Delta sync das estatísticas</button></div>
       
       <div class="chips"><span class="rot">Etapas</span><a class="chip etapa" href="#etapa-C7.6">C7.6</a><a class="chip etapa" href="#etapa-C12.1">C12.1</a></div>
-      <details class="det"><summary>Onde mora no código</summary><ul class="arqs"><li class=""><code>app/src/telas/ListaComprasTela.tsx</code></li><li class=""><code>app/src/componentes/FolhaAdicionarItem.tsx</code></li><li class=""><code>app/src/dados/repositorio-lista.ts</code></li></ul></details>
+      <details class="det"><summary>Onde mora no código</summary><ul class="arqs"><li class=""><code>app/src/telas/ListaComprasTela.tsx</code></li><li class=""><code>app/src/componentes/FolhaAdicionarItem.tsx</code></li><li class=""><code>app/src/dados/repositorio-lista.ts</code></li><li class=""><code>app/src/nucleo/lista-regras.ts</code></li></ul></details>
     </article>
     <article class="fn s-pronto" id="fn-comparar-mercados" data-area="app" data-status="pronto" data-busca="comparar mercados diz onde a sua cesta sai mais barata, mostrando a cobertura item por item. a cesta virou lista com cobertura por item de propósito: &quot;r$ 87 no mercado x&quot; sem dizer que só 6 dos 15 itens tinham preço seria um número bonito e falso. telas do app c12.1">
       <header>
@@ -4694,13 +4694,13 @@ footer{max-width:1180px; margin:0 auto; padding:0 24px 72px; font-size:12px; col
       <span class="sec-num">12</span>
       <h2>Como este painel se mantém junto com o código</h2>
     </div>
-    <button class="ouvir" type="button" data-fala="Tudo em sincronia: as 348 evidências citadas existem no código e nenhuma rota ou tela ficou sem dono." aria-label="Ouvir o resumo desta seção">
+    <button class="ouvir" type="button" data-fala="Atenção: existem 6 pontos de deriva entre o código e o mapa do painel." aria-label="Ouvir o resumo desta seção">
       <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2 4.5 5H2v6h2.5L8 14zM11 5.5a3.5 3.5 0 0 1 0 5M13 3.5a6 6 0 0 1 0 9"/></svg>
       ouvir
     </button>
   </header>
   
-  <div class="medidos"><div class="medido"><b>33</b><span>rotas na API</span></div><div class="medido"><b>35</b><span>telas no app</span></div><div class="medido"><b>5</b><span>parsers de estado</span></div><div class="medido"><b>19</b><span>tabelas no servidor</span></div><div class="medido"><b>9</b><span>tabelas no aparelho</span></div><div class="medido"><b>35</b><span>migrações</span></div><div class="medido"><b>94</b><span>arquivos de teste</span></div><div class="medido"><b>11</b><span>rotinas agendadas</span></div></div>
+  <div class="medidos"><div class="medido"><b>36</b><span>rotas na API</span></div><div class="medido"><b>35</b><span>telas no app</span></div><div class="medido"><b>5</b><span>parsers de estado</span></div><div class="medido"><b>19</b><span>tabelas no servidor</span></div><div class="medido"><b>10</b><span>tabelas no aparelho</span></div><div class="medido"><b>36</b><span>migrações</span></div><div class="medido"><b>96</b><span>arquivos de teste</span></div><div class="medido"><b>11</b><span>rotinas agendadas</span></div></div>
   <p class="legenda">Os números acima são <strong>contados no repositório</strong> a cada geração — ninguém os digita. O que é curado à mão é só o status e o texto de cada item, em <code>painel/mapa.mjs</code>.</p>
   <div class="como">
     <h3 class="sub">Como este painel se mantém junto com o código</h3>
@@ -4711,14 +4711,22 @@ footer{max-width:1180px; margin:0 auto; padding:0 24px 72px; font-size:12px; col
       <li><strong>Se você esquecer</strong>, o <code>npm run check</code> (e o CI) roda <code>npm run painel:conferir</code> e reprova: evidência que sumiu e rota/tela nova sem dono aparecem por nome.</li>
     </ol>
   </div>
-  <div class="drift"><p class="ok-drift">&#10003; Tudo em sincronia — as 348 evidências citadas pelo painel existem no código, e nenhuma rota ou tela ficou sem dono.</p></div>
+  <div class="drift">
+      <p class="alerta-drift">6 ponto(s) de deriva entre o código e o mapa do painel. Corrija <code>painel/mapa.mjs</code> e rode <code>npm run painel</code>.</p>
+      
+      
+      <div class="drift-grupo"><h4>Rota nova no código, sem dono no painel</h4><ul><li><code>GET /curadoria/fila-codigo-loja</code></li><li><code>POST /curadoria/fila-codigo-loja/confirmar</code></li><li><code>POST /curadoria/fila-codigo-loja/reapontar</code></li></ul></div>
+      
+      
+      <div class="drift-grupo"><h4>Arquivo de código que ninguém descreve</h4><ul><li><code>backend/src/curadoria/servico-fila-codigo-loja.ts</code></li><li><code>backend/src/curadoria/tipos-fila-codigo-loja.ts</code></li></ul></div>
+      <div class="drift-grupo"><h4>Etapa citada no repositório e ausente do catálogo</h4><ul><li><code>C3.6.2</code></li></ul></div></div>
 </section>
 </main>
 
 <footer>
   Gerado por <code>npm run painel</code> a partir de <code>painel/mapa.mjs</code> + o estado real do repositório.
-  Último commit lido: <code>97baf66</code> — “chore(painel): corrige notas desatualizadas de C3.6 e C8.4.1”.
-  Havia 32 arquivo(s) modificado(s) sem commit no momento da geração.
+  Último commit lido: <code>a0a076f</code> — “docs(sefaz): registra que loja sem EAN varia por rede, não só perecível”.
+  Havia 27 arquivo(s) modificado(s) sem commit no momento da geração.
 </footer>
 
 <script>

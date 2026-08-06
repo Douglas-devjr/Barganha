@@ -26,16 +26,17 @@ const ACENTO = paletaEscura.tinta;
 // Formatos de código de barras de produto (não QR).
 const FORMATOS_EAN = ['ean13', 'ean8', 'upc_a', 'upc_e'] as const;
 
-export function EscanearBarrasTela({ navigation }: Props) {
+export function EscanearBarrasTela({ navigation, route }: Props) {
   // Pede a permissão sozinho e desmonta a câmera fora de foco/primeiro plano
   // (senão o preview volta PRETO no Android).
   const { estado, erro, aoFalhar, tentarDeNovo, pedirPermissao } = useCameraPronta();
   const lido = useRef(false);
+  const { resolveItemListaId, nomeItemPendente } = route.params ?? {};
 
   function aoLer(ean: string) {
     if (lido.current) return;
     lido.current = true;
-    depositarEanEscaneado(ean);
+    depositarEanEscaneado(ean, resolveItemListaId ? { resolveItemListaId } : undefined);
     navigation.navigate('Abas', { screen: 'Verificar' });
   }
 
@@ -64,8 +65,8 @@ export function EscanearBarrasTela({ navigation }: Props) {
           >
             <IconeFechar tamanho={22} cor={ACENTO} />
           </Pressable>
-          <Texto cor="tinta" peso="bold" tamanho="lg">
-            Código de barras
+          <Texto cor="tinta" peso="bold" tamanho="lg" numberOfLines={1} style={estilos.titulo}>
+            {nomeItemPendente ? `Escaneando: ${nomeItemPendente}` : 'Código de barras'}
           </Texto>
           <View style={estilos.fechar} />
         </View>
@@ -121,6 +122,7 @@ const estilos = StyleSheet.create({
     paddingHorizontal: espaco.lg,
     paddingVertical: espaco.md,
   },
+  titulo: { flex: 1, textAlign: 'center', marginHorizontal: espaco.sm },
   fechar: {
     width: 40,
     height: 40,

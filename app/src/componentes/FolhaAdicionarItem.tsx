@@ -42,6 +42,13 @@ export interface FolhaAdicionarItemProps {
   /** Ids já na lista — aparecem marcados e não podem ser adicionados de novo. */
   jaNaLista: ReadonlySet<string>;
   aoAdicionar: (produto: ProdutoBuscavel) => void;
+  /**
+   * Adiciona o termo digitado como item PENDENTE — "a escolher no mercado",
+   * sem marca definida (C12.1). Só aparece quando a busca não bate com nada
+   * (nem histórico, nem região) e o chamador oferece esta saída; sem a prop, o
+   * vazio continua exatamente como era.
+   */
+  aoAdicionarGenerico?: (nome: string) => void;
   aoFechar: () => void;
 }
 
@@ -50,6 +57,7 @@ export function FolhaAdicionarItem({
   candidatos,
   jaNaLista,
   aoAdicionar,
+  aoAdicionarGenerico,
   aoFechar,
 }: FolhaAdicionarItemProps) {
   const { c } = useTema();
@@ -124,14 +132,38 @@ export function FolhaAdicionarItem({
       ) : null}
 
       {resultados.length === 0 ? (
-        <Texto cor="fraco" tamanho="sm" centralizado style={estilos.vazio}>
-          {carregandoRegiao
-            ? 'Buscando na sua região…'
-            : busca
-              ? 'Nenhum produto com esse nome no seu histórico nem na sua região.'
-              : 'Ainda não há produtos com preço na sua região. Escaneie um cupom para começar a ' +
-                'base — o seu e o de todo mundo.'}
-        </Texto>
+        <>
+          <Texto cor="fraco" tamanho="sm" centralizado style={estilos.vazio}>
+            {carregandoRegiao
+              ? 'Buscando na sua região…'
+              : busca
+                ? 'Nenhum produto com esse nome no seu histórico nem na sua região.'
+                : 'Ainda não há produtos com preço na sua região. Escaneie um cupom para começar a ' +
+                  'base — o seu e o de todo mundo.'}
+          </Texto>
+
+          {/* Sem achado nenhum, a saída é levar o item mesmo assim — a pessoa
+              escolhe a marca no mercado e escaneia lá para resolver (C12.1). */}
+          {!carregandoRegiao && busca.trim() && aoAdicionarGenerico ? (
+            <Pressable
+              onPress={() => aoAdicionarGenerico(busca.trim())}
+              accessibilityRole="button"
+              accessibilityLabel={`Adicionar “${busca.trim()}” sem marca definida`}
+              style={({ pressed }) => [
+                estilos.generico,
+                { borderColor: c.borda },
+                pressed && { opacity: 0.6 },
+              ]}
+            >
+              <View style={[estilos.genericoTile, { borderColor: c.borda }]}>
+                <IconeMais tamanho={16} cor={c.tinta} />
+              </View>
+              <Texto peso="semibold" cor="suave" tamanho="sm" style={{ flex: 1 }}>
+                Adicionar “{busca.trim()}” sem marca definida
+              </Texto>
+            </Pressable>
+          ) : null}
+        </>
       ) : (
         resultados.map((p, idx) => {
           const dentro = jaNaLista.has(p.produtoCanonicoId);
@@ -202,7 +234,27 @@ const estilos = StyleSheet.create({
     marginBottom: espaco.sm,
   },
   buscaInput: { flex: 1, paddingVertical: 0, fontSize: 13.5 },
-  vazio: { paddingVertical: espaco.xxl, lineHeight: 19 },
+  vazio: { paddingTop: espaco.xxl, paddingBottom: espaco.lg, lineHeight: 19 },
+  generico: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: espaco.sm + 2,
+    borderWidth: 1.5,
+    borderStyle: 'dashed',
+    borderRadius: raio.cartao,
+    padding: 13,
+    marginBottom: espaco.md,
+    minHeight: 44,
+  },
+  genericoTile: {
+    width: 32,
+    height: 32,
+    borderRadius: 9,
+    borderWidth: 1.5,
+    borderStyle: 'dashed',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   linha: {
     flexDirection: 'row',
     alignItems: 'center',

@@ -1638,6 +1638,7 @@ export const funcoes = [
       'app/src/telas/ListaComprasTela.tsx',
       'app/src/componentes/FolhaAdicionarItem.tsx',
       'app/src/dados/repositorio-lista.ts',
+      'app/src/nucleo/lista-regras.ts',
     ],
     etapas: ['C7.6', 'C12.1'],
   },

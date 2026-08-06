@@ -91,14 +91,14 @@ export function EditarProdutoTela({ navigation, route }: Props) {
     }
 
     if (naLista) await lista.adicionar(produtoCanonicoId, nome);
-    else await lista.remover(produtoCanonicoId);
+    else await lista.removerPorProdutoCanonicoId(produtoCanonicoId);
 
     toast('Alterações salvas');
     navigation.goBack();
   }
 
   async function excluirDaLista() {
-    if (ancoravel) await lista.remover(produtoCanonicoId);
+    if (ancoravel) await lista.removerPorProdutoCanonicoId(produtoCanonicoId);
     setConfirmando(false);
     toast('Removido da lista');
     navigation.goBack();

@@ -35,6 +35,7 @@ import {
   Eyebrow,
   FolhaAdicionarItem,
   IconeCheck,
+  IconeCodigoBarras,
   IconeLista,
   IconeLixeira,
   IconeMais,
@@ -45,7 +46,7 @@ import {
 } from '@/componentes';
 import { clienteApi } from '@/api';
 import { lista as listaRepo } from '@/dados';
-import type { ItemLista } from '@/dados/repositorio-lista';
+import type { ItemLista, ItemListaResolvido } from '@/dados/repositorio-lista';
 import type { RootStackParamList, TabParamList } from '@/navegacao/tipos';
 import type { ProdutoBuscavel } from '@/nucleo/busca-produtos';
 import * as catalogo from '@/nucleo/catalogo';
@@ -122,7 +123,10 @@ export function ListaComprasTela({ navigation }: Props) {
   const recarregar = useCallback(async () => {
     const atual = await listaRepo.listar();
     setItens(atual);
-    setTipicos(await tipicosDaRegiao(atual.map((i) => i.produtoCanonicoId)));
+    // Item PENDENTE (sem marca ainda) não tem id canônico — não entra no mapa
+    // de típicos, e a linha mostra "a escolher no mercado" em vez de um preço.
+    const ids = atual.flatMap((i) => (i.produtoCanonicoId ? [i.produtoCanonicoId] : []));
+    setTipicos(await tipicosDaRegiao(ids));
     setProdutos(await catalogo.carregarCatalogo());
   }, []);
 
@@ -136,7 +140,7 @@ export function ListaComprasTela({ navigation }: Props) {
    * Ranking por loja — o único pedaço que precisa de rede. Falha em silêncio:
    * a estimativa pelos típicos já responde a pergunta principal offline.
    */
-  const buscarMelhorLoja = useCallback(async (atuais: ItemLista[]) => {
+  const buscarMelhorLoja = useCallback(async (atuais: ItemListaResolvido[]) => {
     const meu = ++pedidoLoja.current;
     if (atuais.length === 0) return setMelhorLoja(null);
     try {
@@ -181,12 +185,9 @@ export function ListaComprasTela({ navigation }: Props) {
   );
 
   async function alternarMarcado(item: ItemLista) {
-    await listaRepo.definirMarcado(item.produtoCanonicoId, !item.marcado);
+    await listaRepo.definirMarcado(item.id, !item.marcado);
     setItens(
-      (atual) =>
-        atual?.map((i) =>
-          i.produtoCanonicoId === item.produtoCanonicoId ? { ...i, marcado: !i.marcado } : i,
-        ) ?? null,
+      (atual) => atual?.map((i) => (i.id === item.id ? { ...i, marcado: !i.marcado } : i)) ?? null,
     );
   }
 
@@ -200,12 +201,9 @@ export function ListaComprasTela({ navigation }: Props) {
     const nova = Math.max(1, Math.min(99, item.quantidade + delta));
     if (nova === item.quantidade) return;
     setItens(
-      (atual) =>
-        atual?.map((i) =>
-          i.produtoCanonicoId === item.produtoCanonicoId ? { ...i, quantidade: nova } : i,
-        ) ?? null,
+      (atual) => atual?.map((i) => (i.id === item.id ? { ...i, quantidade: nova } : i)) ?? null,
     );
-    await listaRepo.definirQuantidade(item.produtoCanonicoId, nova);
+    await listaRepo.definirQuantidade(item.id, nova);
   }
 
   /**
@@ -223,12 +221,23 @@ export function ListaComprasTela({ navigation }: Props) {
     void sincronizarEstatisticas().catch(() => {});
   }
 
+  /**
+   * Item PENDENTE — "a escolher no mercado" (C12.1), sem marca definida ainda.
+   * Não entra no recorte do delta sync (não tem id canônico), então não há o que
+   * puxar aqui: o típico só aparece depois que o item for resolvido no mercado.
+   */
+  async function adicionarGenerico(nome: string) {
+    await listaRepo.adicionarGenerico(nome);
+    await recarregar();
+    toast(`“${nome}” entrou na lista`);
+  }
+
   async function remover(item: ItemLista) {
-    await listaRepo.remover(item.produtoCanonicoId);
+    await listaRepo.remover(item.id);
     setRemovendo(null);
     setPrecos((atual) => {
       const resto = { ...atual };
-      delete resto[item.produtoCanonicoId];
+      delete resto[item.id];
       return resto;
     });
     await recarregar();
@@ -254,25 +263,35 @@ export function ListaComprasTela({ navigation }: Props) {
 
   // Estimativa: soma dos típicos × quantidade. Item sem típico na região fica de
   // fora do total (e a nota abaixo do card diz quantos são) — somar zero por ele
-  // faria a estimativa parecer mais barata do que a compra vai ser.
+  // faria a estimativa parecer mais barata do que a compra vai ser. Item PENDENTE
+  // (sem marca ainda) fica fora pelo mesmo motivo, com a sua própria nota — não
+  // há preço nenhum para somar até a pessoa escanear o produto real.
   let estimativa = 0;
   let semTipico = 0;
+  let semMarca = 0;
   let naGondola = 0;
   let conferidos = 0;
 
   for (const item of itens ?? []) {
+    if (item.produtoCanonicoId == null) {
+      semMarca += 1;
+      continue;
+    }
+
     const tipico = tipicos.get(item.produtoCanonicoId);
     if (tipico) estimativa += tipico.mediana * item.quantidade;
     else semTipico += 1;
 
-    const digitado = parseMoeda(precos[item.produtoCanonicoId] ?? '');
+    const digitado = parseMoeda(precos[item.id] ?? '');
     if (digitado != null) {
       naGondola += digitado * item.quantidade;
       conferidos += 1;
     }
   }
 
-  const jaNaLista = new Set((itens ?? []).map((i) => i.produtoCanonicoId));
+  const jaNaLista = new Set(
+    (itens ?? []).flatMap((i) => (i.produtoCanonicoId ? [i.produtoCanonicoId] : [])),
+  );
 
   // ---- render ---------------------------------------------------------------
 
@@ -332,6 +351,7 @@ export function ListaComprasTela({ navigation }: Props) {
           candidatos={produtos}
           jaNaLista={jaNaLista}
           aoAdicionar={(p) => void adicionar(p)}
+          aoAdicionarGenerico={(nome) => void adicionarGenerico(nome)}
           aoFechar={() => setAdicionando(false)}
         />
       </Tela>
@@ -381,23 +401,46 @@ export function ListaComprasTela({ navigation }: Props) {
         </Texto>
       ) : null}
 
+      {semMarca > 0 ? (
+        <Texto cor="fraco" tamanho="xs" style={estilos.aviso}>
+          {semMarca === 1
+            ? '1 item ainda sem marca — escaneie no mercado para incluir na estimativa.'
+            : `${semMarca} itens ainda sem marca — escaneie no mercado para incluir na estimativa.`}
+        </Texto>
+      ) : null}
+
       {/* itens */}
       <CartaoLista style={estilos.lista}>
-        {itens.map((item, idx) => (
-          <ItemDaLista
-            key={item.produtoCanonicoId}
-            item={item}
-            tipico={tipicos.get(item.produtoCanonicoId)}
-            precoTexto={precos[item.produtoCanonicoId] ?? ''}
-            ultima={idx === itens.length - 1}
-            aoMarcar={() => void alternarMarcado(item)}
-            aoMudarQuantidade={(delta) => void mudarQuantidade(item, delta)}
-            aoDigitarPreco={(texto) =>
-              setPrecos((atual) => ({ ...atual, [item.produtoCanonicoId]: texto }))
-            }
-            aoRemover={() => setRemovendo(item)}
-          />
-        ))}
+        {itens.map((item, idx) =>
+          item.produtoCanonicoId == null ? (
+            <ItemPendente
+              key={item.id}
+              item={item}
+              ultima={idx === itens.length - 1}
+              aoMarcar={() => void alternarMarcado(item)}
+              aoMudarQuantidade={(delta) => void mudarQuantidade(item, delta)}
+              aoEscanear={() =>
+                navigation.navigate('EscanearBarras', {
+                  resolveItemListaId: item.id,
+                  nomeItemPendente: item.nome,
+                })
+              }
+              aoRemover={() => setRemovendo(item)}
+            />
+          ) : (
+            <ItemDaLista
+              key={item.id}
+              item={item}
+              tipico={tipicos.get(item.produtoCanonicoId)}
+              precoTexto={precos[item.id] ?? ''}
+              ultima={idx === itens.length - 1}
+              aoMarcar={() => void alternarMarcado(item)}
+              aoMudarQuantidade={(delta) => void mudarQuantidade(item, delta)}
+              aoDigitarPreco={(texto) => setPrecos((atual) => ({ ...atual, [item.id]: texto }))}
+              aoRemover={() => setRemovendo(item)}
+            />
+          ),
+        )}
       </CartaoLista>
 
       {/* adicionar */}
@@ -438,6 +481,7 @@ export function ListaComprasTela({ navigation }: Props) {
         candidatos={produtos}
         jaNaLista={jaNaLista}
         aoAdicionar={(p) => void adicionar(p)}
+        aoAdicionarGenerico={(nome) => void adicionarGenerico(nome)}
         aoFechar={() => setAdicionando(false)}
       />
 
@@ -617,6 +661,105 @@ function ItemDaLista({
 }
 
 /**
+ * Item PENDENTE — "a escolher no mercado" (C12.1), sem marca definida ainda.
+ * Borda tracejada na linha inteira: a mesma gramática visual do botão
+ * "Adicionar item", para diferenciar de longe um item resolvido de um "slot" à
+ * espera de ser preenchido. No lugar do campo de preço (não há veredito possível
+ * sem produto identificado), um botão compacto manda escanear o item certo na
+ * gôndola — a resolução acontece na Verificar, por trás (`resolverGenerico`).
+ */
+function ItemPendente({
+  item,
+  ultima,
+  aoMarcar,
+  aoMudarQuantidade,
+  aoEscanear,
+  aoRemover,
+}: {
+  item: ItemLista;
+  ultima: boolean;
+  aoMarcar: () => void;
+  aoMudarQuantidade: (delta: number) => void;
+  aoEscanear: () => void;
+  aoRemover: () => void;
+}) {
+  const { c } = useTema();
+
+  return (
+    <View
+      style={[
+        estilos.item,
+        estilos.itemPendente,
+        { borderColor: c.borda },
+        !ultima && estilos.itemPendenteEspaco,
+      ]}
+    >
+      <Pressable
+        onPress={aoMarcar}
+        accessibilityRole="checkbox"
+        accessibilityState={{ checked: item.marcado }}
+        accessibilityLabel={`${item.nome}, a escolher no mercado, ${item.marcado ? 'no carrinho' : 'ainda não pego'}`}
+        hitSlop={8}
+        style={[
+          estilos.caixa,
+          item.marcado
+            ? { borderColor: c.teal, backgroundColor: c.teal }
+            : { borderColor: c.borda, borderStyle: 'dashed' },
+        ]}
+      >
+        {item.marcado ? <IconeCheck tamanho={13} cor={c.sobreTeal} larguraTraco={3} /> : null}
+      </Pressable>
+
+      <View style={estilos.itemTexto}>
+        <Pressable
+          onPress={aoRemover}
+          onLongPress={aoRemover}
+          accessibilityRole="button"
+          accessibilityLabel={`Tirar ${item.nome} da lista`}
+        >
+          <Texto
+            peso="semibold"
+            tamanho="sm"
+            numberOfLines={1}
+            cor={item.marcado ? 'fraco' : 'tinta'}
+            style={item.marcado ? estilos.riscado : undefined}
+          >
+            {item.nome}
+          </Texto>
+        </Pressable>
+
+        <View style={estilos.linhaQuantidade}>
+          <PassoQuantidade
+            nome={item.nome}
+            quantidade={item.quantidade}
+            aoMudar={aoMudarQuantidade}
+          />
+          <Texto cor="fraco" tamanho="xs" numberOfLines={1} style={estilos.subinfo}>
+            a escolher no mercado
+          </Texto>
+        </View>
+      </View>
+
+      <Pressable
+        onPress={aoEscanear}
+        accessibilityRole="button"
+        accessibilityLabel={`Escanear código de barras para resolver ${item.nome}`}
+        style={({ pressed }) => [
+          estilos.escanear,
+          { borderColor: c.borda },
+          pressed && { opacity: 0.6 },
+        ]}
+      >
+        <IconeCodigoBarras tamanho={15} cor={c.tinta} />
+        <Texto peso="semibold" tamanho="xs" style={{ color: c.tinta }}>
+          Escanear
+        </Texto>
+      </Pressable>
+    </View>
+  );
+}
+
+/**
  * Stepper de quantidade — o que faz o total da lista ser o total da COMPRA.
  *
  * Mora na segunda linha do item, e não ao lado do campo de preço, por largura: os
@@ -723,6 +866,24 @@ const estilos = StyleSheet.create({
     gap: espaco.md,
     paddingVertical: 11,
     minHeight: 44,
+  },
+  // Item PENDENTE: a borda tracejada delimita a linha inteira (mesma gramática
+  // do botão "Adicionar item"), então dispensa a linha divisória de baixo.
+  itemPendente: {
+    borderWidth: 1.5,
+    borderStyle: 'dashed',
+    borderRadius: raio.md,
+    paddingHorizontal: espaco.sm,
+  },
+  itemPendenteEspaco: { marginBottom: espaco.sm },
+  escanear: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    height: 34,
+    borderWidth: 1,
+    borderRadius: 9,
+    paddingHorizontal: 10,
   },
   caixa: {
     width: 22,

@@ -228,4 +228,56 @@ export const MIGRACOES: string[] = [
     atualizado_em       TEXT NOT NULL
   );
   `,
+  // v12 — item "a escolher no mercado" (sem marca definida) na lista de compras.
+  //
+  // Até aqui `produto_canonico_id` era a PK: só cabia produto já identificado.
+  // A lista genérica precisa da situação inversa — "quero levar sabão em pó,
+  // ainda não sei qual marca" — sem ancorar em nenhum id canônico até a pessoa
+  // escanear o produto real no mercado.
+  //
+  // Rebuild de tabela (SQLite não faz ALTER de PK/nullability):
+  //   • `id` (texto) vira a PK — o mesmo padrão de `cupom_local`/`notificacao`
+  //     (`gerarIdLocal()`), gerado aqui em SQL puro porque a migração roda numa
+  //     transação só, sem passar pelo app;
+  //   • `produto_canonico_id` vira NULLABLE;
+  //   • `chave` (NOT NULL) é o novo alvo de de-duplicação: o id canônico quando
+  //     existe, ou a descrição normalizada do item pendente quando não — o
+  //     índice único evita duas linhas para o mesmo produto (resolvido ou não).
+  //
+  // Nenhuma FK aponta para `lista_compras` (é local-only, nunca sincroniza — ver
+  // cabeçalho de `repositorio-lista.ts`), então o rebuild é seguro.
+  `
+  CREATE TABLE lista_compras_v12 (
+    id                  TEXT PRIMARY KEY NOT NULL,
+    produto_canonico_id TEXT,
+    chave               TEXT NOT NULL,
+    nome                TEXT NOT NULL,
+    quantidade          REAL NOT NULL DEFAULT 1,
+    marcado             INTEGER NOT NULL DEFAULT 0,
+    fora_comparacao     INTEGER NOT NULL DEFAULT 0,
+    criado_em           TEXT NOT NULL
+  );
+
+  INSERT INTO lista_compras_v12
+    (id, produto_canonico_id, chave, nome, quantidade, marcado, fora_comparacao, criado_em)
+  SELECT
+    lower(hex(randomblob(4)) || '-' || hex(randomblob(2)) || '-4' || substr(hex(randomblob(2)), 2)
+      || '-' || substr('89ab', 1 + (abs(random()) % 4), 1) || substr(hex(randomblob(2)), 2) || '-'
+      || hex(randomblob(6))),
+    produto_canonico_id,
+    -- Toda linha pré-v12 já tinha produto_canonico_id como PK NOT NULL: a chave
+    -- de todo mundo aqui é o próprio id canônico (nenhuma linha nasce genérica).
+    produto_canonico_id,
+    nome,
+    quantidade,
+    marcado,
+    fora_comparacao,
+    criado_em
+  FROM lista_compras;
+
+  DROP TABLE lista_compras;
+  ALTER TABLE lista_compras_v12 RENAME TO lista_compras;
+
+  CREATE UNIQUE INDEX lista_compras_chave_uniq ON lista_compras (chave);
+  `,
 ];

@@ -57,7 +57,7 @@ import {
   Texto,
 } from '@/componentes';
 import { lista as listaRepo } from '@/dados';
-import type { ItemLista } from '@/dados/repositorio-lista';
+import type { ItemLista, ItemListaResolvido } from '@/dados/repositorio-lista';
 import type { RootStackParamList } from '@/navegacao/tipos';
 import {
   buscarNaRegiao,
@@ -140,7 +140,7 @@ export function CompararMercadosTela({ navigation }: Props) {
     [catalogoLocal],
   );
   const enriquecer = useCallback(
-    (i: ItemLista): ProdutoCesta => ({
+    (i: ItemListaResolvido): ProdutoCesta => ({
       ...(doHistorico.get(i.produtoCanonicoId) ?? {
         chave: i.produtoCanonicoId,
         produtoCanonicoId: i.produtoCanonicoId,
@@ -158,9 +158,19 @@ export function CompararMercadosTela({ navigation }: Props) {
     [itens],
   );
   const cesta = useMemo(() => comparaveisDaLista.map(enriquecer), [comparaveisDaLista, enriquecer]);
-  const excluidos = useMemo(() => (itens ?? []).filter((i) => i.foraComparacao), [itens]);
+  // Item PENDENTE ("a escolher no mercado") nunca chega a `foraComparacao = true`
+  // na prática (só a cesta já resolvida passa por `definirForaComparacao`), mas o
+  // filtro por tipo aqui é o que deixa isso EXPLÍCITO para o compilador — sem
+  // ele, `i.produtoCanonicoId` desta lista continuaria `string | null`.
+  const excluidos = useMemo(
+    () =>
+      (itens ?? []).filter(
+        (i): i is ItemListaResolvido => i.foraComparacao && i.produtoCanonicoId != null,
+      ),
+    [itens],
+  );
 
-  const comparar = useCallback(async (atual: readonly ItemLista[]) => {
+  const comparar = useCallback(async (atual: readonly ItemListaResolvido[]) => {
     if (atual.length === 0) {
       setLojas([]);
       setItensTotal(0);

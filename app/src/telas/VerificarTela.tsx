@@ -49,7 +49,9 @@ import {
   useToast,
 } from '@/componentes';
 import { clienteApi } from '@/api';
-import { alertas } from '@/dados';
+// `lista` (o estado do catálogo desta tela) já ocupa esse nome — o repositório
+// entra apelidado para não colidir.
+import { alertas, cache, lista as listaRepo } from '@/dados';
 import { definirAlerta, removerAlerta } from '@/nucleo/alertas';
 import * as catalogo from '@/nucleo/catalogo';
 import type { ProdutoLocal } from '@/nucleo/catalogo';
@@ -117,8 +119,9 @@ export function VerificarTela({ navigation }: Props) {
         setLista(todos);
         setLocal(local);
 
-        const ean = consumirEanEscaneado();
-        if (ean) {
+        const pendente = consumirEanEscaneado();
+        if (pendente) {
+          const { ean, resolveItemListaId } = pendente;
           const achado = todos.find((p) => p.ean === ean);
           escolher(
             achado ?? {
@@ -129,6 +132,7 @@ export function VerificarTela({ navigation }: Props) {
               unidadeBase: null,
               nObservacoes: 0,
             },
+            resolveItemListaId ? { resolveItemListaId } : undefined,
           );
         }
       })();
@@ -138,8 +142,14 @@ export function VerificarTela({ navigation }: Props) {
     }, []),
   );
 
-  /** Troca o produto: limpa o veredito e busca a faixa regional em background. */
-  function escolher(p: ProdutoLocal) {
+  /**
+   * Troca o produto: limpa o veredito e busca a faixa regional em background.
+   *
+   * `opts.resolveItemListaId` chega do correio de scan (`nucleo/scan-pendente`)
+   * quando o EAN foi escaneado para resolver um item PENDENTE ("a escolher no
+   * mercado", C12.1) — ver `ListaComprasTela`/`EscanearBarrasTela`.
+   */
+  function escolher(p: ProdutoLocal, opts?: { resolveItemListaId?: string }) {
     setSelecionado(p);
     setResultado(null);
     // O preço é da gôndola daquele item: herdá-lo no próximo produto daria um
@@ -158,7 +168,61 @@ export function VerificarTela({ navigation }: Props) {
 
       setRefinando(true);
       try {
-        await refinarRegionalOnline({ ean: p.ean, nome: p.nome });
+        const resp = await refinarRegionalOnline({ ean: p.ean, nome: p.nome });
+
+        // O backend pode RESOLVER o EAN mesmo fora do histórico local (o caso
+        // comum de um scan avulso na gôndola): antes, a resposta só aquecia o
+        // cache e o card ficava para sempre com o "fantasma" (`produtoCanonicoId:
+        // null`, "Produto escaneado"). Promove `selecionado` para o produto de
+        // verdade — nome/marca/unidade — em vez de descartar a resposta.
+        //
+        // Compara pela CHAVE anterior (`atual.chave !== p.chave`): se o usuário
+        // já trocou de produto enquanto esta consulta estava em voo, a resposta
+        // é velha e não pode sobrescrever a nova seleção.
+        if (resp && montado.current) {
+          setSelecionado((atual) => {
+            if (!atual || atual.chave !== p.chave) return atual;
+            const resumo = resp.produto;
+            return {
+              ...atual,
+              chave: resp.produtoCanonicoId,
+              produtoCanonicoId: resp.produtoCanonicoId,
+              nome: resumo?.nomeExibicao ?? atual.nome,
+              unidadeBase: resumo?.unidadeBase ?? atual.unidadeBase,
+              ...(resumo?.marca ? { marca: resumo.marca } : {}),
+              ...(resumo?.categoria ? { categoria: resumo.categoria } : {}),
+            };
+          });
+          // Persiste o nome/marca resolvidos no cache de catálogo (C4.5): sem
+          // isto a promoção durava só esta sessão — ao reabrir o app, o mesmo
+          // produto (agora no histórico) voltaria a aparecer sem nome até o
+          // próximo sync de catálogo alcançá-lo.
+          if (resp.produto) await cache.salvarResumos([resp.produto]);
+
+          // O fantasma tinha `produtoCanonicoId: null` e por isso o alerta
+          // partiu de "desativado" (ver acima). Agora que o produto real é
+          // conhecido, confere de novo — pode já existir um alerta dele feito
+          // por outro caminho (ex.: restaurado de outro aparelho).
+          if (!p.produtoCanonicoId) {
+            const existente = await alertas.obter(resp.produtoCanonicoId);
+            if (montado.current) setAlertaAtivo(existente != null);
+          }
+        }
+
+        // Correio scan → lista: este scan resolve um item PENDENTE — promove a
+        // linha genérica para o produto identificado, mantendo quantidade e
+        // marcando "no carrinho" (a pessoa já está com o produto na mão).
+        if (opts?.resolveItemListaId && resp?.produtoCanonicoId) {
+          const nomeResolvido = resp.produto?.nomeExibicao ?? p.nome;
+          const nomeAnterior = await listaRepo.resolverGenerico(
+            opts.resolveItemListaId,
+            resp.produtoCanonicoId,
+            nomeResolvido,
+          );
+          if (montado.current && nomeAnterior) {
+            toast(`“${nomeResolvido}” entrou no lugar de “${nomeAnterior}” na lista`);
+          }
+        }
       } finally {
         if (montado.current) setRefinando(false);
       }
