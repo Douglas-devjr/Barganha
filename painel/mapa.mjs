@@ -1395,10 +1395,8 @@ export const funcoes = [
     id: 'ponte-email',
     nome: 'Ponte dos links de e-mail',
     area: 'api',
-    status: 'parcial',
+    status: 'pronto',
     oque: 'Página https que recebe o link de confirmação de e-mail e abre o app — porque o celular não abre `barganha://` vindo de um redirect.',
-    falta:
-      'A página precisa estar PUBLICADA no GitHub Pages e a URL precisa estar na allow-list do Supabase (Authentication → Redirect URLs). Sem os dois, confirmar e-mail não volta para o app e o login responde "e-mail ou senha incorretos" — mandando o diagnóstico para o lado errado.',
     detalhe:
       'O botão "Abrir no Barganha" existe porque o toque é o gesto que os navegadores exigem para lançar um esquema custom. App Links (abrir sem toque) fica para quando houver domínio próprio.',
     ligacoes: ['auth'],
@@ -2715,9 +2713,8 @@ export const etapas = [
     codigo: 'C4.3',
     nome: 'Autenticação',
     fase: 'MVP',
-    status: 'parcial',
-    oque: 'Login com JWT verificado do Supabase e sessão no cofre do sistema.',
-    falta: 'A ponte dos links de e-mail precisa estar publicada e na allow-list do Supabase.',
+    status: 'pronto',
+    oque: 'Login com JWT verificado do Supabase e sessão no cofre do sistema, com a ponte de e-mail publicada e na allow-list do Supabase.',
   },
   {
     codigo: 'C4.3.1',
