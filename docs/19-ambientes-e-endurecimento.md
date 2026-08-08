@@ -310,38 +310,330 @@ no dia em que existir um staging, este cron precisa ser reavaliado.
 
 ---
 
-## 8. Cifrar as colunas privadas do Postgres (pendência **pré-beta**)
+## 8. Cifrar as colunas privadas do Postgres (código pronto — ativação é gate **pré-beta**)
 
-**O que fica em claro hoje:** `cupom.chave_acesso` e as descrições de
+**O que ficava em claro:** `cupom.chave_acesso` e as descrições de
 `item_cupom` — ambas amarradas ao `usuario_id`. Não são o dado mais sensível do
 sistema (o CPF já não entra em lugar nenhum: os parsers não o extraem e o QR é
 saneado ao concluir o cupom, docs/04), mas são o histórico de consumo de uma
-pessoa identificável, e um dump vazado hoje é legível de ponta a ponta.
+pessoa identificável, e um dump vazado era legível de ponta a ponta.
 
-**Por que não foi feito junto com o resto do endurecimento de privacidade:**
+**Status: código, migração e testes implementados (C9.2.2/b6).** O que falta é
+só o passo MANUAL de ativação em produção — gerar a chave e configurá-la no
+Render/GitHub Actions —, descrito no procedimento de rotação abaixo. Enquanto
+esse passo não acontece, a cifra existe no código e no schema mas não está
+"ligada de verdade": ver "Como isto convive com 'não ligar em produção ainda'"
+mais abaixo.
+
+**Por que não foi feito junto com o resto do endurecimento de privacidade,
+originalmente:**
 
 - Toca o caminho crítico inteiro da ingestão — a RPC `processar_cupom`, o índice
   único `cupom_usuario_chave_uniq` (idempotência do upload) e o dedup por hash em
   `chave_publicada`. Feito antes do produto estabilizar, cada migração e cada
-  consulta nova passa a carregar a criptografia junto.
-- O ganho pré-lançamento é próximo de zero: a base está praticamente vazia.
+  consulta nova passava a carregar a criptografia junto.
+- O ganho pré-lançamento é próximo de zero: a base está praticamente vazia — o
+  produto ainda não passou pelo gate do beta fechado (docs/15) e não há usuário
+  real com histórico real. Por isso a migração faz um **corte limpo** (troca as
+  colunas sem migração de dados em duas fases): não há linha de produção para
+  preservar/recifrar.
 - Errar a rotação da chave torna o histórico privado **irrecuperável**. Isso é
-  disciplina operacional, e ela tem que existir antes da cifra.
+  disciplina operacional, e ela tinha que existir por escrito antes da cifra —
+  é o procedimento descrito abaixo.
 
-**Desenho pretendido, para quando entrar:**
+### Desenho implementado
 
-- **Envelope**, com a chave fora do banco (variável de ambiente do backend, nunca
-  no repositório). Isso protege contra vazamento de *dump*; **não** protege
-  contra invasão do servidor — e a diferença precisa estar clara para ninguém
-  vender a cifra como garantia que ela não dá.
-- **Idempotência preservada:** o índice único passa a ser sobre o
-  **SHA-256** da chave de acesso (o `hashChavePool` já faz exatamente isso para o
-  pool); o valor cifrado vive numa coluna à parte, que ninguém consulta por
-  igualdade.
-- **A chave de acesso precisa continuar reversível** — o reprocessamento
-  retroativo (C2.5) consulta a SEFAZ a partir dela. Não pode virar só hash.
-- **Rotação escrita antes da primeira cifra:** procedimento, onde a chave antiga
-  fica durante a rotação, e como reverter. Sem isso, não ligar.
+- **Envelope, com a chave FORA do banco.** Cifra e decifra rodam em **Node**
+  (`backend/src/seguranca/cifra.ts`, `node:crypto`, **AES-256-GCM**) — não
+  `pgcrypto` com a chave passada como parâmetro de uma query SQL. Essa rota
+  vazaria a chave-mestra para `pg_stat_statements` e para os logs do Postgres,
+  o que contraria "fora do banco" — é por isso que a função `processar_cupom`
+  só recebe um blob já opaco, nunca a chave nem o texto em claro.
+  A chave-mestra vive só em variável de ambiente do backend
+  (`CIFRA_CHAVE_ATUAL`/`CIFRA_CHAVE_ANTERIOR`), nunca em tabela, `ALTER
+  DATABASE SET` ou secret do Supabase.
+- **O que isto protege e o que NÃO protege** (a diferença precisa estar
+  escrita para ninguém vender a cifra como garantia que ela não dá):
+  - **Protege:** vazamento de *dump* do banco — e, pela mesma razão, os
+    **backups** do banco (PITR/exports do Supabase herdam o texto já cifrado;
+    o backup não carrega a chave, que nunca esteve no Postgres).
+  - **NÃO protege:** invasão do servidor — quem tem acesso ao processo do
+    backend tem acesso à chave em memória e aos valores decifrados.
+  - **NÃO protege** o vazamento do **ambiente do Render** (painel de variáveis,
+    export de config, log de deploy que ecoe env, conta comprometida). A partir
+    da ativação, o env do Render vira um ativo tão sensível quanto o dump: quem
+    tiver os **dois** tem tudo. Backup de banco e backup/registro de env nunca
+    devem parar no mesmo lugar.
+- **Formato do valor cifrado:** `"<versao>:<iv-base64>:<tag-base64>:<cifrado-base64>"`.
+  A versão da chave viaja **dentro do próprio blob**, não numa coluna
+  `chave_versao` separada — decifrar uma linha nunca depende de nenhuma outra
+  coluna, e é isso que permite linhas cifradas com versões diferentes
+  conviverem na mesma coluna durante uma rotação.
+- **Colunas (migração `20260808090000_cifra_dados_privados.sql`):**
+  - `cupom.chave_acesso` → **`cupom.chave_acesso_cifrada`** (blob AES-256-GCM,
+    reversível) **+ `cupom.chave_acesso_hash`** (SHA-256 determinístico da
+    chave crua, mesmo padrão de `hashChavePool`).
+  - `item_cupom.descricao_original` → **`item_cupom.descricao_cifrada`** (blob
+    AES-256-GCM).
+- **Idempotência preservada, sobre HASH — nunca sobre o blob.** AES-GCM usa
+  IV aleatório por chamada: duas cifras da mesma chave de acesso NUNCA são
+  iguais como texto, então o índice único não pode mais viver na coluna
+  cifrada. `cupom_usuario_chave_uniq (usuario_id, chave_acesso)` foi
+  **substituído** por `cupom_usuario_chave_hash_uniq (usuario_id,
+  chave_acesso_hash)` — a mesma migração remove o índice antigo e a coluna
+  antiga na mesma transação (não convivem apontando para o que não existe
+  mais).
+  `chave_acesso_hash` é uma coluna **nova e separada** do hash global de dedup
+  do pool em `chave_publicada.chave_hash` (C9.2.1): mesmo cálculo (SHA-256 da
+  chave crua, via `hashChavePool`), tabelas e propósitos diferentes —
+  `chave_acesso_hash` é idempotência **por usuário**; `chave_publicada` é
+  dedup **global** do pool.
+- **Limitação conhecida (gate de privacidade): o hash convive com o blob, e ele
+  não é cifrado.** `chave_acesso_hash` é SHA-256 **puro e determinístico** — sem
+  pepper. Num dump, mesmo sem a chave-mestra, ele ainda entrega duas coisas:
+  1. **Ligação por igualdade.** Dois `cupom` com o MESMO hash são a mesma nota
+     física — isto é, duas contas que compraram/escanearam juntas. E
+     `cupom.chave_acesso_hash = chave_publicada.chave_hash` liga a conta ao
+     fato de aquela chave ter publicado no pool. (`chave_publicada` guarda só
+     `publicado_em` em **DATE**, dia e não hora, justamente para não virar
+     correlação temporal com `observacao_preco` — isso continua valendo.)
+  2. **Força bruta direcionada.** A chave de acesso é um valor ESTRUTURADO de 44
+     dígitos e vários componentes estão em claro na MESMA linha (`uf`,
+     `loja_cnpj`, `emitido_em`). O que sobra de incerteza real (nNF + cNF) é
+     pequeno o bastante para um ataque direcionado a um usuário/loja específicos
+     — SHA-256 sem pepper é barato de tentar em massa. Não é via de mão única na
+     prática.
+  Nada disso é **regressão**: antes desta migração a chave estava em CLARO na
+  mesma coluna, então o dump entregava tudo isso e mais. Mas significa que
+  "protege contra dump" vale **integralmente para as descrições de item** e
+  apenas **parcialmente para a chave de acesso**.
+  **Mitigação conhecida, a decidir ANTES de vender a cifra como proteção total
+  da chave:** trocar o hash da coluna `cupom.chave_acesso_hash` por um *blind
+  index* — HMAC-SHA256 com um pepper vindo do ambiente (nunca do banco). Mantém
+  o determinismo que o índice único exige e mata os dois pontos acima. Custo:
+  mais um segredo com ciclo de rotação próprio (rotacionar o pepper exige
+  decifrar o blob e recalcular o hash de cada linha — factível justamente
+  porque a cifra é reversível). Fica como pendência nomeada, não como bloqueio:
+  a base está vazia e a ativação ainda não aconteceu.
+- **A chave de acesso continua reversível — não virou hash.** O
+  reprocessamento retroativo (C2.5) e o job `job:republicar` consultam a SEFAZ
+  de novo a partir da chave em texto puro; `RepositorioSupabase` decifra sob
+  demanda nos pontos que devolvem `chaveAcesso` para o domínio
+  (`obterParaProcessamento`, `listarHistoricoDoUsuario`) — quem chama nunca
+  sabe que a coluna é cifrada.
+- **Onde a cifra acontece, exatamente:** `RepositorioSupabase` recebe uma
+  `Cifra` (interface `cifrar`/`decifrar`) no construtor, injetada pela raiz de
+  composição (`composicao.ts`) — o mesmo padrão já usado para `db`. Escreve
+  cifrado em `criarOuObterPorChave` (chave de acesso) e em `marcarProcessado`
+  (descrição do item, cifrada **em Node antes** de montar o payload da RPC
+  `processar_cupom` — a função SQL só grava um texto opaco, nunca vê a
+  descrição em claro). Decifra em `obterParaProcessamento`,
+  `listarHistoricoDoUsuario` e `obterDoUsuario`. `RepositorioMemoria`
+  (adaptador em memória dos testes) **não** replica a cifra — mantém texto
+  puro, porque não representa risco de dump; a forma pública dos dados
+  (`CupomRegistro.chaveAcesso`, `ItemCupomNovo.descricaoOriginal`) é a MESMA
+  nos dois adaptadores, então nada além do repositório real sabe que a cifra
+  existe.
+- **Falha tardia, não falha de boot.** `criarCifra({ chaveAtual, chaveAnterior })`
+  NUNCA lança por chave ausente/mal configurada só de ser construída — só
+  quando `cifrar`/`decifrar` são de fato chamados. Isso é o que permite o
+  servidor HTTP e jobs que nunca tocam `cupom`/`item_cupom` (ex.:
+  `job:calibracao`, `job:enriquecer`) continuarem de pé mesmo sem
+  `CIFRA_CHAVE_ATUAL` configurada — só o caminho de ingestão de cupom (e o
+  `job:republicar`, que também lê/escreve essas colunas) falha, e falha ALTO
+  (erro claro, nunca grava/lê texto puro como se estivesse cifrado).
 
-**Gate:** entra na Fase 3 (gate do beta fechado, docs/15), junto com os demais
-itens que só passam a valer quando houver usuário real com dado real.
+### Como isto convive com "não ligar em produção ainda"
+
+O código, a migração e os testes já estão no repositório, mas isso **não**
+significa que a cifra está ativa em produção. Ativar tem dois passos
+manuais, de propósito fora do código:
+
+1. **Aplicar a migração** (`supabase db push` no projeto `hyscmtnptevhkmrwarey`
+   — produção). Antes disso, a tabela `cupom`/`item_cupom` de produção
+   continua com as colunas antigas (`chave_acesso`, `descricao_original`) e
+   nada muda para quem está rodando o código ANTERIOR a esta migração.
+2. **Configurar `CIFRA_CHAVE_ATUAL`** no ambiente do backend em produção
+   (Render) — sem isso, o código NOVO (se chegar a rodar contra o schema
+   NOVO) falha em todo caminho de ingestão, por design (ver "falha tardia"
+   acima).
+
+**São três atores, não dois — e a ORDEM importa.** Além da migração e da
+variável existe o **deploy do código novo**, e as combinações erradas quebram
+nos dois sentidos: código NOVO × schema ANTIGO não tem
+`chave_acesso_cifrada` para escrever; código ANTIGO × schema NOVO escreve numa
+coluna que não existe mais. Não há ordem que evite completamente a janela — só
+uma que a torna curta e previsível:
+
+1. **`CIFRA_CHAVE_ATUAL` no Render primeiro.** É inofensivo: o código ANTIGO
+   nunca lê essa variável. Confirme que o serviço reiniciou saudável
+   (`/saude/pronto` → 200) ANTES de tocar o banco.
+2. **`supabase db push`.** Daqui até o passo 3 a ingestão em produção está
+   quebrada (o código antigo ainda no ar escreve nas colunas removidas). Esta é
+   a janela — mantenha-a em minutos.
+3. **Deploy do código novo, imediatamente depois.** Depois disso: `/saude/pronto`
+   → 200 e **um escaneamento real de ponta a ponta** (cupom → histórico
+   legível), porque um 200 do health check não prova que a cifra funciona — as
+   sondas atuais não a cobrem.
+
+Como isto acontece **antes do beta fechado**, com base vazia e sem usuário
+real, a janela do passo 2 é aceitável — depois do beta, ela vira indisponibilidade
+de ingestão para gente de verdade e pede aviso/manutenção.
+
+> **Recomendação para o backend/devops (fora do escopo do gate de privacidade):**
+> a proteção mais barata contra "deploy sem a chave" é uma **sonda de saúde**
+> (`observabilidade/saude.ts`) que reprove a prontidão quando
+> `CIFRA_CHAVE_ATUAL` estiver ausente em produção — `falho` → `/saude/pronto`
+> 503 → rollback automático do Render, exatamente o critério já documentado
+> ("esta VERSÃO do código não serve"). Precisa ser crítica **só em produção**:
+> em desenvolvimento rodar sem a chave é um cenário legítimo (ver o fim desta
+> subseção) e não pode reprovar nada.
+
+Por isso o gate desta seção é sobre **quando fazer o deploy** deste código
+para produção — não sobre o código em si, que já está pronto. Enquanto o
+gate da Fase 3 não chegar, este branch/PR não deve ser promovido ao ambiente
+de produção (Render aponta para `hyscmtnptevhkmrwarey`, e os crons do GitHub
+Actions rodam contra ele — ver seção 0/1 acima). Em **desenvolvimento**
+(`barganha-dev`), aplicar a migração e configurar `CIFRA_CHAVE_ATUAL` no
+`.env` local é seguro a qualquer momento — é exatamente o ambiente para
+validar o fluxo antes do gate.
+
+### Procedimento de rotação de chave
+
+A rotação troca a chave-mestra sem invalidar linhas já cifradas com a chave
+antiga, e sem downtime. Ela vale tanto para a **primeira ativação** (não há
+"chave anterior" — é uma rotação de "nenhuma chave" para "v1") quanto para
+trocas seguintes (v1 → v2, v2 → v3, ...).
+
+**Passo 1 — gerar a chave nova.**
+Rode localmente (nunca cole a chave num chat, ticket ou log):
+
+```bash
+node -e "console.log(require('./backend/src/seguranca/cifra.ts').gerarChaveEnv('2'))"
+# ou, sem depender do módulo: openssl rand -base64 32 (prefixar manualmente com "2:")
+```
+
+O primeiro segmento (`2` no exemplo) é o **identificador de versão** — precisa
+ser diferente de toda versão já usada. Convenção: inteiro sequencial (`1`,
+`2`, `3`, ...), começando em `1` na primeira ativação.
+
+**Passo 2 — janela de transição (as DUAS chaves configuradas).**
+No ambiente do backend (Render, e `.env` local para validar antes):
+
+```
+CIFRA_CHAVE_ATUAL=2:<chave-nova-base64>
+CIFRA_CHAVE_ANTERIOR=1:<chave-antiga-base64>
+```
+
+A partir do deploy com as duas variáveis:
+- Toda escrita NOVA (`criarOuObterPorChave`, `marcarProcessado`) passa a
+  cifrar com a v2.
+- Toda leitura (`obterParaProcessamento`, `listarHistoricoDoUsuario`,
+  `obterDoUsuario`) continua decifrando normalmente linhas em v1 OU v2 — o
+  `criarCifra` mantém as duas chaves disponíveis e escolhe pela versão
+  embutida no blob.
+- Nenhuma linha existente precisa ser tocada para o sistema continuar
+  funcionando. A janela de transição pode durar o quanto for prudente.
+
+**Passo 3 — re-cifrar as linhas antigas (opcional, mas recomendado antes de
+desligar a v1).**
+Sem isso, linhas em v1 continuam decifráveis ENQUANTO `CIFRA_CHAVE_ANTERIOR`
+estiver configurada — não há prazo automático. Para reduzir a superfície
+(quanto menos linhas dependem da chave antiga, melhor), um script de backfill
+pode: ler cada `cupom`/`item_cupom` cuja coluna cifrada começa com `"1:"`,
+decifrar com a v1 (ainda disponível como `chaveAnterior`), cifrar de novo com
+a v2 (`chaveAtual`), e fazer `update` da linha. **Regra obrigatória desse
+script: `update ... where id = ...`, NUNCA `upsert`/`insert`.** Um backfill que
+reinsere é um backfill que RESSUSCITA a linha de um cupom apagado pelo usuário
+entre a leitura e a escrita — o direito ao apagamento não pode ser desfeito por
+um job de manutenção. Com `update`, a linha apagada no meio do caminho
+simplesmente casa com 0 linhas: sem erro, sem retorno dos mortos. Não existe hoje um job pronto
+para isso no repositório — é trabalho a fazer SE/QUANDO a primeira rotação
+real acontecer, dimensionado ao volume de linhas na época (a base cresce a
+partir do beta fechado, então este não é um job de "milhões de linhas" tão
+cedo).
+
+**Passo 4 — desligar a chave antiga.**
+Só depois que a Passo 3 (ou o prazo que a operação decidir tolerar) estiver
+concluído: remova `CIFRA_CHAVE_ANTERIOR` do ambiente. A partir daqui, qualquer
+linha que **não** foi re-cifrada (Passo 3 pulado ou incompleto) fica
+**irrecuperável** — é o motivo de o Passo 3 ser fortemente recomendado antes
+deste passo, não opcional na prática.
+
+**Como reverter, se algo der errado durante a rotação:**
+- **Ainda na janela de transição (Passo 2, `CIFRA_CHAVE_ANTERIOR` configurada):**
+  reversão trivial — volte `CIFRA_CHAVE_ATUAL` para a chave antiga (v1) e
+  remova/ignore a v2. Nenhuma linha foi perdida: as escritas feitas em v2
+  durante a janela continuam decifráveis contanto que a v2 vire a
+  `CIFRA_CHAVE_ANTERIOR` da reversão (ou seja: ao reverter, configure
+  `CIFRA_CHAVE_ATUAL=1:...` **e** `CIFRA_CHAVE_ANTERIOR=2:...` — nunca
+  descarte uma chave que já foi usada para cifrar algo).
+- **Depois do Passo 4 (chave antiga já desligada):** só é reversível se a
+  chave antiga ainda existir em algum backup seguro (ex.: o cofre onde ela foi
+  gerada no Passo 1) — reintroduza-a como `CIFRA_CHAVE_ANTERIOR` para
+  recuperar o acesso às linhas que não foram re-cifradas. **Se a chave antiga
+  foi destruída e havia linhas não re-cifradas, elas são
+  IRRECUPERÁVEIS** — não existe "recuperar sem a chave" numa cifra simétrica
+  bem implementada, e é exatamente por isso que o Passo 3 existe antes do
+  Passo 4.
+- **Regra geral:** nunca destrua uma chave-mestra (v_N) enquanto QUALQUER linha
+  no banco ainda começar com `"N:"`. Uma consulta simples confirma antes de
+  destruir:
+  ```sql
+  select count(*) from cupom where chave_acesso_cifrada like '1:%'
+  union all
+  select count(*) from item_cupom where descricao_cifrada like '1:%';
+  ```
+  Ambos devem ser `0` antes de remover `CIFRA_CHAVE_ANTERIOR` de vez.
+
+### Direito ao apagamento × cifra e rotação
+
+Verificado no código, para não restar dúvida na hora de responder a um titular:
+
+- **Apagar NÃO depende da chave-mestra.** `apagarDoUsuario` filtra por
+  `(id, usuario_id)` e o `delete` cascateia para `item_cupom`; o apagamento de
+  conta (`GerenciadorContaSupabase.apagar` → `auth.users`) cascateia para
+  `usuario → cupom → item_cupom`. Nenhum dos dois lê, decifra ou compara o
+  blob — para o Postgres ele é texto opaco como qualquer outro. A purga por
+  inatividade (`jobs/purga-inatividade.ts`) segue o mesmo caminho. Consequência
+  prática: **mesmo com `CIFRA_CHAVE_ATUAL` ausente, mal configurada ou perdida,
+  o titular continua conseguindo apagar seus dados** — o direito ao apagamento
+  nunca fica refém de um segredo de operação.
+- **O que a chave SUSTENTA é o direito de ACESSO.** Ler o próprio histórico
+  (`obterDoUsuario`, `listarHistoricoDoUsuario`, e o restore do app) exige
+  decifrar. Perder a chave-mestra não é um vazamento — é uma **perda
+  irreversível do dado do titular**, e portanto um incidente de disponibilidade
+  a ser tratado como tal. É a razão LGPD (além da operacional) para o Passo 3
+  vir sempre antes do Passo 4.
+- **Cifra não é o mecanismo de apagamento.** Descartar a chave ("crypto
+  shredding") apaga o histórico de TODO MUNDO, não o de um titular — nunca é
+  resposta a um pedido individual. O apagamento continua sendo físico
+  (`delete` + cascade), como a política de privacidade promete.
+- **O pool não entra nessa conversa.** `observacao_preco` não tem
+  `usuario_id`, `cupom_id` nem `chave_acesso` e nunca recebeu descrição de
+  item — não há nada cifrado lá, e nada a apagar lá (docs/04).
+
+**Gate:** o **deploy em produção** deste código (aplicar a migração + configurar
+`CIFRA_CHAVE_ATUAL`) entra na Fase 3 (gate do beta fechado, docs/15), junto
+com os demais itens que só passam a valer quando houver usuário real com dado
+real. O código, a migração e os testes já estão prontos antes disso — só a
+ativação em produção é que espera o gate.
+
+**Revisado pelo gate de privacidade em 2026-08-08 (C9.2.2/b6): aprovado com
+ajustes.** Conferido contra a decisão travada nº3 (CLAUDE.md) e o checklist de
+docs/04: `chave_acesso`/descrição de item são dado do mundo PRIVADO e continuam
+lá — nenhum caminho novo os leva a `observacao_preco` (a RPC insere no pool só
+campos de preço, e o gate `garantirSemDadoPessoal` segue antes da escrita);
+as leituras que os devolvem (`obterDoUsuario`, `listarHistoricoDoUsuario`)
+continuam filtradas por `usuario_id`; o CPF não é tocado por esta mudança (o
+saneamento do QR permaneceu idêntico ao da versão anterior de `processar_cupom`).
+Sem vazamento em log/erro: nem `cifra.ts` nem `repositorio-supabase.ts` colocam
+blob, chave-mestra ou texto decifrado em mensagem de erro, e o 500 já não
+repassa a mensagem do driver (`http/erros-http.ts`) — na verdade a migração
+MELHORA isso, porque um erro de violação de índice único passa a poder citar,
+no máximo, o hash, e não a chave em claro como antes. **Pendências nomeadas,
+nenhuma bloqueante hoje (base vazia, cifra não ativada):** (1) `chave_acesso_hash`
+é SHA-256 sem pepper — ver "Limitação conhecida" acima, com a mitigação
+(*blind index* HMAC) a decidir antes de a cifra ser apresentada como proteção
+integral da chave de acesso; (2) nenhuma sonda de saúde cobre a cifra — ver a
+recomendação em "Como isto convive com 'não ligar em produção ainda'".

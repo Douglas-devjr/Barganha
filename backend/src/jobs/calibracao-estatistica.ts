@@ -34,6 +34,7 @@ import { logDeJob } from '../observabilidade/log';
 import { sanitizarErroInesperado } from '../observabilidade/sanitizar';
 import { RepositorioSupabase } from '../persistencia/repositorio-supabase';
 import { criarClienteSupabase } from '../persistencia/supabase';
+import { criarCifra } from '../seguranca/cifra';
 
 const DIA_MS = 86_400_000;
 
@@ -121,7 +122,10 @@ export async function rodarJobCalibracao(): Promise<ResumoCalibracao> {
   const log = logDeJob('calibracao-estatistica');
   const config = lerConfig();
   const db = criarClienteSupabase(config.supabaseUrl, config.supabaseServiceRoleKey);
-  const repo = new RepositorioSupabase(db);
+  // C9.2.2 (b6) — este job só lê `observacao_preco` (pool anônimo, nunca cifrado)
+  // via RepositorioEstatistica; nunca toca chave_acesso/descricao de item. A
+  // cifra sem chave configurada não afeta este caminho (falha só ao ser usada).
+  const repo = new RepositorioSupabase(db, criarCifra({ chaveAtual: config.cifraChaveAtual }));
   const referencia = new Date();
 
   const observacoes = await carregarObservacoes(repo, referencia);

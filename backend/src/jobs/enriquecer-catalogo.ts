@@ -13,6 +13,7 @@ import { fileURLToPath } from 'node:url';
 import { lerConfig } from '../config/env';
 import { RepositorioSupabase } from '../persistencia/repositorio-supabase';
 import { criarClienteSupabase } from '../persistencia/supabase';
+import { criarCifra } from '../seguranca/cifra';
 
 import { parseRedesVtex } from '../fontes/redes';
 import { logDeJob } from '../observabilidade/log';
@@ -29,8 +30,11 @@ export async function rodarJobEnriquecimento(): Promise<void> {
     return;
   }
 
+  // C9.2.2 (b6) — job só toca `produto_canonico` (RepositorioCuradoria); nunca
+  // chave_acesso/descricao de item. A cifra sem chave não afeta este caminho.
   const repo = new RepositorioSupabase(
     criarClienteSupabase(config.supabaseUrl, config.supabaseServiceRoleKey),
+    criarCifra({ chaveAtual: config.cifraChaveAtual }),
   );
   const servico = new ServicoEnriquecimentoCatalogo(repo, new ClienteVtex(), redes);
 

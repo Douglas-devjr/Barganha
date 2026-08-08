@@ -39,6 +39,7 @@ import { RepositorioSupabase } from '../persistencia/repositorio-supabase';
 import { hashChavePool } from '../persistencia/tipos';
 import { criarClienteSupabase } from '../persistencia/supabase';
 import type { RepositorioCupom } from '../persistencia/tipos';
+import { criarCifra } from '../seguranca/cifra';
 
 export interface ResumoRepublicacao {
   cuponsExaminados: number;
@@ -152,7 +153,14 @@ export async function rodarJobRepublicacao(
   config: ConfigBackend = lerConfig(),
 ): Promise<ResumoRepublicacao> {
   const db = criarClienteSupabase(config.supabaseUrl, config.supabaseServiceRoleKey);
-  const repo = new RepositorioSupabase(db);
+  // C9.2.2 (b6) — este job LÊ chave_acesso/descricao de item (para reconstruir a
+  // nota a partir do lado privado) e volta a escrevê-los via `marcarProcessado`
+  // — precisa da cifra ativa de verdade (CIFRA_CHAVE_ATUAL configurada), ao
+  // contrário dos jobs que só tocam o pool anônimo.
+  const repo = new RepositorioSupabase(
+    db,
+    criarCifra({ chaveAtual: config.cifraChaveAtual, chaveAnterior: config.cifraChaveAnterior }),
+  );
   // As MESMAS fontes de casamento da ingestão (C3.6.1): um backfill que resolve
   // produto por um critério diferente do caminho normal produziria um pool
   // internamente inconsistente — o pior tipo de dado, porque parece certo.

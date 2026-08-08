@@ -11,8 +11,13 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { describe, expect, it, vi } from 'vitest';
 
 import type { ItemCupomNovo } from '../anonimizacao/anonimizador';
+import { criarCifra, gerarChaveEnv } from '../seguranca/cifra';
 import { RepositorioSupabase } from './repositorio-supabase';
 import type { DadosNotaProcessada } from './tipos';
+
+// C9.2.2 (b6) — chave de teste fixa (não é segredo real): `marcarProcessado`
+// agora cifra `descricaoOriginal` antes de montar o payload da RPC.
+const CIFRA_TESTE = criarCifra({ chaveAtual: gerarChaveEnv('1') });
 
 interface ChamadaRpc {
   fn: string;
@@ -81,7 +86,7 @@ const observacoesValidas = (): ObservacaoAnonima[] =>
 describe('RepositorioSupabase.marcarProcessado (C9.3.1)', () => {
   it('delega a UMA RPC processar_cupom com o payload em snake_case', async () => {
     const { db, chamadas } = clienteFalso();
-    const repo = new RepositorioSupabase(db);
+    const repo = new RepositorioSupabase(db, CIFRA_TESTE);
 
     await repo.marcarProcessado('cupom-1', dados(observacoesValidas()));
 
@@ -99,9 +104,24 @@ describe('RepositorioSupabase.marcarProcessado (C9.3.1)', () => {
     expect(obs[0]).toMatchObject({ loja_cnpj: '12345678000199', preco_normalizado: 33.8 });
   });
 
+  it('cifra a descrição do item ANTES de montar o payload da RPC (C9.2.2/b6)', async () => {
+    const { db, chamadas } = clienteFalso();
+    const repo = new RepositorioSupabase(db, CIFRA_TESTE);
+
+    await repo.marcarProcessado('cupom-1', dados(observacoesValidas()));
+
+    const itens = chamadas[0]!.args.p_itens as Record<string, unknown>[];
+    const blob = itens[0]!.descricao_cifrada as string;
+    // A RPC nunca vê o texto em claro — só um blob opaco.
+    expect(blob).not.toContain('CAFE');
+    expect(itens[0]!.descricao_original).toBeUndefined();
+    // ... mas é reversível com a mesma chave (decifra de volta ao original).
+    expect(CIFRA_TESTE.decifrar(blob)).toBe('CAFE PILAO 500G');
+  });
+
   it('repassa o código interno da loja (codigoLoja → codigo_loja) para a RPC', async () => {
     const { db, chamadas } = clienteFalso();
-    const repo = new RepositorioSupabase(db);
+    const repo = new RepositorioSupabase(db, CIFRA_TESTE);
 
     await repo.marcarProcessado('cupom-1', dados(observacoesValidas(), [ITEM, ITEM_SEM_EAN]));
 
@@ -115,7 +135,7 @@ describe('RepositorioSupabase.marcarProcessado (C9.3.1)', () => {
 
   it('aborta ANTES de escrever se uma observação carregar dado pessoal (gate C9.2)', async () => {
     const { db, chamadas } = clienteFalso();
-    const repo = new RepositorioSupabase(db);
+    const repo = new RepositorioSupabase(db, CIFRA_TESTE);
     // Simula um defeito a montante: observação contaminada com chave de acesso.
     const contaminada = [
       { ...observacoesValidas()[0], chaveAcesso: '332606...' } as unknown as ObservacaoAnonima,
@@ -127,7 +147,7 @@ describe('RepositorioSupabase.marcarProcessado (C9.3.1)', () => {
 
   it('propaga erro do banco como falha (a fila trata como transitório)', async () => {
     const { db } = clienteFalso({ error: { message: 'deadlock', code: '40P01' } });
-    const repo = new RepositorioSupabase(db);
+    const repo = new RepositorioSupabase(db, CIFRA_TESTE);
     await expect(repo.marcarProcessado('cupom-1', dados(observacoesValidas()))).rejects.toThrow(
       /processamento transacional/i,
     );

@@ -57,6 +57,22 @@ export interface ConfigBackend {
    * inatividade. Ausente → `enviarEmail` fail-closed (ver `emailApiKey`).
    */
   emailRemetente?: string;
+  /**
+   * C9.2.2 (b6) — chave-mestra da cifra de `cupom.chave_acesso_cifrada` e
+   * `item_cupom.descricao_cifrada` (docs/19 §8). Formato
+   * `"<versao>:<chave-base64-32-bytes>"` (ver `seguranca/cifra.ts`). Ausente
+   * por padrão — igual ao canal de e-mail, a AUSÊNCIA não derruba o processo:
+   * só o caminho que grava/lê essas duas colunas falha, e falha alto (nunca
+   * grava/lê texto puro como se estivesse cifrado). Preenchê-la é o que liga
+   * a cifra "de verdade" — passo do gate da Fase 3, não desta migração.
+   */
+  cifraChaveAtual?: string;
+  /**
+   * C9.2.2 (b6) — chave da versão ANTERIOR, só usada para DECIFRAR linhas
+   * gravadas antes de uma rotação. Nunca cifra nada de novo. Ausente fora de
+   * uma janela de rotação (o caso normal). Ver o procedimento em docs/19 §8.
+   */
+  cifraChaveAnterior?: string;
 }
 
 export function lerConfig(env: NodeJS.ProcessEnv = process.env): ConfigBackend {
@@ -87,6 +103,8 @@ export function lerConfig(env: NodeJS.ProcessEnv = process.env): ConfigBackend {
     versao: (env.RENDER_GIT_COMMIT ?? env.APP_VERSAO ?? 'desenvolvimento').slice(0, 12),
     emailApiKey: env.RESEND_API_KEY,
     emailRemetente: env.EMAIL_REMETENTE,
+    cifraChaveAtual: env.CIFRA_CHAVE_ATUAL,
+    cifraChaveAnterior: env.CIFRA_CHAVE_ANTERIOR,
   };
 }
 

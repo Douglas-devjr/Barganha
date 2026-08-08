@@ -46,6 +46,7 @@ import { ProcessadorCupom } from './processamento/processador-cupom';
 import { ReprocessadorRetroativo } from './processamento/reprocessamento';
 import { ControleRollout } from './rollout/controle-rollout';
 import { ClienteSefazHttp } from './sefaz/cliente-sefaz-http';
+import { criarCifra } from './seguranca/cifra';
 import { ServicoAlertas } from './servicos/servico-alertas';
 import { ServicoAssinatura } from './servicos/servico-assinatura';
 import { ServicoSync } from './sync/servico-sync';
@@ -118,7 +119,15 @@ export function montarBackend(config: ConfigBackend): Backend {
   // o que faz TODO acesso ao banco ser cronometrado sem que nenhum serviço do
   // domínio saiba que existe medição acontecendo.
   const metricasPerformance = new MetricasMemoria();
-  const repo = instrumentarRepositorio(new RepositorioSupabase(db), metricasPerformance);
+  // C9.2.2 (b6) — cifra de chave_acesso/descrição de item (docs/19 §8). Construir
+  // aqui NUNCA lança por chave ausente (`criarCifra` falha tardio, só quando
+  // cifrar/decifrar é chamado de fato) — é assim que o processo sobe normalmente
+  // mesmo antes do gate da Fase 3 ligar CIFRA_CHAVE_ATUAL em produção.
+  const cifra = criarCifra({
+    chaveAtual: config.cifraChaveAtual,
+    chaveAnterior: config.cifraChaveAnterior,
+  });
+  const repo = instrumentarRepositorio(new RepositorioSupabase(db, cifra), metricasPerformance);
 
   const cliente = new ClienteSefazHttp();
   const registro = new RegistroParsers([

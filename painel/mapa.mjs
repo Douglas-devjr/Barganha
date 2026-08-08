@@ -86,16 +86,20 @@ export const bloqueadores = [
   },
   {
     id: 'b6',
-    titulo: 'Cifrar as colunas privadas do Postgres (gate pré-beta)',
+    titulo: 'Ativar em produção a cifra das colunas privadas do Postgres (gate da Fase 3)',
     gravidade: 'media',
     porque:
-      '`cupom.chave_acesso` e as descrições de `item_cupom` ficam em claro, amarradas ao `usuario_id`. Não é o dado mais sensível (o CPF nunca entra), mas é histórico de consumo de pessoa identificável — e um dump vazado hoje é legível. Foi adiado de propósito: toca o caminho crítico da ingestão e a base está vazia.',
+      'O envelope está implementado (AES-256-GCM em Node, chave fora do banco), a migração e os testes estão prontos, e o procedimento de rotação foi escrito e auditado pelo gate de privacidade (docs/19 §8) — mas nada disso está LIGADO. A produção segue com `chave_acesso`/descrição em claro até a migração ser aplicada e `CIFRA_CHAVE_ATUAL` ser configurada no Render. É proposital: os dois passos têm que acontecer juntos (aplicar sem a variável derruba a ingestão; configurar a variável sem a migração não tem coluna pra escrever), e ativar antes do beta fechado não compra nada com a base ainda vazia.',
     resolver:
-      'Envelope com a chave fora do banco, índice único sobre o SHA-256, chave de acesso ainda reversível (o reprocessamento precisa dela) e o procedimento de rotação escrito ANTES de ligar.',
-    arquivos: ['docs/19-ambientes-e-endurecimento.md'],
-    esforco: '2–3 dias',
+      'Quando o gate da Fase 3 (beta fechado, docs/15) chegar: gerar a chave-mestra (`gerarChaveEnv`), aplicar `supabase db push` em produção e configurar `CIFRA_CHAVE_ATUAL` no Render na MESMA janela — procedimento completo (passos 1 e 2) em docs/19-ambientes-e-endurecimento.md §8.',
+    arquivos: [
+      'backend/src/seguranca/cifra.ts',
+      'supabase/migrations/20260808090000_cifra_dados_privados.sql',
+      'docs/19-ambientes-e-endurecimento.md',
+    ],
+    esforco: '15 min de execução (design e implementação já prontos)',
     prompt:
-      'Aciona os agentes data-engineer e privacy-lgpd-specialist pra resolver o bloqueador b6 do painel: cifra `cupom.chave_acesso` e as descrições de `item_cupom` no Postgres. Usa envelope de chave fora do banco, mantém o índice único sobre o SHA-256 da chave de acesso (pra idempotência continuar funcionando), garante que a chave de acesso continua reversível (o reprocessamento retroativo precisa dela) e escreve o procedimento de rotação de chave ANTES de ligar a cifra em produção. Documenta a decisão em docs/19-ambientes-e-endurecimento.md §8. No final, atualiza o bloqueador b6 em painel/mapa.mjs e roda `npm run painel`.',
+      'Preciso ativar em produção a cifra das colunas privadas (b6) — ação manual de infraestrutura, só rode isto quando o gate da Fase 3 (docs/15-beta-fechado.md) for alcançado. Me guia: gerar a chave-mestra com `gerarChaveEnv` (backend/src/seguranca/cifra.ts), aplicar a migração `20260808090000_cifra_dados_privados.sql` em produção (projeto Supabase de produção, ver docs/19 §0) e configurar `CIFRA_CHAVE_ATUAL` no Render NA MESMA janela de deploy — passo a passo em docs/19-ambientes-e-endurecimento.md §8. Depois atualiza o bloqueador b6 em painel/mapa.mjs (agora sim removendo-o) e roda `npm run painel`.',
   },
 ];
 
@@ -998,6 +1002,24 @@ export const funcoes = [
     arquivos: ['supabase/migrations/20260712090000_chave_publicada_dedup_pool.sql'],
     regras: ['r15'],
     etapas: ['C9.2.1'],
+  },
+  {
+    id: 'cifra-privada',
+    nome: 'Cifra das colunas privadas',
+    area: 'privacidade',
+    status: 'parcial',
+    oque: 'Cifra reversível, por envelope, de `cupom.chave_acesso` e da descrição de `item_cupom` — protege um dump do banco, não uma invasão do processo.',
+    detalhe:
+      'AES-256-GCM em Node (`node:crypto`); a chave-mestra vive só em variável de ambiente do backend, nunca em `pgcrypto`/parâmetro de query (vazaria para os logs do Postgres). A versão da chave viaja dentro do próprio blob cifrado, o que permite rotação sem downtime (chave atual + anterior convivendo). A chave de acesso continua REVERSÍVEL — o reprocessamento retroativo (C2.5) precisa dela em texto puro — e a idempotência do upload passou a usar um hash SHA-256 determinístico à parte (`chave_acesso_hash`, novo e separado do dedup global em `chave_publicada`), já que o blob cifrado tem IV aleatório e não indexa por igualdade. Auditado pelo gate de privacidade em 08/08/2026 (aprovado com ajustes — ver docs/19 §8).',
+    falta:
+      'Ativar em produção: aplicar a migração e configurar `CIFRA_CHAVE_ATUAL` no Render, os dois juntos, só no gate da Fase 3 (docs/15) — bloqueador b6. Até lá a coluna cifrada não existe em produção e os dados continuam em claro por lá.',
+    ligacoes: ['anonimizador', 'dedup-pool', 'processador'],
+    arquivos: [
+      'backend/src/seguranca/cifra.ts',
+      'supabase/migrations/20260808090000_cifra_dados_privados.sql',
+    ],
+    regras: ['r3'],
+    etapas: ['C9.2.2'],
   },
   {
     id: 'apagar-conta',
@@ -2884,7 +2906,7 @@ export const etapas = [
     status: 'parcial',
     oque: 'Checagem de re-identificação, piso de exposição, saneamento do QR.',
     falta:
-      'Cifrar as colunas privadas (chave de acesso e descrições) — gate pré-beta. E a purga de inativos já tem o canal de e-mail no código, mas espera os segredos de produção e a revisão jurídica da transferência internacional (docs/04 §Operadores).',
+      'A purga de inativos já tem o canal de e-mail no código, mas espera os segredos de produção e a revisão jurídica da transferência internacional (docs/04 §Operadores).',
   },
   {
     codigo: 'C9.2.1',
@@ -2892,6 +2914,15 @@ export const etapas = [
     fase: 'MVP',
     status: 'pronto',
     oque: 'Mesmo cupom por contas diferentes publica uma vez.',
+  },
+  {
+    codigo: 'C9.2.2',
+    nome: 'Cifra das colunas privadas',
+    fase: 'MVP',
+    status: 'parcial',
+    oque: 'Cifra reversível por envelope (chave fora do banco) de `chave_acesso` e da descrição do item.',
+    falta:
+      'Ativação em produção (aplicar a migração + configurar `CIFRA_CHAVE_ATUAL` no Render, juntos) — gate da Fase 3, bloqueador b6, docs/19 §8.',
   },
   {
     codigo: 'C9.3',

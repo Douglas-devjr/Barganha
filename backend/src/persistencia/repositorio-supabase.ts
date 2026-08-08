@@ -71,6 +71,7 @@ import {
   tokenizar,
 } from '../estatistica/casamento-texto';
 import { derivarEscopos, type LocalGeo } from '../estatistica/escopos';
+import type { Cifra } from '../seguranca/cifra';
 import type {
   FonteObservacoes,
   LinhaEstatistica,
@@ -91,17 +92,18 @@ import type {
 import type { RepositorioAlertas } from '../servicos/tipos-alertas';
 import type { LinhaAssinatura, RepositorioAssinatura } from '../servicos/tipos-assinatura';
 import type { FiltroDeltaSync, FonteDeltaSync, LinhaDelta } from '../sync/tipos';
-import type {
-  CupomComItens,
-  CupomHistorico,
-  CupomRegistro,
-  CursorHistorico,
-  DadosIngestao,
-  DadosNotaProcessada,
-  FiltroReprocessamento,
-  RepositorioCupom,
-  ResultadoIngestao,
-  ResultadoMarcarProcessado,
+import {
+  type CupomComItens,
+  type CupomHistorico,
+  type CupomRegistro,
+  type CursorHistorico,
+  type DadosIngestao,
+  type DadosNotaProcessada,
+  type FiltroReprocessamento,
+  hashChavePool,
+  type RepositorioCupom,
+  type ResultadoIngestao,
+  type ResultadoMarcarProcessado,
 } from './tipos';
 
 const COD_UNIQUE_VIOLATION = '23505';
@@ -171,8 +173,13 @@ function paraEstatistica(e: Record<string, unknown>): PrecoEstatistica {
  * O `tipicoNaCompra` só é montado com os QUATRO campos presentes: mediana sem
  * escopo/`n` não é auditável, e meia-informação aqui viraria número exibido sem
  * lastro. Ausência é a resposta honesta.
+ *
+ * C9.2.2 (b6) — `descricao_cifrada` chega da leitura como o blob opaco; decifra
+ * aqui, no ÚNICO lugar que traduz a linha crua do Postgres para o domínio, para
+ * nenhum chamador (obterDoUsuario, listarHistoricoDoUsuario) precisar saber que
+ * a coluna é cifrada.
  */
-function paraItemPrivado(i: Record<string, unknown>): ItemCupomNovo {
+function paraItemPrivado(i: Record<string, unknown>, cifra: Cifra): ItemCupomNovo {
   const mediana = num(i.tipico_mediana);
   const unidadeBase = i.tipico_unidade_base as TipicoNaCompra['unidadeBase'] | null;
   const escopo = i.tipico_escopo as TipicoNaCompra['escopo'] | null;
@@ -184,7 +191,7 @@ function paraItemPrivado(i: Record<string, unknown>): ItemCupomNovo {
 
   return {
     ...(i.produto_canonico_id ? { produtoCanonicoId: i.produto_canonico_id as string } : {}),
-    descricaoOriginal: i.descricao_original as string,
+    descricaoOriginal: cifra.decifrar(i.descricao_cifrada as string),
     ...(i.ean ? { ean: i.ean as string } : {}),
     ...(i.codigo_loja ? { codigoLoja: i.codigo_loja as string } : {}),
     quantidade: Number(i.quantidade),
@@ -297,7 +304,16 @@ export class RepositorioSupabase
     RepositorioAlertas,
     RepositorioAssinatura
 {
-  constructor(private readonly db: SupabaseClient) {}
+  /**
+   * C9.2.2 (b6) — `cifra` decifra/cifra `chave_acesso_cifrada` e
+   * `descricao_cifrada` (docs/19 §8). Injetada (não lida do ambiente aqui)
+   * para a raiz de composição (`composicao.ts`) ser o único lugar que decide
+   * QUAL chave está ativa — mesmo padrão de `db` já ser montado fora.
+   */
+  constructor(
+    private readonly db: SupabaseClient,
+    private readonly cifra: Cifra,
+  ) {}
 
   // ───────────────────────── RepositorioUsuario (C4.3) ────────────────
 
@@ -314,12 +330,19 @@ export class RepositorioSupabase
   }
 
   async criarOuObterPorChave(dados: DadosIngestao): Promise<ResultadoIngestao> {
-    if (dados.chaveAcesso) {
+    // C9.2.2 (b6) — idempotência por HASH determinístico (SHA-256, mesmo padrão
+    // de `hashChavePool`), nunca por igualdade do blob cifrado: AES-GCM usa IV
+    // aleatório, então duas cifras da MESMA chave nunca são iguais como texto.
+    // Coluna/índice novos e separados do hash global do pool em
+    // `chave_publicada` (C9.2.1) — mesmo algoritmo, propósitos diferentes.
+    const chaveHash = dados.chaveAcesso ? hashChavePool(dados.chaveAcesso) : undefined;
+
+    if (chaveHash) {
       const existente = await this.db
         .from('cupom')
         .select('id, status')
         .eq('usuario_id', dados.usuarioId)
-        .eq('chave_acesso', dados.chaveAcesso)
+        .eq('chave_acesso_hash', chaveHash)
         .maybeSingle();
       if (existente.error) falhar('consulta de cupom por chave', existente.error);
       if (existente.data) {
@@ -331,7 +354,8 @@ export class RepositorioSupabase
       .from('cupom')
       .insert({
         usuario_id: dados.usuarioId,
-        chave_acesso: dados.chaveAcesso ?? null,
+        chave_acesso_cifrada: dados.chaveAcesso ? this.cifra.cifrar(dados.chaveAcesso) : null,
+        chave_acesso_hash: chaveHash ?? null,
         uf: dados.uf ?? null,
         qr_payload: dados.qrPayload,
         capturado_em: dados.capturadoEm,
@@ -341,12 +365,12 @@ export class RepositorioSupabase
       .single();
 
     // Corrida: outro request inseriu a mesma chave entre o select e o insert.
-    if (inserido.error?.code === COD_UNIQUE_VIOLATION && dados.chaveAcesso) {
+    if (inserido.error?.code === COD_UNIQUE_VIOLATION && chaveHash) {
       const r = await this.db
         .from('cupom')
         .select('id, status')
         .eq('usuario_id', dados.usuarioId)
-        .eq('chave_acesso', dados.chaveAcesso)
+        .eq('chave_acesso_hash', chaveHash)
         .single();
       if (r.error) falhar('reconsulta de cupom após conflito', r.error);
       return { cupomId: r.data.id, status: r.data.status, novo: false };
@@ -359,7 +383,7 @@ export class RepositorioSupabase
   async obterParaProcessamento(cupomId: string): Promise<CupomRegistro | undefined> {
     const r = await this.db
       .from('cupom')
-      .select('id, usuario_id, uf, chave_acesso, qr_payload, status')
+      .select('id, usuario_id, uf, chave_acesso_cifrada, qr_payload, status')
       .eq('id', cupomId)
       .maybeSingle();
     if (r.error) falhar('carga de cupom para processamento', r.error);
@@ -368,7 +392,12 @@ export class RepositorioSupabase
       id: r.data.id,
       usuarioId: r.data.usuario_id,
       uf: r.data.uf ?? undefined,
-      chaveAcesso: r.data.chave_acesso ?? undefined,
+      // C9.2.2 (b6) — decifra para o domínio: quem chama (ex.: o processador,
+      // que consulta a SEFAZ de novo) precisa da chave em TEXTO PURO, e não
+      // sabe/deve saber que a coluna guarda um blob cifrado.
+      chaveAcesso: r.data.chave_acesso_cifrada
+        ? this.cifra.decifrar(r.data.chave_acesso_cifrada)
+        : undefined,
       qrPayload: r.data.qr_payload,
       status: r.data.status,
     };
@@ -388,7 +417,7 @@ export class RepositorioSupabase
     const itensR = await this.db
       .from('item_cupom')
       .select(
-        'produto_canonico_id, descricao_original, ean, codigo_loja, quantidade, unidade, valor_unitario, valor_total, desconto, tipico_mediana, tipico_unidade_base, tipico_escopo, tipico_n_observacoes',
+        'produto_canonico_id, descricao_cifrada, ean, codigo_loja, quantidade, unidade, valor_unitario, valor_total, desconto, tipico_mediana, tipico_unidade_base, tipico_escopo, tipico_n_observacoes',
       )
       .eq('cupom_id', cupomId);
     if (itensR.error) falhar('carga de itens do cupom', itensR.error);
@@ -420,7 +449,7 @@ export class RepositorioSupabase
       ...(loja ? { loja } : {}),
       ...(c.data.desconto_total != null ? { descontoTotal: Number(c.data.desconto_total) } : {}),
       ...(c.data.valor_pago != null ? { valorPago: Number(c.data.valor_pago) } : {}),
-      itens: (itensR.data ?? []).map((i) => paraItemPrivado(i)),
+      itens: (itensR.data ?? []).map((i) => paraItemPrivado(i, this.cifra)),
     };
   }
 
@@ -433,7 +462,7 @@ export class RepositorioSupabase
     let q = this.db
       .from('cupom')
       .select(
-        'id, status, qr_payload, chave_acesso, capturado_em, emitido_em, uf, loja_cnpj, desconto_total, valor_pago',
+        'id, status, qr_payload, chave_acesso_cifrada, capturado_em, emitido_em, uf, loja_cnpj, desconto_total, valor_pago',
       )
       .eq('usuario_id', usuarioId);
     if (opcoes.apos) {
@@ -455,14 +484,14 @@ export class RepositorioSupabase
     const itensR = await this.db
       .from('item_cupom')
       .select(
-        'cupom_id, produto_canonico_id, descricao_original, ean, codigo_loja, quantidade, unidade, valor_unitario, valor_total, desconto, tipico_mediana, tipico_unidade_base, tipico_escopo, tipico_n_observacoes',
+        'cupom_id, produto_canonico_id, descricao_cifrada, ean, codigo_loja, quantidade, unidade, valor_unitario, valor_total, desconto, tipico_mediana, tipico_unidade_base, tipico_escopo, tipico_n_observacoes',
       )
       .in('cupom_id', ids);
     if (itensR.error) falhar('carga de itens do histórico (restore)', itensR.error);
     const itensPorCupom = new Map<string, CupomComItens['itens']>();
     for (const i of itensR.data ?? []) {
       const lista = itensPorCupom.get(i.cupom_id as string) ?? [];
-      lista.push(paraItemPrivado(i));
+      lista.push(paraItemPrivado(i, this.cifra));
       itensPorCupom.set(i.cupom_id as string, lista);
     }
 
@@ -491,7 +520,9 @@ export class RepositorioSupabase
         cupomId: x.id as string,
         status: x.status,
         qrPayload: x.qr_payload as string,
-        ...(x.chave_acesso ? { chaveAcesso: x.chave_acesso as string } : {}),
+        ...(x.chave_acesso_cifrada
+          ? { chaveAcesso: this.cifra.decifrar(x.chave_acesso_cifrada as string) }
+          : {}),
         capturadoEm: x.capturado_em as string,
         ...(x.emitido_em ? { emitidoEm: x.emitido_em as string } : {}),
         ...(x.uf ? { uf: x.uf as string } : {}),
@@ -558,7 +589,9 @@ export class RepositorioSupabase
       p_uf: dados.uf,
       p_itens: dados.itensPrivados.map((i) => ({
         produto_canonico_id: i.produtoCanonicoId ?? null,
-        descricao_original: i.descricaoOriginal,
+        // C9.2.2 (b6) — cifra ANTES de sair do Node: a RPC só vê um blob opaco,
+        // nunca a descrição em claro (a chave-mestra fica fora do banco).
+        descricao_cifrada: this.cifra.cifrar(i.descricaoOriginal),
         ean: i.ean ?? null,
         // Código interno da loja (SKU) — só quando NÃO há EAN válido (docs/03).
         codigo_loja: i.codigoLoja ?? null,
