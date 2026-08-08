@@ -98,20 +98,6 @@ export const bloqueadores = [
     arquivos: ['docs/19-ambientes-e-endurecimento.md'],
     esforco: '2–3 dias',
   },
-  {
-    id: 'b7',
-    titulo: 'O alerta de parsing degradado não avisa ninguém',
-    gravidade: 'media',
-    porque:
-      'O cron horário avalia a taxa de falha por UF, mas sem `ALERTA_WEBHOOK_URL` ele só escreve no log da execução. Durante o beta, um portal da SEFAZ quebrando em silêncio custa dias de dados.',
-    resolver:
-      'Criar um webhook no Discord/Slack e cadastrar como secret `ALERTA_WEBHOOK_URL` no GitHub. Disparar o workflow à mão para conferir o caminho.',
-    arquivos: [
-      '.github/workflows/alerta-parsing.yml',
-      'backend/src/observabilidade/alerta-parsing.ts',
-    ],
-    esforco: '20 min',
-  },
 ];
 
 /* ────────────────────────────────────────────────────────────────────────────
@@ -1975,12 +1961,10 @@ export const funcoes = [
     id: 'alerta-parsing',
     nome: 'Alerta de parser degradado',
     area: 'operacao',
-    status: 'parcial',
+    status: 'pronto',
     oque: 'A cada hora, verifica se um portal da SEFAZ começou a falhar muito e avisa.',
-    falta:
-      'O webhook não está configurado (`ALERTA_WEBHOOK_URL`). Sem ele, o alerta só escreve no log da execução e ninguém é notificado.',
     detalhe:
-      'Limiar: 30% de falha com no mínimo 20 tentativas na UF. Calibrado para não disparar com a oscilação normal do reCAPTCHA do RJ e sempre disparar quando um parser quebra de vez.',
+      'Limiar: 30% de falha com no mínimo 20 tentativas na UF. Calibrado para não disparar com a oscilação normal do reCAPTCHA do RJ e sempre disparar quando um parser quebra de vez. `ALERTA_WEBHOOK_URL` cadastrado como secret no GitHub (02/08/2026) — disparo manual do workflow confirmou a leitura do secret e a execução ponta a ponta sem erro.',
     ligacoes: ['metricas'],
     arquivos: [
       'backend/src/observabilidade/alerta-parsing.ts',
@@ -2179,10 +2163,10 @@ export const funcoes = [
     id: 'alertas-configuraveis',
     nome: 'Alertas configuráveis de operação',
     area: 'operacao',
-    status: 'parcial',
+    status: 'pronto',
     oque: 'Regras ajustáveis sobre as anomalias medidas: latência do banco, acerto do cache, custo do processo, além da taxa de falha por estado.',
-    falta:
-      'Como o alerta de parsing, dependem do webhook não configurado para avisar alguém de fato.',
+    detalhe:
+      'Como o alerta de parsing, dependia do webhook não configurado para avisar alguém de fato — resolvido junto (`ALERTA_WEBHOOK_URL` cadastrado em 02/08/2026, disparo manual confirmou a execução).',
     ligacoes: ['alerta-anomalias', 'metricas'],
     arquivos: ['backend/src/observabilidade/regras-alerta.ts'],
     etapas: ['C10.4'],
@@ -3033,9 +3017,8 @@ export const etapas = [
     codigo: 'C10.4',
     nome: 'Observabilidade profunda',
     fase: 'MVP',
-    status: 'parcial',
+    status: 'pronto',
     oque: 'Health check detalhado, código de rastreio do erro do app até o log, cronômetro de banco, acerto de cache, custo do processo e alertas configuráveis.',
-    falta: 'O webhook de aviso não está configurado — tudo é medido, ninguém é notificado.',
   },
 
   {
