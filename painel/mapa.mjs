@@ -1102,7 +1102,7 @@ export const funcoes = [
     status: 'parcial',
     oque: 'Calcula a faixa típica de cada produto: mediana, p25/p75, mínimo, máximo — dando mais peso aos preços recentes.',
     falta:
-      'A calibração dos valores em produção (meia-vida 30 dias, cerco 1,5×IQR, mínimo de n por nível) segue pendente — mas não é mais trabalho de engenharia: a ferramenta de medição já existe (job:calibracao), mede o pool real por backtest/recall-FP/bootstrap e recomenda, sem aplicar nada sozinha. Falta é volume do beta para o resultado deixar de ser "dados insuficientes".',
+      'NÃO é pendência de engenharia — é bloqueio externo, não há o que codar aqui. A ferramenta de medição (job:calibracao) já existe, roda contra o pool real (backtest walk-forward p/ meia-vida, recall/falso-positivo p/ o cerco de promoção, bootstrap p/ mínimo de observações por nível) e recomenda, sem aplicar nada sozinha — decisão humana, por design, mesma filosofia do job:cobertura-tipico. Rodar hoje devolve "dados insuficientes" porque o pool do beta ainda é raso, não porque falte código. Só revisitar quando o beta acumular volume; aí a recomendação vira commit separado.',
     detalhe:
       'Percentis PONDERADOS pelo decaimento temporal: uma observação de 8 meses atrás pesa quase nada, e acima de 180 dias é descartada. A promoção é segregada em duas camadas: a flag de desconto da própria NFC-e e o cerco estatístico (preços abaixo de p25 − 1,5×IQR).',
     ligacoes: ['pipeline', 'escopos', 'normalizacao'],
