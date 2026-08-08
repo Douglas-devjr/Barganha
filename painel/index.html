@@ -160,6 +160,19 @@ button.ouvir svg{width:13px; height:13px}
 .bloq .porque{margin-bottom:9px}
 .bloq .fix{color:var(--ink)}
 .onde{margin-top:10px; display:flex; flex-wrap:wrap; gap:5px}
+.prompt-caixa{margin-top:11px}
+.prompt-rot{display:flex; align-items:baseline; justify-content:space-between; gap:8px; margin-bottom:5px}
+button.copiar{
+  font:inherit; font-size:11.5px; font-weight:600; cursor:pointer; padding:3px 10px; border-radius:999px;
+  background:var(--card2); border:1px solid var(--line); color:var(--sub);
+}
+button.copiar:hover{color:var(--ink); border-color:var(--faint)}
+button.copiar.ok{background:var(--ok-bg); border-color:var(--ok-line); color:var(--ok)}
+pre.prompt{
+  margin:0; padding:11px 13px; background:var(--card2); border:1px solid var(--line); border-radius:9px;
+  font:12px/1.55 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; color:var(--ink);
+  white-space:pre-wrap; word-break:break-word; max-width:none;
+}
 
 /* ── trilha ───────────────────────────────────────────────────────────── */
 .trilha{display:grid; grid-template-columns:repeat(auto-fit,minmax(196px,1fr)); gap:10px; align-items:start}
@@ -452,8 +465,8 @@ footer{max-width:1180px; margin:0 auto; padding:0 24px 72px; font-size:12px; col
   <div class="topo-in">
     <span class="marca">Barganha <span>painel do projeto</span></span>
     <span class="topo-meta">
-      <span class="selo">commit <code>0fa8533</code> · 08/08/2026</span>
-      <span class="selo sujo">2 arquivo(s) sem commit</span>
+      <span class="selo">commit <code>3c10570</code> · 08/08/2026</span>
+      <span class="selo sujo">4 arquivo(s) sem commit</span>
       <span class="selo">gerado em 08 de agosto de 2026</span>
     </span>
   </div>
@@ -494,7 +507,7 @@ footer{max-width:1180px; margin:0 auto; padding:0 24px 72px; font-size:12px; col
       <span class="tile-s">quase todas pós-lançamento</span>
     </div>
     <div class="tile t-bad">
-      <span class="tile-n">5</span>
+      <span class="tile-n">4</span>
       <span class="tile-r">bloqueiam publicar</span>
       <span class="tile-s">resolvíveis em dias</span>
     </div></div>
@@ -504,11 +517,11 @@ footer{max-width:1180px; margin:0 auto; padding:0 24px 72px; font-size:12px; col
   </div>
   <h3 class="sub">O caminho até a loja</h3>
   <ol class="fases">
-    <li class="fase f-falta">
+    <li class="fase f-parcial">
       <span class="fase-n">Fase 0</span>
       <strong>Destravar o que impede o build</strong>
       <span class="fase-dur">1 dia</span>
-      <span class="pill p-falta"><i></i>falta fazer</span>
+      <span class="pill p-parcial"><i></i>parcial</span>
     </li>
     <li class="fase f-parcial">
       <span class="fase-n">Fase 1</span>
@@ -543,7 +556,7 @@ footer{max-width:1180px; margin:0 auto; padding:0 24px 72px; font-size:12px; col
       <span class="sec-num">02</span>
       <h2>O que impede publicar hoje</h2>
     </div>
-    <button class="ouvir" type="button" data-fala="São 6 pontos, e 5 deles são de gravidade alta. Nenhum é uma feature nova: são configuração, uma validação no aparelho e a conta da loja. 1. A URL da API no build de produção é um domínio que não existe. 2. A versão do app ainda é 0.0.0. 3. Variáveis do Supabase não estão cadastradas no EAS. 4. A conta de desenvolvedor da Google Play não existe. 5. A captura do RJ nunca foi validada num aparelho de verdade. 6. Cifrar as colunas privadas do Postgres (gate pré-beta)." aria-label="Ouvir o resumo desta seção">
+    <button class="ouvir" type="button" data-fala="São 5 pontos, e 4 deles são de gravidade alta. Nenhum é uma feature nova: são configuração, uma validação no aparelho e a conta da loja. 1. A URL da API no build de produção é um domínio que não existe. 2. A versão do app ainda é 0.0.0. 3. A conta de desenvolvedor da Google Play não existe. 4. A captura do RJ nunca foi validada num aparelho de verdade. 5. Cifrar as colunas privadas do Postgres (gate pré-beta)." aria-label="Ouvir o resumo desta seção">
       <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2 4.5 5H2v6h2.5L8 14zM11 5.5a3.5 3.5 0 0 1 0 5M13 3.5a6 6 0 0 1 0 9"/></svg>
       ouvir
     </button>
@@ -558,6 +571,10 @@ footer{max-width:1180px; margin:0 auto; padding:0 24px 72px; font-size:12px; col
       <p class="porque"><span class="rot">Por que trava</span>O perfil <code>production</code> do EAS aponta para <code>https://api.barganha.app</code> — um placeholder. O perfil <code>preview</code> já aponta certo para o Render. Um build de produção feito hoje sobe na loja sem conseguir falar com o backend.</p>
       <p class="fix"><span class="rot">Como resolver</span>Trocar <code>EXPO_PUBLIC_API_URL</code> do perfil <code>production</code> pela URL do Render (a mesma do <code>preview</code>), ou registrar o domínio próprio antes.</p>
       <p class="onde"><code>app/eas.json</code></p>
+      <div class="prompt-caixa">
+        <div class="prompt-rot"><span class="rot">Cole no Claude Code</span><button type="button" class="copiar" data-copiar="prompt-b1">Copiar</button></div>
+        <pre class="prompt" id="prompt-b1">Resolve o bloqueador b1 do painel: troca a EXPO_PUBLIC_API_URL do perfil `production` em app/eas.json de https://api.barganha.app para https://barganha-api.onrender.com (a mesma URL do perfil preview), já que o domínio próprio ainda não existe. Depois atualiza o bloqueador b1 em painel/mapa.mjs pra refletir que foi resolvido e roda `npm run painel`.</pre>
+      </div>
     </article>
     <article class="bloq g-alta">
       <header>
@@ -568,46 +585,52 @@ footer{max-width:1180px; margin:0 auto; padding:0 24px 72px; font-size:12px; col
       <p class="porque"><span class="rot">Por que trava</span><code>version: &quot;0.0.0&quot;</code> e <code>versionCode: 1</code>. A Play aceita, mas a versão passa a ser o nome público da release e o <code>runtimeVersion</code> do EAS Update deriva dela (policy <code>appVersion</code>) — começar em 0.0.0 estraga o histórico de OTA desde o primeiro dia.</p>
       <p class="fix"><span class="rot">Como resolver</span>Definir <code>version: &quot;1.0.0&quot;</code> no <code>app/app.json</code> antes do primeiro build de produção.</p>
       <p class="onde"><code>app/app.json</code></p>
+      <div class="prompt-caixa">
+        <div class="prompt-rot"><span class="rot">Cole no Claude Code</span><button type="button" class="copiar" data-copiar="prompt-b2">Copiar</button></div>
+        <pre class="prompt" id="prompt-b2">Resolve o bloqueador b2 do painel: define `version: &quot;1.0.0&quot;` em app/app.json antes do primeiro build de produção. Confere se o `runtimeVersion` e a policy `appVersion` do EAS continuam coerentes depois da mudança. Depois atualiza o bloqueador b2 em painel/mapa.mjs e roda `npm run painel`.</pre>
+      </div>
     </article>
     <article class="bloq g-alta">
       <header>
         <span class="bloq-n">3</span>
-        <h3>Variáveis do Supabase não estão cadastradas no EAS</h3>
-        <span class="chip esforco">15 min</span>
-      </header>
-      <p class="porque"><span class="rot">Por que trava</span><code>app/.env</code> é ignorado pelo git e o EAS usa <code>requireCommit: true</code>. Sem <code>eas env:create</code>, o build não recebe <code>EXPO_PUBLIC_SUPABASE_URL</code>/<code>ANON_KEY</code> e o app morre no boot com &quot;Supabase não configurado&quot;.</p>
-      <p class="fix"><span class="rot">Como resolver</span>Rodar os <code>eas env:create</code> dos perfis <code>production</code> e <code>preview</code> (comandos prontos em docs/19 §2) e conferir com <code>eas env:list</code>.</p>
-      <p class="onde"><code>docs/19-ambientes-e-endurecimento.md</code></p>
-    </article>
-    <article class="bloq g-alta">
-      <header>
-        <span class="bloq-n">4</span>
         <h3>A conta de desenvolvedor da Google Play não existe</h3>
         <span class="chip esforco">1 dia</span>
       </header>
       <p class="porque"><span class="rot">Por que trava</span>É o único gasto pré-lançamento (US$ 25, uma vez) e o relógio dos 14 dias de teste fechado só começa a contar depois de a faixa estar criada e os testadores entrarem. Sem isso, nada mais na fila de publicação anda.</p>
       <p class="fix"><span class="rot">Como resolver</span>Criar a conta, criar o app &quot;Barganha&quot;, preencher política/Data Safety/classificação (respostas prontas em docs/14) e abrir a faixa de teste fechado.</p>
       <p class="onde"><code>docs/14-conformidade-play-store.md</code> <code>docs/15-beta-fechado.md</code></p>
+      <div class="prompt-caixa">
+        <div class="prompt-rot"><span class="rot">Cole no Claude Code</span><button type="button" class="copiar" data-copiar="prompt-b4">Copiar</button></div>
+        <pre class="prompt" id="prompt-b4">Preciso criar a conta de desenvolvedor da Google Play (US$ 25, ação manual no console — você não consegue fazer isso sozinho). Me guia passo a passo: o que preencher na conta, como criar o app &quot;Barganha&quot;, e cola as respostas prontas de docs/14-conformidade-play-store.md e docs/15-beta-fechado.md conforme eu for preenchendo o console. No final, atualiza o bloqueador b4 em painel/mapa.mjs e roda `npm run painel`.</pre>
+      </div>
     </article>
     <article class="bloq g-alta">
       <header>
-        <span class="bloq-n">5</span>
+        <span class="bloq-n">4</span>
         <h3>A captura do RJ nunca foi validada num aparelho de verdade</h3>
         <span class="chip esforco">1 sessão de teste</span>
       </header>
       <p class="porque"><span class="rot">Por que trava</span>O portal do RJ é protegido por reCAPTCHA e a captura passa por WebView. A recusa do captcha já é tratada (vira 422 <code>erro_portal</code> + recarga automática), mas isso foi validado em teste, não no device. Se o RJ falhar no beta, os testadores não conseguem escanear nada — e o beta é também a semeadura da base.</p>
       <p class="fix"><span class="rot">Como resolver</span>Rodar o dev build no aparelho e escanear cupons reais do RJ até ver a recuperação do captcha acontecendo sozinha. É o pré-requisito nº 1 do gate do beta.</p>
       <p class="onde"><code>app/src/componentes/ColetorNotaWeb.tsx</code> <code>backend/src/parsers/rj.ts</code></p>
+      <div class="prompt-caixa">
+        <div class="prompt-rot"><span class="rot">Cole no Claude Code</span><button type="button" class="copiar" data-copiar="prompt-b5">Copiar</button></div>
+        <pre class="prompt" id="prompt-b5">Preciso validar a captura do RJ num aparelho físico (ação manual — você não consegue escanear um cupom por mim). Me ajuda a preparar: sobe o dev build (`cd app &amp;&amp; npx expo start --dev-client` ou o comando certo do EAS dev build), abre o log do backend pra eu escanear cupons reais do RJ e a gente acompanhar junto se a recuperação automática do captcha (422 erro_portal + recarga) funciona igual no teste automatizado. No final, atualiza o bloqueador b5 em painel/mapa.mjs (e a jornada j-escanear se algo mudou) e roda `npm run painel`.</pre>
+      </div>
     </article>
     <article class="bloq g-media">
       <header>
-        <span class="bloq-n">6</span>
+        <span class="bloq-n">5</span>
         <h3>Cifrar as colunas privadas do Postgres (gate pré-beta)</h3>
         <span class="chip esforco">2–3 dias</span>
       </header>
       <p class="porque"><span class="rot">Por que trava</span><code>cupom.chave_acesso</code> e as descrições de <code>item_cupom</code> ficam em claro, amarradas ao <code>usuario_id</code>. Não é o dado mais sensível (o CPF nunca entra), mas é histórico de consumo de pessoa identificável — e um dump vazado hoje é legível. Foi adiado de propósito: toca o caminho crítico da ingestão e a base está vazia.</p>
       <p class="fix"><span class="rot">Como resolver</span>Envelope com a chave fora do banco, índice único sobre o SHA-256, chave de acesso ainda reversível (o reprocessamento precisa dela) e o procedimento de rotação escrito ANTES de ligar.</p>
       <p class="onde"><code>docs/19-ambientes-e-endurecimento.md</code></p>
+      <div class="prompt-caixa">
+        <div class="prompt-rot"><span class="rot">Cole no Claude Code</span><button type="button" class="copiar" data-copiar="prompt-b6">Copiar</button></div>
+        <pre class="prompt" id="prompt-b6">Aciona os agentes data-engineer e privacy-lgpd-specialist pra resolver o bloqueador b6 do painel: cifra `cupom.chave_acesso` e as descrições de `item_cupom` no Postgres. Usa envelope de chave fora do banco, mantém o índice único sobre o SHA-256 da chave de acesso (pra idempotência continuar funcionando), garante que a chave de acesso continua reversível (o reprocessamento retroativo precisa dela) e escreve o procedimento de rotação de chave ANTES de ligar a cifra em produção. Documenta a decisão em docs/19-ambientes-e-endurecimento.md §8. No final, atualiza o bloqueador b6 em painel/mapa.mjs e roda `npm run painel`.</pre>
+      </div>
     </article></div>
 </section>
 
@@ -4450,15 +4473,15 @@ footer{max-width:1180px; margin:0 auto; padding:0 24px 72px; font-size:12px; col
     </button>
   </header>
   <div class="fase-cards">
-    <article class="fase-card f-falta">
+    <article class="fase-card f-parcial">
       <header>
         <span class="fase-n">Fase 0</span>
         <h3>Destravar o que impede o build</h3>
         <span class="chip esforco">1 dia</span>
-        <span class="pill p-falta"><i></i>falta fazer</span>
+        <span class="pill p-parcial"><i></i>parcial</span>
       </header>
       <ul class="check">
-        <li class="aberto"><span class="box" aria-hidden="true"></span>Trocar a URL da API no perfil <code>production</code> do EAS</li><li class="aberto"><span class="box" aria-hidden="true"></span>Subir a versão do app para 1.0.0</li><li class="aberto"><span class="box" aria-hidden="true"></span>Cadastrar as variáveis do Supabase no EAS (<code>eas env:create</code>)</li><li class="aberto"><span class="box" aria-hidden="true"></span>Validar a captura do RJ num aparelho físico, com cupons reais</li><li class="aberto"><span class="box" aria-hidden="true"></span>Configurar o webhook do alerta de parsing</li>
+        <li class="aberto"><span class="box" aria-hidden="true"></span>Trocar a URL da API no perfil <code>production</code> do EAS</li><li class="aberto"><span class="box" aria-hidden="true"></span>Subir a versão do app para 1.0.0</li><li class="feito"><span class="box" aria-hidden="true"></span>Cadastrar as variáveis do Supabase no EAS (<code>eas env:create</code>)</li><li class="aberto"><span class="box" aria-hidden="true"></span>Validar a captura do RJ num aparelho físico, com cupons reais</li><li class="feito"><span class="box" aria-hidden="true"></span>Configurar o webhook do alerta de parsing</li>
       </ul>
       
       
@@ -4672,7 +4695,7 @@ footer{max-width:1180px; margin:0 auto; padding:0 24px 72px; font-size:12px; col
       <span class="sec-num">12</span>
       <h2>Como este painel se mantém junto com o código</h2>
     </div>
-    <button class="ouvir" type="button" data-fala="Tudo em sincronia: as 352 evidências citadas existem no código e nenhuma rota ou tela ficou sem dono." aria-label="Ouvir o resumo desta seção">
+    <button class="ouvir" type="button" data-fala="Tudo em sincronia: as 351 evidências citadas existem no código e nenhuma rota ou tela ficou sem dono." aria-label="Ouvir o resumo desta seção">
       <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2 4.5 5H2v6h2.5L8 14zM11 5.5a3.5 3.5 0 0 1 0 5M13 3.5a6 6 0 0 1 0 9"/></svg>
       ouvir
     </button>
@@ -4689,14 +4712,14 @@ footer{max-width:1180px; margin:0 auto; padding:0 24px 72px; font-size:12px; col
       <li><strong>Se você esquecer</strong>, o <code>npm run check</code> (e o CI) roda <code>npm run painel:conferir</code> e reprova: evidência que sumiu e rota/tela nova sem dono aparecem por nome.</li>
     </ol>
   </div>
-  <div class="drift"><p class="ok-drift">&#10003; Tudo em sincronia — as 352 evidências citadas pelo painel existem no código, e nenhuma rota ou tela ficou sem dono.</p></div>
+  <div class="drift"><p class="ok-drift">&#10003; Tudo em sincronia — as 351 evidências citadas pelo painel existem no código, e nenhuma rota ou tela ficou sem dono.</p></div>
 </section>
 </main>
 
 <footer>
   Gerado por <code>npm run painel</code> a partir de <code>painel/mapa.mjs</code> + o estado real do repositório.
-  Último commit lido: <code>0fa8533</code> — “chore(painel): marca ponte de e-mail e C4.3 como prontos”.
-  Havia 2 arquivo(s) modificado(s) sem commit no momento da geração.
+  Último commit lido: <code>3c10570</code> — “fix(painel): resolve bloqueador do alerta de parsing sem webhook”.
+  Havia 4 arquivo(s) modificado(s) sem commit no momento da geração.
 </footer>
 
 <script>
@@ -4747,6 +4770,34 @@ footer{max-width:1180px; margin:0 auto; padding:0 24px 72px; font-size:12px; col
         p.hidden = p.id !== 'jornada-' + b.dataset.jornada;
       });
     });
+  });
+
+  // ── copiar o prompt de um bloqueador ──────────────────────────────────
+  document.addEventListener('click', function(ev){
+    var b = ev.target.closest('[data-copiar]');
+    if (!b) return;
+    var alvo = document.getElementById(b.dataset.copiar);
+    if (!alvo) return;
+    var texto = alvo.textContent;
+    var marcarOk = function(){
+      var original = b.textContent;
+      b.textContent = 'Copiado!';
+      b.classList.add('ok');
+      window.setTimeout(function(){ b.textContent = original; b.classList.remove('ok'); }, 1600);
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(texto).then(marcarOk);
+    } else {
+      var area = document.createElement('textarea');
+      area.value = texto;
+      area.style.position = 'fixed';
+      area.style.opacity = '0';
+      document.body.appendChild(area);
+      area.select();
+      document.execCommand('copy');
+      document.body.removeChild(area);
+      marcarOk();
+    }
   });
 
   // ── ir para uma função (limpa o filtro que a esconderia) ─────────────

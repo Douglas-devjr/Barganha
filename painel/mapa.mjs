@@ -43,6 +43,8 @@ export const bloqueadores = [
       'Trocar `EXPO_PUBLIC_API_URL` do perfil `production` pela URL do Render (a mesma do `preview`), ou registrar o domínio próprio antes.',
     arquivos: ['app/eas.json'],
     esforco: '5 min',
+    prompt:
+      'Resolve o bloqueador b1 do painel: troca a EXPO_PUBLIC_API_URL do perfil `production` em app/eas.json de https://api.barganha.app para https://barganha-api.onrender.com (a mesma URL do perfil preview), já que o domínio próprio ainda não existe. Depois atualiza o bloqueador b1 em painel/mapa.mjs pra refletir que foi resolvido e roda `npm run painel`.',
   },
   {
     id: 'b2',
@@ -53,17 +55,8 @@ export const bloqueadores = [
     resolver: 'Definir `version: "1.0.0"` no `app/app.json` antes do primeiro build de produção.',
     arquivos: ['app/app.json'],
     esforco: '2 min',
-  },
-  {
-    id: 'b3',
-    titulo: 'Variáveis do Supabase não estão cadastradas no EAS',
-    gravidade: 'alta',
-    porque:
-      '`app/.env` é ignorado pelo git e o EAS usa `requireCommit: true`. Sem `eas env:create`, o build não recebe `EXPO_PUBLIC_SUPABASE_URL`/`ANON_KEY` e o app morre no boot com "Supabase não configurado".',
-    resolver:
-      'Rodar os `eas env:create` dos perfis `production` e `preview` (comandos prontos em docs/19 §2) e conferir com `eas env:list`.',
-    arquivos: ['docs/19-ambientes-e-endurecimento.md'],
-    esforco: '15 min',
+    prompt:
+      'Resolve o bloqueador b2 do painel: define `version: "1.0.0"` em app/app.json antes do primeiro build de produção. Confere se o `runtimeVersion` e a policy `appVersion` do EAS continuam coerentes depois da mudança. Depois atualiza o bloqueador b2 em painel/mapa.mjs e roda `npm run painel`.',
   },
   {
     id: 'b4',
@@ -75,6 +68,8 @@ export const bloqueadores = [
       'Criar a conta, criar o app "Barganha", preencher política/Data Safety/classificação (respostas prontas em docs/14) e abrir a faixa de teste fechado.',
     arquivos: ['docs/14-conformidade-play-store.md', 'docs/15-beta-fechado.md'],
     esforco: '1 dia',
+    prompt:
+      'Preciso criar a conta de desenvolvedor da Google Play (US$ 25, ação manual no console — você não consegue fazer isso sozinho). Me guia passo a passo: o que preencher na conta, como criar o app "Barganha", e cola as respostas prontas de docs/14-conformidade-play-store.md e docs/15-beta-fechado.md conforme eu for preenchendo o console. No final, atualiza o bloqueador b4 em painel/mapa.mjs e roda `npm run painel`.',
   },
   {
     id: 'b5',
@@ -86,6 +81,8 @@ export const bloqueadores = [
       'Rodar o dev build no aparelho e escanear cupons reais do RJ até ver a recuperação do captcha acontecendo sozinha. É o pré-requisito nº 1 do gate do beta.',
     arquivos: ['app/src/componentes/ColetorNotaWeb.tsx', 'backend/src/parsers/rj.ts'],
     esforco: '1 sessão de teste',
+    prompt:
+      'Preciso validar a captura do RJ num aparelho físico (ação manual — você não consegue escanear um cupom por mim). Me ajuda a preparar: sobe o dev build (`cd app && npx expo start --dev-client` ou o comando certo do EAS dev build), abre o log do backend pra eu escanear cupons reais do RJ e a gente acompanhar junto se a recuperação automática do captcha (422 erro_portal + recarga) funciona igual no teste automatizado. No final, atualiza o bloqueador b5 em painel/mapa.mjs (e a jornada j-escanear se algo mudou) e roda `npm run painel`.',
   },
   {
     id: 'b6',
@@ -97,6 +94,8 @@ export const bloqueadores = [
       'Envelope com a chave fora do banco, índice único sobre o SHA-256, chave de acesso ainda reversível (o reprocessamento precisa dela) e o procedimento de rotação escrito ANTES de ligar.',
     arquivos: ['docs/19-ambientes-e-endurecimento.md'],
     esforco: '2–3 dias',
+    prompt:
+      'Aciona os agentes data-engineer e privacy-lgpd-specialist pra resolver o bloqueador b6 do painel: cifra `cupom.chave_acesso` e as descrições de `item_cupom` no Postgres. Usa envelope de chave fora do banco, mantém o índice único sobre o SHA-256 da chave de acesso (pra idempotência continuar funcionando), garante que a chave de acesso continua reversível (o reprocessamento retroativo precisa dela) e escreve o procedimento de rotação de chave ANTES de ligar a cifra em produção. Documenta a decisão em docs/19-ambientes-e-endurecimento.md §8. No final, atualiza o bloqueador b6 em painel/mapa.mjs e roda `npm run painel`.',
   },
 ];
 
@@ -3166,13 +3165,13 @@ export const publicacao = {
       n: 0,
       titulo: 'Destravar o que impede o build',
       duracao: '1 dia',
-      status: 'falta',
+      status: 'parcial',
       passos: [
         { t: 'Trocar a URL da API no perfil `production` do EAS', feito: false },
         { t: 'Subir a versão do app para 1.0.0', feito: false },
-        { t: 'Cadastrar as variáveis do Supabase no EAS (`eas env:create`)', feito: false },
+        { t: 'Cadastrar as variáveis do Supabase no EAS (`eas env:create`)', feito: true },
         { t: 'Validar a captura do RJ num aparelho físico, com cupons reais', feito: false },
-        { t: 'Configurar o webhook do alerta de parsing', feito: false },
+        { t: 'Configurar o webhook do alerta de parsing', feito: true },
       ],
     },
     {

@@ -454,6 +454,14 @@ function blocoBloqueadores() {
       <p class="porque"><span class="rot">Por que trava</span>${rico(b.porque)}</p>
       <p class="fix"><span class="rot">Como resolver</span>${rico(b.resolver)}</p>
       ${(b.arquivos ?? []).length ? `<p class="onde">${b.arquivos.map((a) => `<code>${esc(a)}</code>`).join(' ')}</p>` : ''}
+      ${
+        b.prompt
+          ? `<div class="prompt-caixa">
+        <div class="prompt-rot"><span class="rot">Cole no Claude Code</span><button type="button" class="copiar" data-copiar="prompt-${esc(b.id)}">Copiar</button></div>
+        <pre class="prompt" id="prompt-${esc(b.id)}">${esc(b.prompt)}</pre>
+      </div>`
+          : ''
+      }
     </article>`,
     )
     .join('');
@@ -1124,6 +1132,19 @@ button.ouvir svg{width:13px; height:13px}
 .bloq .porque{margin-bottom:9px}
 .bloq .fix{color:var(--ink)}
 .onde{margin-top:10px; display:flex; flex-wrap:wrap; gap:5px}
+.prompt-caixa{margin-top:11px}
+.prompt-rot{display:flex; align-items:baseline; justify-content:space-between; gap:8px; margin-bottom:5px}
+button.copiar{
+  font:inherit; font-size:11.5px; font-weight:600; cursor:pointer; padding:3px 10px; border-radius:999px;
+  background:var(--card2); border:1px solid var(--line); color:var(--sub);
+}
+button.copiar:hover{color:var(--ink); border-color:var(--faint)}
+button.copiar.ok{background:var(--ok-bg); border-color:var(--ok-line); color:var(--ok)}
+pre.prompt{
+  margin:0; padding:11px 13px; background:var(--card2); border:1px solid var(--line); border-radius:9px;
+  font:12px/1.55 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; color:var(--ink);
+  white-space:pre-wrap; word-break:break-word; max-width:none;
+}
 
 /* ── trilha ───────────────────────────────────────────────────────────── */
 .trilha{display:grid; grid-template-columns:repeat(auto-fit,minmax(196px,1fr)); gap:10px; align-items:start}
@@ -1464,6 +1485,34 @@ const js = `
         p.hidden = p.id !== 'jornada-' + b.dataset.jornada;
       });
     });
+  });
+
+  // ── copiar o prompt de um bloqueador ──────────────────────────────────
+  document.addEventListener('click', function(ev){
+    var b = ev.target.closest('[data-copiar]');
+    if (!b) return;
+    var alvo = document.getElementById(b.dataset.copiar);
+    if (!alvo) return;
+    var texto = alvo.textContent;
+    var marcarOk = function(){
+      var original = b.textContent;
+      b.textContent = 'Copiado!';
+      b.classList.add('ok');
+      window.setTimeout(function(){ b.textContent = original; b.classList.remove('ok'); }, 1600);
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(texto).then(marcarOk);
+    } else {
+      var area = document.createElement('textarea');
+      area.value = texto;
+      area.style.position = 'fixed';
+      area.style.opacity = '0';
+      document.body.appendChild(area);
+      area.select();
+      document.execCommand('copy');
+      document.body.removeChild(area);
+      marcarOk();
+    }
   });
 
   // ── ir para uma função (limpa o filtro que a esconderia) ─────────────
