@@ -1,0 +1,81 @@
+name: Calibração do motor de agregação (medição)
+
+# C3.2/C3.6 — Vigia o pool para saber QUANDO os parâmetros do motor
+# (meia-vida do decaimento, fator do cerco de promoção, mínimo de observações
+# por nível) deixam de ser chute e passam a ser mensuráveis.
+#
+# Por que existe: os três valores vigentes são chute fundamentado, não medição,
+# e a ferramenta que os mede (`job:calibracao`) só devolve resposta quando o
+# pool fica fundo o bastante. Sem este cron, destravar dependeria de alguém
+# LEMBRAR de rodar o job meses depois — e o pool não avisa quando engorda.
+#
+# O que este workflow NÃO faz: aplicar. A medição só recomenda; trocar a
+# constante é decisão humana num commit separado (docs/06). Um cron que
+# reescreve sozinho o parâmetro da mediana violaria o muro da neutralidade —
+# o veredito mudaria sem ninguém ter decidido nada.
+#
+# Requer os segredos de repositório SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY.
+# ALERTA_WEBHOOK_URL (Discord/Slack) é opcional: sem ele o aviso fica no log e
+# no resumo desta execução, que continuam consultáveis aqui.
+
+on:
+  schedule:
+    # Mensal (dia 1º, 05:00 UTC). Pool de preço engorda em semanas, não em
+    # minutos: medir com mais frequência gastaria varredura de catálogo inteiro
+    # para reler o mesmo "dados insuficientes".
+    - cron: '0 5 1 * *'
+  workflow_dispatch:
+
+concurrency:
+  group: calibracao-estatistica
+  cancel-in-progress: false
+
+jobs:
+  calibracao:
+    name: Medir a calibração contra o pool real
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      ALERTA_WEBHOOK_URL: ${{ secrets.ALERTA_WEBHOOK_URL }}
+    steps:
+      - name: Falha cedo se faltar credencial do Supabase
+        if: ${{ env.SUPABASE_URL == '' || env.SUPABASE_SERVICE_ROLE_KEY == '' }}
+        run: |
+          echo "::error::Segredos SUPABASE_URL/SUPABASE_SERVICE_ROLE_KEY ausentes — configure em Settings → Secrets."
+          exit 1
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configura Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Instala dependências
+        run: npm ci
+
+      # O relatório vai para o RESUMO da execução, não só para o log: um job
+      # mensal cujo resultado exige abrir o passo e rolar a saída é um job que
+      # ninguém lê. Sai 0 mesmo sem base — "dados insuficientes" é resposta
+      # válida, não falha, e build vermelho todo mês vira ruído ignorado.
+      - name: Mede a calibração e publica o relatório
+        # `shell: bash` traz `pipefail`: sem ele o código de saída do pipe seria
+        # o do `tee`, e uma falha real do job (credencial ruim, banco fora)
+        # passaria como verde.
+        shell: bash
+        run: |
+          {
+            echo '### Calibração do motor de agregação'
+            echo ''
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          npm run job:calibracao --workspace @barganha/backend 2>&1 | tee -a "$GITHUB_STEP_SUMMARY"
+          {
+            echo '```'
+            echo ''
+            echo '_Só medição — aplicar qualquer recomendação é decisão humana, em commit separado._'
+          } >> "$GITHUB_STEP_SUMMARY"
