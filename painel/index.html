@@ -174,6 +174,27 @@ pre.prompt{
   white-space:pre-wrap; word-break:break-word; max-width:none;
 }
 
+/* ── validação no real ────────────────────────────────────────────────── */
+.valid{
+  background:var(--card); border:1px solid var(--line); border-left:3px solid var(--warn-pt);
+  border-radius:var(--r); padding:16px 18px; box-shadow:var(--sombra);
+}
+.valid header{display:flex; align-items:baseline; gap:11px; margin-bottom:9px; flex-wrap:wrap}
+.valid h3{font-size:15.5px; flex:1 1 240px}
+.valid p{max-width:78ch; font-size:13.5px; color:var(--sub)}
+.v-bloco{margin-top:11px}
+.valid .porque{margin-bottom:2px}
+.v-precisa,.v-passos{margin:0; padding-left:20px; display:grid; gap:5px}
+.v-precisa li,.v-passos li{font-size:13.5px; color:var(--sub); max-width:76ch}
+.v-precisa{list-style:disc}
+.v-passos li::marker{font-variant-numeric:tabular-nums; font-weight:700; color:var(--faint)}
+.v-ok{
+  margin-top:12px; padding:10px 12px; border-radius:9px;
+  background:var(--ok-bg); border:1px solid var(--ok-line); color:var(--ink);
+}
+.v-ok .rot{color:var(--ok)}
+.v-falhou{margin-top:8px}
+
 /* ── trilha ───────────────────────────────────────────────────────────── */
 .trilha{display:grid; grid-template-columns:repeat(auto-fit,minmax(196px,1fr)); gap:10px; align-items:start}
 .zona{background:var(--card2); border:1px solid var(--line); border-radius:var(--r); padding:12px}
@@ -465,13 +486,13 @@ footer{max-width:1180px; margin:0 auto; padding:0 24px 72px; font-size:12px; col
   <div class="topo-in">
     <span class="marca">Barganha <span>painel do projeto</span></span>
     <span class="topo-meta">
-      <span class="selo">commit <code>0881726</code> · 09/08/2026</span>
+      <span class="selo">commit <code>0ddc31d</code> · 09/08/2026</span>
       <span class="selo sujo">1 arquivo(s) sem commit</span>
       <span class="selo">gerado em 09 de agosto de 2026</span>
     </span>
   </div>
   <nav class="abas" aria-label="Seções">
-    <a href="#placar">Onde estou</a><a href="#bloqueadores">Bloqueadores</a><a href="#como-funciona">Como funciona</a><a href="#jornadas">Jornadas</a><a href="#falta">Falta fazer</a><a href="#funcoes">Funções</a><a href="#regras">Regras</a><a href="#etapas">Etapas</a><a href="#publicar">Publicar</a><a href="#dividas">Dívidas</a><a href="#skills">Skills</a><a href="#sincronia">Sincronia</a>
+    <a href="#placar">Onde estou</a><a href="#bloqueadores">Bloqueadores</a><a href="#como-funciona">Como funciona</a><a href="#jornadas">Jornadas</a><a href="#falta">Falta fazer</a><a href="#funcoes">Funções</a><a href="#regras">Regras</a><a href="#etapas">Etapas</a><a href="#publicar">Publicar</a><a href="#validacao">Testar no real</a><a href="#dividas">Dívidas</a><a href="#skills">Skills</a><a href="#sincronia">Sincronia</a>
   </nav>
 </div>
 
@@ -483,7 +504,7 @@ footer{max-width:1180px; margin:0 auto; padding:0 24px 72px; font-size:12px; col
       <span class="sec-num">01</span>
       <h2>Onde estou</h2>
     </div>
-    <button class="ouvir" type="button" data-fala="58 de 84 etapas estão prontas, 18 estão pela metade e 8 não começaram. A Google Play exige, para conta pessoal nova, 12+ testadores ativos por 14 dias corridos antes de liberar produção. O relógio só começa quando a faixa de teste fechado existe e as pessoas entram — então tudo que vem antes é caminho crítico." aria-label="Ouvir o resumo desta seção">
+    <button class="ouvir" type="button" data-fala="59 de 84 etapas estão prontas, 17 estão pela metade e 8 não começaram. A Google Play exige, para conta pessoal nova, 12+ testadores ativos por 14 dias corridos antes de liberar produção. O relógio só começa quando a faixa de teste fechado existe e as pessoas entram — então tudo que vem antes é caminho crítico." aria-label="Ouvir o resumo desta seção">
       <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2 4.5 5H2v6h2.5L8 14zM11 5.5a3.5 3.5 0 0 1 0 5M13 3.5a6 6 0 0 1 0 9"/></svg>
       ouvir
     </button>
@@ -492,12 +513,12 @@ footer{max-width:1180px; margin:0 auto; padding:0 24px 72px; font-size:12px; col
   <p class="lede">A Google Play exige, para conta pessoal nova, 12+ testadores ativos por 14 dias corridos antes de liberar produção. O relógio só começa quando a faixa de teste fechado existe e as pessoas entram — então tudo que vem antes é caminho crítico.</p>
   <div class="tiles">
     <div class="tile t-ok">
-      <span class="tile-n">58</span>
+      <span class="tile-n">59</span>
       <span class="tile-r">etapas prontas</span>
       <span class="tile-s">de 84</span>
     </div>
     <div class="tile t-warn">
-      <span class="tile-n">18</span>
+      <span class="tile-n">17</span>
       <span class="tile-r">pela metade</span>
       <span class="tile-s">com o que falta descrito</span>
     </div>
@@ -511,9 +532,9 @@ footer{max-width:1180px; margin:0 auto; padding:0 24px 72px; font-size:12px; col
       <span class="tile-r">bloqueiam publicar</span>
       <span class="tile-s">resolvíveis em dias</span>
     </div></div>
-  <div class="barra" role="img" aria-label="69% das etapas prontas">
-    <span style="width:69%"></span>
-    <b>69% das etapas prontas</b>
+  <div class="barra" role="img" aria-label="70% das etapas prontas">
+    <span style="width:70%"></span>
+    <b>70% das etapas prontas</b>
   </div>
   <h3 class="sub">O caminho até a loja</h3>
   <ol class="fases">
@@ -2870,7 +2891,7 @@ footer{max-width:1180px; margin:0 auto; padding:0 24px 72px; font-size:12px; col
       <div class="chips"><span class="rot">Etapas</span><a class="chip etapa" href="#etapa-C12.2">C12.2</a></div>
       <details class="det"><summary>Onde mora no código</summary><ul class="arqs"><li class=""><code>app/src/telas/ConquistasTela.tsx</code></li><li class=""><code>app/src/telas/ConquistaDetalheTela.tsx</code></li><li class=""><code>app/src/nucleo/gamificacao.ts</code></li></ul></details>
     </article>
-    <article class="fn s-pronto" id="fn-alertas" data-area="app" data-status="pronto" data-busca="alertas de preço avisa quando um produto que você acompanha cai de preço na sua região — inclusive com o app fechado, por notificação push. o sqlite local continua sendo a fonte da verdade (funciona 100% offline, como antes); toda vez que o usuário cria/remove um alvo, um espelho é sincronizado no servidor (best-effort, nunca bloqueia o app) para o job alerta-preco-servidor avisar mesmo com o app fechado. desligar a chave-mestra ou sair da conta apaga esse espelho — o controle de privacidade não pode &quot;mentir&quot; continuando a avisar depois de desligado. telas do app c8.4">
+    <article class="fn s-pronto" id="fn-alertas" data-area="app" data-status="pronto" data-busca="alertas de preço avisa quando um produto que você acompanha cai de preço na sua região — inclusive com o app fechado, por notificação push. o sqlite local continua sendo a fonte da verdade (funciona 100% offline, como antes); toda vez que o usuário cria/remove um alvo, um espelho é sincronizado no servidor (best-effort, nunca bloqueia o app) para o job alerta-preco-servidor avisar mesmo com o app fechado. desligar a chave-mestra ou sair da conta apaga esse espelho — o controle de privacidade não pode &quot;mentir&quot; continuando a avisar depois de desligado. tocar no aviso abre o produto: o push viaja com o id do produto e o app o consome no toque, inclusive quando o toque é o que lançou o app (aí o destino fica estacionado até a navegação existir). telas do app c8.4">
       <header>
         <h3>Alertas de preço</h3>
         <span class="pill p-pronto"><i></i>pronto</span>
@@ -2878,12 +2899,12 @@ footer{max-width:1180px; margin:0 auto; padding:0 24px 72px; font-size:12px; col
       <span class="fn-area">Telas do app</span>
       <p class="oque">Avisa quando um produto que você acompanha cai de preço na sua região — inclusive com o app fechado, por notificação push.</p>
       
-      <details class="det"><summary>Por que é assim</summary><p>O SQLite local continua sendo a fonte da verdade (funciona 100% offline, como antes); toda vez que o usuário cria/remove um alvo, um espelho é sincronizado no servidor (best-effort, nunca bloqueia o app) para o job <code>alerta-preco-servidor</code> avisar mesmo com o app fechado. Desligar a chave-mestra ou sair da conta apaga esse espelho — o controle de privacidade não pode &quot;mentir&quot; continuando a avisar depois de desligado.</p></details>
+      <details class="det"><summary>Por que é assim</summary><p>O SQLite local continua sendo a fonte da verdade (funciona 100% offline, como antes); toda vez que o usuário cria/remove um alvo, um espelho é sincronizado no servidor (best-effort, nunca bloqueia o app) para o job <code>alerta-preco-servidor</code> avisar mesmo com o app fechado. Desligar a chave-mestra ou sair da conta apaga esse espelho — o controle de privacidade não pode &quot;mentir&quot; continuando a avisar depois de desligado. Tocar no aviso abre o produto: o push viaja com o id do produto e o app o consome no toque, inclusive quando o toque é o que LANÇOU o app (aí o destino fica estacionado até a navegação existir).</p></details>
       
       <div class="chips"><span class="rot">Conversa com</span><button type="button" class="chip liga" data-ir="notificacoes">Feed de avisos</button><button type="button" class="chip liga" data-ir="sincronizador">Sincronizador</button><button type="button" class="chip liga" data-ir="editar-produto">Editar produto</button><button type="button" class="chip liga" data-ir="alerta-preco-servidor">Push de alerta de preço (servidor)</button></div>
       
       <div class="chips"><span class="rot">Etapas</span><a class="chip etapa" href="#etapa-C8.4">C8.4</a></div>
-      <details class="det"><summary>Onde mora no código</summary><ul class="arqs"><li class=""><code>app/src/telas/AlertasTela.tsx</code></li><li class=""><code>app/src/nucleo/alertas.ts</code></li><li class=""><code>app/src/nucleo/alertas-regras.ts</code></li><li class=""><code>app/src/nucleo/notificacoes-push.ts</code></li><li class=""><code>app/src/dados/repositorio-alertas.ts</code></li><li class=""><code>shared/src/dominio/alertas-regras.ts</code></li></ul></details>
+      <details class="det"><summary>Onde mora no código</summary><ul class="arqs"><li class=""><code>app/src/telas/AlertasTela.tsx</code></li><li class=""><code>app/src/nucleo/alertas.ts</code></li><li class=""><code>app/src/nucleo/alertas-regras.ts</code></li><li class=""><code>app/src/nucleo/notificacoes-push.ts</code></li><li class=""><code>app/src/nucleo/notificacoes-push-regras.ts</code></li><li class=""><code>app/src/navegacao/ref.ts</code></li><li class=""><code>app/src/dados/repositorio-alertas.ts</code></li><li class=""><code>shared/src/dominio/alertas-regras.ts</code></li></ul></details>
     </article>
     <article class="fn s-pronto" id="fn-alerta-preco-servidor" data-area="api" data-status="pronto" data-busca="push de alerta de preço (servidor) espelho no servidor do alerta local: registra o alvo do usuário e o token do aparelho, e um job periódico dispara a notificação push quando o preço bate. put /alertas substitui o conjunto inteiro do usuário a cada sync (sem drift entre sqlite e servidor). o job (job:alerta-preco, a cada 30min, logo após o recálculo) só lê preco_estatistica — nunca escreve nela; dedupe por disparado_em, com histerese de 5% para rearmar antes de avisar de novo. token de push tem ttl de 90 dias sem sinal de vida. api &amp; sync put /alertas delete /alertas post /dispositivos/push delete /dispositivos/push c8.4">
       <header>
@@ -3624,7 +3645,7 @@ footer{max-width:1180px; margin:0 auto; padding:0 24px 72px; font-size:12px; col
       <span class="sec-num">08</span>
       <h2>Etapas, do C0 ao C12</h2>
     </div>
-    <button class="ouvir" type="button" data-fala="O catálogo completo com o status real de cada sub-etapa. 58 prontas, 18 pela metade — todas com o que falta escrito — e 8 que não começaram." aria-label="Ouvir o resumo desta seção">
+    <button class="ouvir" type="button" data-fala="O catálogo completo com o status real de cada sub-etapa. 59 prontas, 17 pela metade — todas com o que falta escrito — e 8 que não começaram." aria-label="Ouvir o resumo desta seção">
       <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2 4.5 5H2v6h2.5L8 14zM11 5.5a3.5 3.5 0 0 1 0 5M13 3.5a6 6 0 0 1 0 9"/></svg>
       ouvir
     </button>
@@ -4094,7 +4115,7 @@ footer{max-width:1180px; margin:0 auto; padding:0 24px 72px; font-size:12px; col
         <header>
           <h3><code>C8</code> Histórico</h3>
           <span>Estatísticas e perfil.</span>
-          <span class="mini">3 pronto · 2 parcial · 0 falta</span>
+          <span class="mini">4 pronto · 1 parcial · 0 falta</span>
         </header>
         <ol class="etapas">
         <li class="etapa s-pronto" id="etapa-C8.1">
@@ -4124,14 +4145,14 @@ footer{max-width:1180px; margin:0 auto; padding:0 24px 72px; font-size:12px; col
           </div>
           <span class="pill p-pronto"><i></i>pronto</span>
         </li>
-        <li class="etapa s-parcial" id="etapa-C8.4">
+        <li class="etapa s-pronto" id="etapa-C8.4">
           <code class="cod">C8.4</code>
           <div class="etapa-corpo">
             <h4>Alertas + tendência <span class="fase-tag pos">Pós</span></h4>
-            <p>Alerta de queda de preço e feed local de avisos.</p>
-            <p class="falta"><span class="rot">Falta</span>Não existe push: o aviso só aparece com o app aberto.</p>
+            <p>Alerta de queda de preço por push (mesmo com o app fechado) e feed local de avisos.</p>
+            
           </div>
-          <span class="pill p-parcial"><i></i>parcial</span>
+          <span class="pill p-pronto"><i></i>pronto</span>
         </li>
         <li class="etapa s-parcial" id="etapa-C8.4.1">
           <code class="cod">C8.4.1</code>
@@ -4579,10 +4600,138 @@ footer{max-width:1180px; margin:0 auto; padding:0 24px 72px; font-size:12px; col
     </article></div>
 </section>
 
-<section id="dividas" class="sec">
+<section id="validacao" class="sec">
   <header class="sec-cab">
     <div>
       <span class="sec-num">10</span>
+      <h2>O que só o aparelho de verdade prova</h2>
+    </div>
+    <button class="ouvir" type="button" data-fala="São 6 coisas que passam no CI e ainda assim podem estar quebradas na mão do usuário: permissão do sistema, credencial de push, câmera, rede caindo, portal da SEFAZ com captcha. Teste automatizado prova decisão; nenhum deles prova entrega. Cada item tem o passo a passo e o sinal de que funcionou." aria-label="Ouvir o resumo desta seção">
+      <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2 4.5 5H2v6h2.5L8 14zM11 5.5a3.5 3.5 0 0 1 0 5M13 3.5a6 6 0 0 1 0 9"/></svg>
+      ouvir
+    </button>
+  </header>
+  <div class="bloqs">
+    <article class="valid" id="valid-v1">
+      <header>
+        <span class="bloq-n">1</span>
+        <h3>O push de alerta chega com o app fechado</h3>
+        <a class="chip etapa" href="#etapa-C8.4">C8.4</a>
+      </header>
+      <p class="porque"><span class="rot">Por que o teste não prova</span>Os 26 testes da corrente de alerta provam a decisão e o envio em memória — nenhum deles fala com o Expo Push, com o FCM ou com a bandeja do Android. Emulador não recebe push (o próprio código pula: <code>Device.isDevice</code>) e o Expo Go também não serve.</p>
+      <div class="v-bloco"><span class="rot">Precisa antes</span>
+        <ul class="v-precisa"><li><strong>Credencial FCM — hoje não existe no repo.</strong> <code>expo-notifications</code> está instalado, mas não há <code>google-services.json</code> nem <code>android.googleServicesFile</code> no <code>app/app.json</code>. Sem isso <code>getExpoPushTokenAsync</code> falha no Android e nenhum token sobe. É o primeiro passo, não um detalhe.</li><li>Dev build EAS num Android físico (perfil <code>development</code>, que já tem <code>developmentClient: true</code>).</li><li><code>SUPABASE_URL</code> e <code>SUPABASE_SERVICE_ROLE_KEY</code> no ambiente de quem roda o job.</li></ul></div>
+      <div class="v-bloco"><span class="rot">Como testar</span>
+        <ol class="v-passos"><li>Criar o projeto no Firebase, baixar o <code>google-services.json</code>, apontá-lo em <code>app/app.json</code> (<code>android.googleServicesFile</code>) e subir a chave FCM V1 com <code>cd app &amp;&amp; eas credentials</code>.</li><li>Buildar e instalar: <code>cd app &amp;&amp; eas build --profile development --platform android</code>.</li><li>No app, abrir um produto e criar um alerta de preço. A permissão de notificação só é pedida no PRIMEIRO alerta do aparelho — aceite quando aparecer.</li><li>Conferir no Supabase que <code>dispositivo_push</code> ganhou uma linha sua e <code>alerta_preco</code> ganhou o alvo. Se <code>dispositivo_push</code> está vazio, pare aqui: o token não subiu.</li><li>Forçar a condição: editar o alerta com um alvo ACIMA da mediana atual do produto na sua região, para ele disparar já na primeira rodada.</li><li>FECHAR o app (matar pelo gerenciador de tarefas, não só minimizar) e rodar <code>cd backend &amp;&amp; npm run job:alerta-preco</code> — ou disparar <code>alerta-preco.yml</code> pelo &quot;Run workflow&quot; no GitHub.</li></ol></div>
+      <p class="v-ok"><span class="rot">Funcionou se</span>A notificação &quot;Preço baixou&quot; aparece na bandeja com o app fechado, e <code>alerta_preco.disparado_em</code> fica carimbado. Rodar o job DE NOVO não pode mandar um segundo aviso: o alvo já disparou e só rearma se o preço subir 5% acima dele.</p>
+      <p class="v-falhou"><span class="rot">Se falhar</span><code>dispositivo_push</code> vazio = o token nunca subiu (procure <code>push.obter_token</code> / <code>push.registrar_token</code> no log do app). Linha existe e nada chega = credencial FCM. Chega mas repete a cada rodada = <code>disparado_em</code> não está sendo persistido.</p>
+      <p class="onde"><code>backend/src/jobs/alerta-preco.ts</code> <code>app/src/nucleo/notificacoes-push.ts</code></p>
+      <div class="prompt-caixa">
+        <div class="prompt-rot"><span class="rot">Cole no Claude Code</span><button type="button" class="copiar" data-copiar="prompt-v1">Copiar</button></div>
+        <pre class="prompt" id="prompt-v1">Quero validar o push de alerta de preço (item v1 do painel) num Android físico — a parte de escanear/tocar é manual, você não faz por mim. Me guia: primeiro conferir se a credencial FCM está configurada (google-services.json + android.googleServicesFile em app/app.json + eas credentials), depois subir o dev build, e por fim rodar `npm run job:alerta-preco` no backend enquanto eu acompanho a bandeja do aparelho. Vá conferindo comigo as linhas de `dispositivo_push` e `alerta_preco` no Supabase a cada passo. No fim, atualiza o item v1 em painel/mapa.mjs com o que deu e roda `npm run painel`.</pre>
+      </div>
+    </article>
+    <article class="valid" id="valid-v2">
+      <header>
+        <span class="bloq-n">2</span>
+        <h3>Tocar na notificação abre o produto certo — inclusive no arranque frio</h3>
+        <a class="chip etapa" href="#etapa-C8.4">C8.4</a>
+      </header>
+      <p class="porque"><span class="rot">Por que o teste não prova</span>É o caminho mais frágil do push e o único que nenhum teste alcança: quando o toque LANÇA o app, o destino precisa sobreviver aos gates (consentimento → login → abertura) antes de existir navegação. O teste cobre a decisão e a dedupe; a ordem real dos gates, não.</p>
+      <div class="v-bloco"><span class="rot">Precisa antes</span>
+        <ul class="v-precisa"><li>O v1 funcionando (é o mesmo aparelho e o mesmo push).</li></ul></div>
+      <div class="v-bloco"><span class="rot">Como testar</span>
+        <ol class="v-passos"><li>FRIO: matar o app, disparar o job, tocar na notificação.</li><li>SEGUNDO PLANO: abrir o app, minimizar, disparar o job, tocar na notificação.</li><li>ABERTO: deixar o app aberto em outra aba, disparar o job, tocar no banner.</li><li>Repetir o caso FRIO com um alerta de OUTRO produto, estando já na tela de um produto.</li></ol></div>
+      <p class="v-ok"><span class="rot">Funcionou se</span>Nos três casos o app termina na tela do produto certo. No frio ele passa pela splash e chega lá sozinho. E o &quot;voltar&quot; sai do produto para onde você estava — se voltar para a MESMA tela de produto, a tela empilhou duas vezes e a dedupe do arranque frio não pegou.</p>
+      <p class="v-falhou"><span class="rot">Se falhar</span>Abriu o app mas ficou na tela de sempre = o payload chegou sem <code>produtoCanonicoId</code> (confira o <code>data</code> que o job monta). Abriu empilhado = dedupe. Abriu numa tela vazia de produto = o id não está no catálogo local daquele aparelho.</p>
+      <p class="onde"><code>app/src/nucleo/notificacoes-push-regras.ts</code> <code>app/src/navegacao/ref.ts</code> <code>app/App.tsx</code></p>
+      <div class="prompt-caixa">
+        <div class="prompt-rot"><span class="rot">Cole no Claude Code</span><button type="button" class="copiar" data-copiar="prompt-v2">Copiar</button></div>
+        <pre class="prompt" id="prompt-v2">Quero validar o toque na notificação de alerta (item v2 do painel) — os três estados do app (fechado, segundo plano, aberto). Me guia nos passos e me ajuda a ler o log do app enquanto eu toco nas notificações no aparelho. Presta atenção especial no arranque frio e no &quot;voltar&quot; (tela empilhada). No fim, atualiza o item v2 em painel/mapa.mjs e roda `npm run painel`.</pre>
+      </div>
+    </article>
+    <article class="valid" id="valid-v3">
+      <header>
+        <span class="bloq-n">3</span>
+        <h3>A captura de cupom do RJ sobrevive ao reCAPTCHA</h3>
+        <a class="chip etapa" href="#etapa-C2.6">C2.6</a>
+      </header>
+      <p class="porque"><span class="rot">Por que o teste não prova</span>O portal do RJ é protegido por captcha e a captura passa por WebView. A recusa já é tratada (vira 422 <code>erro_portal</code> + recarga automática), mas contra fixture — não contra o portal real, que oscila. É o mesmo ponto do bloqueador b5, e é pré-requisito do beta: se o RJ falhar, os testadores não escaneiam nada.</p>
+      <div class="v-bloco"><span class="rot">Precisa antes</span>
+        <ul class="v-precisa"><li>Dev build no aparelho e o backend alcançável pela LAN (<code>app/.env</code> com o IP da máquina, nunca <code>localhost</code>).</li><li>Cupons fiscais de papel do RJ, de verdade.</li></ul></div>
+      <div class="v-bloco"><span class="rot">Como testar</span>
+        <ol class="v-passos"><li>Subir o backend e deixar o log dele à vista.</li><li>Escanear uns 10 cupons reais do RJ seguidos, sem intervalo.</li><li>Observar no log quantos viram 422 <code>erro_portal</code> e se a recarga automática recupera sozinha.</li></ol></div>
+      <p class="v-ok"><span class="rot">Funcionou se</span>Todo cupom termina processado, mesmo os que bateram no captcha na primeira tentativa — sem o usuário precisar fazer nada além de esperar.</p>
+      <p class="v-falhou"><span class="rot">Se falhar</span>Se a recarga não recupera, a captura do RJ trava no beta inteiro. Uma nota que fica em &quot;Enviando/Processando&quot; para sempre normalmente é backend fora do ar, não captcha.</p>
+      <p class="onde"><code>app/src/componentes/ColetorNotaWeb.tsx</code> <code>backend/src/parsers/rj.ts</code></p>
+      <div class="prompt-caixa">
+        <div class="prompt-rot"><span class="rot">Cole no Claude Code</span><button type="button" class="copiar" data-copiar="prompt-v3">Copiar</button></div>
+        <pre class="prompt" id="prompt-v3">Quero validar a captura do RJ num aparelho físico (item v3 do painel, mesmo assunto do bloqueador b5). Sobe o backend, me diz o IP certo pro app/.env, e acompanha o log comigo enquanto eu escaneio uns 10 cupons reais do RJ — conta quantos bateram no captcha e se a recarga automática recuperou sozinha. No fim, atualiza o item v3 e o bloqueador b5 em painel/mapa.mjs e roda `npm run painel`.</pre>
+      </div>
+    </article>
+    <article class="valid" id="valid-v4">
+      <header>
+        <span class="bloq-n">4</span>
+        <h3>A câmera não fica preta ao voltar para o scanner</h3>
+        <a class="chip etapa" href="#etapa-C7.1">C7.1</a>
+      </header>
+      <p class="porque"><span class="rot">Por que o teste não prova</span>A prop <code>active</code> do <code>expo-camera</code> 16 é só de iOS. No Android a solução é DESMONTAR o <code>CameraView</code> fora de foco (<code>useCameraAtiva</code>) — e tela preta é exatamente o tipo de defeito que nenhum teste vê e todo usuário vê.</p>
+      <div class="v-bloco"><span class="rot">Precisa antes</span>
+        <ul class="v-precisa"><li>Android físico (o emulador tem câmera falsa e não reproduz).</li></ul></div>
+      <div class="v-bloco"><span class="rot">Como testar</span>
+        <ol class="v-passos"><li>Abrir o scanner, sair para outra aba e voltar. Cinco vezes.</li><li>Abrir o scanner, minimizar o app, esperar uns segundos, voltar.</li><li>Repetir no scanner de código de barras da gôndola, que é a outra tela com câmera.</li></ol></div>
+      <p class="v-ok"><span class="rot">Funcionou se</span>O preview sempre volta a aparecer. Nenhuma vez fica preto ou congelado.</p>
+      <p class="v-falhou"><span class="rot">Se falhar</span>Preto ao voltar = o <code>CameraView</code> continuou montado fora de foco.</p>
+      <p class="onde"><code>app/src/nucleo/camera.ts</code> <code>app/src/telas/ScannerTela.tsx</code></p>
+      <div class="prompt-caixa">
+        <div class="prompt-rot"><span class="rot">Cole no Claude Code</span><button type="button" class="copiar" data-copiar="prompt-v4">Copiar</button></div>
+        <pre class="prompt" id="prompt-v4">Quero validar a câmera no Android (item v4 do painel): tela preta ao voltar para o scanner. Me lembra o roteiro e me ajuda a ler o log se acontecer. Se reproduzir, investiga `useCameraAtiva` em app/src/nucleo/camera.ts. No fim, atualiza o item v4 em painel/mapa.mjs e roda `npm run painel`.</pre>
+      </div>
+    </article>
+    <article class="valid" id="valid-v5">
+      <header>
+        <span class="bloq-n">5</span>
+        <h3>O app inteiro funciona no modo avião</h3>
+        <a class="chip etapa" href="#etapa-C5.4">C5.4</a>
+      </header>
+      <p class="porque"><span class="rot">Por que o teste não prova</span>Offline é decisão travada, não recurso: registrar cupom e consultar preço têm que funcionar sem rede. Os testes cobrem a fila e o cache isolados; o que só o aparelho prova é a fila DRENANDO sozinha quando a rede volta, sem o usuário pedir.</p>
+      <div class="v-bloco"><span class="rot">Precisa antes</span>
+        <ul class="v-precisa"><li>Aparelho com uma conta já logada e alguns cupons já escaneados.</li></ul></div>
+      <div class="v-bloco"><span class="rot">Como testar</span>
+        <ol class="v-passos"><li>Ligar o modo avião.</li><li>Escanear um cupom: ele tem que ser aceito e ficar na fila, sem erro na cara do usuário.</li><li>Consultar um produto que você já tem no catálogo: o veredito tem que sair do cache.</li><li>Desligar o modo avião e deixar o app aberto.</li></ol></div>
+      <p class="v-ok"><span class="rot">Funcionou se</span>A fila drena sozinha em segundos, sem você tocar em nada, e o cupom aparece processado no histórico.</p>
+      <p class="v-falhou"><span class="rot">Se falhar</span>Erro na cara do usuário durante o avião = alguma chamada não está passando pela fila. Fila que não drena ao voltar = o gatilho de <code>AppState</code>/rede.</p>
+      <p class="onde"><code>app/src/dados/repositorio-fila.ts</code> <code>app/src/nucleo/sincronizador.ts</code></p>
+      <div class="prompt-caixa">
+        <div class="prompt-rot"><span class="rot">Cole no Claude Code</span><button type="button" class="copiar" data-copiar="prompt-v5">Copiar</button></div>
+        <pre class="prompt" id="prompt-v5">Quero validar o fluxo offline no aparelho (item v5 do painel): modo avião, escanear, consultar, religar a rede e ver a fila drenar sozinha. Me guia no roteiro e acompanha o log do app e do backend comigo. No fim, atualiza o item v5 em painel/mapa.mjs e roda `npm run painel`.</pre>
+      </div>
+    </article>
+    <article class="valid" id="valid-v6">
+      <header>
+        <span class="bloq-n">6</span>
+        <h3>O link do e-mail de confirmação volta para o app</h3>
+        <a class="chip etapa" href="#etapa-C4.3.1">C4.3.1</a>
+      </header>
+      <p class="porque"><span class="rot">Por que o teste não prova</span>O link <code>barganha://</code> não abre o app quando clicado no e-mail do celular. A ponte é uma página HTTPS (<code>site/auth-callback.html</code>) que redireciona — e ela só funciona DEPOIS de publicada no GitHub Pages. Um cadastro que não confirma trava o testador logo no primeiro minuto.</p>
+      <div class="v-bloco"><span class="rot">Precisa antes</span>
+        <ul class="v-precisa"><li>A pasta <code>site/</code> publicada (<code>npm run publicar:site</code>).</li><li>Um e-mail de verdade, aberto no próprio celular.</li></ul></div>
+      <div class="v-bloco"><span class="rot">Como testar</span>
+        <ol class="v-passos"><li>Cadastrar uma conta nova pelo app, com um e-mail que você acessa no celular.</li><li>Abrir o e-mail NO CELULAR e tocar no link de confirmação.</li><li>Repetir com o fluxo de &quot;esqueci a senha&quot;.</li></ol></div>
+      <p class="v-ok"><span class="rot">Funcionou se</span>O navegador abre a ponte e devolve para o app, já logado (ou na tela de nova senha).</p>
+      <p class="v-falhou"><span class="rot">Se falhar</span>Se ficar preso no navegador, a página da ponte não está publicada ou o <code>scheme</code> não bate com o <code>barganha</code> do <code>app.json</code>.</p>
+      <p class="onde"><code>site/auth-callback.html</code> <code>app/src/auth/contexto.tsx</code></p>
+      <div class="prompt-caixa">
+        <div class="prompt-rot"><span class="rot">Cole no Claude Code</span><button type="button" class="copiar" data-copiar="prompt-v6">Copiar</button></div>
+        <pre class="prompt" id="prompt-v6">Quero validar o link de e-mail de auth no celular (item v6 do painel). Primeiro confere se site/auth-callback.html está publicado no GitHub Pages (npm run publicar:site) e se o scheme bate com o app.json, depois me guia no teste de cadastro e de &quot;esqueci a senha&quot; com e-mail real. No fim, atualiza o item v6 em painel/mapa.mjs e roda `npm run painel`.</pre>
+      </div>
+    </article></div>
+</section>
+
+<section id="dividas" class="sec">
+  <header class="sec-cab">
+    <div>
+      <span class="sec-num">11</span>
       <h2>Dívidas conscientes</h2>
     </div>
     <button class="ouvir" type="button" data-fala="Coisas que estão certas hoje e viram problema em um momento específico. Estão aqui para você não gastar tempo consertando cedo, e não ser pego de surpresa depois." aria-label="Ouvir o resumo desta seção">
@@ -4610,12 +4759,6 @@ footer{max-width:1180px; margin:0 auto; padding:0 24px 72px; font-size:12px; col
       <p class="onde"><code>backend/src/curadoria/</code></p>
     </article>
     <article class="divida">
-      <h3>Alerta de preço sem push</h3>
-      <p><span class="rot">Hoje está certo</span>O aviso aparece quando o app abre.</p>
-      <p><span class="rot">Vira problema</span>É a expectativa do usuário para a palavra &quot;alerta&quot; — vira reclamação assim que houver usuário.</p>
-      <p class="onde"><code>app/src/nucleo/alertas-regras.ts</code></p>
-    </article>
-    <article class="divida">
       <h3>Constantes estatísticas não calibradas</h3>
       <p><span class="rot">Hoje está certo</span>Valores conservadores e documentados, com o raciocínio escrito.</p>
       <p><span class="rot">Vira problema</span>Durante e depois do beta: meia-vida, zona morta por categoria, cerco de promoção, mínimos de n.</p>
@@ -4626,7 +4769,7 @@ footer{max-width:1180px; margin:0 auto; padding:0 24px 72px; font-size:12px; col
 <section id="skills" class="sec">
   <header class="sec-cab">
     <div>
-      <span class="sec-num">11</span>
+      <span class="sec-num">12</span>
       <h2>Skills e agentes que valem a pena</h2>
     </div>
     <button class="ouvir" type="button" data-fala="O que já está instalado e você deveria usar mais, o que vale criar de específico para o Barganha, e qual agente chamar para cada frente." aria-label="Ouvir o resumo desta seção">
@@ -4731,16 +4874,16 @@ footer{max-width:1180px; margin:0 auto; padding:0 24px 72px; font-size:12px; col
 <section id="sincronia" class="sec">
   <header class="sec-cab">
     <div>
-      <span class="sec-num">12</span>
+      <span class="sec-num">13</span>
       <h2>Como este painel se mantém junto com o código</h2>
     </div>
-    <button class="ouvir" type="button" data-fala="Tudo em sincronia: as 357 evidências citadas existem no código e nenhuma rota ou tela ficou sem dono." aria-label="Ouvir o resumo desta seção">
+    <button class="ouvir" type="button" data-fala="Tudo em sincronia: as 372 evidências citadas existem no código e nenhuma rota ou tela ficou sem dono." aria-label="Ouvir o resumo desta seção">
       <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2 4.5 5H2v6h2.5L8 14zM11 5.5a3.5 3.5 0 0 1 0 5M13 3.5a6 6 0 0 1 0 9"/></svg>
       ouvir
     </button>
   </header>
   
-  <div class="medidos"><div class="medido"><b>36</b><span>rotas na API</span></div><div class="medido"><b>35</b><span>telas no app</span></div><div class="medido"><b>5</b><span>parsers de estado</span></div><div class="medido"><b>19</b><span>tabelas no servidor</span></div><div class="medido"><b>10</b><span>tabelas no aparelho</span></div><div class="medido"><b>38</b><span>migrações</span></div><div class="medido"><b>98</b><span>arquivos de teste</span></div><div class="medido"><b>11</b><span>rotinas agendadas</span></div></div>
+  <div class="medidos"><div class="medido"><b>36</b><span>rotas na API</span></div><div class="medido"><b>35</b><span>telas no app</span></div><div class="medido"><b>5</b><span>parsers de estado</span></div><div class="medido"><b>19</b><span>tabelas no servidor</span></div><div class="medido"><b>10</b><span>tabelas no aparelho</span></div><div class="medido"><b>38</b><span>migrações</span></div><div class="medido"><b>99</b><span>arquivos de teste</span></div><div class="medido"><b>13</b><span>rotinas agendadas</span></div></div>
   <p class="legenda">Os números acima são <strong>contados no repositório</strong> a cada geração — ninguém os digita. O que é curado à mão é só o status e o texto de cada item, em <code>painel/mapa.mjs</code>.</p>
   <div class="como">
     <h3 class="sub">Como este painel se mantém junto com o código</h3>
@@ -4751,13 +4894,13 @@ footer{max-width:1180px; margin:0 auto; padding:0 24px 72px; font-size:12px; col
       <li><strong>Se você esquecer</strong>, o <code>npm run check</code> (e o CI) roda <code>npm run painel:conferir</code> e reprova: evidência que sumiu e rota/tela nova sem dono aparecem por nome.</li>
     </ol>
   </div>
-  <div class="drift"><p class="ok-drift">&#10003; Tudo em sincronia — as 357 evidências citadas pelo painel existem no código, e nenhuma rota ou tela ficou sem dono.</p></div>
+  <div class="drift"><p class="ok-drift">&#10003; Tudo em sincronia — as 372 evidências citadas pelo painel existem no código, e nenhuma rota ou tela ficou sem dono.</p></div>
 </section>
 </main>
 
 <footer>
   Gerado por <code>npm run painel</code> a partir de <code>painel/mapa.mjs</code> + o estado real do repositório.
-  Último commit lido: <code>0881726</code> — “feat(estatistica): completa o mapa de unidades e ranqueia o que falta (C3.4)”.
+  Último commit lido: <code>0ddc31d</code> — “feat(painel): seção de validação no aparelho real e fecha C8.4”.
   Havia 1 arquivo(s) modificado(s) sem commit no momento da geração.
 </footer>
 
