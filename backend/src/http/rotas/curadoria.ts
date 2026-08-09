@@ -23,6 +23,9 @@ import type {
 } from '@barganha/shared';
 import type { FastifyInstance } from 'fastify';
 
+import { log } from '../../observabilidade/log';
+import { sanitizarErro } from '../../observabilidade/sanitizar';
+import type { UnidadeRecusada } from '../../observabilidade/unidades-recusadas';
 import { type ContextoRotas, exigeCuradoria } from '../contexto';
 import {
   SCHEMA_BUSCA_CURADORIA,
@@ -34,10 +37,36 @@ import {
   SCHEMA_ENRIQUECIMENTO,
   SCHEMA_FILA_CODIGO_LOJA,
   SCHEMA_FUSAO_CANONICOS,
+  SCHEMA_METRICAS,
   SCHEMA_REAPONTAR_CODIGO_LOJA,
   SCHEMA_REPROCESSAR,
 } from '../esquemas';
 import { PAINEL_CURADORIA_HTML } from './painel-curadoria-html';
+
+/**
+ * C3.4 — bloco do ranking durável de abreviações de unidade que faltam no mapa.
+ *
+ * Best-effort de propósito: `/metricas` é a página que a operação abre quando
+ * algo está errado, e derrubá-la com 500 porque UMA consulta secundária falhou
+ * tiraria do ar justamente o instrumento de diagnóstico. Na falha o bloco some
+ * (nunca vem vazio, que leria como "nenhuma unidade recusada") e o log registra.
+ */
+async function blocoUnidadesRecusadas(
+  ctx: ContextoRotas,
+  dias: number | undefined,
+): Promise<{ unidadesRecusadasAcumuladas?: UnidadeRecusada[] }> {
+  const fonte = ctx.deps.unidadesRecusadas;
+  if (!fonte) return {};
+  try {
+    return { unidadesRecusadasAcumuladas: await fonte.ranking(dias) };
+  } catch (erro) {
+    log.warn(
+      { action: 'metricas.unidades_recusadas_falhou', erro: sanitizarErro(erro) },
+      'Ranking de unidades recusadas indisponível — o resto do /metricas segue',
+    );
+    return {};
+  }
+}
 
 export function registrarRotasCuradoria(app: FastifyInstance, ctx: ContextoRotas): void {
   const {
@@ -81,15 +110,22 @@ export function registrarRotasCuradoria(app: FastifyInstance, ctx: ContextoRotas
   //
   // `performance` fica ausente quando o coletor não foi injetado, em vez de vir
   // zerado: zero e "não medido" são diagnósticos opostos e não podem parecer
-  // iguais para quem lê o painel.
-  app.get('/metricas', opcoes, (req, reply) => {
-    if (!autorizado(req, reply)) return reply;
-    const performance = ctx.deps.metricasPerformance?.resumo();
-    return reply.send({
-      ...ctx.metricas.snapshot(),
-      ...(performance ? { performance } : {}),
-    });
-  });
+  // iguais para quem lê o painel. Mesma regra para `unidadesRecusadasAcumuladas`
+  // (C3.4): lista vazia diz "nenhuma unidade caiu do pool", ausência diz "não
+  // consegui perguntar ao banco" — não podem se confundir.
+  app.get<{ Querystring: { dias?: number } }>(
+    '/metricas',
+    { schema: SCHEMA_METRICAS, ...opcoes },
+    async (req, reply) => {
+      if (!autorizado(req, reply)) return reply;
+      const performance = ctx.deps.metricasPerformance?.resumo();
+      return reply.send({
+        ...ctx.metricas.snapshot(),
+        ...(performance ? { performance } : {}),
+        ...(await blocoUnidadesRecusadas(ctx, req.query.dias)),
+      });
+    },
+  );
 
   if (servicoModeracao) {
     // Fila de moderação (C11.3) — pendentes, mais antigos primeiro.

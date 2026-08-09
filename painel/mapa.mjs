@@ -1078,19 +1078,14 @@ export const funcoes = [
     id: 'normalizacao',
     nome: 'Normalização de unidade',
     area: 'estatistica',
-    status: 'parcial',
+    status: 'pronto',
     oque: 'Converte todo preço para R$/kg, R$/L ou R$/un, para nunca comparar valor cru.',
-    falta:
-      'O contador de unidades recusadas por UF já existe e aparece no /metricas (chave já normalizada — é literalmente a abreviação a acrescentar ao mapa). Falta usá-lo em produção com notas reais de mais estados para descobrir quais abreviações faltam.',
     detalhe:
-      'É a fonte ÚNICA do app e do backend (o backend só re-exporta). Se divergissem, o mesmo produto teria preço diferente offline e online. Pacote, bandeja, garrafa e lata entram como 1 item vendido; caixa e fardo (CX/FD/PACK) só entram quando a CONTAGEM é declarada na unidade ("CX12") ou na descrição ("12X350ML", "FD 6") — aí o preço vira R$/un do item de dentro. Sem contagem o item continua fora do pool, porque "R$ 36 a caixa" na mediana da lata é pior que observação nenhuma. A descrição só destrava embalagem múltipla: ela nunca muda o fator de KG/L/UN, e é isso que impede app e backend de divergirem se um dos lados não a passar. Telemetria (C10.2) distingue as duas causas de um item cair fora do pool: unidade NUNCA VISTA pelo mapa (`unidadeConhecida` = falso, conta em `unidadesRecusadas` por UF) de embalagem múltipla conhecida sem contagem declarada (gap já esperado, não conta) — reaproveita a tabela `telemetria_parsing` existente, sem migração nova.',
-    ligacoes: ['agregacao', 'veredito', 'faixa-pessoal'],
+      'É a fonte ÚNICA do app e do backend (o backend só re-exporta). Se divergissem, o mesmo produto teria preço diferente offline e online. São quatro grupos de unidade: fator fixo (kg/g, L/ml, un, dúzia, cento, milheiro); um volume = um item vendido (pacote, bandeja, balde, sachê, garrafa, galão, lata, bisnaga, barra…); embalagem múltipla (CX/FD/PACK/cartela/engradado/EMB), que só entra quando a CONTAGEM é declarada na unidade ("CX12") ou na descrição ("12X350ML", "FD 6") e aí vira R$/un do item de dentro; e as NÃO-COMPARÁVEIS por natureza (metro/m², kit/jogo, par), que ficam fora para sempre. O plural resolve sozinho ("LATAS" → "LATA"), então nenhuma unidade é listada duas vezes. Sem contagem o multipack continua fora do pool, porque "R$ 36 a caixa" na mediana da lata é pior que observação nenhuma. A descrição só destrava embalagem múltipla: ela nunca muda o fator de KG/L/UN, e é isso que impede app e backend de divergirem se um dos lados não a passar. O quarto grupo existe para a TELEMETRIA: sem ele, "M2" e "KIT" liderariam para sempre o ranking de "abreviação que falta" e o contador nunca chegaria a zero — instrumento que não zera não decide nada.',
+    ligacoes: ['agregacao', 'veredito', 'faixa-pessoal', 'unidades-recusadas'],
     arquivos: [
       'shared/src/estatistica/normalizacao.ts',
       'backend/src/anonimizacao/anonimizador.ts',
-      'backend/src/observabilidade/telemetria.ts',
-      'backend/src/observabilidade/telemetria-memoria.ts',
-      'backend/src/observabilidade/telemetria-persistente.ts',
     ],
     regras: ['r5'],
     etapas: ['C3.4'],
@@ -1102,7 +1097,7 @@ export const funcoes = [
     status: 'parcial',
     oque: 'Calcula a faixa típica de cada produto: mediana, p25/p75, mínimo, máximo — dando mais peso aos preços recentes.',
     falta:
-      'NÃO é pendência de engenharia — é bloqueio externo, não há o que codar aqui. A ferramenta de medição (job:calibracao) já existe, roda contra o pool real (backtest walk-forward p/ meia-vida, recall/falso-positivo p/ o cerco de promoção, bootstrap p/ mínimo de observações por nível) e recomenda, sem aplicar nada sozinha — decisão humana, por design, mesma filosofia do job:cobertura-tipico. Rodar hoje devolve "dados insuficientes" porque o pool do beta ainda é raso, não porque falte código. Só revisitar quando o beta acumular volume; aí a recomendação vira commit separado.',
+      'NÃO é pendência de engenharia — é bloqueio externo, não há o que codar aqui. A ferramenta de medição (job:calibracao) já existe, roda contra o pool real (backtest walk-forward p/ meia-vida, recall/falso-positivo p/ o cerco de promoção, bootstrap p/ mínimo de observações por nível e, desde C3.6, ruído de amostra + deriva mensal p/ a zona morta do veredito por família de categoria) e recomenda, sem aplicar nada sozinha — decisão humana, por design, mesma filosofia do job:cobertura-tipico. Rodar hoje devolve "dados insuficientes" porque o pool do beta ainda é raso, não porque falte código. Só revisitar quando o beta acumular volume; aí a recomendação vira commit separado.',
     detalhe:
       'Percentis PONDERADOS pelo decaimento temporal: uma observação de 8 meses atrás pesa quase nada, e acima de 180 dias é descartada. A promoção é segregada em duas camadas: a flag de desconto da própria NFC-e e o cerco estatístico (preços abaixo de p25 − 1,5×IQR).',
     ligacoes: ['pipeline', 'escopos', 'normalizacao'],
@@ -1240,7 +1235,7 @@ export const funcoes = [
     status: 'pronto',
     oque: 'Decide se o preço da prateleira está barato, na média ou caro — e monta os dois ângulos (região e seu histórico) lado a lado.',
     detalhe:
-      'Vive no `shared` de propósito: o app resolve offline com a MESMA lógica que o backend usaria online, sem divergência. Duas perguntas em ordem: a diferença importa (zona morta) e, se sim, para que lado (percentis). Nunca compara contra o menor promocional.',
+      'Vive no `shared` de propósito: o app resolve offline com a MESMA lógica que o backend usaria online, sem divergência. Duas perguntas em ordem: a diferença importa (zona morta) e, se sim, para que lado (percentis). Nunca compara contra o menor promocional. A zona morta tem duas metades: a base (5%, igual para todos — mede irrelevância, e subi-la no fresco comeria o sinal real que o app existe para mostrar) e a deriva por mês de idade do típico, essa SIM por família de categoria: 2%/mês no fresco (alface é reprecificada toda semana) contra 0,8% no industrializado.',
     ligacoes: ['normalizacao', 'frescor', 'veredito-local', 'faixa-pessoal'],
     arquivos: ['shared/src/estatistica/veredito.ts'],
     regras: ['r6', 'r10', 'r11', 'r13'],
@@ -2165,9 +2160,25 @@ export const funcoes = [
     oque: 'Além do contador em memória, grava no banco quantos cupons deram certo e errado por dia e por estado.',
     detalhe:
       'Essencial no plano grátis: a instância dorme e o contador em memória zera várias vezes ao dia. É essa tabela que vai dizer, durante o beta, se a taxa de parsing passou dos 90% exigidos.',
-    ligacoes: ['metricas', 'alerta-parsing'],
+    ligacoes: ['metricas', 'alerta-parsing', 'unidades-recusadas'],
     arquivos: ['backend/src/observabilidade/telemetria-persistente.ts'],
     etapas: ['C10.2'],
+  },
+  {
+    id: 'unidades-recusadas',
+    nome: 'Ranking das unidades que faltam no mapa',
+    area: 'operacao',
+    status: 'pronto',
+    oque: 'Lista, da mais frequente para a menos, as abreviações de unidade que a nota trouxe e o mapa não reconhece — com em quais estados apareceram.',
+    detalhe:
+      'Fecha o ciclo do mapa de unidades: o item que cai fora do pool por unidade desconhecida deixa de sumir em silêncio e vira uma linha ranqueada em /metricas (`?dias=` ajusta a janela, padrão 30). Lê o ACUMULADO no banco, não o contador em memória — que zera toda vez que a instância grátis dorme, o que na prática impedia juntar amostra suficiente para decidir. A leitura é best-effort: se a consulta falhar o bloco some (nunca vem vazio, que se leria como "nenhuma unidade recusada") e o resto do /metricas continua de pé, porque é justamente a página que se abre quando algo está errado. Contexto que muda a leitura do número: a unidade é escrita pelo ERP do varejista, não pelo portal do estado — abreviação nova chega quando entra um mercado com outro sistema de caixa, mesmo dentro de um estado que já funcionava.',
+    ligacoes: ['metricas', 'normalizacao'],
+    arquivos: [
+      'backend/src/observabilidade/unidades-recusadas.ts',
+      'supabase/migrations/20260809100000_unidades_recusadas_ranking.sql',
+    ],
+    rotas: ['GET /metricas'],
+    etapas: ['C3.4', 'C10.2'],
   },
   {
     id: 'debug-html',
@@ -2664,10 +2675,8 @@ export const etapas = [
     codigo: 'C3.4',
     nome: 'Casamento por EAN',
     fase: 'MVP',
-    status: 'parcial',
-    oque: 'Casamento direto pelo código de barras.',
-    falta:
-      'O mapa de unidades já cobre pacote/garrafa/lata e multipack com contagem (CX/FD/PACK), e agora conta por UF a unidade que não bate no mapa (/metricas). Falta usar esse contador com notas reais de mais estados para completar as abreviações.',
+    status: 'pronto',
+    oque: 'Casamento direto pelo código de barras. O mapa de unidades separa quatro grupos — fator fixo (kg/L/un/dúzia/cento), um volume = um item (pacote, garrafa, lata, balde, sachê…), embalagem múltipla que só entra com a contagem declarada (CX/FD/PACK/cartela/engradado) e as que nunca viram preço comparável (metro, kit, par). Plural resolve sozinho. A abreviação que o mapa nunca viu é contada por UF e volta ranqueada, com o acumulado do banco, em /metricas.',
   },
   {
     codigo: 'C3.5',
@@ -2697,9 +2706,9 @@ export const etapas = [
     nome: 'Promoção + veredito híbrido',
     fase: 'MVP',
     status: 'parcial',
-    oque: 'Promoção segregada, dois ângulos lado a lado, zona morta e frescor.',
+    oque: 'Promoção segregada, dois ângulos lado a lado, zona morta por categoria e frescor.',
     falta:
-      'O frescor já está pronto (C12.1). Falta calibrar a zona morta por categoria — a ferramenta de medição de meia-vida/cerco de promoção/mínimo de observações por nível já existe (`job:calibracao`), mas ela mede esses três parâmetros do motor de agregação, não a zona morta do veredito.',
+      'NÃO é pendência de engenharia — é bloqueio externo, como em C3.2. O que faltava (zona morta por categoria) agora existe dos dois lados: o veredito resolve a zona morta por FAMÍLIA de categoria (`fresco` / `industrializado` / `outros`, em `shared`, para app e backend decidirem igual) e o `job:calibracao` ganhou a quarta medição, que é a única dele sobre o VEREDITO e não sobre a agregação. Ela mede as duas metades separadamente: a BASE, pelo ruído de amostra (metade do balanço da mediana numa célula de 8 observações, p75 da família), e a DERIVA mensal, pela taxa entre o terço velho e o terço novo de cada grupo. A base fica igual em todas as famílias de propósito — ela mede irrelevância ("R$ 0,50 num item de R$ 10 não muda decisão"), e subi-la no fresco comeria justamente o sinal real que o app existe para mostrar; quem varia é a deriva (2%/mês no fresco contra 0,8%). O que falta são OBSERVAÇÕES: a medição pede 12+ preços regulares por grupo de município, e o pool do beta tinha 6 no total em 09/08/2026. Os números da tabela seguem chute fundamentado até lá — e o mesmo cron mensal avisa quando a medição passar a discordar deles.',
   },
 
   {

@@ -29,6 +29,7 @@ import type { ServicoModeracao } from '../moderacao/servico-moderacao';
 import type { FonteResumoMetricas, Metricas } from '../observabilidade/metricas';
 import type { MonitorSaude } from '../observabilidade/saude';
 import type { FonteMetricas } from '../observabilidade/telemetria';
+import type { FonteUnidadesRecusadas } from '../observabilidade/unidades-recusadas';
 import type { ReprocessadorRetroativo } from '../processamento/reprocessamento';
 import type { ServicoAlertas } from '../servicos/servico-alertas';
 import type { ServicoAssinatura } from '../servicos/servico-assinatura';
@@ -138,6 +139,14 @@ export interface DependenciasHttp {
   autorizacaoCuradoria?: AutorizacaoCuradoria;
   /** Fonte de métricas de parsing por estado (C10.2) — exposta em `GET /metricas`. */
   metricas?: FonteMetricas;
+  /**
+   * Ranking durável das abreviações de unidade que o mapa não reconhece (C3.4).
+   * Vem separado de `metricas` porque a fonte é outra: aquela é o contador em
+   * memória do processo, esta lê o histórico acumulado no Postgres. Omitido → o
+   * `/metricas` não traz o bloco (em vez de trazê-lo vazio, que leria como
+   * "nenhuma unidade recusada" — diagnóstico oposto).
+   */
+  unidadesRecusadas?: FonteUnidadesRecusadas;
   /**
    * Health check detalhado (C10.4). Omitido → o servidor monta um monitor SEM
    * sondas, que responde `ok`. É o único lugar onde "nega fechado" não vale: uma

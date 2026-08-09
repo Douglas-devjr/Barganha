@@ -368,6 +368,19 @@ export const SCHEMA_REAPONTAR_CODIGO_LOJA = {
   },
 } as const;
 
+// Métricas de operação (C10.2/C10.4). `dias` é a janela do ranking de unidades
+// recusadas (C3.4): teto de um ano porque a pergunta é "o que ensinar ao mapa
+// AGORA" — abreviação que sumiu há mais tempo não é mais lacuna ativa.
+export const SCHEMA_METRICAS = {
+  querystring: {
+    type: 'object',
+    additionalProperties: false,
+    properties: {
+      dias: { type: 'integer', minimum: 1, maximum: 365 },
+    },
+  },
+} as const;
+
 // Gatilho de reprocessamento retroativo por UF (C11.1/C2.5).
 export const SCHEMA_REPROCESSAR = {
   body: {

@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  MAPA_UNIDADES,
+  UNIDADES_EMBALAGEM_MULTIPLA,
+  UNIDADES_NAO_COMPARAVEIS,
   chaveMunicipio,
   itensPorEmbalagem,
   normalizarDescricao,
@@ -228,17 +231,80 @@ describe('normalizarPreco — embalagem múltipla (C3.4)', () => {
   });
 });
 
+describe('plural das unidades (C3.4)', () => {
+  it('o "S" do plural não faz o item cair do pool', () => {
+    expect(normalizarPreco({ unidade: 'KGS', valorUnitario: 12 })).toEqual({
+      unidadeBase: 'kg',
+      precoNormalizado: 12,
+    });
+    expect(normalizarPreco({ unidade: 'LATAS', valorUnitario: 3.5 })).toEqual({
+      unidadeBase: 'un',
+      precoNormalizado: 3.5,
+    });
+    expect(normalizarPreco({ unidade: 'GRAMAS', valorUnitario: 0.05 })).toEqual({
+      unidadeBase: 'kg',
+      precoNormalizado: 50,
+    });
+  });
+
+  it('vale também para embalagem múltipla', () => {
+    expect(
+      normalizarPreco({ unidade: 'CAIXAS', valorUnitario: 48, descricao: 'CERVEJA 12X350ML' }),
+    ).toEqual({ unidadeBase: 'un', precoNormalizado: 4 });
+  });
+
+  it('unidade legítima terminada em S é lida crua, não mutilada', () => {
+    // "GRS" existe como grama e resolve pelo plural; o que não pode acontecer é
+    // uma chave do mapa perder o próprio "S" antes de ser tentada inteira.
+    expect(resolverUnidade('GRS')).toEqual({ base: 'kg', fator: 1000 });
+    expect(resolverUnidade('S')).toBeUndefined();
+  });
+});
+
 describe('unidadeConhecida (C3.4 — telemetria de ingestão)', () => {
   it('unidade direta e prefixo de embalagem múltipla são conhecidos', () => {
     expect(unidadeConhecida('KG')).toBe(true);
     expect(unidadeConhecida('un.')).toBe(true); // pontuação/caixa não importa
     expect(unidadeConhecida('CX')).toBe(true); // sem contagem, mas o prefixo é sabido
     expect(unidadeConhecida('PCT12')).toBe(true); // contagem colada num prefixo sabido
+    expect(unidadeConhecida('FARDOS')).toBe(true); // plural
+  });
+
+  it('unidade NÃO-COMPARÁVEL é conhecida — fica fora do pool sem virar "lacuna"', () => {
+    // O ponto da lista: sem ela, estas quatro liderariam para sempre o ranking
+    // de "abreviação que falta", e o contador nunca chegaria a zero.
+    for (const unidade of ['M2', 'KIT', 'PAR', 'MT']) {
+      expect(unidadeConhecida(unidade)).toBe(true);
+      expect(normalizarPreco({ unidade, valorUnitario: 10 })).toBeUndefined();
+    }
   });
 
   it('abreviação nunca vista pelo mapa não é conhecida', () => {
     expect(unidadeConhecida('XPTO')).toBe(false);
     expect(unidadeConhecida('')).toBe(false);
+  });
+});
+
+describe('as três listas de unidades são disjuntas (C3.4)', () => {
+  it('nenhuma chave aparece em duas listas', () => {
+    const comparaveis = Object.keys(MAPA_UNIDADES);
+    const multiplas = [...UNIDADES_EMBALAGEM_MULTIPLA];
+    const foraPorNatureza = [...UNIDADES_NAO_COMPARAVEIS];
+    const todas = [...comparaveis, ...multiplas, ...foraPorNatureza];
+
+    // Uma chave em duas listas é decisão silenciosamente contraditória: a ordem
+    // de consulta passaria a decidir se o item entra no pool.
+    expect(todas).toHaveLength(new Set(todas).size);
+  });
+
+  it('nenhuma chave é o plural de outra (o "S" as tornaria intercambiáveis)', () => {
+    const todas = [
+      ...Object.keys(MAPA_UNIDADES),
+      ...UNIDADES_EMBALAGEM_MULTIPLA,
+      ...UNIDADES_NAO_COMPARAVEIS,
+    ];
+    const redundantes = todas.filter((c) => c.endsWith('S') && todas.includes(c.slice(0, -1)));
+    expect(redundantes).toEqual([]);
   });
 });
 

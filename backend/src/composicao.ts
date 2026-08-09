@@ -35,6 +35,10 @@ import { MonitorSaude } from './observabilidade/saude';
 import { sondaBanco, sondaFila, sondaParsers, sondaTelemetria } from './observabilidade/sondas';
 import type { FonteMetricas, Telemetria } from './observabilidade/telemetria';
 import { TelemetriaPersistente } from './observabilidade/telemetria-persistente';
+import {
+  RankingUnidadesRecusadas,
+  type FonteUnidadesRecusadas,
+} from './observabilidade/unidades-recusadas';
 import { ParserMg } from './parsers/mg';
 import { RegistroParsers } from './parsers/registro';
 import { ParserRj } from './parsers/rj';
@@ -88,6 +92,8 @@ export interface Backend {
   rollout: ControleRollout;
   /** Telemetria de parsing por estado — fonte do `/metricas` + histórico durável (C10.2). */
   telemetria: Telemetria & FonteMetricas;
+  /** Ranking acumulado das abreviações de unidade que faltam no mapa (C3.4). */
+  unidadesRecusadas: FonteUnidadesRecusadas;
   /** Lançamento manual de gôndola + moderação (C11.3). */
   servicoModeracao: ServicoModeracao;
   /** Denúncia de preço + fila da curadoria (C12.5). */
@@ -141,6 +147,10 @@ export function montarBackend(config: ConfigBackend): Backend {
   // instância dorme e o contador em memória zera — o histórico durável fica no banco.
   const rollout = new ControleRollout(config.ufsHabilitadas);
   const telemetria = new TelemetriaPersistente(db);
+  // C3.4 — a contrapartida de LEITURA do contador acima: o ranking acumulado das
+  // abreviações de unidade que derrubam item do pool. Sem ele o contador só
+  // existiria na memória do processo, que dorme e zera no free tier.
+  const unidadesRecusadas = new RankingUnidadesRecusadas(db);
 
   // C3 — motor estatístico sobre o pool anônimo. Montado ANTES do processador
   // para ser o gatilho de recálculo pós-ingestão (sem ele o pool enche mas a
@@ -305,6 +315,7 @@ export function montarBackend(config: ConfigBackend): Backend {
     gerenciadorConta,
     rollout,
     telemetria,
+    unidadesRecusadas,
     servicoModeracao,
     servicoDenuncia,
     servicoAlertas,

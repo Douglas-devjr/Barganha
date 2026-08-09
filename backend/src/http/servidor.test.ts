@@ -11,6 +11,7 @@ import { ServicoConsulta } from '../consulta/servico-consulta';
 import { FilaMemoria } from '../fila/fila-memoria';
 import { ServicoIngestao } from '../ingestao/servico-ingestao';
 import { TelemetriaMemoria } from '../observabilidade/telemetria-memoria';
+import type { FonteUnidadesRecusadas } from '../observabilidade/unidades-recusadas';
 import { RegistroParsers } from '../parsers/registro';
 import { ParserRj } from '../parsers/rj';
 import { ParserSp } from '../parsers/sp';
@@ -273,6 +274,71 @@ describe('Servidor HTTP', () => {
       const r = await app.inject({ method: 'GET', url: '/metricas' });
       expect(r.statusCode).toBe(403);
     });
+
+    it('sem fonte injetada, o bloco de unidades recusadas fica AUSENTE', async () => {
+      // Ausente ≠ vazio: lista vazia afirmaria "nenhuma unidade caiu do pool".
+      const r = await app.inject({
+        method: 'GET',
+        url: '/metricas',
+        headers: { authorization: `Bearer ${TOKEN_CURADORIA}` },
+      });
+      expect(r.json()).not.toHaveProperty('unidadesRecusadasAcumuladas');
+    });
+  });
+});
+
+describe('Métricas — ranking durável de unidades recusadas (C3.4)', () => {
+  function montarComRanking(fonte: FonteUnidadesRecusadas) {
+    const repo = new RepositorioMemoria();
+    return construirServidor({
+      servicoIngestao: new ServicoIngestao(
+        repo,
+        new FilaMemoria(() => Promise.resolve(), { dormir: () => Promise.resolve() }),
+      ),
+      servicoConsulta: new ServicoConsulta(repo, repo),
+      servicoSync: new ServicoSync(repo),
+      servicoConta: new ServicoConta(repo),
+      autenticacao: new Autenticador(repo),
+      metricas: new TelemetriaMemoria(),
+      unidadesRecusadas: fonte,
+      autorizacaoCuradoria: new GuardaCuradoria([TOKEN_CURADORIA]),
+    });
+  }
+
+  const comToken = { authorization: `Bearer ${TOKEN_CURADORIA}` };
+
+  it('devolve as abreviações que faltam no mapa, com UF e frequência', async () => {
+    let diasPedidos: number | undefined;
+    const app = montarComRanking({
+      ranking: (dias) => {
+        diasPedidos = dias;
+        return Promise.resolve([{ unidade: 'BDJ', total: 42, ufs: ['RJ', 'SP'] }]);
+      },
+    });
+    await app.ready();
+
+    const r = await app.inject({ method: 'GET', url: '/metricas?dias=7', headers: comToken });
+
+    expect(r.statusCode).toBe(200);
+    expect(r.json().unidadesRecusadasAcumuladas).toEqual([
+      { unidade: 'BDJ', total: 42, ufs: ['RJ', 'SP'] },
+    ]);
+    expect(diasPedidos).toBe(7);
+    await app.close();
+  });
+
+  it('falha do banco NÃO derruba o /metricas — o bloco some e o resto fica', async () => {
+    // `/metricas` é a página que a operação abre quando algo está errado; 500
+    // aqui tiraria do ar justamente o instrumento de diagnóstico.
+    const app = montarComRanking({ ranking: () => Promise.reject(new Error('banco fora')) });
+    await app.ready();
+
+    const r = await app.inject({ method: 'GET', url: '/metricas', headers: comToken });
+
+    expect(r.statusCode).toBe(200);
+    expect(r.json()).not.toHaveProperty('unidadesRecusadasAcumuladas');
+    expect(r.json().geradoEm).toBeTruthy();
+    await app.close();
   });
 });
 

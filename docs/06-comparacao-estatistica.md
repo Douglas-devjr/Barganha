@@ -7,6 +7,7 @@
 > - **Casamento por texto** (C3.5): `backend/src/estatistica/casamento-texto.ts` (só **sugere**; confirmação é curadoria).
 > - **Pipeline** (C3.1): `backend/src/estatistica/pipeline.ts` grava `preco_estatistica`. EAN (C3.4) já casa na ingestão (C2).
 > - **Normalização** (fonte única app+backend): `shared/src/estatistica/normalizacao.ts` — `normalizarPreco` (R$/kg·L·un pelo preço unitário), `resolverUnidade`/`itensPorEmbalagem` (multipack, C3.4) + `unidadePadraoDaBase`. O backend só re-exporta.
+> - **Lacunas do mapa de unidades** (C3.4): `unidadeConhecida` marca só o que é lacuna de verdade; `backend/src/observabilidade/unidades-recusadas.ts` devolve o ranking acumulado em `GET /metricas`.
 >
 > **v1 da gôndola implementado** na Camada 7 (C7), consumindo o núcleo acima:
 > - **Faixa pessoal** (C7.2): `shared/src/estatistica/faixa.ts` — `montarFaixaDeObservacoes` (mediana/percentis não ponderados sobre o histórico privado; promoção à parte).
@@ -32,12 +33,19 @@ Quando o usuário ainda não tem histórico de um produto, o veredito usa só a 
 ## Normalização (pré-requisito)
 Todo preço é convertido para a **unidade base** do produto: **R$/kg**, **R$/L** ou **R$/un**, usando a `unidade` e a `quantidade` da NFC-e. Nunca se compara valor cru.
 
-**Embalagem (C3.4).** As unidades entram em três grupos:
-- **Fator fixo** — `KG`/`G`, `L`/`ML`, `UN`, `DZ`: conversão direta.
-- **Um volume = um item vendido** — pacote, saco, bandeja, pote, frasco, garrafa, lata, vidro, tubo, rolo: valem como `UN`.
-- **Embalagem múltipla** — `CX`, `FD`, `PACK`, `DP`: o fator depende de **quantas unidades vêm dentro**, então só normaliza quando a contagem é declarada, na própria unidade (`CX12`) ou na descrição (`12X350ML`, `FD 6`, `C/12`, `30UN`). O preço vira **R$/un do item de dentro** — o que compara com o mesmo produto vendido solto, caso comum nos portais **sem EAN** (RJ/ENCAT), onde caixa e unidade caem no mesmo canônico pela descrição.
+**Embalagem (C3.4).** As unidades entram em quatro grupos:
+- **Fator fixo** — `KG`/`G`, `L`/`ML`, `UN`, `DZ`, `CENTO`, `MILHEIRO`: conversão direta.
+- **Um volume = um item vendido** — pacote, saco, bandeja, balde, pote, frasco, sachê, garrafa, galão, lata, vidro, tubo, bisnaga, rolo, barra: valem como `UN`.
+- **Embalagem múltipla** — `CX`, `FD`, `PACK`, `DP`, `CARTELA`, `ENGRADADO`, `EMB`: o fator depende de **quantas unidades vêm dentro**, então só normaliza quando a contagem é declarada, na própria unidade (`CX12`) ou na descrição (`12X350ML`, `FD 6`, `C/12`, `30UN`). O preço vira **R$/un do item de dentro** — o que compara com o mesmo produto vendido solto, caso comum nos portais **sem EAN** (RJ/ENCAT), onde caixa e unidade caem no mesmo canônico pela descrição.
+- **Não-comparável por natureza** — dimensão (`M`, `M2`, `CM`), conteúdo heterogêneo (`KIT`, `JOGO`, `CONJUNTO`) e contagem ambígua (`PAR`, `CT`): ficam fora do pool para sempre. Estão listadas **de propósito**, não por engano — é o que impede que apareçam como "abreviação faltando" na telemetria abaixo.
+
+O plural não é listado: um `S` no fim é removido na consulta (`LATAS` → `LATA`), então cada unidade entra uma vez só.
 
 Sem contagem declarada, o item **fica fora do pool** (segue no histórico privado): "R$ 36 a caixa" entrando na mediana da lata é pior que observação nenhuma. Um número que pareça **tamanho** não é aceito como contagem (`CX 5KG` = uma caixa de 5 kg, não 5 unidades), e `KIT`/`CONJUNTO` nunca são divididos — o conteúdo é heterogêneo.
+
+**Como o mapa cresce.** A unidade (`uCom`) é escrita pelo **ERP do varejista**, não pelo portal do estado — o layout ENCAT é nacional. Então a variedade de abreviações acompanha redes/sistemas de PDV, não UFs: uma abreviação nova aparece quando entra um mercado que usa outro ERP, no mesmo estado que já funcionava. Por isso o mapa não espera "notas de mais estados": cobre de saída o vocabulário conhecido do varejo brasileiro e usa um contador para o resto.
+
+Toda unidade que o mapa **nunca viu** é contada por UF na ingestão (`unidade_recusada:<CHAVE>` em `telemetria_parsing`) e volta ranqueada em `GET /metricas` como `unidadesRecusadasAcumuladas` (janela padrão de 30 dias, ajustável com `?dias=`). O ranking lê o **histórico durável** no Postgres, não o contador em memória — que zera toda vez que a instância dorme no free tier. Ler o topo dessa lista é o procedimento para decidir qual abreviação ensinar ao mapa; unidade conhecida-mas-fora (grupo 4) e multipack sem contagem **não** entram lá, senão o contador nunca chegaria a zero.
 
 A descrição serve **só** para ler essa contagem: ela nunca altera o fator de uma unidade de fator fixo. Por isso, se um dos lados (app ou backend) esquecer de passá-la, o efeito é uma observação **a menos**, nunca um preço **diferente**.
 

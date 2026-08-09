@@ -33,39 +33,50 @@ export interface FatorUnidade {
  * Só entram unidades de fator FIXO e inequívoco. Embalagem de contagem variável
  * (caixa, fardo, pack) não cabe aqui — o fator depende de quantas unidades vêm
  * dentro; ver `UNIDADES_EMBALAGEM_MULTIPLA`.
+ *
+ * Plural NÃO se lista: `semPlural` já resolve "KGS", "LATAS", "GRAMAS". Só entra
+ * aqui o plural irregular (o "-ES" do português, que não é só um "S" no fim).
  */
 export const MAPA_UNIDADES: Readonly<Record<string, FatorUnidade>> = {
   KG: { base: 'kg', fator: 1 },
-  KGS: { base: 'kg', fator: 1 },
   KILO: { base: 'kg', fator: 1 },
   QUILO: { base: 'kg', fator: 1 },
   G: { base: 'kg', fator: 1000 },
   GR: { base: 'kg', fator: 1000 },
-  GRS: { base: 'kg', fator: 1000 },
   GRAMA: { base: 'kg', fator: 1000 },
-  GRAMAS: { base: 'kg', fator: 1000 },
   L: { base: 'L', fator: 1 },
   LT: { base: 'L', fator: 1 },
-  LTS: { base: 'L', fator: 1 },
   LITRO: { base: 'L', fator: 1 },
-  LITROS: { base: 'L', fator: 1 },
   ML: { base: 'L', fator: 1000 },
   UN: { base: 'un', fator: 1 },
   UND: { base: 'un', fator: 1 },
+  UNI: { base: 'un', fator: 1 },
   UNID: { base: 'un', fator: 1 },
   UNIDADE: { base: 'un', fator: 1 },
   PC: { base: 'un', fator: 1 },
   PECA: { base: 'un', fator: 1 },
   DZ: { base: 'un', fator: 1 / 12 },
   DUZIA: { base: 'un', fator: 1 / 12 },
+  // Contagem fechada e nomeada por extenso (atacado). Só a palavra inteira: a
+  // sigla "CT" é ambígua (cento? cartela?) e por isso mora nas não-comparáveis.
+  CENTO: { base: 'un', fator: 1 / 100 },
+  MILHEIRO: { base: 'un', fator: 1 / 1000 },
   // Embalagens vendidas como UMA peça (bandeja, envelope, frasco e pote vistos
   // em cupons reais do RJ; o resto é a mesma classe). Diferente de CX/FD (packs
   // com N unidades dentro), aqui 1 volume = 1 item vendido — racional do UN.
   BJ: { base: 'un', fator: 1 },
   BDJ: { base: 'un', fator: 1 },
   BANDEJA: { base: 'un', fator: 1 },
+  // "BD" é balde num ERP e bandeja noutro — as duas leituras dão o MESMO fator,
+  // então a ambiguidade não decide nada e a chave pode entrar.
+  BD: { base: 'un', fator: 1 },
+  BLD: { base: 'un', fator: 1 },
+  BALDE: { base: 'un', fator: 1 },
   EV: { base: 'un', fator: 1 },
   ENVELOPE: { base: 'un', fator: 1 },
+  SCH: { base: 'un', fator: 1 },
+  SACHE: { base: 'un', fator: 1 },
+  SACHET: { base: 'un', fator: 1 },
   FR: { base: 'un', fator: 1 },
   FRASCO: { base: 'un', fator: 1 },
   PT: { base: 'un', fator: 1 },
@@ -79,15 +90,23 @@ export const MAPA_UNIDADES: Readonly<Record<string, FatorUnidade>> = {
   GF: { base: 'un', fator: 1 },
   GFA: { base: 'un', fator: 1 },
   GRF: { base: 'un', fator: 1 },
+  GAR: { base: 'un', fator: 1 },
+  GARR: { base: 'un', fator: 1 },
   GARRAFA: { base: 'un', fator: 1 },
+  GL: { base: 'un', fator: 1 },
+  GALAO: { base: 'un', fator: 1 },
   LATA: { base: 'un', fator: 1 },
   LTA: { base: 'un', fator: 1 },
   VD: { base: 'un', fator: 1 },
   VIDRO: { base: 'un', fator: 1 },
   TB: { base: 'un', fator: 1 },
   TUBO: { base: 'un', fator: 1 },
+  BISN: { base: 'un', fator: 1 },
+  BISNAGA: { base: 'un', fator: 1 },
   RL: { base: 'un', fator: 1 },
   ROLO: { base: 'un', fator: 1 },
+  BARRA: { base: 'un', fator: 1 },
+  TABLETE: { base: 'un', fator: 1 },
 };
 
 /**
@@ -102,25 +121,88 @@ export const MAPA_UNIDADES: Readonly<Record<string, FatorUnidade>> = {
  * caixas antes de C3.4): melhor perder a observação que poluir a mediana com o
  * preço de um fardo disfarçado de unidade.
  *
- * KIT/CONJUNTO ficam de fora de propósito: o conteúdo é heterogêneo (shampoo +
- * condicionador), então dividir pela contagem não produz preço comparável.
+ * É por essa assimetria — errar aqui só CUSTA observação, nunca corrompe a
+ * mediana — que "EMB"/"EMBALAGEM" caem neste grupo e não em `MAPA_UNIDADES`:
+ * ora são um volume único, ora um pack, e o lado seguro da dúvida é este.
  */
 export const UNIDADES_EMBALAGEM_MULTIPLA: ReadonlySet<string> = new Set([
   'CX',
   'CXA',
-  'CXS',
   'CAIXA',
-  'CAIXAS',
   'FD',
   'FDO',
   'FRD',
   'FARDO',
-  'FARDOS',
   'PACK',
   'PK',
   'PCK',
   'DP',
   'DISPLAY',
+  'CART',
+  'CARTELA',
+  'CTL',
+  'ENG',
+  'ENGRADADO',
+  'BLISTER',
+  'EMB',
+  'EMBALAGEM',
+]);
+
+/**
+ * Unidades que o mapa CONHECE e mantém fora do pool de propósito — não é lacuna,
+ * é natureza da unidade. Três motivos:
+ *
+ * - **Dimensão** (metro, m², cm): existe em NFC-e (tecido, mangueira, fio), mas
+ *   não vira R$/kg·L·un sem inventar densidade ou tamanho.
+ * - **Conteúdo heterogêneo** (KIT, JOGO, CONJUNTO): dividir pela contagem não
+ *   produz preço comparável — shampoo + condicionador não é "2 unidades de".
+ * - **Contagem ambígua** (PAR, CT): "par" ora é 1 item vendido, ora 2; "CT" é
+ *   cento num ERP e cartela noutro. Fator que depende de quem emitiu não entra.
+ *
+ * Existe para o CONTADOR, não para o cálculo: `resolverUnidade` já as ignorava
+ * (devolvia `undefined` como para qualquer desconhecida). O que muda é que
+ * `unidadeConhecida` passa a reconhecê-las, e assim elas param de entrar na
+ * telemetria de "abreviação que falta no mapa" (C3.4). Sem esta lista, "M2" e
+ * "KIT" liderariam para sempre um ranking que ninguém consegue zerar — e um
+ * instrumento que nunca chega a zero não serve para decidir nada.
+ */
+export const UNIDADES_NAO_COMPARAVEIS: ReadonlySet<string> = new Set([
+  // Dimensão.
+  'M',
+  'MT',
+  'MTR',
+  'METRO',
+  'M2',
+  'M3',
+  'CM',
+  'MM',
+  'KM',
+  'POL',
+  'POLEGADA',
+  // Conteúdo heterogêneo.
+  'KIT',
+  'JG',
+  'JOGO',
+  'CJ',
+  'CJT',
+  'CONJ',
+  'CONJUNTO',
+  'SORT',
+  'SORTIDO',
+  // Contagem ambígua ("PARES" é plural irregular — o "-ES" não cai no `semPlural`).
+  'PAR',
+  'PARES',
+  'CT',
+  'CTA',
+  'CTO',
+  // Serviço / tempo — aparecem em NFC-e de conveniência e nunca são produto.
+  'SERV',
+  'SERVICO',
+  'VB',
+  'HR',
+  'HORA',
+  'DIA',
+  'MES',
 ]);
 
 /** Faixa sã de itens por embalagem — fora dela, o número lido não é contagem. */
@@ -174,6 +256,39 @@ export function chaveUnidade(unidade: string): string {
     .replace(/[^A-Z0-9]/g, '');
 }
 
+/**
+ * Plural do português que é só um "S" no fim ("LATAS" → "LATA", "KGS" → "KG").
+ * Vale para as três listas, então nenhuma precisa repetir singular e plural.
+ * Devolve a própria chave quando não termina em "S" — quem chama tenta primeiro
+ * a forma crua, de modo que uma unidade legítima terminada em "S" nunca é
+ * mutilada. O "-ES" irregular ("PARES") continua listado à mão.
+ */
+function semPlural(chave: string): string {
+  return chave.length > 1 && chave.endsWith('S') ? chave.slice(0, -1) : chave;
+}
+
+/** Fator da chave, tolerando plural. */
+function fatorDoMapa(chave: string): FatorUnidade | undefined {
+  return MAPA_UNIDADES[chave] ?? MAPA_UNIDADES[semPlural(chave)];
+}
+
+/** A chave é embalagem múltipla (tolerando plural)? */
+function eEmbalagemMultipla(chave: string): boolean {
+  return (
+    UNIDADES_EMBALAGEM_MULTIPLA.has(chave) || UNIDADES_EMBALAGEM_MULTIPLA.has(semPlural(chave))
+  );
+}
+
+/** O mapa tem OPINIÃO sobre a chave — comparável, multipack ou fora por natureza. */
+function mapaSabeDe(chave: string): boolean {
+  return (
+    fatorDoMapa(chave) !== undefined ||
+    eEmbalagemMultipla(chave) ||
+    UNIDADES_NAO_COMPARAVEIS.has(chave) ||
+    UNIDADES_NAO_COMPARAVEIS.has(semPlural(chave))
+  );
+}
+
 /** Separa a contagem colada na unidade: "CX12" → { prefixo: 'CX', itens: 12 }. */
 function separarContagem(chave: string): { prefixo: string; itens?: number } {
   const partes = /^([A-Z]+)(\d{1,3})$/.exec(chave);
@@ -192,14 +307,14 @@ export function resolverUnidade(unidade: string, descricao?: string): FatorUnida
   const chave = chaveUnidade(unidade);
   if (!chave) return undefined;
 
-  const direta = MAPA_UNIDADES[chave];
+  const direta = fatorDoMapa(chave);
   if (direta) return direta;
 
   // Chegou aqui: ou é embalagem múltipla ("CX", "FD 6"), ou é unidade conhecida
   // com a contagem colada ("PCT12" = pacote de 12), ou é desconhecida mesmo.
   const { prefixo, itens } = separarContagem(chave);
-  const doPrefixo = MAPA_UNIDADES[prefixo];
-  const eEmbalagem = UNIDADES_EMBALAGEM_MULTIPLA.has(prefixo);
+  const doPrefixo = fatorDoMapa(prefixo);
+  const eEmbalagem = eEmbalagemMultipla(prefixo);
   if (!eEmbalagem && !(itens != null && doPrefixo?.base === 'un' && doPrefixo.fator === 1)) {
     return undefined;
   }
@@ -211,18 +326,20 @@ export function resolverUnidade(unidade: string, descricao?: string): FatorUnida
 
 /**
  * A unidade (ou o prefixo dela, sem a contagem colada) é conhecida pelo mapa —
- * mesmo quando `resolverUnidade` ainda devolve `undefined` por faltar a
- * contagem do multipack. Distingue as duas causas de um item cair fora do
- * pool: "unidade nunca vista" (o que falta ensinar ao mapa, C3.4) de
- * "embalagem múltipla sem contagem declarada" (comportamento já esperado).
+ * mesmo quando `resolverUnidade` ainda devolve `undefined`. Separa a ÚNICA causa
+ * acionável de um item cair fora do pool — "unidade nunca vista", que se resolve
+ * ensinando uma abreviação nova ao mapa (C3.4) — das duas que já são o
+ * comportamento pretendido: embalagem múltipla sem contagem declarada e unidade
+ * não-comparável por natureza (metro, kit, par).
+ *
  * Usada só pela telemetria de ingestão — nunca pelo próprio `resolverUnidade`.
  */
 export function unidadeConhecida(unidade: string): boolean {
   const chave = chaveUnidade(unidade);
   if (!chave) return false;
-  if (MAPA_UNIDADES[chave]) return true;
+  if (mapaSabeDe(chave)) return true;
   const { prefixo } = separarContagem(chave);
-  return Boolean(MAPA_UNIDADES[prefixo]) || UNIDADES_EMBALAGEM_MULTIPLA.has(prefixo);
+  return mapaSabeDe(prefixo);
 }
 
 /** Arredonda para 4 casas (evita ruído de ponto flutuante no R$/base). */

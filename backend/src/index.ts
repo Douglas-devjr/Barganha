@@ -24,6 +24,7 @@ export async function main(): Promise<void> {
     autenticacao,
     gerenciadorConta,
     telemetria,
+    unidadesRecusadas,
     servicoModeracao,
     servicoDenuncia,
     servicoAlertas,
@@ -50,6 +51,7 @@ export async function main(): Promise<void> {
     autenticacao,
     gerenciadorConta,
     metricas: telemetria,
+    unidadesRecusadas,
     saude,
     metricasPerformance,
     // C11 — expansão: lançamento manual + moderação + enriquecimento + reprocesso

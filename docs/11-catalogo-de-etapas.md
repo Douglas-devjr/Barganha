@@ -68,7 +68,7 @@ Este documento dá um **nome e um código curto** a cada etapa do desenvolviment
 | C3.1 | Pipeline `preco_estatistica` (mediana/percentis/mín/máx/`n`) |
 | C3.2 | Decaimento temporal |
 | C3.3 | Escopos geo + fallback hierárquico (loja→município→região→UF) |
-| C3.4 | Casamento por EAN + mapa de unidades (pacote/garrafa/lata como 1 item; CX/FD/PACK só com a contagem declarada). Falta conferir as abreviações contra notas reais de mais estados |
+| C3.4 | Casamento por EAN + mapa de unidades em 4 grupos (fator fixo; um volume = 1 item; multipack só com contagem declarada; não-comparável por natureza), plural automático e ranking durável das abreviações que faltam em `GET /metricas` |
 | C3.5 | Casamento por texto (sem EAN, com confirmação) |
 | C3.6 | Detecção de promoção + veredito híbrido (pessoal + regional) |
 *Responsáveis:* data-scientist, data-engineer
@@ -133,7 +133,7 @@ Este documento dá um **nome e um código curto** a cada etapa do desenvolviment
 | C9.2.2 | Cifra por envelope de `chave_acesso`/descrição do item (reversível, chave fora do banco) — código e migração prontos; ativação em produção aguarda o gate da Fase 3 (beta fechado) |
 | C9.3 | Performance (índices/EXPLAIN) + plano de escala |
 | C9.3.1 | Ingestão transacional: `marcarProcessado` numa função SQL (RPC) — hoje são escritas sequenciais e uma falha parcial após inserir no pool pode duplicar observações no retry |
-| C9.3.2 | Rate-limit/anti-abuso: `POST /conta/anonima` e consulta/sync são sem limite hoje (criação ilimitada de contas; scraping do pool público) |
+| C9.3.2 | Rate-limit/anti-abuso: teto por IP e por conta, contado no Postgres (`rate_limit_janela`) para valer em todas as instâncias — fecha a criação em massa de contas e a raspagem do pool público |
 | C9.4 | Política de privacidade publicada |
 *Responsáveis:* qa-engineer, privacy-lgpd-specialist, data-engineer
 
