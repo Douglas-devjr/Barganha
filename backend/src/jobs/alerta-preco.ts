@@ -158,7 +158,10 @@ type Db = ReturnType<typeof criarClienteSupabase>;
 
 /** Varre uma consulta paginada (teto do PostgREST) até a página vir incompleta. */
 async function buscarTudo<T>(
-  pagina: (de: number, ate: number) => PromiseLike<{ data: T[] | null; error: { message: string } | null }>,
+  pagina: (
+    de: number,
+    ate: number,
+  ) => PromiseLike<{ data: T[] | null; error: { message: string } | null }>,
   contexto: string,
 ): Promise<T[]> {
   const acumulado: T[] = [];
@@ -412,7 +415,10 @@ async function aplicarRetencaoTokens(
   const purgados = expirados.data?.length ?? 0;
   if (purgados > 0) {
     // Nunca logamos o token em si — é identificador de dispositivo.
-    log.info({ action: 'alerta_preco.tokens_purgados', purgados }, 'Tokens de push expirados (TTL)');
+    log.info(
+      { action: 'alerta_preco.tokens_purgados', purgados },
+      'Tokens de push expirados (TTL)',
+    );
   }
 }
 
@@ -452,7 +458,11 @@ export async function main(): Promise<void> {
   if (usuarioIds.length > 0) {
     const dispositivos = await buscarTudo<{ usuario_id: string; token: string }>(
       (de, ate) =>
-        db.from('dispositivo_push').select('usuario_id, token').in('usuario_id', usuarioIds).range(de, ate),
+        db
+          .from('dispositivo_push')
+          .select('usuario_id, token')
+          .in('usuario_id', usuarioIds)
+          .range(de, ate),
       'dispositivo_push',
     );
     for (const d of dispositivos) {
@@ -489,7 +499,10 @@ export async function main(): Promise<void> {
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   main().catch((erro) => {
     // Catch-all do job — com pilha (C10.4), ver nota em `recalculo-estatistica`.
-    logDeJob('alerta-preco').fatal({ erro: sanitizarErroInesperado(erro) }, 'Job de alerta de preço falhou');
+    logDeJob('alerta-preco').fatal(
+      { erro: sanitizarErroInesperado(erro) },
+      'Job de alerta de preço falhou',
+    );
     process.exitCode = 1;
   });
 }

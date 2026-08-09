@@ -69,7 +69,9 @@ export class TelemetriaPersistente implements Telemetria, FonteMetricas {
     this.memoria.registrarUnidadeRecusada(uf, unidadeChave);
     const chave = (uf ?? '').trim().toUpperCase() || UF_DESCONHECIDA;
     const evento = `${PREFIXO_UNIDADE_RECUSADA}${unidadeChave}`;
-    void Promise.resolve(this.db.rpc('incrementar_telemetria_parsing', { p_uf: chave, p_evento: evento }))
+    void Promise.resolve(
+      this.db.rpc('incrementar_telemetria_parsing', { p_uf: chave, p_evento: evento }),
+    )
       .then((r) => {
         if (r.error) this.registrarFalha(chave, evento, new Error(r.error.message));
       })

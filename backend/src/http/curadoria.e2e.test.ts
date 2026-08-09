@@ -348,7 +348,9 @@ describe('Curadoria & moderação (C11) — HTTP', () => {
         headers: curador(),
         payload: { descricao: 'LEITE INTEGRL 1L', unidadeBase: 'L' },
       });
-      const { sugestoes: lista } = sugestoes.json() as any;
+      const { sugestoes: lista } = sugestoes.json() as {
+        sugestoes: { produtoCanonicoId: string }[];
+      };
       if (lista.length > 0) {
         const { produtoCanonicoId } = lista[0];
         const r = await app.inject({
@@ -362,7 +364,7 @@ describe('Curadoria & moderação (C11) — HTTP', () => {
           },
         });
         expect(r.statusCode).toBe(200);
-        const { aliasId, confirmado } = r.json() as any;
+        const { aliasId, confirmado } = r.json() as { aliasId: string; confirmado: boolean };
         expect(aliasId).toBeDefined();
         expect(confirmado).toBe(true);
       }

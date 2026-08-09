@@ -24,7 +24,12 @@ describe('ServicoAlertas (C8.4)', () => {
     const { repo, servico, arroz, feijao } = await montar();
 
     const r = await servico.sincronizar('u1', [
-      { produtoCanonicoId: arroz, nome: 'Arroz 5kg', precoAlvo: 20, escopoGeo: 'RJ:RIO DE JANEIRO' },
+      {
+        produtoCanonicoId: arroz,
+        nome: 'Arroz 5kg',
+        precoAlvo: 20,
+        escopoGeo: 'RJ:RIO DE JANEIRO',
+      },
       { produtoCanonicoId: feijao, nome: 'Feijão 1kg', precoAlvo: 7, escopoGeo: 'RJ' },
     ]);
 

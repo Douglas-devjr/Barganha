@@ -79,7 +79,11 @@ export class ServicoCuradoria {
       Math.max(Math.trunc(tamanhoPagina ?? TAMANHO_PAGINA_BUSCA_PADRAO), 1),
       TAMANHO_PAGINA_BUSCA_MAX,
     );
-    const { itens, total } = await this.repo.buscarProdutos(termoLimpo, paginaValida, tamanhoValido);
+    const { itens, total } = await this.repo.buscarProdutos(
+      termoLimpo,
+      paginaValida,
+      tamanhoValido,
+    );
     return { itens, total, pagina: paginaValida, tamanhoPagina: tamanhoValido };
   }
 }

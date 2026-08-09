@@ -39,7 +39,13 @@ function acoesFake(opcoes: { avisarSucesso?: boolean; reenviarSucesso?: boolean 
   };
 }
 
-const OPCOES = { ttlDias: 730, antecedenciaDias: 30, reenvioDiasAntes: 7, agora: REF, aplicar: true };
+const OPCOES = {
+  ttlDias: 730,
+  antecedenciaDias: 30,
+  reenvioDiasAntes: 7,
+  agora: REF,
+  aplicar: true,
+};
 
 describe('purgarContasInativas (retenção por inatividade, docs/04 — dois avisos, B3)', () => {
   it('conta ativa o suficiente: nada acontece', async () => {

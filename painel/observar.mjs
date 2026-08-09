@@ -6,6 +6,9 @@ import { fileURLToPath } from 'node:url';
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
+// Explícito porque o ESLint deste arquivo não declara os globais de browser —
+// e em ESM o import de `node:timers` é o caminho canônico para esses dois.
+import { clearTimeout, setTimeout } from 'node:timers';
 
 const AQUI = path.dirname(fileURLToPath(import.meta.url));
 const RAIZ = path.resolve(AQUI, '..');
