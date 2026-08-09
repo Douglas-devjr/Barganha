@@ -27,7 +27,8 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider, useAuth } from '@/auth';
 import { ProvedorToast } from '@/componentes';
 import { cupons, inicializarBd, meta } from '@/dados';
-import { AuthNavegador, RaizNavegador } from '@/navegacao';
+import { AuthNavegador, navegacaoRef, RaizNavegador } from '@/navegacao';
+import { entregarProdutoDeNotificacao, useToqueEmNotificacao } from '@/nucleo/notificacoes-push';
 import { sincronizar } from '@/nucleo/sincronizador';
 import { ProvedorPlano } from '@/plano';
 import { AberturaFluxo } from '@/telas/abertura/AberturaFluxo';
@@ -47,6 +48,10 @@ export default function App() {
   const [consentidoInicial, setConsentidoInicial] = useState<boolean | null>(null);
   /** A abertura cumpriu os 1,9 s do handoff (ou o usuário tocou para pular). */
   const [aberturaVista, setAberturaVista] = useState(false);
+
+  // Toque no push de alerta (C8.4) — aqui na RAIZ porque o evento pode chegar
+  // com o app em qualquer gate, inclusive antes de existir navegação.
+  useToqueEmNotificacao();
 
   useEffect(() => {
     let ativo = true;
@@ -166,8 +171,12 @@ function Conteudo({ consentidoInicial }: { consentidoInicial: boolean }) {
     return <AberturaFluxo aoConcluir={() => setAberturaFeita(true)} />;
   }
 
+  // A ref e o `onReady` só valem para o container do app autenticado: é aqui
+  // que existe a rota `ProdutoDetalhe` que o toque no push quer abrir. O
+  // `onReady` fecha o caso do arranque frio (toque → app lançado): o produto
+  // fica estacionado até este instante.
   return (
-    <NavigationContainer>
+    <NavigationContainer ref={navegacaoRef} onReady={entregarProdutoDeNotificacao}>
       <RaizNavegador />
     </NavigationContainer>
   );

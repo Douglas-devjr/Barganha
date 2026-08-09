@@ -4,4 +4,5 @@ export { RaizNavegador } from './RaizNavegador';
 export { AuthNavegador } from './AuthNavegador';
 export { AbasNavegador } from './AbasNavegador';
 export { BarraAbas } from './BarraAbas';
+export { navegacaoRef } from './ref';
 export type { AuthStackParamList, RootStackParamList, TabParamList } from './tipos';

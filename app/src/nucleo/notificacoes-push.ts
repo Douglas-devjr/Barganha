@@ -35,8 +35,12 @@ import { Platform } from 'react-native';
 
 import { clienteApi } from '@/api';
 import { meta } from '@/dados';
+// Import do módulo-folha, não do barril `@/navegacao`: o barril exporta o
+// `RaizNavegador`, que importa as telas, que importam ESTE arquivo — ciclo.
+import { navegacaoRef } from '@/navegacao/ref';
 
 import { log } from './log';
+import { decidirAberturaPorToque } from './notificacoes-push-regras';
 
 // Handler de FOREGROUND: sem isto, uma notificação chegando com o app ABERTO
 // não aparece (o padrão do expo-notifications é não mostrar nada). Nomes de
@@ -151,6 +155,86 @@ export async function removerTokenPushAtual(): Promise<void> {
       'Não deu para remover o token de push do servidor ao sair',
     );
   }
+}
+
+// ───────────── Toque na notificação → tela do produto (C8.4) ──────────────
+//
+// O push de alerta viaja com `data.produtoCanonicoId` (ver `jobs/alerta-preco`).
+// Sem o que vem abaixo, tocar o aviso "Preço baixou" só abria o app na tela em
+// que ele estava — o usuário tinha que caçar o produto na mão.
+//
+// Duas entradas para o MESMO evento, porque o toque pode chegar em dois estados
+// bem diferentes do app:
+//   • FRIO — o toque LANÇOU o app. Não havia listener montado a tempo, então o
+//     evento é lido depois, por `getLastNotificationResponseAsync`.
+//   • QUENTE — app aberto ou em segundo plano: o listener recebe na hora.
+// A decisão (inclusive a dedupe entre as duas) é pura e vive em
+// `notificacoes-push-regras.ts`, onde é testada; aqui fica só o efeito.
+
+/**
+ * Produto tocado que ainda não pôde ser aberto. No arranque frio o evento chega
+ * MUITO antes de existir navegação: o app ainda vai montar o banco, os gates de
+ * consentimento/login e a abertura. Fica estacionado aqui até
+ * `entregarProdutoDeNotificacao` (o `onReady` do container) poder navegar.
+ */
+let produtoPendente: string | null = null;
+/** Última resposta já tratada — a dedupe entre a leitura fria e o listener. */
+let ultimaRespostaTratada: string | null = null;
+
+function tratarResposta(resposta: Notifications.NotificationResponse | null): void {
+  const decisao = decidirAberturaPorToque(
+    resposta
+      ? {
+          identificador: resposta.notification.request.identifier,
+          dados: resposta.notification.request.content.data,
+        }
+      : null,
+    ultimaRespostaTratada,
+  );
+  if (!decisao) return;
+
+  ultimaRespostaTratada = decisao.identificador;
+  if (!decisao.produtoCanonicoId) return; // aviso sem produto: nada a abrir
+  produtoPendente = decisao.produtoCanonicoId;
+  entregarProdutoDeNotificacao();
+}
+
+/**
+ * Abre o produto estacionado, se houver e se já existir navegação. Chamado
+ * tanto no momento do toque quanto pelo `onReady` do container — o que vier por
+ * último é quem de fato navega, sem ninguém precisar saber a ordem.
+ */
+export function entregarProdutoDeNotificacao(): void {
+  const chave = produtoPendente;
+  if (chave == null || !navegacaoRef.isReady()) return;
+  produtoPendente = null;
+  // `chave` do ProdutoDetalhe aceita id canônico (ver navegacao/tipos.ts).
+  navegacaoRef.navigate('ProdutoDetalhe', { chave });
+}
+
+/**
+ * Liga o toque na notificação à navegação. Montado no componente RAIZ (App.tsx),
+ * não numa tela: o evento pode chegar com o app em qualquer gate, e uma tela que
+ * desmonta levaria o listener junto.
+ */
+export function useToqueEmNotificacao(): void {
+  useEffect(() => {
+    // Best-effort como todo o resto deste módulo: um arranque sem push nenhum
+    // não pode derrubar o app.
+    void Notifications.getLastNotificationResponseAsync()
+      .then(tratarResposta)
+      .catch((erro: unknown) => {
+        log.falha(
+          'warn',
+          { action: 'push.ultima_resposta' },
+          erro,
+          'Não deu para ler a notificação que abriu o app',
+        );
+      });
+
+    const inscricao = Notifications.addNotificationResponseReceivedListener(tratarResposta);
+    return () => inscricao.remove();
+  }, []);
 }
 
 /** Estado da permissão de notificação push + o pedido contextual dela. */
