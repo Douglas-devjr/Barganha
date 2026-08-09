@@ -10,8 +10,16 @@
  * medição, não dá nem para saber se o gatilho já chegou. Este job só mede;
  * não constrói UI nem decide nada sozinho — o resultado é lido por humano.
  *
- * Execução manual (one-off, workspace @barganha/backend):
+ * Rodado por scheduler externo (GitHub Actions cron em
+ * `.github/workflows/cobertura-tipico.yml`) e também à mão (workspace
+ * @barganha/backend):
  *   npm run job:cobertura-tipico
+ *
+ * Por que o cron existe: o gatilho é uma medição, não uma data — e medição que
+ * ninguém roda não dispara nada. Sem ele, descobrir que a cobertura passou de
+ * 60% dependeria de alguém LEMBRAR de rodar o job meses depois. O cron mede
+ * mensalmente e avisa no webhook quando o gatilho vira. Continua não decidindo
+ * nada: construir a UI de "economia real" é decisão humana.
  */
 
 import { fileURLToPath } from 'node:url';
@@ -19,13 +27,27 @@ import { fileURLToPath } from 'node:url';
 import { mediana } from '@barganha/shared';
 
 import { lerConfig } from '../config/env';
+import { enviarAlerta } from '../observabilidade/alerta-parsing';
 import { logDeJob } from '../observabilidade/log';
-import { sanitizarErroInesperado } from '../observabilidade/sanitizar';
+import { sanitizarErro, sanitizarErroInesperado } from '../observabilidade/sanitizar';
 import type { criarClienteSupabase } from '../persistencia/supabase';
 import { criarClienteSupabase as criarClienteSupabaseReal } from '../persistencia/supabase';
 
 /** "Cupom típico" cruzando 60% dos itens com típico gravado — o gatilho da UI (docs/06). */
 export const LIMIAR_GATILHO = 0.6;
+
+/**
+ * Silenciador do aviso: vire para `true` no MESMO commit que entregar a UI de
+ * "economia real".
+ *
+ * Existe porque este gatilho, ao contrário dos parâmetros de calibração, não se
+ * desarma sozinho: cobertura que passou de 60% fica passada para sempre, então
+ * um aviso condicionado só a `atingiuGatilho` continuaria pipocando todo mês
+ * anos depois da UI pronta — e alerta que não morre é alerta que se aprende a
+ * ignorar. A decisão de "já atendi isto" é humana e fica versionada aqui, não
+ * num estado escondido que ninguém audita.
+ */
+export const UI_ECONOMIA_REAL_ENTREGUE = false;
 /** Página das varreduras — mesmo teto do `max_rows` do PostgREST (ver repositorio-supabase.ts). */
 const PAGINA = 1000;
 /** Lote de `cupom_id` por consulta de `item_cupom` — evita um `.in()` gigante. */
@@ -82,7 +104,10 @@ type Db = ReturnType<typeof criarClienteSupabase>;
 
 /** Varre uma consulta paginada (teto do PostgREST) até a página vir incompleta. */
 async function buscarTudo<T>(
-  pagina: (de: number, ate: number) => PromiseLike<{ data: T[] | null; error: { message: string } | null }>,
+  pagina: (
+    de: number,
+    ate: number,
+  ) => PromiseLike<{ data: T[] | null; error: { message: string } | null }>,
   contexto: string,
 ): Promise<T[]> {
   const acumulado: T[] = [];
@@ -122,7 +147,11 @@ async function carregarCobertura(db: Db): Promise<CoberturaPorCupom[]> {
   for (const lote of fatiar(cupomIds, LOTE_CUPONS)) {
     const itens = await buscarTudo<{ cupom_id: string; tipico_mediana: number | string | null }>(
       (de, ate) =>
-        db.from('item_cupom').select('cupom_id, tipico_mediana').in('cupom_id', lote).range(de, ate),
+        db
+          .from('item_cupom')
+          .select('cupom_id, tipico_mediana')
+          .in('cupom_id', lote)
+          .range(de, ate),
       'item_cupom',
     );
     for (const i of itens) {
@@ -142,6 +171,30 @@ async function carregarCobertura(db: Db): Promise<CoberturaPorCupom[]> {
 
 function formatarPercentual(fracao: number): string {
   return `${Math.round(fracao * 100)}%`;
+}
+
+// ─────────────────── Aviso: o gatilho da UI virou ─────────────────────────
+
+/**
+ * Mensagem do webhook. `undefined` enquanto o gatilho não vira — ou depois que
+ * a UI já foi entregue (ver `UI_ECONOMIA_REAL_ENTREGUE`).
+ *
+ * `entregue` é parâmetro em vez de leitura direta da constante para o teste
+ * conseguir cobrir os dois lados sem depender do valor vigente no código.
+ */
+export function formatarAvisoCobertura(
+  resumo: ResumoCobertura,
+  entregue: boolean = UI_ECONOMIA_REAL_ENTREGUE,
+): string | undefined {
+  if (!resumo.atingiuGatilho || entregue) return undefined;
+  return [
+    '🟢 Barganha — o gatilho da UI de "economia real" foi atingido',
+    `Cobertura mediana por cupom: ${formatarPercentual(resumo.coberturaMedianaPorCupom)} ` +
+      `(gatilho: ${formatarPercentual(LIMIAR_GATILHO)}) sobre ${resumo.cuponsElegiveis} cupons.`,
+    'A UI (pagou × típico) estava fora de escopo esperando exatamente isto — docs/06.',
+    'Ao entregá-la, virar `UI_ECONOMIA_REAL_ENTREGUE` para `true` no mesmo commit, ' +
+      'senão este aviso volta todo mês.',
+  ].join('\n');
 }
 
 /** Monta as peças reais (Supabase), roda a medição e loga um resumo — inclusive em texto legível. */
@@ -172,7 +225,40 @@ export async function rodarJobCoberturaTipico(): Promise<ResumoCobertura> {
       `cobertura agregada: ${formatarPercentual(resumo.coberturaAgregada)}`,
   );
 
+  await avisarSeGatilhoVirou(resumo, log);
+
   return resumo;
+}
+
+/**
+ * Manda ao webhook o aviso de gatilho atingido. Falhar em AVISAR nunca derruba
+ * a medição — mesmo tratamento do `job:alerta-parsing`.
+ */
+async function avisarSeGatilhoVirou(
+  resumo: ResumoCobertura,
+  log: ReturnType<typeof logDeJob>,
+): Promise<void> {
+  const mensagem = formatarAvisoCobertura(resumo);
+  if (mensagem === undefined) return;
+
+  // `warn`, não `error`: nada quebrou — há uma decisão de produto devida.
+  log.warn(
+    { action: 'cobertura_tipico.gatilho_atingido', cobertura: resumo.coberturaMedianaPorCupom },
+    'Cobertura do típico cruzou o gatilho da UI de economia real',
+  );
+
+  const webhookUrl = process.env.ALERTA_WEBHOOK_URL;
+  try {
+    const enviado = await enviarAlerta(mensagem, { ...(webhookUrl ? { webhookUrl } : {}) });
+    if (!enviado && webhookUrl) {
+      log.warn({ action: 'cobertura_tipico.webhook_recusado' }, 'Webhook não aceitou o aviso');
+    }
+  } catch (erro) {
+    log.warn(
+      { action: 'cobertura_tipico.webhook_falhou', erro: sanitizarErro(erro) },
+      'Falha ao enviar o aviso ao webhook',
+    );
+  }
 }
 
 // Executado direto (não quando importado por um teste): roda e propaga o código

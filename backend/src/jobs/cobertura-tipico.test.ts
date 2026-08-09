@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import { type CoberturaPorCupom, LIMIAR_GATILHO, calcularCobertura } from './cobertura-tipico';
+import {
+  type CoberturaPorCupom,
+  LIMIAR_GATILHO,
+  calcularCobertura,
+  formatarAvisoCobertura,
+} from './cobertura-tipico';
 
 const linha = (p: Partial<CoberturaPorCupom> = {}): CoberturaPorCupom => ({
   cupomId: 'c1',
@@ -77,5 +82,27 @@ describe('calcularCobertura (C8.4.1)', () => {
   it('atingiuGatilho: logo abaixo da borda não atinge', () => {
     const r = calcularCobertura([linha({ totalItens: 100, itensComTipico: 59 })]);
     expect(r.atingiuGatilho).toBe(false);
+  });
+});
+
+/* Este gatilho, ao contrário dos parâmetros de calibração, não se desarma
+   sozinho: cobertura que cruzou 60% fica cruzada. O que se protege aqui é o
+   silenciador — sem ele o aviso pipocaria todo mês anos depois da UI pronta. */
+describe('aviso do gatilho (o que o cron dispara)', () => {
+  const acima = calcularCobertura([linha({ totalItens: 10, itensComTipico: 8 })]);
+  const abaixo = calcularCobertura([linha({ totalItens: 10, itensComTipico: 3 })]);
+
+  it('gatilho não atingido não avisa', () => {
+    expect(formatarAvisoCobertura(abaixo, false)).toBeUndefined();
+  });
+
+  it('gatilho atingido e UI ainda não entregue avisa, dizendo como silenciar', () => {
+    const aviso = formatarAvisoCobertura(acima, false);
+    expect(aviso).toContain('80%');
+    expect(aviso).toContain('UI_ECONOMIA_REAL_ENTREGUE');
+  });
+
+  it('UI já entregue silencia o aviso mesmo com o gatilho atingido', () => {
+    expect(formatarAvisoCobertura(acima, true)).toBeUndefined();
   });
 });
