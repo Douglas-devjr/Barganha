@@ -216,3 +216,27 @@ export function aplicarTeto<T>(
     ocultos: Math.max(0, itens.length - teto),
   };
 }
+
+/* ── Revalidação do plano contra o servidor (C13.2/C13.5) ────────────────── */
+
+/**
+ * Dias sem conseguir confirmar o plano contra `GET /conta/estado` até o cache
+ * local degradar pra grátis (docs/21 — "o plano precisa funcionar offline").
+ * O corredor do mercado às vezes não tem sinal: sem esta folga, todo assinante
+ * sem rede vira grátis no pior momento possível.
+ */
+export const FOLGA_REVALIDACAO_DIAS = 7;
+
+/**
+ * O cache local do plano ainda vale, mesmo sem conseguir falar com o servidor
+ * agora? `null`/data ilegível conta como "nunca revalidado" → fora da folga.
+ * A folga só ENCURTA um plano pago na ausência de rede, nunca ESTICA um plano
+ * que o servidor já teria revogado — por isso ela nunca é usada pra CONCEDER
+ * `plus`, só pra evitar derrubar um `plus` que já era real momentos atrás.
+ */
+export function dentroDaFolgaRevalidacao(revalidadoEmISO: string | null, agora: Date): boolean {
+  if (!revalidadoEmISO) return false;
+  const ms = Date.parse(revalidadoEmISO);
+  if (Number.isNaN(ms)) return false;
+  return agora.getTime() <= ms + FOLGA_REVALIDACAO_DIAS * 24 * 60 * 60 * 1000;
+}

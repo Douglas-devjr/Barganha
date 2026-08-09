@@ -23,6 +23,7 @@ import type {
   DeltaSyncResponse,
   DenunciaPrecoRequest,
   DenunciaPrecoResponse,
+  EstadoContaResponse,
   HistoricoCuponsResponse,
   IngestaoHtmlRequest,
   IngestaoQrRequest,
@@ -251,6 +252,18 @@ export class ClienteApi {
     const token = await this.resolverToken();
     if (!token) throw new ErroApi(401, 'Entre na sua conta para lançar um preço.');
     return this.requisitar<LancamentoManualResponse>('POST', '/lancamento-manual', req, token);
+  }
+
+  /**
+   * `GET /conta/estado` (C13.2) — PRIVADO: o plano de verdade, vindo do
+   * backend (`gratis`/`plus` + `validoAte`). É contra isto que `usePlano`
+   * revalida o cache local (folga de 7 dias sem rede, docs/21). Propaga
+   * erro/offline — quem chama decide o que fazer com o cache velho.
+   */
+  async obterEstadoConta(): Promise<EstadoContaResponse> {
+    const token = await this.resolverToken();
+    if (!token) throw new ErroApi(401, 'Sem sessão para consultar o plano.');
+    return this.requisitar<EstadoContaResponse>('GET', '/conta/estado', undefined, token);
   }
 
   /** `POST /sync/estatisticas` (C4.2) — ANÔNIMO. Delta desde o cursor. */

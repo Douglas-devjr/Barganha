@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  FOLGA_REVALIDACAO_DIAS,
   GRAFICO_GRATIS_DIAS,
   HISTORICO_GRATIS_MESES,
   LIMITES_GRATIS,
@@ -8,6 +9,7 @@ import {
   PLANO_PADRAO,
   RECURSOS,
   aplicarTeto,
+  dentroDaFolgaRevalidacao,
   dentroDoGrafico,
   dentroDoHistorico,
   ePlano,
@@ -117,5 +119,28 @@ describe('contagens', () => {
       visiveis: ['a'],
       ocultos: 0,
     });
+  });
+});
+
+describe('folga de revalidação (C13.2/C13.5)', () => {
+  it('dentro dos 7 dias, o cache ainda vale', () => {
+    expect(FOLGA_REVALIDACAO_DIAS).toBe(7);
+    const revalidadoEm = '2026-07-25T12:00:00.000Z'; // 6 dias antes de AGORA
+    expect(dentroDaFolgaRevalidacao(revalidadoEm, AGORA)).toBe(true);
+  });
+
+  it('passou dos 7 dias, o cache não vale mais', () => {
+    const revalidadoEm = '2026-07-20T00:00:00.000Z'; // 11 dias antes de AGORA
+    expect(dentroDaFolgaRevalidacao(revalidadoEm, AGORA)).toBe(false);
+  });
+
+  it('exatamente no limite dos 7 dias ainda vale', () => {
+    const revalidadoEm = new Date(AGORA.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
+    expect(dentroDaFolgaRevalidacao(revalidadoEm, AGORA)).toBe(true);
+  });
+
+  it('nunca revalidado (null) ou data ilegível conta como fora da folga', () => {
+    expect(dentroDaFolgaRevalidacao(null, AGORA)).toBe(false);
+    expect(dentroDaFolgaRevalidacao('nao-e-data', AGORA)).toBe(false);
   });
 });

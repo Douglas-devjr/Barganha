@@ -25,6 +25,9 @@ const CHAVE_HISTORICO_RESTAURADO = 'historico_restaurado_em';
 const CHAVE_IDS_RECUPERADOS = 'ids_recuperados_delta';
 const CHAVE_ESCOPOS_SYNC = 'escopos_delta';
 const CHAVE_PLANO = 'plano';
+const CHAVE_PLANO_ORIGEM = 'plano_origem';
+const CHAVE_PLANO_VALIDO_ATE = 'plano_valido_ate';
+const CHAVE_PLANO_REVALIDADO_EM = 'plano_revalidado_em';
 const CHAVE_NOTIFICACAO_PEDIDA = 'notificacao_permissao_pedida';
 
 export async function obterMeta(chave: string): Promise<string | null> {
@@ -213,23 +216,67 @@ export interface LocalEscolhido {
 }
 
 /**
- * C13.1/C13.5 — Plano da conta (grátis × Barganha+).
+ * C13.2/C13.5 — Plano da conta (grátis × Barganha+): cache local do que o
+ * backend disse em `GET /conta/estado`, MAIS o interruptor de teste das
+ * Configurações da conta (que continua existindo até o C13.3 trazer cobrança
+ * de verdade — docs/21).
  *
- * PROVISÓRIO, e de propósito: hoje o plano mora SÓ no aparelho e só o
- * interruptor de teste das Configurações o altera. Ninguém paga nada — não há
- * cobrança nem Google Play Billing (C13.3). Quando o C13.2 chegar, a verdade
- * passa a vir do backend e este valor vira o CACHE dela (com a folga de 7 dias
- * sem rede prevista em docs/21) — a leitura do resto do app não muda.
+ * As duas fontes não se misturam por causa da `origem`:
+ *   • `servidor` — o valor veio de `GET /conta/estado`. `usePlano` revalida
+ *     contra o backend a cada sessão; se a rede falhar, o cache aguenta até
+ *     `FOLGA_REVALIDACAO_DIAS` (docs/21) e só então degrada pra `gratis`.
+ *   • `simulado` — o interruptor de teste mandou. `usePlano` NÃO tenta
+ *     revalidar contra o servidor enquanto a origem for esta: é o jeito de
+ *     conferir a tela como assinante sem que a resposta real (hoje sempre
+ *     `gratis`, porque nada em C13.3/C13.4 escreve `assinatura` ainda)
+ *     sobrescreva a simulação no próximo boot.
  *
- * Valor ausente ou desconhecido = `gratis`. Nunca o contrário: um dado
+ * Plano ausente ou desconhecido = `gratis`. Nunca o contrário: um dado
  * corrompido não pode conceder o plano pago.
  */
-export async function obterPlano(): Promise<Plano> {
-  const valor = await obterMeta(CHAVE_PLANO);
-  return ePlano(valor) ? valor : PLANO_PADRAO;
+export type OrigemPlano = 'servidor' | 'simulado';
+
+export interface EstadoPlanoLocal {
+  plano: Plano;
+  /** `null` = nunca gravado (nem servidor, nem simulação) nesta sessão. */
+  origem: OrigemPlano | null;
+  /** ISO 8601, ou `null` (grátis, ou plus sem validade). Só existe com origem `servidor`. */
+  validoAte: string | null;
+  /** Instante (ISO) da última resposta bem-sucedida de `GET /conta/estado` — base da folga de 7 dias. */
+  revalidadoEm: string | null;
 }
 
-export const definirPlano = (plano: Plano): Promise<void> => definirMeta(CHAVE_PLANO, plano);
+export async function obterEstadoPlanoLocal(): Promise<EstadoPlanoLocal> {
+  const [plano, origem, validoAte, revalidadoEm] = await Promise.all([
+    obterMeta(CHAVE_PLANO),
+    obterMeta(CHAVE_PLANO_ORIGEM),
+    obterMeta(CHAVE_PLANO_VALIDO_ATE),
+    obterMeta(CHAVE_PLANO_REVALIDADO_EM),
+  ]);
+  return {
+    plano: ePlano(plano) ? plano : PLANO_PADRAO,
+    origem: origem === 'servidor' || origem === 'simulado' ? origem : null,
+    validoAte: validoAte || null,
+    revalidadoEm: revalidadoEm || null,
+  };
+}
+
+/** O interruptor de teste (Configurações da conta) chama isto. */
+export async function definirPlanoSimulado(plano: Plano): Promise<void> {
+  await definirMeta(CHAVE_PLANO, plano);
+  await definirMeta(CHAVE_PLANO_ORIGEM, 'simulado');
+}
+
+/** C13.2 — grava a resposta de `GET /conta/estado` e marca o instante da revalidação. */
+export async function definirPlanoServidor(plano: Plano, validoAte: string | null): Promise<void> {
+  await definirMeta(CHAVE_PLANO, plano);
+  await definirMeta(CHAVE_PLANO_ORIGEM, 'servidor');
+  await definirMeta(CHAVE_PLANO_VALIDO_ATE, validoAte ?? '');
+  await definirMeta(CHAVE_PLANO_REVALIDADO_EM, new Date().toISOString());
+}
+
+/** A folga sem rede estourou: derruba pro grátis. A origem fica — a próxima revalidação tenta de novo. */
+export const degradarPlanoParaGratis = (): Promise<void> => definirMeta(CHAVE_PLANO, PLANO_PADRAO);
 
 export async function obterLocalEscolhido(): Promise<LocalEscolhido | null> {
   const [uf, municipio] = await Promise.all([
