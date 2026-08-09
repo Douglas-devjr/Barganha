@@ -200,6 +200,7 @@ const itensComEvidencia = [
   ),
   ...mapa.bloqueadores.map((b) => ({ tipo: 'bloqueador', nome: b.titulo, arquivos: b.arquivos })),
   ...mapa.regras.map((r) => ({ tipo: 'regra', nome: r.titulo, arquivos: r.onde })),
+  ...mapa.validacaoReal.map((v) => ({ tipo: 'validação', nome: v.titulo, arquivos: v.onde })),
 ];
 
 for (const item of itensComEvidencia) {
@@ -882,6 +883,44 @@ function blocoPublicar() {
   return `<div class="fase-cards">${fases}</div>`;
 }
 
+/* ── Validação no real ──────────────────────────────────────────────────── */
+
+function blocoValidacao() {
+  const cards = mapa.validacaoReal
+    .map(
+      (v, i) => `
+    <article class="valid" id="valid-${esc(v.id)}">
+      <header>
+        <span class="bloq-n">${i + 1}</span>
+        <h3>${esc(v.titulo)}</h3>
+        ${v.etapa ? `<a class="chip etapa" href="#etapa-${esc(v.etapa)}">${esc(v.etapa)}</a>` : ''}
+      </header>
+      <p class="porque"><span class="rot">Por que o teste não prova</span>${rico(v.porque)}</p>
+      ${
+        (v.precisa ?? []).length
+          ? `<div class="v-bloco"><span class="rot">Precisa antes</span>
+        <ul class="v-precisa">${v.precisa.map((p) => `<li>${rico(p)}</li>`).join('')}</ul></div>`
+          : ''
+      }
+      <div class="v-bloco"><span class="rot">Como testar</span>
+        <ol class="v-passos">${v.passos.map((p) => `<li>${rico(p)}</li>`).join('')}</ol></div>
+      <p class="v-ok"><span class="rot">Funcionou se</span>${rico(v.sucesso)}</p>
+      ${v.falhou ? `<p class="v-falhou"><span class="rot">Se falhar</span>${rico(v.falhou)}</p>` : ''}
+      ${(v.onde ?? []).length ? `<p class="onde">${v.onde.map((o) => `<code>${esc(o)}</code>`).join(' ')}</p>` : ''}
+      ${
+        v.prompt
+          ? `<div class="prompt-caixa">
+        <div class="prompt-rot"><span class="rot">Cole no Claude Code</span><button type="button" class="copiar" data-copiar="prompt-${esc(v.id)}">Copiar</button></div>
+        <pre class="prompt" id="prompt-${esc(v.id)}">${esc(v.prompt)}</pre>
+      </div>`
+          : ''
+      }
+    </article>`,
+    )
+    .join('');
+  return `<div class="bloqs">${cards}</div>`;
+}
+
 /* ── Dívidas ────────────────────────────────────────────────────────────── */
 
 function blocoDividas() {
@@ -1145,6 +1184,27 @@ pre.prompt{
   font:12px/1.55 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; color:var(--ink);
   white-space:pre-wrap; word-break:break-word; max-width:none;
 }
+
+/* ── validação no real ────────────────────────────────────────────────── */
+.valid{
+  background:var(--card); border:1px solid var(--line); border-left:3px solid var(--warn-pt);
+  border-radius:var(--r); padding:16px 18px; box-shadow:var(--sombra);
+}
+.valid header{display:flex; align-items:baseline; gap:11px; margin-bottom:9px; flex-wrap:wrap}
+.valid h3{font-size:15.5px; flex:1 1 240px}
+.valid p{max-width:78ch; font-size:13.5px; color:var(--sub)}
+.v-bloco{margin-top:11px}
+.valid .porque{margin-bottom:2px}
+.v-precisa,.v-passos{margin:0; padding-left:20px; display:grid; gap:5px}
+.v-precisa li,.v-passos li{font-size:13.5px; color:var(--sub); max-width:76ch}
+.v-precisa{list-style:disc}
+.v-passos li::marker{font-variant-numeric:tabular-nums; font-weight:700; color:var(--faint)}
+.v-ok{
+  margin-top:12px; padding:10px 12px; border-radius:9px;
+  background:var(--ok-bg); border:1px solid var(--ok-line); color:var(--ink);
+}
+.v-ok .rot{color:var(--ok)}
+.v-falhou{margin-top:8px}
 
 /* ── trilha ───────────────────────────────────────────────────────────── */
 .trilha{display:grid; grid-template-columns:repeat(auto-fit,minmax(196px,1fr)); gap:10px; align-items:start}
@@ -1586,6 +1646,7 @@ const abas = [
   ['regras', 'Regras'],
   ['etapas', 'Etapas'],
   ['publicar', 'Publicar'],
+  ['validacao', 'Testar no real'],
   ['dividas', 'Dívidas'],
   ['skills', 'Skills'],
   ['sincronia', 'Sincronia'],
@@ -1676,22 +1737,29 @@ ${seccao(
   blocoPublicar(),
 )}
 ${seccao(
-  'dividas',
+  'validacao',
   '10',
+  'O que só o aparelho de verdade prova',
+  `São ${mapa.validacaoReal.length} coisas que passam no CI e ainda assim podem estar quebradas na mão do usuário: permissão do sistema, credencial de push, câmera, rede caindo, portal da SEFAZ com captcha. Teste automatizado prova decisão; nenhum deles prova entrega. Cada item tem o passo a passo e o sinal de que funcionou.`,
+  blocoValidacao(),
+)}
+${seccao(
+  'dividas',
+  '11',
   'Dívidas conscientes',
   'Coisas que estão certas hoje e viram problema em um momento específico. Estão aqui para você não gastar tempo consertando cedo, e não ser pego de surpresa depois.',
   blocoDividas(),
 )}
 ${seccao(
   'skills',
-  '11',
+  '12',
   'Skills e agentes que valem a pena',
   'O que já está instalado e você deveria usar mais, o que vale criar de específico para o Barganha, e qual agente chamar para cada frente.',
   blocoSkills(),
 )}
 ${seccao(
   'sincronia',
-  '12',
+  '13',
   'Como este painel se mantém junto com o código',
   totalDeriva === 0
     ? `Tudo em sincronia: as ${fatos.evidenciasOk} evidências citadas existem no código e nenhuma rota ou tela ficou sem dono.`

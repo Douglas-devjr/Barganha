@@ -1742,13 +1742,15 @@ export const funcoes = [
     status: 'pronto',
     oque: 'Avisa quando um produto que você acompanha cai de preço na sua região — inclusive com o app fechado, por notificação push.',
     detalhe:
-      'O SQLite local continua sendo a fonte da verdade (funciona 100% offline, como antes); toda vez que o usuário cria/remove um alvo, um espelho é sincronizado no servidor (best-effort, nunca bloqueia o app) para o job `alerta-preco-servidor` avisar mesmo com o app fechado. Desligar a chave-mestra ou sair da conta apaga esse espelho — o controle de privacidade não pode "mentir" continuando a avisar depois de desligado.',
+      'O SQLite local continua sendo a fonte da verdade (funciona 100% offline, como antes); toda vez que o usuário cria/remove um alvo, um espelho é sincronizado no servidor (best-effort, nunca bloqueia o app) para o job `alerta-preco-servidor` avisar mesmo com o app fechado. Desligar a chave-mestra ou sair da conta apaga esse espelho — o controle de privacidade não pode "mentir" continuando a avisar depois de desligado. Tocar no aviso abre o produto: o push viaja com o id do produto e o app o consome no toque, inclusive quando o toque é o que LANÇOU o app (aí o destino fica estacionado até a navegação existir).',
     ligacoes: ['notificacoes', 'sincronizador', 'editar-produto', 'alerta-preco-servidor'],
     arquivos: [
       'app/src/telas/AlertasTela.tsx',
       'app/src/nucleo/alertas.ts',
       'app/src/nucleo/alertas-regras.ts',
       'app/src/nucleo/notificacoes-push.ts',
+      'app/src/nucleo/notificacoes-push-regras.ts',
+      'app/src/navegacao/ref.ts',
       'app/src/dados/repositorio-alertas.ts',
       'shared/src/dominio/alertas-regras.ts',
     ],
@@ -2889,9 +2891,8 @@ export const etapas = [
     codigo: 'C8.4',
     nome: 'Alertas + tendência',
     fase: 'Pós',
-    status: 'parcial',
-    oque: 'Alerta de queda de preço e feed local de avisos.',
-    falta: 'Não existe push: o aviso só aparece com o app aberto.',
+    status: 'pronto',
+    oque: 'Alerta de queda de preço por push (mesmo com o app fechado) e feed local de avisos.',
   },
   {
     codigo: 'C8.4.1',
@@ -3299,7 +3300,153 @@ export const publicacao = {
 };
 
 /* ────────────────────────────────────────────────────────────────────────────
-   7. DÍVIDAS conscientes — correto hoje, problema amanhã.
+   7. VALIDAÇÃO NO REAL — o que só um aparelho de verdade prova.
+   ──────────────────────────────────────────────────────────────────────────── */
+
+/**
+ * Teste automatizado prova DECISÃO ("dado este preço, dispara?"). Não prova
+ * ENTREGA: permissão do sistema, credencial de push, câmera, rede caindo,
+ * portal da SEFAZ com captcha. Cada item aqui é uma coisa que passa no CI e
+ * ainda assim pode estar quebrada no aparelho — com o passo a passo de como
+ * provar que não está.
+ */
+export const validacaoReal = [
+  {
+    id: 'v1',
+    titulo: 'O push de alerta chega com o app fechado',
+    etapa: 'C8.4',
+    porque:
+      'Os 26 testes da corrente de alerta provam a decisão e o envio em memória — nenhum deles fala com o Expo Push, com o FCM ou com a bandeja do Android. Emulador não recebe push (o próprio código pula: `Device.isDevice`) e o Expo Go também não serve.',
+    precisa: [
+      '**Credencial FCM — hoje não existe no repo.** `expo-notifications` está instalado, mas não há `google-services.json` nem `android.googleServicesFile` no `app/app.json`. Sem isso `getExpoPushTokenAsync` falha no Android e nenhum token sobe. É o primeiro passo, não um detalhe.',
+      'Dev build EAS num Android físico (perfil `development`, que já tem `developmentClient: true`).',
+      '`SUPABASE_URL` e `SUPABASE_SERVICE_ROLE_KEY` no ambiente de quem roda o job.',
+    ],
+    passos: [
+      'Criar o projeto no Firebase, baixar o `google-services.json`, apontá-lo em `app/app.json` (`android.googleServicesFile`) e subir a chave FCM V1 com `cd app && eas credentials`.',
+      'Buildar e instalar: `cd app && eas build --profile development --platform android`.',
+      'No app, abrir um produto e criar um alerta de preço. A permissão de notificação só é pedida no PRIMEIRO alerta do aparelho — aceite quando aparecer.',
+      'Conferir no Supabase que `dispositivo_push` ganhou uma linha sua e `alerta_preco` ganhou o alvo. Se `dispositivo_push` está vazio, pare aqui: o token não subiu.',
+      'Forçar a condição: editar o alerta com um alvo ACIMA da mediana atual do produto na sua região, para ele disparar já na primeira rodada.',
+      'FECHAR o app (matar pelo gerenciador de tarefas, não só minimizar) e rodar `cd backend && npm run job:alerta-preco` — ou disparar `alerta-preco.yml` pelo "Run workflow" no GitHub.',
+    ],
+    sucesso:
+      'A notificação "Preço baixou" aparece na bandeja com o app fechado, e `alerta_preco.disparado_em` fica carimbado. Rodar o job DE NOVO não pode mandar um segundo aviso: o alvo já disparou e só rearma se o preço subir 5% acima dele.',
+    falhou:
+      '`dispositivo_push` vazio = o token nunca subiu (procure `push.obter_token` / `push.registrar_token` no log do app). Linha existe e nada chega = credencial FCM. Chega mas repete a cada rodada = `disparado_em` não está sendo persistido.',
+    onde: ['backend/src/jobs/alerta-preco.ts', 'app/src/nucleo/notificacoes-push.ts'],
+    prompt:
+      'Quero validar o push de alerta de preço (item v1 do painel) num Android físico — a parte de escanear/tocar é manual, você não faz por mim. Me guia: primeiro conferir se a credencial FCM está configurada (google-services.json + android.googleServicesFile em app/app.json + eas credentials), depois subir o dev build, e por fim rodar `npm run job:alerta-preco` no backend enquanto eu acompanho a bandeja do aparelho. Vá conferindo comigo as linhas de `dispositivo_push` e `alerta_preco` no Supabase a cada passo. No fim, atualiza o item v1 em painel/mapa.mjs com o que deu e roda `npm run painel`.',
+  },
+  {
+    id: 'v2',
+    titulo: 'Tocar na notificação abre o produto certo — inclusive no arranque frio',
+    etapa: 'C8.4',
+    porque:
+      'É o caminho mais frágil do push e o único que nenhum teste alcança: quando o toque LANÇA o app, o destino precisa sobreviver aos gates (consentimento → login → abertura) antes de existir navegação. O teste cobre a decisão e a dedupe; a ordem real dos gates, não.',
+    precisa: ['O v1 funcionando (é o mesmo aparelho e o mesmo push).'],
+    passos: [
+      'FRIO: matar o app, disparar o job, tocar na notificação.',
+      'SEGUNDO PLANO: abrir o app, minimizar, disparar o job, tocar na notificação.',
+      'ABERTO: deixar o app aberto em outra aba, disparar o job, tocar no banner.',
+      'Repetir o caso FRIO com um alerta de OUTRO produto, estando já na tela de um produto.',
+    ],
+    sucesso:
+      'Nos três casos o app termina na tela do produto certo. No frio ele passa pela splash e chega lá sozinho. E o "voltar" sai do produto para onde você estava — se voltar para a MESMA tela de produto, a tela empilhou duas vezes e a dedupe do arranque frio não pegou.',
+    falhou:
+      'Abriu o app mas ficou na tela de sempre = o payload chegou sem `produtoCanonicoId` (confira o `data` que o job monta). Abriu empilhado = dedupe. Abriu numa tela vazia de produto = o id não está no catálogo local daquele aparelho.',
+    onde: ['app/src/nucleo/notificacoes-push-regras.ts', 'app/src/navegacao/ref.ts', 'app/App.tsx'],
+    prompt:
+      'Quero validar o toque na notificação de alerta (item v2 do painel) — os três estados do app (fechado, segundo plano, aberto). Me guia nos passos e me ajuda a ler o log do app enquanto eu toco nas notificações no aparelho. Presta atenção especial no arranque frio e no "voltar" (tela empilhada). No fim, atualiza o item v2 em painel/mapa.mjs e roda `npm run painel`.',
+  },
+  {
+    id: 'v3',
+    titulo: 'A captura de cupom do RJ sobrevive ao reCAPTCHA',
+    etapa: 'C2.6',
+    porque:
+      'O portal do RJ é protegido por captcha e a captura passa por WebView. A recusa já é tratada (vira 422 `erro_portal` + recarga automática), mas contra fixture — não contra o portal real, que oscila. É o mesmo ponto do bloqueador b5, e é pré-requisito do beta: se o RJ falhar, os testadores não escaneiam nada.',
+    precisa: [
+      'Dev build no aparelho e o backend alcançável pela LAN (`app/.env` com o IP da máquina, nunca `localhost`).',
+      'Cupons fiscais de papel do RJ, de verdade.',
+    ],
+    passos: [
+      'Subir o backend e deixar o log dele à vista.',
+      'Escanear uns 10 cupons reais do RJ seguidos, sem intervalo.',
+      'Observar no log quantos viram 422 `erro_portal` e se a recarga automática recupera sozinha.',
+    ],
+    sucesso:
+      'Todo cupom termina processado, mesmo os que bateram no captcha na primeira tentativa — sem o usuário precisar fazer nada além de esperar.',
+    falhou:
+      'Se a recarga não recupera, a captura do RJ trava no beta inteiro. Uma nota que fica em "Enviando/Processando" para sempre normalmente é backend fora do ar, não captcha.',
+    onde: ['app/src/componentes/ColetorNotaWeb.tsx', 'backend/src/parsers/rj.ts'],
+    prompt:
+      'Quero validar a captura do RJ num aparelho físico (item v3 do painel, mesmo assunto do bloqueador b5). Sobe o backend, me diz o IP certo pro app/.env, e acompanha o log comigo enquanto eu escaneio uns 10 cupons reais do RJ — conta quantos bateram no captcha e se a recarga automática recuperou sozinha. No fim, atualiza o item v3 e o bloqueador b5 em painel/mapa.mjs e roda `npm run painel`.',
+  },
+  {
+    id: 'v4',
+    titulo: 'A câmera não fica preta ao voltar para o scanner',
+    etapa: 'C7.1',
+    porque:
+      'A prop `active` do `expo-camera` 16 é só de iOS. No Android a solução é DESMONTAR o `CameraView` fora de foco (`useCameraAtiva`) — e tela preta é exatamente o tipo de defeito que nenhum teste vê e todo usuário vê.',
+    precisa: ['Android físico (o emulador tem câmera falsa e não reproduz).'],
+    passos: [
+      'Abrir o scanner, sair para outra aba e voltar. Cinco vezes.',
+      'Abrir o scanner, minimizar o app, esperar uns segundos, voltar.',
+      'Repetir no scanner de código de barras da gôndola, que é a outra tela com câmera.',
+    ],
+    sucesso: 'O preview sempre volta a aparecer. Nenhuma vez fica preto ou congelado.',
+    falhou: 'Preto ao voltar = o `CameraView` continuou montado fora de foco.',
+    onde: ['app/src/nucleo/camera.ts', 'app/src/telas/ScannerTela.tsx'],
+    prompt:
+      'Quero validar a câmera no Android (item v4 do painel): tela preta ao voltar para o scanner. Me lembra o roteiro e me ajuda a ler o log se acontecer. Se reproduzir, investiga `useCameraAtiva` em app/src/nucleo/camera.ts. No fim, atualiza o item v4 em painel/mapa.mjs e roda `npm run painel`.',
+  },
+  {
+    id: 'v5',
+    titulo: 'O app inteiro funciona no modo avião',
+    etapa: 'C5.4',
+    porque:
+      'Offline é decisão travada, não recurso: registrar cupom e consultar preço têm que funcionar sem rede. Os testes cobrem a fila e o cache isolados; o que só o aparelho prova é a fila DRENANDO sozinha quando a rede volta, sem o usuário pedir.',
+    precisa: ['Aparelho com uma conta já logada e alguns cupons já escaneados.'],
+    passos: [
+      'Ligar o modo avião.',
+      'Escanear um cupom: ele tem que ser aceito e ficar na fila, sem erro na cara do usuário.',
+      'Consultar um produto que você já tem no catálogo: o veredito tem que sair do cache.',
+      'Desligar o modo avião e deixar o app aberto.',
+    ],
+    sucesso:
+      'A fila drena sozinha em segundos, sem você tocar em nada, e o cupom aparece processado no histórico.',
+    falhou:
+      'Erro na cara do usuário durante o avião = alguma chamada não está passando pela fila. Fila que não drena ao voltar = o gatilho de `AppState`/rede.',
+    onde: ['app/src/dados/repositorio-fila.ts', 'app/src/nucleo/sincronizador.ts'],
+    prompt:
+      'Quero validar o fluxo offline no aparelho (item v5 do painel): modo avião, escanear, consultar, religar a rede e ver a fila drenar sozinha. Me guia no roteiro e acompanha o log do app e do backend comigo. No fim, atualiza o item v5 em painel/mapa.mjs e roda `npm run painel`.',
+  },
+  {
+    id: 'v6',
+    titulo: 'O link do e-mail de confirmação volta para o app',
+    etapa: 'C4.3.1',
+    porque:
+      'O link `barganha://` não abre o app quando clicado no e-mail do celular. A ponte é uma página HTTPS (`site/auth-callback.html`) que redireciona — e ela só funciona DEPOIS de publicada no GitHub Pages. Um cadastro que não confirma trava o testador logo no primeiro minuto.',
+    precisa: [
+      'A pasta `site/` publicada (`npm run publicar:site`).',
+      'Um e-mail de verdade, aberto no próprio celular.',
+    ],
+    passos: [
+      'Cadastrar uma conta nova pelo app, com um e-mail que você acessa no celular.',
+      'Abrir o e-mail NO CELULAR e tocar no link de confirmação.',
+      'Repetir com o fluxo de "esqueci a senha".',
+    ],
+    sucesso: 'O navegador abre a ponte e devolve para o app, já logado (ou na tela de nova senha).',
+    falhou:
+      'Se ficar preso no navegador, a página da ponte não está publicada ou o `scheme` não bate com o `barganha` do `app.json`.',
+    onde: ['site/auth-callback.html', 'app/src/auth/contexto.tsx'],
+    prompt:
+      'Quero validar o link de e-mail de auth no celular (item v6 do painel). Primeiro confere se site/auth-callback.html está publicado no GitHub Pages (npm run publicar:site) e se o scheme bate com o app.json, depois me guia no teste de cadastro e de "esqueci a senha" com e-mail real. No fim, atualiza o item v6 em painel/mapa.mjs e roda `npm run painel`.',
+  },
+];
+
+/* ────────────────────────────────────────────────────────────────────────────
+   8. DÍVIDAS conscientes — correto hoje, problema amanhã.
    ──────────────────────────────────────────────────────────────────────────── */
 
 export const dividas = [
@@ -3325,13 +3472,6 @@ export const dividas = [
     onde: 'backend/src/curadoria/',
   },
   {
-    titulo: 'Alerta de preço sem push',
-    hoje: 'O aviso aparece quando o app abre.',
-    quando:
-      'É a expectativa do usuário para a palavra "alerta" — vira reclamação assim que houver usuário.',
-    onde: 'app/src/nucleo/alertas-regras.ts',
-  },
-  {
     titulo: 'Constantes estatísticas não calibradas',
     hoje: 'Valores conservadores e documentados, com o raciocínio escrito.',
     quando:
@@ -3341,7 +3481,7 @@ export const dividas = [
 ];
 
 /* ────────────────────────────────────────────────────────────────────────────
-   8. SKILLS recomendadas
+   9. SKILLS recomendadas
    ──────────────────────────────────────────────────────────────────────────── */
 
 export const skills = [
