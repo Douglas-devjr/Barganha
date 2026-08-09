@@ -465,8 +465,8 @@ footer{max-width:1180px; margin:0 auto; padding:0 24px 72px; font-size:12px; col
   <div class="topo-in">
     <span class="marca">Barganha <span>painel do projeto</span></span>
     <span class="topo-meta">
-      <span class="selo">commit <code>3052343</code> · 08/08/2026</span>
-      <span class="selo sujo">1 arquivo(s) sem commit</span>
+      <span class="selo">commit <code>c9a3249</code> · 08/08/2026</span>
+      <span class="selo sujo">6 arquivo(s) sem commit</span>
       <span class="selo">gerado em 08 de agosto de 2026</span>
     </span>
   </div>
@@ -1900,7 +1900,7 @@ footer{max-width:1180px; margin:0 auto; padding:0 24px 72px; font-size:12px; col
         <span class="fn-area">Telas do app</span>
       </header>
       <p class="oque">Decide o que cada plano pode ver: histórico de 3 meses, gráfico de 30 dias, 3 alertas e 3 mercados no ranking — ou tudo, no Barganha+.</p>
-      <p class="falta"><span class="rot">O que falta</span>Ninguém paga nada: não há cobrança nem Google Play Billing (C13.3), e o plano vive só no aparelho, alternado por um interruptor de teste nas Configurações da conta. O servidor já tem a tabela <code>assinatura</code> (com RLS) e expõe <code>GET /conta/estado</code> (C13.2), mas nenhuma tela do app chama esse endpoint ainda — a folga de 7 dias sem rede continua sem sentido enquanto não houver o que revalidar. Também não existe o plus por contribuição (C13.4). Dos cortes da tabela, quatro estão declarados sem gate aplicado — dependem de telas que ainda não existem. E os gates das telas não têm teste próprio.</p>
+      <p class="falta"><span class="rot">O que falta</span>Ninguém paga nada: não há cobrança nem Google Play Billing (C13.3), nem plus por contribuição (C13.4) — hoje toda conta real lê <code>gratis</code> do servidor. Dos cortes da tabela, quatro recursos seguem sem gate aplicado: três dependem de telas que ainda não existem (estatísticas C8.3, economia detalhada C8.4.1, ocultar ofertas C12.4) e o quarto, trocar de região livremente, precisa guardar a data da última troca. E os gates das telas que já existem (histórico, gráfico, alertas, ranking) e a revalidação não têm teste próprio.</p>
       <div class="chips">
         <button type="button" class="chip liga" data-ir="plano">ver no mapa</button>
         <a class="chip etapa" href="#etapa-C13.1">C13.1</a><a class="chip etapa" href="#etapa-C13.5">C13.5</a>
@@ -2582,15 +2582,15 @@ footer{max-width:1180px; margin:0 auto; padding:0 24px 72px; font-size:12px; col
       <div class="chips"><span class="rot">Etapas</span><a class="chip etapa" href="#etapa-C4.3">C4.3</a></div>
       <details class="det"><summary>Onde mora no código</summary><ul class="arqs"><li class=""><code>backend/src/auth/servico-conta.ts</code></li><li class=""><code>backend/src/http/rotas/conta.ts</code></li></ul></details>
     </article>
-    <article class="fn s-pronto" id="fn-assinatura-backend" data-area="api" data-status="pronto" data-busca="backend da assinatura guarda o plano da conta (grátis ou barganha+) e o expõe para o app consultar. ainda não existe escritor: a tabela só ganha linha em c13.3 (compra confirmada pelo google) e c13.4 (plus por contribuição). o app não chama o endpoint ainda — isso é c13.5. tabela assinatura privada, com rls que só permite ao dono ler a própria linha — nenhuma política de escrita, nem para o dono: só a service role do backend concede plus (diferente do for all de alerta_preco, porque autoconceder assinatura tem valor real, ao contrário de forjar um alerta). um plus com valido_ate vencido (ou ilegível) responde como gratis — o serviço nunca confia num plano expirado por default. api &amp; sync get /conta/estado c13.2">
+    <article class="fn s-pronto" id="fn-assinatura-backend" data-area="api" data-status="pronto" data-busca="backend da assinatura guarda o plano da conta (grátis ou barganha+) e o expõe para o app consultar. ainda não existe escritor: a tabela só ganha linha em c13.3 (compra confirmada pelo google) e c13.4 (plus por contribuição) — hoje toda conta real lê gratis. tabela assinatura privada, com rls que só permite ao dono ler a própria linha — nenhuma política de escrita, nem para o dono: só a service role do backend concede plus (diferente do for all de alerta_preco, porque autoconceder assinatura tem valor real, ao contrário de forjar um alerta). um plus com valido_ate vencido (ou ilegível) responde como gratis — o serviço nunca confia num plano expirado por default. o app já chama o endpoint (c13.5) ao abrir sessão, revalidando o cache local com folga de 7 dias sem rede antes de degradar pro grátis. api &amp; sync get /conta/estado c13.2">
       <header>
         <h3>Backend da assinatura</h3>
         <span class="pill p-pronto"><i></i>pronto</span>
       </header>
       <span class="fn-area">API &amp; sync</span>
       <p class="oque">Guarda o plano da conta (grátis ou Barganha+) e o expõe para o app consultar.</p>
-      <p class="falta"><span class="rot">Falta</span>Ainda não existe escritor: a tabela só ganha linha em C13.3 (compra confirmada pelo Google) e C13.4 (plus por contribuição). O app não chama o endpoint ainda — isso é C13.5.</p>
-      <details class="det"><summary>Por que é assim</summary><p>Tabela <code>assinatura</code> privada, com RLS que só permite ao dono LER a própria linha — nenhuma política de escrita, nem para o dono: só a service role do backend concede <code>plus</code> (diferente do <code>for all</code> de alerta_preco, porque autoconceder assinatura tem valor real, ao contrário de forjar um alerta). Um <code>plus</code> com <code>valido_ate</code> vencido (ou ilegível) responde como <code>gratis</code> — o serviço nunca confia num plano expirado por default.</p></details>
+      <p class="falta"><span class="rot">Falta</span>Ainda não existe escritor: a tabela só ganha linha em C13.3 (compra confirmada pelo Google) e C13.4 (plus por contribuição) — hoje toda conta real lê <code>gratis</code>.</p>
+      <details class="det"><summary>Por que é assim</summary><p>Tabela <code>assinatura</code> privada, com RLS que só permite ao dono LER a própria linha — nenhuma política de escrita, nem para o dono: só a service role do backend concede <code>plus</code> (diferente do <code>for all</code> de alerta_preco, porque autoconceder assinatura tem valor real, ao contrário de forjar um alerta). Um <code>plus</code> com <code>valido_ate</code> vencido (ou ilegível) responde como <code>gratis</code> — o serviço nunca confia num plano expirado por default. O app já chama o endpoint (C13.5) ao abrir sessão, revalidando o cache local com folga de 7 dias sem rede antes de degradar pro grátis.</p></details>
       <div class="rotas"><code class="rota">GET /conta/estado</code></div>
       <div class="chips"><span class="rot">Conversa com</span><button type="button" class="chip liga" data-ir="auth">Autenticação</button><button type="button" class="chip liga" data-ir="plano">Plano grátis × Barganha+</button></div>
       
@@ -2972,20 +2972,20 @@ footer{max-width:1180px; margin:0 auto; padding:0 24px 72px; font-size:12px; col
       <div class="chips"><span class="rot">Etapas</span><a class="chip etapa" href="#etapa-C12.5">C12.5</a></div>
       <details class="det"><summary>Onde mora no código</summary><ul class="arqs"><li class=""><code>app/src/componentes/FolhaDenuncia.tsx</code></li></ul></details>
     </article>
-    <article class="fn s-parcial" id="fn-plano" data-area="app" data-status="parcial" data-busca="plano grátis × barganha+ decide o que cada plano pode ver: histórico de 3 meses, gráfico de 30 dias, 3 alertas e 3 mercados no ranking — ou tudo, no barganha+. ninguém paga nada: não há cobrança nem google play billing (c13.3), e o plano vive só no aparelho, alternado por um interruptor de teste nas configurações da conta. o servidor já tem a tabela assinatura (com rls) e expõe get /conta/estado (c13.2), mas nenhuma tela do app chama esse endpoint ainda — a folga de 7 dias sem rede continua sem sentido enquanto não houver o que revalidar. também não existe o plus por contribuição (c13.4). dos cortes da tabela, quatro estão declarados sem gate aplicado — dependem de telas que ainda não existem. e os gates das telas não têm teste próprio. a regra mora em shared (uma só, testada) e vale para app e backend. duas travas: escanear cupom é ilimitado no grátis para sempre, e o veredito é idêntico nos dois planos — pagar não compra uma verdade melhor. um teste cruza a lista do que nunca pode ser cobrado com a dos recursos pagos e reprova o build se alguém trocar um de lado. telas do app c13.1 c13.5">
+    <article class="fn s-parcial" id="fn-plano" data-area="app" data-status="parcial" data-busca="plano grátis × barganha+ decide o que cada plano pode ver: histórico de 3 meses, gráfico de 30 dias, 3 alertas e 3 mercados no ranking — ou tudo, no barganha+. ninguém paga nada: não há cobrança nem google play billing (c13.3), nem plus por contribuição (c13.4) — hoje toda conta real lê gratis do servidor. dos cortes da tabela, quatro recursos seguem sem gate aplicado: três dependem de telas que ainda não existem (estatísticas c8.3, economia detalhada c8.4.1, ocultar ofertas c12.4) e o quarto, trocar de região livremente, precisa guardar a data da última troca. e os gates das telas que já existem (histórico, gráfico, alertas, ranking) e a revalidação não têm teste próprio. a regra mora em shared (uma só, testada) e vale para app e backend. duas travas: escanear cupom é ilimitado no grátis para sempre, e o veredito é idêntico nos dois planos — pagar não compra uma verdade melhor. um teste cruza a lista do que nunca pode ser cobrado com a dos recursos pagos e reprova o build se alguém trocar um de lado. o app já consulta get /conta/estado (c13.2) ao abrir sessão e cacheia o resultado com folga de 7 dias sem rede antes de degradar pro grátis (nunca o contrário — a folga nunca estica um plano pago). o interruptor de teste das configurações da conta continua à parte: enquanto ele for a última escolha, o app não revalida contra o servidor, pra simulação não ser apagada no próximo boot. telas do app c13.1 c13.5">
       <header>
         <h3>Plano grátis × Barganha+</h3>
         <span class="pill p-parcial"><i></i>parcial</span>
       </header>
       <span class="fn-area">Telas do app</span>
       <p class="oque">Decide o que cada plano pode ver: histórico de 3 meses, gráfico de 30 dias, 3 alertas e 3 mercados no ranking — ou tudo, no Barganha+.</p>
-      <p class="falta"><span class="rot">Falta</span>Ninguém paga nada: não há cobrança nem Google Play Billing (C13.3), e o plano vive só no aparelho, alternado por um interruptor de teste nas Configurações da conta. O servidor já tem a tabela <code>assinatura</code> (com RLS) e expõe <code>GET /conta/estado</code> (C13.2), mas nenhuma tela do app chama esse endpoint ainda — a folga de 7 dias sem rede continua sem sentido enquanto não houver o que revalidar. Também não existe o plus por contribuição (C13.4). Dos cortes da tabela, quatro estão declarados sem gate aplicado — dependem de telas que ainda não existem. E os gates das telas não têm teste próprio.</p>
-      <details class="det"><summary>Por que é assim</summary><p>A regra mora em shared (uma só, testada) e vale para app e backend. Duas travas: escanear cupom é ilimitado no grátis PARA SEMPRE, e o veredito é idêntico nos dois planos — pagar não compra uma verdade melhor. Um teste cruza a lista do que nunca pode ser cobrado com a dos recursos pagos e reprova o build se alguém trocar um de lado.</p></details>
+      <p class="falta"><span class="rot">Falta</span>Ninguém paga nada: não há cobrança nem Google Play Billing (C13.3), nem plus por contribuição (C13.4) — hoje toda conta real lê <code>gratis</code> do servidor. Dos cortes da tabela, quatro recursos seguem sem gate aplicado: três dependem de telas que ainda não existem (estatísticas C8.3, economia detalhada C8.4.1, ocultar ofertas C12.4) e o quarto, trocar de região livremente, precisa guardar a data da última troca. E os gates das telas que já existem (histórico, gráfico, alertas, ranking) e a revalidação não têm teste próprio.</p>
+      <details class="det"><summary>Por que é assim</summary><p>A regra mora em shared (uma só, testada) e vale para app e backend. Duas travas: escanear cupom é ilimitado no grátis PARA SEMPRE, e o veredito é idêntico nos dois planos — pagar não compra uma verdade melhor. Um teste cruza a lista do que nunca pode ser cobrado com a dos recursos pagos e reprova o build se alguém trocar um de lado. O app já consulta <code>GET /conta/estado</code> (C13.2) ao abrir sessão e cacheia o resultado com folga de 7 dias sem rede antes de degradar pro grátis (nunca o contrário — a folga nunca ESTICA um plano pago). O interruptor de teste das Configurações da conta continua à parte: enquanto ele for a última escolha, o app não revalida contra o servidor, pra simulação não ser apagada no próximo boot.</p></details>
       
       <div class="chips"><span class="rot">Conversa com</span><button type="button" class="chip liga" data-ir="compras">Notas e compras</button><button type="button" class="chip liga" data-ir="produtos">Produtos e detalhe</button><button type="button" class="chip liga" data-ir="alertas">Alertas de preço</button><button type="button" class="chip liga" data-ir="comparar-mercados">Comparar mercados</button><button type="button" class="chip liga" data-ir="perfil">Perfil e conta</button><button type="button" class="chip liga" data-ir="assinatura-backend">Backend da assinatura</button></div>
       
       <div class="chips"><span class="rot">Etapas</span><a class="chip etapa" href="#etapa-C13.1">C13.1</a><a class="chip etapa" href="#etapa-C13.5">C13.5</a></div>
-      <details class="det"><summary>Onde mora no código</summary><ul class="arqs"><li class=""><code>shared/src/plano/direitos.ts</code></li><li class=""><code>app/src/plano/contexto.tsx</code></li><li class=""><code>app/src/plano/FolhaPlus.tsx</code></li><li class=""><code>app/src/componentes/BloqueioPlus.tsx</code></li></ul></details>
+      <details class="det"><summary>Onde mora no código</summary><ul class="arqs"><li class=""><code>shared/src/plano/direitos.ts</code></li><li class=""><code>app/src/plano/contexto.tsx</code></li><li class=""><code>app/src/plano/FolhaPlus.tsx</code></li><li class=""><code>app/src/componentes/BloqueioPlus.tsx</code></li><li class=""><code>app/src/dados/repositorio-meta.ts</code></li><li class=""><code>app/src/api/cliente.ts</code></li></ul></details>
     </article>
     <article class="fn s-pronto" id="fn-ajuda" data-area="app" data-status="pronto" data-busca="ajuda e sem conexão central de ajuda com faq e a tela de &quot;sem internet&quot; com botão de tentar de novo. telas do app c8.2">
       <header>
@@ -4489,8 +4489,8 @@ footer{max-width:1180px; margin:0 auto; padding:0 24px 72px; font-size:12px; col
           <code class="cod">C13.5</code>
           <div class="etapa-corpo">
             <h4>Limites no app <span class="fase-tag pos">Pós</span></h4>
-            <p>Cadeados com prévia do valor no histórico, no gráfico do produto, nos alertas e no ranking de mercados; a folha do Barganha+ abre de qualquer um deles.</p>
-            <p class="falta"><span class="rot">Falta</span>Quatro recursos estão DECLARADOS e não consultados — nenhuma tela chama podeUsar(). Três dependem de telas que não existem (estatísticas C8.3, economia detalhada C8.4.1, ocultar ofertas C12.4) e o quarto, trocar de região livremente, precisa guardar a data da última troca. &quot;Listas ilimitadas&quot; não é um cadeado: o app tem UMA lista, sem id. E a folga de 7 dias sem rede não existe porque o plano ainda não vem do servidor (C13.2). Os gates das telas não têm teste.</p>
+            <p>Cadeados com prévia do valor no histórico, no gráfico do produto, nos alertas e no ranking de mercados; a folha do Barganha+ abre de qualquer um deles. O app consulta <code>GET /conta/estado</code> a cada sessão e cacheia com folga de 7 dias sem rede antes de degradar pro grátis.</p>
+            <p class="falta"><span class="rot">Falta</span>Quatro recursos estão DECLARADOS e não consultados — nenhuma tela chama podeUsar(). Três dependem de telas que não existem (estatísticas C8.3, economia detalhada C8.4.1, ocultar ofertas C12.4) e o quarto, trocar de região livremente, precisa guardar a data da última troca. &quot;Listas ilimitadas&quot; não é um cadeado: o app tem UMA lista, sem id. Os gates das telas e a revalidação não têm teste próprio.</p>
           </div>
           <span class="pill p-parcial"><i></i>parcial</span>
         </li></ol>
@@ -4731,7 +4731,7 @@ footer{max-width:1180px; margin:0 auto; padding:0 24px 72px; font-size:12px; col
       <span class="sec-num">12</span>
       <h2>Como este painel se mantém junto com o código</h2>
     </div>
-    <button class="ouvir" type="button" data-fala="Tudo em sincronia: as 355 evidências citadas existem no código e nenhuma rota ou tela ficou sem dono." aria-label="Ouvir o resumo desta seção">
+    <button class="ouvir" type="button" data-fala="Tudo em sincronia: as 357 evidências citadas existem no código e nenhuma rota ou tela ficou sem dono." aria-label="Ouvir o resumo desta seção">
       <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2 4.5 5H2v6h2.5L8 14zM11 5.5a3.5 3.5 0 0 1 0 5M13 3.5a6 6 0 0 1 0 9"/></svg>
       ouvir
     </button>
@@ -4748,14 +4748,14 @@ footer{max-width:1180px; margin:0 auto; padding:0 24px 72px; font-size:12px; col
       <li><strong>Se você esquecer</strong>, o <code>npm run check</code> (e o CI) roda <code>npm run painel:conferir</code> e reprova: evidência que sumiu e rota/tela nova sem dono aparecem por nome.</li>
     </ol>
   </div>
-  <div class="drift"><p class="ok-drift">&#10003; Tudo em sincronia — as 355 evidências citadas pelo painel existem no código, e nenhuma rota ou tela ficou sem dono.</p></div>
+  <div class="drift"><p class="ok-drift">&#10003; Tudo em sincronia — as 357 evidências citadas pelo painel existem no código, e nenhuma rota ou tela ficou sem dono.</p></div>
 </section>
 </main>
 
 <footer>
   Gerado por <code>npm run painel</code> a partir de <code>painel/mapa.mjs</code> + o estado real do repositório.
-  Último commit lido: <code>3052343</code> — “chore(painel): regenera após commit 86fa968”.
-  Havia 1 arquivo(s) modificado(s) sem commit no momento da geração.
+  Último commit lido: <code>c9a3249</code> — “docs(painel): esclarece que motor de agregação trava em volume do beta, não em código”.
+  Havia 6 arquivo(s) modificado(s) sem commit no momento da geração.
 </footer>
 
 <script>

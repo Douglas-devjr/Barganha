@@ -1434,9 +1434,9 @@ export const funcoes = [
     status: 'pronto',
     oque: 'Guarda o plano da conta (grátis ou Barganha+) e o expõe para o app consultar.',
     detalhe:
-      'Tabela `assinatura` privada, com RLS que só permite ao dono LER a própria linha — nenhuma política de escrita, nem para o dono: só a service role do backend concede `plus` (diferente do `for all` de alerta_preco, porque autoconceder assinatura tem valor real, ao contrário de forjar um alerta). Um `plus` com `valido_ate` vencido (ou ilegível) responde como `gratis` — o serviço nunca confia num plano expirado por default.',
+      'Tabela `assinatura` privada, com RLS que só permite ao dono LER a própria linha — nenhuma política de escrita, nem para o dono: só a service role do backend concede `plus` (diferente do `for all` de alerta_preco, porque autoconceder assinatura tem valor real, ao contrário de forjar um alerta). Um `plus` com `valido_ate` vencido (ou ilegível) responde como `gratis` — o serviço nunca confia num plano expirado por default. O app já chama o endpoint (C13.5) ao abrir sessão, revalidando o cache local com folga de 7 dias sem rede antes de degradar pro grátis.',
     falta:
-      'Ainda não existe escritor: a tabela só ganha linha em C13.3 (compra confirmada pelo Google) e C13.4 (plus por contribuição). O app não chama o endpoint ainda — isso é C13.5.',
+      'Ainda não existe escritor: a tabela só ganha linha em C13.3 (compra confirmada pelo Google) e C13.4 (plus por contribuição) — hoje toda conta real lê `gratis`.',
     ligacoes: ['auth', 'plano'],
     arquivos: [
       'supabase/migrations/20260802090000_assinatura.sql',
@@ -1841,9 +1841,9 @@ export const funcoes = [
     status: 'parcial',
     oque: 'Decide o que cada plano pode ver: histórico de 3 meses, gráfico de 30 dias, 3 alertas e 3 mercados no ranking — ou tudo, no Barganha+.',
     detalhe:
-      'A regra mora em shared (uma só, testada) e vale para app e backend. Duas travas: escanear cupom é ilimitado no grátis PARA SEMPRE, e o veredito é idêntico nos dois planos — pagar não compra uma verdade melhor. Um teste cruza a lista do que nunca pode ser cobrado com a dos recursos pagos e reprova o build se alguém trocar um de lado.',
+      'A regra mora em shared (uma só, testada) e vale para app e backend. Duas travas: escanear cupom é ilimitado no grátis PARA SEMPRE, e o veredito é idêntico nos dois planos — pagar não compra uma verdade melhor. Um teste cruza a lista do que nunca pode ser cobrado com a dos recursos pagos e reprova o build se alguém trocar um de lado. O app já consulta `GET /conta/estado` (C13.2) ao abrir sessão e cacheia o resultado com folga de 7 dias sem rede antes de degradar pro grátis (nunca o contrário — a folga nunca ESTICA um plano pago). O interruptor de teste das Configurações da conta continua à parte: enquanto ele for a última escolha, o app não revalida contra o servidor, pra simulação não ser apagada no próximo boot.',
     falta:
-      'Ninguém paga nada: não há cobrança nem Google Play Billing (C13.3), e o plano vive só no aparelho, alternado por um interruptor de teste nas Configurações da conta. O servidor já tem a tabela `assinatura` (com RLS) e expõe `GET /conta/estado` (C13.2), mas nenhuma tela do app chama esse endpoint ainda — a folga de 7 dias sem rede continua sem sentido enquanto não houver o que revalidar. Também não existe o plus por contribuição (C13.4). Dos cortes da tabela, quatro estão declarados sem gate aplicado — dependem de telas que ainda não existem. E os gates das telas não têm teste próprio.',
+      'Ninguém paga nada: não há cobrança nem Google Play Billing (C13.3), nem plus por contribuição (C13.4) — hoje toda conta real lê `gratis` do servidor. Dos cortes da tabela, quatro recursos seguem sem gate aplicado: três dependem de telas que ainda não existem (estatísticas C8.3, economia detalhada C8.4.1, ocultar ofertas C12.4) e o quarto, trocar de região livremente, precisa guardar a data da última troca. E os gates das telas que já existem (histórico, gráfico, alertas, ranking) e a revalidação não têm teste próprio.',
     ligacoes: [
       'compras',
       'produtos',
@@ -1857,6 +1857,8 @@ export const funcoes = [
       'app/src/plano/contexto.tsx',
       'app/src/plano/FolhaPlus.tsx',
       'app/src/componentes/BloqueioPlus.tsx',
+      'app/src/dados/repositorio-meta.ts',
+      'app/src/api/cliente.ts',
     ],
     etapas: ['C13.1', 'C13.5'],
   },
@@ -3146,7 +3148,7 @@ export const etapas = [
     status: 'pronto',
     oque: 'Tabela privada de assinatura, com RLS, e o estado do plano exposto na conta.',
     detalhe:
-      'Tabela `assinatura` (usuario_id, plano, origem, valido_ate) com RLS só de SELECT do dono — sem política de escrita nem para o dono, porque só a service role do backend pode conceder `plus` (diferente do padrão `for all` de alerta_preco). `GET /conta/estado` devolve `{ plano, validoAte? }`, tratando um `plus` com `valido_ate` vencido (ou ilegível) como `gratis` — nunca confia num plano expirado. Ainda sem escritor: a tabela só ganha linhas em C13.3 (compra) e C13.4 (contribuição). O app não consome o endpoint ainda (C13.5).',
+      'Tabela `assinatura` (usuario_id, plano, origem, valido_ate) com RLS só de SELECT do dono — sem política de escrita nem para o dono, porque só a service role do backend pode conceder `plus` (diferente do padrão `for all` de alerta_preco). `GET /conta/estado` devolve `{ plano, validoAte? }`, tratando um `plus` com `valido_ate` vencido (ou ilegível) como `gratis` — nunca confia num plano expirado. Ainda sem escritor: a tabela só ganha linhas em C13.3 (compra) e C13.4 (contribuição). O app já consome o endpoint (C13.5), revalidando o cache local a cada sessão.',
     arquivos: [
       'supabase/migrations/20260802090000_assinatura.sql',
       'backend/src/servicos/servico-assinatura.ts',
@@ -3177,9 +3179,9 @@ export const etapas = [
     nome: 'Limites no app',
     fase: 'Pós',
     status: 'parcial',
-    oque: 'Cadeados com prévia do valor no histórico, no gráfico do produto, nos alertas e no ranking de mercados; a folha do Barganha+ abre de qualquer um deles.',
+    oque: 'Cadeados com prévia do valor no histórico, no gráfico do produto, nos alertas e no ranking de mercados; a folha do Barganha+ abre de qualquer um deles. O app consulta `GET /conta/estado` a cada sessão e cacheia com folga de 7 dias sem rede antes de degradar pro grátis.',
     falta:
-      'Quatro recursos estão DECLARADOS e não consultados — nenhuma tela chama podeUsar(). Três dependem de telas que não existem (estatísticas C8.3, economia detalhada C8.4.1, ocultar ofertas C12.4) e o quarto, trocar de região livremente, precisa guardar a data da última troca. "Listas ilimitadas" não é um cadeado: o app tem UMA lista, sem id. E a folga de 7 dias sem rede não existe porque o plano ainda não vem do servidor (C13.2). Os gates das telas não têm teste.',
+      'Quatro recursos estão DECLARADOS e não consultados — nenhuma tela chama podeUsar(). Três dependem de telas que não existem (estatísticas C8.3, economia detalhada C8.4.1, ocultar ofertas C12.4) e o quarto, trocar de região livremente, precisa guardar a data da última troca. "Listas ilimitadas" não é um cadeado: o app tem UMA lista, sem id. Os gates das telas e a revalidação não têm teste próprio.',
   },
 ];
 
