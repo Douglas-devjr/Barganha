@@ -351,8 +351,9 @@ describe('Curadoria & moderação (C11) — HTTP', () => {
       const { sugestoes: lista } = sugestoes.json() as {
         sugestoes: { produtoCanonicoId: string }[];
       };
-      if (lista.length > 0) {
-        const { produtoCanonicoId } = lista[0];
+      const primeira = lista[0];
+      if (primeira) {
+        const { produtoCanonicoId } = primeira;
         const r = await app.inject({
           method: 'POST',
           url: '/curadoria/casamento/confirmar',
