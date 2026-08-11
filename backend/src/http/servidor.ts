@@ -12,8 +12,10 @@
  * só como afordância de teste/legado (`servicoConta` injetado nos e2e em memória).
  *
  * Rate-limit (C9.3.2): conta, leitura pública, endpoints privados (por IP antes
- * de autenticar e por CONTA depois) e curadoria têm teto por janela. Por trás de
- * proxy (C10), habilitar `trustProxy` para o IP refletir o cliente real.
+ * de autenticar e por CONTA depois) e curadoria têm teto por janela. Com
+ * `supabaseClient` injetado o contador vive no Postgres e o teto vale para a
+ * frota inteira; sem ele (testes e2e) vale por processo. Por trás de proxy
+ * (C10), habilitar `trustProxy` para o IP refletir o cliente real.
  *
  * As dependências são injetadas para o servidor ser testável com adaptadores em
  * memória (sem Supabase nem rede).
@@ -29,7 +31,7 @@ import type { ContextoRotas } from './contexto';
 import { type DependenciasHttp, LIMITES_PADRAO } from './dependencias';
 import { tratarErro } from './erros-http';
 import { LimitadorJanelaFixaPostgres } from './limitador-postgres';
-import { barrarPorConta, guardaDeTaxa, LimitadorJanelaFixa } from './rate-limit';
+import { barrarPorConta, guardaDeTaxa, LimitadorJanelaFixa, type Limitador } from './rate-limit';
 import { registrarRotasAlertas } from './rotas/alertas';
 import { registrarRotasConsulta } from './rotas/consulta';
 import { registrarRotasConta } from './rotas/conta';
@@ -49,7 +51,12 @@ declare module 'fastify' {
 
 /** Snapshot vazio — quando o servidor sobe sem coletor de métricas (ex.: testes). */
 const SEM_METRICAS: FonteMetricas = {
-  snapshot: () => ({ geradoEm: new Date().toISOString(), totais: {}, porUf: {}, unidadesRecusadas: {} }),
+  snapshot: () => ({
+    geradoEm: new Date().toISOString(),
+    totais: {},
+    porUf: {},
+    unidadesRecusadas: {},
+  }),
 };
 
 /**
@@ -108,20 +115,26 @@ export function construirServidor(deps: DependenciasHttp): FastifyInstance {
     });
   }
 
-  // C9.3.2 — Escolhe o limitador: Postgres (distribuído) ou memória (fallback).
-  // Postgres permite múltiplas instâncias respeitarem o mesmo teto; memória vale
-  // só para o processo atual (dev/testes em memória).
-  const criarLimitador = (opcoes: typeof limites.ingestao) => {
+  // C9.3.2 — Escolhe o limitador: Postgres (o teto vale para a frota) ou
+  // memória (vale por processo — dev e testes e2e, que sobem sem banco).
+  //
+  // O `escopo` NÃO é enfeite: quatro destes cinco limitadores chaveiam pelo
+  // mesmo `req.ip`, e no Postgres todos gravam na mesma tabela. Sem o escopo na
+  // chave, uma consulta pública e uma criação de conta do mesmo IP somavam no
+  // mesmo contador — o teto apertado (20/h) barrava o folgado (120/min) e
+  // vice-versa. Em memória o problema não aparecia (um Map por instância), que
+  // é por que ele nasceu junto com o limitador compartilhado.
+  const criarLimitador = (escopo: string, opcoes: typeof limites.ingestao): Limitador => {
     if (deps.supabaseClient) {
-      return new LimitadorJanelaFixaPostgres(deps.supabaseClient, opcoes);
+      return new LimitadorJanelaFixaPostgres(deps.supabaseClient, escopo, opcoes);
     }
-    return new LimitadorJanelaFixa(opcoes);
+    return new LimitadorJanelaFixa(escopo, opcoes);
   };
 
   // Consulta e sync compartilham o MESMO limitador: um teto único de "leitura
   // pública" por IP. Os privados têm DOIS tetos, em ordem: por IP antes de
   // autenticar (barato, segura flood anônimo) e por CONTA depois (o que vale).
-  const limitadorConta = criarLimitador(limites.ingestao);
+  const limitadorConta = criarLimitador('privado-conta', limites.ingestao);
   const contaDoRequest = async (
     req: FastifyRequest,
     reply: FastifyReply,
@@ -143,10 +156,10 @@ export function construirServidor(deps: DependenciasHttp): FastifyInstance {
     deps,
     metricas: deps.metricas ?? SEM_METRICAS,
     saude: deps.saude ?? semSondas(),
-    guardaConta: guardaDeTaxa(criarLimitador(limites.conta)),
-    guardaLeitura: guardaDeTaxa(criarLimitador(limites.leituraPublica)),
-    guardaPrivadoIp: guardaDeTaxa(criarLimitador(limites.privadoIp)),
-    guardaCuradoriaIp: guardaDeTaxa(criarLimitador(limites.curadoriaIp)),
+    guardaConta: guardaDeTaxa(criarLimitador('conta-ip', limites.conta)),
+    guardaLeitura: guardaDeTaxa(criarLimitador('leitura-ip', limites.leituraPublica)),
+    guardaPrivadoIp: guardaDeTaxa(criarLimitador('privado-ip', limites.privadoIp)),
+    guardaCuradoriaIp: guardaDeTaxa(criarLimitador('curadoria-ip', limites.curadoriaIp)),
     contaDoRequest,
   };
 

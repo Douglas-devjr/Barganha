@@ -5,9 +5,10 @@
  *  • `POST /conta/anonima` sem limite → criação ilimitada de contas.
  *  • Consulta/sync (públicas) sem limite → scraping do pool compartilhado.
  *
- * Estratégia: janela fixa por chave (IP ou conta). Simples e suficiente para o
- * MVP. O estado vive NO PROCESSO — numa frota com várias instâncias (C10),
- * trocar por um store compartilhado (ex.: Redis) mantendo esta interface.
+ * Estratégia: janela fixa por chave (IP ou conta). O estado vive NO PROCESSO,
+ * então o teto vale por instância — em produção quem monta é a versão Postgres
+ * (`limitador-postgres.ts`), que compartilha o contador com a frota inteira.
+ * Esta aqui atende dev/testes e serve de reserva quando o banco cai.
  */
 
 import type { FastifyReply, FastifyRequest } from 'fastify';
@@ -40,23 +41,31 @@ interface Janela {
  * Poda janelas expiradas no máximo uma vez por janela, para a memória não
  * crescer com chaves (IPs) que nunca mais voltam.
  *
- * Implementa `Limitador` para compatibilidade com a versão Postgres.
+ * O `escopo` prefixa a chave. Aqui ele é redundante (cada instância tem o
+ * próprio Map), mas mantém as duas implementações com a MESMA chave: na versão
+ * Postgres, onde os limitadores dividem uma tabela, é ele que impede quatro
+ * tetos diferentes de caírem na mesma linha. Igualar o formato evita que o
+ * comportamento mude ao trocar memória por banco.
  */
 export class LimitadorJanelaFixa implements Limitador {
   private readonly janelas = new Map<string, Janela>();
   private readonly agora: () => number;
   private proximaPoda: number;
 
-  constructor(private readonly opcoes: OpcoesLimite) {
+  constructor(
+    private readonly escopo: string,
+    private readonly opcoes: OpcoesLimite,
+  ) {
     this.agora = opcoes.agora ?? Date.now;
     this.proximaPoda = this.agora() + opcoes.janelaMs;
   }
 
   /** Registra um acesso da `chave`; `true` se ainda dentro do limite. */
-  permitir(chave: string): boolean {
+  permitir(chaveCrua: string): boolean {
     const t = this.agora();
     if (t >= this.proximaPoda) this.podar(t);
 
+    const chave = `${this.escopo}:${chaveCrua}`;
     const janela = this.janelas.get(chave);
     if (!janela || t - janela.inicio >= this.opcoes.janelaMs) {
       this.janelas.set(chave, { inicio: t, contagem: 1 });
@@ -113,6 +122,9 @@ export function guardaDeTaxa(limitador: Limitador, opcoes: OpcoesGuarda = {}): G
  * variar o header a cada requisição para ganhar uma janela nova (e ainda fazia
  * o mapa crescer com um JWT inteiro por chave). Agora a chave é o `usuarioId`
  * que o verificador devolveu: um atacante teria de possuir contas reais.
+ *
+ * A chave vai crua: quem separa este teto dos que chaveiam por IP é o escopo do
+ * limitador, não um prefixo escrito aqui.
  */
 export async function barrarPorConta(
   limitador: Limitador,
@@ -120,7 +132,7 @@ export async function barrarPorConta(
   reply: FastifyReply,
   mensagem = 'Muitas requisições. Tente novamente em instantes.',
 ): Promise<boolean> {
-  const permitido = await Promise.resolve(limitador.permitir(`conta:${usuarioId}`));
+  const permitido = await Promise.resolve(limitador.permitir(usuarioId));
   if (permitido) return true;
   await reply.code(429).send({ erro: mensagem });
   return false;

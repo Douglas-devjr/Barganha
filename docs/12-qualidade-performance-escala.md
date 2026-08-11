@@ -55,14 +55,24 @@ Definidos em `supabase/migrations/`. Cada consulta de leitura tem um índice que
 `marcarProcessado` agora delega a uma **função SQL única** (`processar_cupom`), rodando loja + itens privados + pool + status numa só transação. Elimina a janela em que uma falha parcial após inserir no pool **duplicaria** observações no retry da fila.
 
 ### Anti-abuso (C9.3.2) — **feito**
-Rate-limit por janela fixa (`http/rate-limit.ts`), em processo: teto na **criação de conta** (por IP) e na **leitura pública** consulta+sync (por IP, orçamento somado); ingestão por conta (Bearer). Por trás de proxy, habilitar `trustProxy` para o IP ser o do cliente.
+Rate-limit por janela fixa: teto na **criação de conta** (por IP), na **leitura pública** consulta+sync (por IP, orçamento somado), nos **endpoints privados** (por IP antes de autenticar e por **conta** depois) e na **curadoria** (por IP). Por trás de proxy, habilitar `trustProxy` para o IP ser o do cliente.
+
+Duas implementações atrás da mesma interface `Limitador`: `LimitadorJanelaFixa` (memória, `http/rate-limit.ts`) e `LimitadorJanelaFixaPostgres` (`http/limitador-postgres.ts`), escolhidas em `servidor.ts` pela presença de `supabaseClient`. Em produção vale a de Postgres — com o contador em memória, subir uma segunda instância **dobrava silenciosamente todos os tetos**.
+
+Três propriedades que o store compartilhado exige e que a primeira versão não tinha (migração `20260809090000_rate_limit_atomico`):
+
+- **Contagem atômica.** `consumir_rate_limit` incrementa e decide num único `insert ... on conflict do update ... returning`. Ler e depois gravar em duas chamadas REST deixava requisições concorrentes lerem a mesma contagem — o teto vazava proporcionalmente ao flood, ou seja, falhava exatamente no caso que existe para conter.
+- **Escopo na chave.** Quatro dos cinco limitadores chaveiam por `req.ip` e dividem a tabela; sem prefixo por escopo, o mesmo IP consultando preço e criando conta caía numa linha só. Em memória o problema não existia (um `Map` por instância), por isso nasceu junto com a versão compartilhada.
+- **Poda pelo `janela_ms` da própria linha.** A limpeza apagava tudo mais velho que a janela de *quem* podava: o limitador de leitura (1 min) zerava, a cada minuto, as janelas do de conta (1 h) — e 20 contas/hora viravam 20 contas/minuto.
+
+**Degradação.** O limitador roda no `onRequest`; uma exceção ali viraria 500 em todas as rotas. Com o banco fora, `LimitadorJanelaFixaPostgres` registra o erro e responde pelo contador em memória: o teto volta a valer por processo enquanto durar a falha, em vez de o Postgres derrubar consulta e sync junto.
 
 ### Plano de escala
 O dado de preço é **minúsculo** e a carga é de leitura. A ordem de evolução, quando o volume pedir:
 
 1. **Pipeline incremental** (já é por inserção): manter o recálculo só dos produtos com observação nova; nunca recomputar a base toda.
 2. **Delta sync** (já é o modelo): o app baixa só o que mudou desde o cursor, escopado à sua região/produtos — não há download total.
-3. **Rate-limit distribuído**: ao rodar mais de uma instância (C10), trocar o store em memória do limitador por um compartilhado (ex.: Redis), mantendo a interface `LimitadorJanelaFixa`.
+3. ~~**Rate-limit distribuído**~~ — **feito** (C9.3.2): o contador vive em `rate_limit_janela` e vale para a frota inteira, sem dependência nova (o Postgres que já existe). Um Redis só se entrar na conta o custo por requisição do round trip ao banco no caminho quente.
 4. ~~**Fila durável**~~ — **feito** (C2.1): a fila é a tabela `fila_processamento` com reivindicação por `for update skip locked` (`fila/fila-postgres.ts`). A `FilaMemoria` continua servindo aos testes e ao dev local (`FILA_DURAVEL=false`), como a raiz de composição sempre previu.
 5. **Busca de texto plena**: evoluir o pré-filtro `ILIKE`+trigram para `tsvector`/ranking quando o catálogo crescer.
 6. **Particionamento/retenção**: se `observacao_preco` crescer muito, particionar por tempo; o decaimento temporal (`06`) já torna o histórico antigo descartável para o veredito.

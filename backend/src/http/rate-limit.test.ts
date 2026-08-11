@@ -13,7 +13,7 @@ import { construirServidor, LIMITES_PADRAO } from './servidor';
 describe('LimitadorJanelaFixa (C9.3.2)', () => {
   it('libera até o máximo e barra o excedente dentro da janela', () => {
     const t = 1_000;
-    const lim = new LimitadorJanelaFixa({ janelaMs: 100, maximo: 3, agora: () => t });
+    const lim = new LimitadorJanelaFixa('teste', { janelaMs: 100, maximo: 3, agora: () => t });
 
     expect(lim.permitir('ip-1')).toBe(true);
     expect(lim.permitir('ip-1')).toBe(true);
@@ -23,7 +23,7 @@ describe('LimitadorJanelaFixa (C9.3.2)', () => {
 
   it('zera a contagem quando a janela vira', () => {
     let t = 0;
-    const lim = new LimitadorJanelaFixa({ janelaMs: 100, maximo: 1, agora: () => t });
+    const lim = new LimitadorJanelaFixa('teste', { janelaMs: 100, maximo: 1, agora: () => t });
 
     expect(lim.permitir('ip-1')).toBe(true);
     expect(lim.permitir('ip-1')).toBe(false);
@@ -33,11 +33,25 @@ describe('LimitadorJanelaFixa (C9.3.2)', () => {
 
   it('conta cada chave isoladamente', () => {
     const t = 0;
-    const lim = new LimitadorJanelaFixa({ janelaMs: 100, maximo: 1, agora: () => t });
+    const lim = new LimitadorJanelaFixa('teste', { janelaMs: 100, maximo: 1, agora: () => t });
 
     expect(lim.permitir('ip-1')).toBe(true);
     expect(lim.permitir('ip-2')).toBe(true); // outra chave, próprio orçamento
     expect(lim.permitir('ip-1')).toBe(false);
+  });
+
+  it('escopos diferentes não dividem o orçamento da mesma chave', () => {
+    // Em memória cada limitador tem o próprio Map, então isto já valia. O teste
+    // existe para o escopo continuar sendo aplicado nas DUAS implementações: se
+    // alguém tirar o prefixo daqui, memória e Postgres passam a divergir e o
+    // furo volta só em produção.
+    const opcoes = { janelaMs: 100, maximo: 1, agora: () => 0 };
+    const leitura = new LimitadorJanelaFixa('leitura-ip', opcoes);
+    const conta = new LimitadorJanelaFixa('conta-ip', opcoes);
+
+    expect(leitura.permitir('ip-1')).toBe(true);
+    expect(leitura.permitir('ip-1')).toBe(false);
+    expect(conta.permitir('ip-1')).toBe(true); // mesmo IP, outro teto
   });
 });
 
