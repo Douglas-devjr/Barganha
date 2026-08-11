@@ -816,11 +816,15 @@ export const funcoes = [
     status: 'parcial',
     oque: 'Abre o portal da SEFAZ dentro do app para vencer o reCAPTCHA do RJ e manda o HTML da página para o backend ler.',
     falta:
-      'Validação no aparelho físico com cupons reais do RJ. A recuperação automática da recusa do captcha existe e tem teste, mas nunca rodou no device.',
+      'Validação no aparelho físico com cupons reais do RJ. A recuperação automática agora é uma máquina de estados coberta por teste, mas nunca rodou no device.',
     detalhe:
-      'O RJ não devolve os dados por API: a página é protegida por captcha. A WebView carrega o portal, o usuário resolve o desafio quando aparece, e o HTML resultante sobe para o parser. Recusa do captcha devolve 422 `erro_portal` e a página recarrega sozinha (até 4×) em vez de marcar o cupom como falha.',
+      'O RJ não devolve os dados por API: a página é protegida por captcha. A WebView carrega o portal, o usuário resolve o desafio quando aparece, e o HTML resultante sobe para o parser. As decisões de insistir ou parar saíram do componente e viraram um módulo puro (`coletor-regras.ts`), percorrido inteiro pelo teste sem precisar de WebView. São três falhas que só acontecem no aparelho, cada uma com seu próprio teto: a SEFAZ recusar a verificação (volta à consulta original para gerar um token novo, até 4×), o portal mandar o app para um endereço `http://` que está fechado (a mesma navegação é refeita em `https`, até 6×) e a conexão cair (recarrega, até 4×). Nenhuma delas marca o cupom como falha — no pior caso ele fica guardado para tentar mais tarde. Um relógio de segurança evita o único jeito de a tela ficar muda para sempre: a recarga pedida que nunca chega.',
     ligacoes: ['ingestao-html', 'parsers'],
-    arquivos: ['app/src/componentes/ColetorNotaWeb.tsx'],
+    arquivos: [
+      'app/src/componentes/ColetorNotaWeb.tsx',
+      'app/src/nucleo/coletor-regras.ts',
+      'app/src/nucleo/coletor-regras.test.ts',
+    ],
     rotas: ['POST /ingestao/cupom/:id/html'],
     etapas: ['C2.6'],
   },
@@ -1448,7 +1452,7 @@ export const funcoes = [
     status: 'pronto',
     oque: 'Limita quantas vezes a mesma conta ou o mesmo IP pode chamar a API, contra abuso e raspagem do pool. Compartilhado entre instâncias via Postgres.',
     detalhe:
-      'Implementação dual: `LimitadorJanelaFixa` para testes/memória, `LimitadorJanelaFixaPostgres` para produção (múltiplas instâncias). A mesma interface pública (sem breaking changes nas rotas). Janelas ficam em `rate_limit_janela` e são auto-limpas uma vez por ciclo.',
+      'Implementação dual com a MESMA interface: `LimitadorJanelaFixa` (memória, dev/testes) e `LimitadorJanelaFixaPostgres` (produção). A contagem é feita por uma função do banco que incrementa e decide numa operação só, então requisições simultâneas não conseguem furar o teto lendo o mesmo número. Cada teto tem seu escopo na chave — o mesmo IP consultando preço e criando conta não divide um contador único. Se o banco cai, o teto degrada para o processo em vez de derrubar a API.',
     ligacoes: ['ingestao-qr', 'consulta-preco'],
     arquivos: [
       'backend/src/http/rate-limit.ts',
@@ -1456,6 +1460,7 @@ export const funcoes = [
       'backend/src/http/limitador-postgres.test.ts',
       'backend/src/http/servidor.ts',
       'supabase/migrations/20260801090000_rate_limit_janela.sql',
+      'supabase/migrations/20260809090000_rate_limit_atomico.sql',
     ],
     etapas: ['C9.3.2'],
   },
@@ -2954,9 +2959,10 @@ export const etapas = [
     codigo: 'C9.3.2',
     nome: 'Rate limit',
     fase: 'MVP',
-    status: 'parcial',
-    oque: 'Teto por conta e por IP nas rotas públicas.',
-    falta: 'Contador em memória: o teto vale por processo.',
+    status: 'pronto',
+    oque: 'Teto por conta e por IP nas rotas públicas, contado no banco e válido para todas as instâncias.',
+    detalhe:
+      'O contador saiu da memória do processo e foi para o banco. Três coisas que só apareciam sob carga foram corrigidas: a contagem agora é feita numa operação única (antes, requisições simultâneas liam o mesmo número e o teto vazava justamente durante um ataque); cada teto tem seu próprio escopo (antes, o mesmo IP consultando preço e criando conta somava tudo num contador só); e a limpeza das janelas velhas respeita a duração de cada uma (antes, a limpeza do teto de 1 minuto apagava o de 1 hora, e o limite de 20 contas por hora virava 20 por minuto). Se o banco ficar indisponível, o teto volta a valer por processo em vez de derrubar a API inteira.',
   },
   {
     codigo: 'C9.3.3',
