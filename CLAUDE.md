@@ -58,6 +58,47 @@ Toda contribuição de código ou design DEVE respeitar:
 - SO de desenvolvimento: Windows 11. Shell primário: PowerShell (o Bash POSIX também está disponível).
 - Repositório ainda **não** versionado em git — sugerido `git init` antes do primeiro commit de código.
 
+---
+
+## Skills instaladas — USE SEMPRE QUE FOR PERTINENTE
+
+Estas skills já estão instaladas neste ambiente. Elas **não são opcionais quando o assunto bate**: antes de começar
+qualquer tarefa, confira se alguma cobre o tema e **invoque a skill antes de agir** (ela carrega instruções
+específicas que substituem o "jeito padrão" de fazer). Não é preciso pedir autorização para usar uma skill.
+Se a tarefa cruzar mais de uma área, use mais de uma.
+
+### Do projeto
+| Skill | Use quando… |
+| --- | --- |
+| `graphify` | Qualquer pergunta sobre o código, arquitetura, "onde fica X", "quem chama Y". **Obrigatória antes de ler arquivo-fonte** (ver seção graphify abaixo) e depois de alterar código (`graphify update .`). |
+| `supabase` | Qualquer coisa de Supabase: banco, Auth/RLS/JWT/sessão, Edge Functions, Realtime, Storage, Cron, Queues, `supabase-js`, CLI, migrações, auditoria de segurança. |
+| `supabase-postgres-best-practices` | Escrever, revisar ou otimizar SQL, esquema, índices e consultas Postgres — inclusive as agregações de `preco_estatistica` e as consultas geográficas. |
+
+### De qualidade e entrega
+| Skill | Use quando… |
+| --- | --- |
+| `code-review` | Ao terminar uma etapa (`C…`) ou antes de commitar mudança relevante: revisão de bugs e limpeza no diff atual. (`/code-review ultra` é pago e **só** quando o dono pedir.) |
+| `security-review` | Antes de fechar qualquer etapa que toque autenticação, dados do usuário, chaves, endpoints públicos ou o banco compartilhado — junto com o gate do agente `privacy-lgpd-specialist`. |
+| `simplify` | Depois que a feature funciona e o código ficou repetitivo ou inchado. Só qualidade — não caça bugs. |
+| `run` | Sempre que a resposta certa for "mostrar funcionando no app de verdade", não só teste passando (rodar/abrir o app, tirar screenshot, confirmar a tela). |
+| `claude-api` | Qualquer pergunta ou código envolvendo Claude/Anthropic (modelos, preço, limites, tool use, cache). Nunca responder de memória. |
+
+### De apresentação
+| Skill | Use quando… |
+| --- | --- |
+| `dataviz` | **Antes** de escrever a primeira linha de qualquer gráfico, painel de números, medidor ou visualização — inclusive dentro de `painel/`. |
+| `artifact-design` · `artifact-diagramming` · `artifact-capabilities` | Ao publicar uma página/Artifact (relatório visual, diagrama, página com dado ao vivo). |
+
+### De configuração do ambiente
+| Skill | Use quando… |
+| --- | --- |
+| `update-config` | Pedidos de automação ("toda vez que X, faça Y" = hook), permissões, variáveis de ambiente, `settings.json`. |
+| `fewer-permission-prompts` | Quando os pedidos de permissão estiverem atrapalhando o fluxo. |
+| `keybindings-help` | Atalhos de teclado do Claude Code. |
+| `loop` · `schedule` | Tarefa recorrente / agendada (acompanhar deploy, rodar checagem periódica). Nunca para tarefa única e imediata. |
+
+> Regra de ouro: skill pertinente **não usada** conta como trabalho incompleto. Na dúvida entre usar e não usar, use.
+
 ## graphify
 
 This project has a knowledge graph at graphify-out/ with god nodes, community structure, and cross-file relationships.
