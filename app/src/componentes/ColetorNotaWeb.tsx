@@ -13,6 +13,12 @@
  * página de desafio, ele responde 422 e SEGUIMOS aguardando o usuário (não
  * desistimos); quando vier a nota, ele processa e encerramos.
  *
+ * ESTE ARQUIVO É SÓ A ORQUESTRAÇÃO. Toda a decisão — quando insistir, quando
+ * promover http→https, quando parar — mora em `nucleo/coletor-regras`, que o
+ * `vitest` percorre inteira sem WebView. É a única forma de verificar a
+ * recuperação automática contra a recusa do reCAPTCHA: ela roda sozinha, é
+ * intermitente e termina em silêncio.
+ *
  * `react-native-webview` é módulo NATIVO: carregamos de forma preguiçosa e
  * tolerante para um dev build ANTIGO (ainda sem o módulo) não derrubar o app —
  * nesse caso avisamos o pai (`aoDesistir`) para pedir um novo build.
@@ -29,8 +35,19 @@ import { ActivityIndicator, Modal, Pressable, StyleSheet, View } from 'react-nat
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { WebViewMessageEvent } from 'react-native-webview';
 
-import { redigirTexto, urlConsultaConfiavel, urlConsultaSegura } from '@barganha/shared';
+import { redigirTexto, urlConsultaConfiavel } from '@barganha/shared';
 
+import {
+  ATRASO_RECARGA_MS,
+  type AcaoColetor,
+  type EstadoColetor,
+  type EventoColetor,
+  INTERVALO_COLETA_MS,
+  type ResultadoColeta,
+  coletaVale,
+  decidirColeta,
+  estadoInicialColetor,
+} from '@/nucleo/coletor-regras';
 import { log } from '@/nucleo/log';
 import { claro as paletaClara, espaco, raio, useTema } from '@/tema';
 
@@ -52,13 +69,7 @@ function carregarWebView(): WebViewClasse | null {
 
 const WebViewNativo = carregarWebView();
 
-/**
- * Resultado do envio do HTML ao backend, do ponto de vista do coletor.
- * `erro_portal` = a SEFAZ recusou a verificação (reCAPTCHA com pontuação baixa)
- * e caiu na página de erro — beco sem saída: esperar não resolve, mas recarregar
- * a consulta (token novo) costuma passar. O coletor recarrega sozinho.
- */
-export type ResultadoColeta = 'processado' | 'desafio' | 'erro' | 'erro_portal';
+export type { ResultadoColeta };
 
 export interface ColetorNotaWebProps {
   /** URL do QR da NFC-e (o payload capturado) — a página a renderizar. */
@@ -74,65 +85,11 @@ export interface ColetorNotaWebProps {
 // Injeta a coleta do HTML atual da página (roda no contexto do WebView).
 const COLETAR_JS = `(function(){try{var h=document.documentElement?document.documentElement.outerHTML:'';if(window.ReactNativeWebView)window.ReactNativeWebView.postMessage(h);}catch(e){if(window.ReactNativeWebView)window.ReactNativeWebView.postMessage('');}})();true;`;
 
-const INTERVALO_COLETA_MS = 3000;
-// Só erros REAIS do backend (não o "desafio", que é normal enquanto o usuário
-// resolve). Enquanto for desafio, NÃO desistimos — o humano está no comando.
-const MAX_ERROS_BACKEND = 8;
-// Erros de CARREGAMENTO (onError) costumam ser transitórios no portal da SEFAZ —
-// tipicamente `net::ERR_CONNECTION_RESET`. Recarregamos algumas vezes antes de
-// desistir em vez de estourar no primeiro tropeço de rede.
-const MAX_ERROS_REDE = 4;
-const ATRASO_RECARGA_MS = 1500;
-// Recusas do reCAPTCHA (`erro_portal`) são intermitentes: o MESMO aparelho passa
-// minutos depois. Cada recarga da consulta gera um token novo — vale re-tentar
-// algumas vezes antes de devolver o cupom (que segue pendente, nunca `falha`).
-const MAX_RECARGAS_PORTAL = 4;
-// O portal do RJ está atrás de TLS mas gera URL ABSOLUTA em `http://` nos seus
-// próprios redirects (JSF sem enxergar o `X-Forwarded-Proto`). Como a porta 80
-// está fechada, cada uma dessas navegações morre em `ERR_CONNECTION_REFUSED`.
-// Reescrevemos para https — com teto, porque se o portal insistir em devolver
-// http a cada volta isto viraria um ping-pong sem fim.
-const MAX_UPGRADES_HTTPS = 6;
 // UA de Chrome mobile REAL (sem o marcador "; wv" do WebView). O reCAPTCHA v3 do
 // portal do RJ penaliza User-Agent de WebView e trava no desafio (`grecaptcha-error`);
 // apresentar-se como Chrome comum melhora a pontuação e a chance de render a nota.
 const UA_CHROME_MOBILE =
   'Mozilla/5.0 (Linux; Android 14; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Mobile Safari/537.36';
-
-/**
- * Hosts que NÃO são da SEFAZ mas o portal precisa alcançar para o reCAPTCHA
- * renderizar. Sem eles o desafio nunca aparece e o usuário fica preso para
- * sempre na página de verificação — a porta de segurança teria quebrado a função.
- */
-const HOSTS_APOIO = ['google.com', 'gstatic.com', 'recaptcha.net'];
-
-const hostDeApoio = (host: string): boolean =>
-  HOSTS_APOIO.some((base) => host === base || host.endsWith(`.${base}`));
-
-/**
- * Portão de navegação do WebView. O `source` inicial vem do QR — entrada de
- * quem imprimiu o papel — e a página da SEFAZ pode mandar o WebView para
- * qualquer lugar depois. Sem este filtro, um QR colado na gôndola carrega o
- * site do atacante DENTRO do app: tela cheia, sem barra de endereço, sob o
- * título "Confirme sua nota" — o cenário perfeito para pedir a senha do
- * Barganha ou imitar a tela de login do Google.
- *
- * Só o documento PRINCIPAL é barrado. Subrecurso/iframe (`isTopFrame === false`,
- * que no iOS chega aqui) é o caso do próprio desafio do reCAPTCHA; barrá-lo
- * quebraria a verificação sem fechar nada — quem engana o usuário é a página
- * que ele VÊ na barra inexistente, não um iframe interno. Quando o campo não
- * vem preenchido, tratamos como principal (fecha por padrão).
- */
-function navegacaoPermitida(url: string, isTopFrame?: boolean): boolean {
-  if (isTopFrame === false) return true;
-  if (url === 'about:blank') return true;
-  if (urlConsultaConfiavel(url)) return true;
-  try {
-    return hostDeApoio(new URL(url).hostname.replace(/\.$/, ''));
-  } catch {
-    return false; // Nem URL é — não navega.
-  }
-}
 
 export function ColetorNotaWeb({ url, enviarHtml, aoProcessar, aoDesistir }: ColetorNotaWebProps) {
   const { c } = useTema();
@@ -145,15 +102,10 @@ export function ColetorNotaWeb({ url, enviarHtml, aoProcessar, aoDesistir }: Col
   // regressão na tela não pode virar phishing dentro do app.
   const urlSegura = urlConsultaConfiavel(url);
   const webRef = useRef<WebViewInstancia>(null);
+  const estadoRef = useRef<EstadoColetor>(estadoInicialColetor());
+  // Envio em voo. Fica fora da máquina de propósito: é sobre a promessa pendente
+  // deste componente, não sobre o que a SEFAZ respondeu.
   const enviando = useRef(false);
-  const concluido = useRef(false);
-  const errosBackend = useRef(0);
-  const errosRede = useRef(0);
-  const recargasPortal = useRef(0);
-  const upgradesHttps = useRef(0);
-  // Entre disparar a recarga e a página nova carregar, o timer ainda colheria a
-  // MESMA página de erro e contaria recargas a mais — silencia até o onLoadEnd.
-  const aguardandoRecarga = useRef(false);
   const [lendoNota, setLendoNota] = useState(false);
   const [avisoPortal, setAvisoPortal] = useState<string | null>(null);
   // Página EXIBIDA no WebView. Começa na consulta do QR, mas muda sempre que
@@ -165,34 +117,100 @@ export function ColetorNotaWeb({ url, enviarHtml, aoProcessar, aoDesistir }: Col
   }, [url]);
 
   /**
-   * Se `alvo` estiver em http, refaz a MESMA navegação em https e devolve
-   * `true` (quem chamou deve abortar a original). Trocar a `uri` — em vez de
-   * `reload()` — é o que garante sair do endereço errado: o `reload` repetiria
-   * exatamente a URL que acabou de ser recusada.
+   * Um passo da máquina: avança o estado e devolve a ação a executar.
+   *
+   * O log é a INSTRUMENTAÇÃO DA VALIDAÇÃO NO APARELHO. A recuperação contra o
+   * reCAPTCHA acontece sozinha e em silêncio; sem esta linha, uma sessão real no
+   * device não distingue "passou de primeira" de "recusou três vezes e a quarta
+   * passou". Sai só em dev build (ver `nucleo/log`), que é onde a validação roda.
    */
-  const forcarHttps = useCallback((alvo: string): boolean => {
-    const seguro = urlConsultaSegura(alvo);
-    if (seguro === alvo) return false;
-    if (upgradesHttps.current >= MAX_UPGRADES_HTTPS) return false;
-    upgradesHttps.current += 1;
-    aguardandoRecarga.current = true;
-    setUri(seguro);
-    return true;
-  }, []);
+  const despachar = useCallback(
+    (evento: EventoColetor): AcaoColetor => {
+      const { estado, acao } = decidirColeta(estadoRef.current, evento, urlSegura ?? '');
+      estadoRef.current = estado;
+      // O tique que só manda colher é o batimento normal de 3s — logá-lo afogaria
+      // o resto. Todo o que não for isso é sinal.
+      if (evento.tipo !== 'tique' || acao.tipo !== 'coletar') {
+        log.info(
+          {
+            action: 'coletor.passo',
+            evento: evento.tipo,
+            acao: acao.tipo,
+            recargasPortal: estado.recargasPortal,
+            errosRede: estado.errosRede,
+            errosBackend: estado.errosBackend,
+            upgradesHttps: estado.upgradesHttps,
+          },
+          'Coletor decidiu o próximo passo',
+        );
+      }
+      return acao;
+    },
+    [urlSegura],
+  );
 
-  const coletar = useCallback(() => {
-    if (concluido.current) return;
-    webRef.current?.injectJavaScript(COLETAR_JS);
-  }, []);
+  const executar = useCallback(
+    (acao: AcaoColetor) => {
+      switch (acao.tipo) {
+        case 'coletar':
+          webRef.current?.injectJavaScript(COLETAR_JS);
+          return;
+        case 'processar':
+          setLendoNota(true);
+          aoProcessar();
+          return;
+        case 'ir-para':
+          // Trocar a `uri` — em vez de `reload()` — é o que garante sair do
+          // endereço errado: o `reload` repetiria a URL recusada.
+          setUri(acao.uri);
+          return;
+        case 'recarregar-consulta':
+          setAvisoPortal(acao.aviso);
+          if (acao.uri) {
+            webRef.current?.injectJavaScript(
+              `window.location.replace(${JSON.stringify(acao.uri)});true;`,
+            );
+          }
+          return;
+        case 'recarregar-pagina':
+          setTimeout(() => {
+            if (!estadoRef.current.concluido) webRef.current?.reload();
+          }, ATRASO_RECARGA_MS);
+          return;
+        case 'desistir':
+          aoDesistir(acao.motivo);
+          return;
+        default:
+          return; // 'nada' e as decisões de navegação, resolvidas no próprio handler.
+      }
+    },
+    [aoProcessar, aoDesistir],
+  );
+
+  const passo = useCallback(
+    (evento: EventoColetor) => executar(despachar(evento)),
+    [despachar, executar],
+  );
+
+  // O pai passa `aoProcessar`/`aoDesistir` como arrow INLINE (ver
+  // `NotaFiscalTela`), então `passo` muda de identidade a cada render dele — e
+  // ele re-renderiza sozinho, num poll. Ler o `passo` atual por ref é o que
+  // mantém o timer abaixo com dependência vazia: preso a `[passo]`, o intervalo
+  // seria destruído e recriado antes de completar os 3s e o colhedor de
+  // segurança nunca dispararia.
+  const passoRef = useRef(passo);
+  useEffect(() => {
+    passoRef.current = passo;
+  }, [passo]);
 
   // Timer de segurança: mesmo sem novo `onLoadEnd` (ex.: atualização via AJAX do
   // portal, ou o postback do reCAPTCHA), tenta colher o HTML periodicamente até
   // processar/desistir.
   useEffect(() => {
     if (!WebViewNativo) return;
-    const t = setInterval(coletar, INTERVALO_COLETA_MS);
+    const t = setInterval(() => passoRef.current({ tipo: 'tique' }), INTERVALO_COLETA_MS);
     return () => clearInterval(t);
-  }, [coletar]);
+  }, []);
 
   // Dev build antigo, sem o módulo nativo: avisa o pai uma vez em vez de quebrar.
   useEffect(() => {
@@ -216,76 +234,21 @@ export function ColetorNotaWeb({ url, enviarHtml, aoProcessar, aoDesistir }: Col
     }
   }, [urlSegura, url, aoDesistir]);
 
-  const encerrar = useCallback((fn: () => void) => {
-    concluido.current = true;
-    fn();
-  }, []);
-
-  const cancelar = useCallback(() => {
-    encerrar(() => aoDesistir('Confirmação fechada. Você pode tentar de novo quando quiser.'));
-  }, [aoDesistir, encerrar]);
-
   const aoMensagem = useCallback(
     async (evento: WebViewMessageEvent) => {
-      if (concluido.current || enviando.current || aguardandoRecarga.current) return;
       const html = evento.nativeEvent.data;
-      if (!html || html.length < 200) return; // página ainda vazia/carregando.
+      // `enviando` some da máquina: ela é síncrona e não sabe de promessa em voo.
+      if (enviando.current || !coletaVale(estadoRef.current, html)) return;
 
       enviando.current = true;
       try {
         const resultado = await enviarHtml(html);
-        if (resultado === 'processado') {
-          setLendoNota(true);
-          encerrar(aoProcessar);
-          return;
-        }
-        if (resultado === 'desafio') {
-          // Ainda no reCAPTCHA/JSF: o usuário está resolvendo. Zera o contador de
-          // erros de backend (estamos progredindo, só não é a nota ainda).
-          errosBackend.current = 0;
-          return;
-        }
-        if (resultado === 'erro_portal') {
-          // A SEFAZ recusou a verificação e caiu na página de erro (beco sem
-          // saída). Recarrega a CONSULTA ORIGINAL — `reload()` re-enviaria o
-          // postback recusado — para o reCAPTCHA emitir um token novo.
-          errosBackend.current = 0;
-          recargasPortal.current += 1;
-          if (recargasPortal.current > MAX_RECARGAS_PORTAL) {
-            encerrar(() =>
-              aoDesistir(
-                'A SEFAZ está recusando a verificação neste momento. Seu cupom fica guardado — abra-o de novo mais tarde para tentar outra vez.',
-              ),
-            );
-            return;
-          }
-          aguardandoRecarga.current = true;
-          setAvisoPortal(
-            `A SEFAZ recusou a verificação (tentativa ${recargasPortal.current} de ${MAX_RECARGAS_PORTAL}). Recarregando — toque em “Consultar” quando a página voltar.`,
-          );
-          // `urlSegura` só é nula quando o componente nem renderizou o WebView
-          // (early return abaixo), mas o destino de um `location.replace` é o
-          // último lugar onde vale confiar num valor sem olhar.
-          if (urlSegura) {
-            webRef.current?.injectJavaScript(
-              `window.location.replace(${JSON.stringify(urlSegura)});true;`,
-            );
-          }
-          return;
-        }
-        // 'erro' = falha real do backend (não 422). Tolera alguns e só então
-        // desiste — pode ser um blip; o usuário pode ter carregado algo estranho.
-        errosBackend.current += 1;
-        if (errosBackend.current >= MAX_ERROS_BACKEND) {
-          encerrar(() =>
-            aoDesistir('Não foi possível ler a nota agora. Tente de novo em instantes.'),
-          );
-        }
+        passo({ tipo: 'resposta', resultado });
       } finally {
         enviando.current = false;
       }
     },
-    [enviarHtml, aoProcessar, aoDesistir, encerrar, urlSegura],
+    [enviarHtml, passo],
   );
 
   // Sem módulo nativo, ou payload fora dos portais públicos: o pai mostra a
@@ -293,7 +256,7 @@ export function ColetorNotaWeb({ url, enviarHtml, aoProcessar, aoDesistir }: Col
   if (!WebViewNativo || !urlSegura) return null;
 
   return (
-    <Modal visible animationType="slide" onRequestClose={cancelar}>
+    <Modal visible animationType="slide" onRequestClose={() => passo({ tipo: 'fechar' })}>
       <SafeAreaView style={[estilos.raiz, { backgroundColor: c.cartao }]} edges={['top', 'bottom']}>
         <View style={estilos.topo}>
           <View style={estilos.topoTexto}>
@@ -305,7 +268,7 @@ export function ColetorNotaWeb({ url, enviarHtml, aoProcessar, aoDesistir }: Col
             </Texto>
           </View>
           <Pressable
-            onPress={cancelar}
+            onPress={() => passo({ tipo: 'fechar' })}
             accessibilityRole="button"
             accessibilityLabel="Fechar"
             hitSlop={8}
@@ -328,7 +291,7 @@ export function ColetorNotaWeb({ url, enviarHtml, aoProcessar, aoDesistir }: Col
           <WebViewNativo
             ref={webRef}
             source={{ uri }}
-            // Portão ÚNICO de navegação, com dois trabalhos, nesta ordem:
+            // Portão ÚNICO de navegação, com dois trabalhos (ver `decidirColeta`):
             //  1. host fora dos portais públicos → recusa (`navegacaoPermitida`);
             //  2. http → refaz a MESMA navegação em https e aborta a original (o
             //     portal aponta para si mesmo em texto puro e a porta 80 está
@@ -337,17 +300,26 @@ export function ColetorNotaWeb({ url, enviarHtml, aoProcessar, aoDesistir }: Col
             // O host vem PRIMEIRO de propósito: o item 2 promove qualquer http a
             // https e mexe na `uri`, então deixá-lo na frente faria uma URL
             // hostil gastar orçamento de upgrade e virar estado do componente
-            // antes de ser recusada na volta. Um host permitido em http continua
-            // sendo promovido — `navegacaoPermitida` avalia a forma https.
+            // antes de ser recusada na volta.
             onShouldStartLoadWithRequest={(req) => {
-              if (!navegacaoPermitida(req.url, req.isTopFrame)) {
+              const acao = despachar({
+                tipo: 'navegacao',
+                url: req.url,
+                isTopFrame: req.isTopFrame,
+              });
+              if (acao.tipo === 'bloquear-navegacao') {
                 log.warn(
                   { action: 'coletor.navegacao_recusada', url: redigirTexto(req.url) },
                   'WebView tentou sair para um host que não é portal público',
                 );
                 return false;
               }
-              return !forcarHttps(req.url);
+              // `ir-para` = a original morreria em http; a promovida já foi pedida.
+              if (acao.tipo === 'ir-para') {
+                executar(acao);
+                return false;
+              }
+              return true;
             }}
             // `['*']` é DELIBERADO, não desleixo: no `react-native-webview` a
             // whitelist é avaliada ANTES do `onShouldStartLoadWithRequest`, e o
@@ -364,18 +336,9 @@ export function ColetorNotaWeb({ url, enviarHtml, aoProcessar, aoDesistir }: Col
             // Desafios do reCAPTCHA às vezes abrem em nova janela: mantém no mesmo
             // WebView para o usuário conseguir resolver.
             setSupportMultipleWindows={false}
-            onLoadEnd={() => {
-              aguardandoRecarga.current = false;
-              coletar();
-            }}
+            onLoadEnd={() => passo({ tipo: 'carregou' })}
             onError={(e) => {
-              if (concluido.current) return;
               const { code, description, url: falhaUrl } = e.nativeEvent;
-              // Rede de segurança: no Android o `onShouldStartLoadWithRequest`
-              // nem sempre é consultado num redirect do SERVIDOR. Se a que
-              // falhou era http, refaz em https — isto não é falha de rede do
-              // usuário, então não gasta o orçamento de `errosRede`.
-              if (falhaUrl && forcarHttps(falhaUrl)) return;
               // A URL vai REDIGIDA: a consulta da SEFAZ carrega a chave de
               // acesso (44 díg.) no query string — dado do mundo privado que não
               // pode ir para o log (docs/04).
@@ -385,24 +348,15 @@ export function ColetorNotaWeb({ url, enviarHtml, aoProcessar, aoDesistir }: Col
                   code,
                   description,
                   url: redigirTexto(falhaUrl ?? ''),
-                  tentativa: errosRede.current + 1,
                 },
                 'WebView falhou ao carregar a página da SEFAZ',
               );
-              errosRede.current += 1;
-              // Reset/instabilidade do portal é transitório: recarrega e tenta de
-              // novo. Só desiste (com o motivo real) após esgotar as recargas.
-              if (errosRede.current < MAX_ERROS_REDE) {
-                setTimeout(() => {
-                  if (!concluido.current) webRef.current?.reload();
-                }, ATRASO_RECARGA_MS);
-                return;
-              }
-              encerrar(() =>
-                aoDesistir(
-                  `Não foi possível abrir a página da SEFAZ. Verifique a rede. [${code}: ${description}]`,
-                ),
-              );
+              passo({
+                tipo: 'erro-rede',
+                url: falhaUrl,
+                codigo: code,
+                descricao: description,
+              });
             }}
             onMessage={(e) => void aoMensagem(e)}
             style={estilos.web}
