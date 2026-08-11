@@ -11,13 +11,18 @@
 
 import { describe, expect, it } from 'vitest';
 
+import { ZONA_MORTA_POR_FAMILIA } from '@barganha/shared';
+
 import {
   agruparParaCalibracao,
   AMPLITUDE_RELATIVA_ALVO,
+  BASE_MINIMA_ZONA_MORTA,
   calibrarFatorCerco,
   calibrarMeiaVida,
   calibrarMinimoObservacoes,
+  calibrarZonaMorta,
   type GrupoCalibracao,
+  type ResultadoZonaMorta,
 } from './calibracao';
 import type { ObservacaoParaAgregacao } from './tipos';
 
@@ -152,7 +157,9 @@ describe('calibrarFatorCerco (recall vs. falso-positivo)', () => {
       referencia: REF,
     });
 
-    expect(r.metricaPorCandidato.find((x) => x.fator === 1)!.fpMedianoRegular).toBeGreaterThan(0.05);
+    expect(r.metricaPorCandidato.find((x) => x.fator === 1)!.fpMedianoRegular).toBeGreaterThan(
+      0.05,
+    );
     expect(r.valorRecomendado).toBe(1.5);
     const escolhido = r.metricaPorCandidato.find((x) => x.fator === r.valorRecomendado)!;
     expect(escolhido.fpMedianoRegular).toBeLessThanOrEqual(0.05);
@@ -198,7 +205,10 @@ describe('calibrarMinimoObservacoes (bootstrap por nível)', () => {
 
   it('nível sem pool grande fica sem recomendação, sem apagar os outros níveis', () => {
     const resultados = calibrarMinimoObservacoes(
-      [grupo(pool(60, 0.02, 33), 'municipio', 'SP:SAO PAULO'), grupo(pool(5, 0.1, 44), 'loja', 'x')],
+      [
+        grupo(pool(60, 0.02, 33), 'municipio', 'SP:SAO PAULO'),
+        grupo(pool(5, 0.1, 44), 'loja', 'x'),
+      ],
       { referencia: REF },
     );
     const porNivel = new Map(resultados.map((r) => [r.escopo, r]));
@@ -223,6 +233,187 @@ describe('calibrarMinimoObservacoes (bootstrap por nível)', () => {
     for (const r of resultados) {
       expect(r.valorRecomendado).toBeUndefined();
       expect(r.valorAtual).toBe(3);
+    }
+  });
+});
+
+describe('calibrarZonaMorta (base e deriva por família — C3.6)', () => {
+  /** Observação de um produto específico (a família sai da categoria dele). */
+  function obsDe(
+    produtoCanonicoId: string,
+    preco: number,
+    diasAtras: number,
+    emPromocao = false,
+  ): ObservacaoParaAgregacao {
+    return { ...obs(preco, diasAtras, emPromocao), produtoCanonicoId };
+  }
+
+  function grupoDe(
+    produtoCanonicoId: string,
+    observacoes: readonly ObservacaoParaAgregacao[],
+    escopo: GrupoCalibracao['escopo'] = 'municipio',
+  ): GrupoCalibracao {
+    return {
+      produtoCanonicoId,
+      unidadeBase: 'kg',
+      escopo,
+      escopoId: 'SP:SAO PAULO',
+      observacoes,
+    };
+  }
+
+  /**
+   * Pool de `n` preços espalhados no tempo (150 → 5 dias atrás), subindo
+   * `taxaMensal` ao mês e com `dispersao` de ruído entre lojas.
+   */
+  function poolNoTempo(
+    produtoCanonicoId: string,
+    n: number,
+    taxaMensal: number,
+    dispersao: number,
+    semente: number,
+  ): ObservacaoParaAgregacao[] {
+    const ruido = criarRuido(semente);
+    return Array.from({ length: n }, (_, i) => {
+      const diasAtras = 150 - (145 * i) / (n - 1);
+      const meses = (150 - diasAtras) / 30.44;
+      const base = 10 * Math.pow(1 + taxaMensal, meses);
+      return obsDe(produtoCanonicoId, base * (1 + (ruido() - 0.5) * 2 * dispersao), diasAtras);
+    });
+  }
+
+  const CATEGORIAS = new Map([
+    ['tomate', 'Hortifruti'],
+    ['cafe', 'Mercearia'],
+  ]);
+
+  function porFamilia(resultados: readonly ResultadoZonaMorta[]) {
+    return new Map(resultados.map((r) => [r.familia, r]));
+  }
+
+  it('mede deriva MAIOR na família cujo preço de fato andou mais', () => {
+    // Tomate subindo ~3%/mês, café praticamente parado — a diferença que a
+    // etapa existe para capturar.
+    const grupos = [
+      grupoDe('tomate', poolNoTempo('tomate', 40, 0.03, 0.05, 7)),
+      grupoDe('cafe', poolNoTempo('cafe', 40, 0.001, 0.05, 8)),
+    ];
+
+    const r = porFamilia(
+      calibrarZonaMorta(grupos, { referencia: REF, categoriaPorProduto: CATEGORIAS }),
+    );
+
+    const fresco = r.get('fresco')!.derivaMensal;
+    const industrializado = r.get('industrializado')!.derivaMensal;
+    expect(fresco.valorRecomendado).toBeDefined();
+    expect(industrializado.valorRecomendado).toBeDefined();
+    expect(fresco.valorRecomendado!).toBeGreaterThan(industrializado.valorRecomendado!);
+    // O preço parado não puxa a deriva para cima só porque existe.
+    expect(industrializado.valorRecomendado!).toBeLessThanOrEqual(0.008);
+  });
+
+  it('a base não desce abaixo do piso de percepção, por mais firme que o típico seja', () => {
+    // Preço idêntico em todas as lojas: ruído de amostra ~0. Ainda assim a base
+    // fica em 5% — esse pedaço vem do ser humano, não do pool.
+    const grupos = [grupoDe('cafe', poolNoTempo('cafe', 40, 0, 0.001, 9))];
+    const r = porFamilia(
+      calibrarZonaMorta(grupos, { referencia: REF, categoriaPorProduto: CATEGORIAS }),
+    );
+    expect(r.get('industrializado')!.base.valorRecomendado).toBe(BASE_MINIMA_ZONA_MORTA);
+  });
+
+  it('a base SOBE quando a mediana da família balança mais que o piso', () => {
+    // Pool muito disperso: com célula de 8 observações a própria mediana passeia,
+    // e opinar dentro desse passeio é ler ruído.
+    const grupos = [grupoDe('tomate', poolNoTempo('tomate', 60, 0, 0.4, 10))];
+    const r = porFamilia(
+      calibrarZonaMorta(grupos, { referencia: REF, categoriaPorProduto: CATEGORIAS }),
+    );
+    const base = r.get('fresco')!.base;
+    expect(base.valorRecomendado).toBeDefined();
+    expect(base.valorRecomendado!).toBeGreaterThan(BASE_MINIMA_ZONA_MORTA);
+  });
+
+  it('dispersão absurda não vira zona morta absurda: acusa o casamento de produto', () => {
+    // ±80% no mesmo canônico não é mercado caro, é marca/tamanho misturado
+    // (docs/06). A ferramenta se recusa a recomendar e diz onde está o problema.
+    const grupos = [grupoDe('tomate', poolNoTempo('tomate', 60, 0, 0.8, 16))];
+    const base = porFamilia(
+      calibrarZonaMorta(grupos, { referencia: REF, categoriaPorProduto: CATEGORIAS }),
+    ).get('fresco')!.base;
+    expect(base.valorRecomendado).toBeUndefined();
+    expect(base.detalhe).toContain('casamento de produto');
+  });
+
+  it('produto sem categoria é medido como `outros`, que é como o app o trata', () => {
+    const grupos = [grupoDe('sem-catalogo', poolNoTempo('sem-catalogo', 40, 0.001, 0.05, 11))];
+    const r = porFamilia(calibrarZonaMorta(grupos, { referencia: REF }));
+    expect(r.get('outros')!.base.amostrasAvaliadas).toBe(1);
+    expect(r.get('fresco')!.base.amostrasAvaliadas).toBe(0);
+  });
+
+  it('família sem base fica sem recomendação, sem apagar as outras', () => {
+    const grupos = [grupoDe('tomate', poolNoTempo('tomate', 40, 0.02, 0.05, 12))];
+    const resultados = calibrarZonaMorta(grupos, {
+      referencia: REF,
+      categoriaPorProduto: CATEGORIAS,
+    });
+    const r = porFamilia(resultados);
+
+    expect(resultados).toHaveLength(3); // sempre uma linha por família
+    expect(r.get('fresco')!.base.valorRecomendado).toBeDefined();
+    const industrializado = r.get('industrializado')!;
+    expect(industrializado.base.valorRecomendado).toBeUndefined();
+    expect(industrializado.base.amostrasAvaliadas).toBe(0);
+    expect(industrializado.base.detalhe).toContain('sem base');
+    // E o valor vigente continua sendo a referência exibida.
+    expect(industrializado.base.valorAtual).toBe(ZONA_MORTA_POR_FAMILIA.industrializado.base);
+  });
+
+  it('só o nível município entra — a mesma observação não conta quatro vezes', () => {
+    const observacoes = poolNoTempo('tomate', 40, 0.02, 0.05, 13);
+    const soLoja = calibrarZonaMorta([grupoDe('tomate', observacoes, 'loja')], {
+      referencia: REF,
+      categoriaPorProduto: CATEGORIAS,
+    });
+    expect(porFamilia(soLoja).get('fresco')!.base.amostrasAvaliadas).toBe(0);
+
+    // E o pipeline real (que deriva loja+município+UF da mesma observação) conta 1.
+    const derivados = agruparParaCalibracao(observacoes);
+    const r = calibrarZonaMorta(derivados, { referencia: REF, categoriaPorProduto: CATEGORIAS });
+    expect(porFamilia(r).get('fresco')!.base.amostrasAvaliadas).toBe(1);
+  });
+
+  it('promoção declarada não entra: o típico é regular, e a zona morta cerca o típico', () => {
+    const regulares = poolNoTempo('cafe', 40, 0.001, 0.02, 14);
+    const comPromo = [
+      ...regulares,
+      ...Array.from({ length: 20 }, (_, i) => obsDe('cafe', 4, 140 - i * 6, true)),
+    ];
+    const semPromo = calibrarZonaMorta([grupoDe('cafe', regulares)], {
+      referencia: REF,
+      categoriaPorProduto: CATEGORIAS,
+    });
+    const comPromoR = calibrarZonaMorta([grupoDe('cafe', comPromo)], {
+      referencia: REF,
+      categoriaPorProduto: CATEGORIAS,
+    });
+    expect(porFamilia(comPromoR).get('industrializado')!.base.valorRecomendado).toBe(
+      porFamilia(semPromo).get('industrializado')!.base.valorRecomendado,
+    );
+  });
+
+  it('é determinístico e não lança sobre base vazia', () => {
+    const grupos = [grupoDe('tomate', poolNoTempo('tomate', 40, 0.02, 0.2, 15))];
+    const a = calibrarZonaMorta(grupos, { referencia: REF, categoriaPorProduto: CATEGORIAS });
+    const b = calibrarZonaMorta(grupos, { referencia: REF, categoriaPorProduto: CATEGORIAS });
+    expect(a).toEqual(b);
+
+    const vazio = calibrarZonaMorta([], { referencia: REF });
+    expect(vazio).toHaveLength(3);
+    for (const r of vazio) {
+      expect(r.base.valorRecomendado).toBeUndefined();
+      expect(r.derivaMensal.valorRecomendado).toBeUndefined();
     }
   });
 });

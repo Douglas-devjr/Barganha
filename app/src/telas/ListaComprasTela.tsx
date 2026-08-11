@@ -84,6 +84,9 @@ function classificar(preco: number, tipico: TipicoRegional, referencia: Date): V
       nObservacoes: tipico.nObservacoes,
       unidadeBase: tipico.unidadeBase,
       atualizadoEm: tipico.atualizadoEm,
+      // C3.6 — sem a categoria esta tela cairia na família `outros` enquanto a
+      // Verificar usaria a real: mesmo item, mesmo preço, vereditos diferentes.
+      ...(tipico.categoria ? { categoria: tipico.categoria } : {}),
       ...(tipico.observadoEmMaisRecente
         ? { observadoEmMaisRecente: tipico.observadoEmMaisRecente }
         : {}),

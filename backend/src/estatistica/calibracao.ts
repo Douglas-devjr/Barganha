@@ -1,19 +1,19 @@
 /**
- * C3 — Ferramenta de CALIBRAÇÃO do motor de agregação (docs/06, "a calibrar com
- * dados reais").
+ * C3/C3.6 — Ferramenta de CALIBRAÇÃO do motor de agregação e da zona morta do
+ * veredito (docs/06, "a calibrar com dados reais").
  *
  * Por que existe: `DECAIMENTO.meiaVidaDias` (30), `DECAIMENTO.fatorCercoPromo`
- * (1,5) e `MIN_OBSERVACOES_FALLBACK` são chutes iniciais defensáveis, não
- * números medidos. Este módulo MEDE o que cada valor alternativo teria feito
- * sobre o pool real e RECOMENDA um. Ele não decide nada: não altera constante,
- * não escreve no banco. Aplicar uma recomendação é decisão humana, num commit
- * separado — a mediana do veredito não muda por si só.
+ * (1,5), `MIN_OBSERVACOES_FALLBACK` e `ZONA_MORTA_POR_FAMILIA` são chutes
+ * iniciais defensáveis, não números medidos. Este módulo MEDE o que cada valor
+ * alternativo teria feito sobre o pool real e RECOMENDA um. Ele não decide
+ * nada: não altera constante, não escreve no banco. Aplicar uma recomendação é
+ * decisão humana, num commit separado — a mediana do veredito não muda por si só.
  *
  * Tudo aqui é puro (sem I/O), como `agregacao.ts`. Enquanto o pool do beta for
  * raso, o resultado honesto é "dados insuficientes": nenhuma função inventa
  * número nem lança exceção por falta de base.
  *
- * As três medições, e por que cada uma:
+ * As quatro medições, e por que cada uma:
  *  1. MEIA-VIDA — backtest walk-forward. A meia-vida boa é a que faz a mediana
  *     de ONTEM prever melhor o preço de HOJE. Isso é mensurável sem ground
  *     truth externo: basta esconder o futuro de cada grupo e comparar.
@@ -25,9 +25,24 @@
  *     preço cresce com a amplitude geográfica (uma loja tem um preço; uma UF
  *     tem centenas), então o mesmo `n` compra confianças diferentes em loja e
  *     em UF. Hoje o mínimo é um número global — é essa diferença que falta.
+ *  4. ZONA MORTA POR CATEGORIA (C3.6) — o único parâmetro daqui que é do
+ *     VEREDITO, não da agregação: quanto o preço da gôndola precisa se afastar
+ *     do típico para o app opinar. Mede as duas metades separadamente, porque
+ *     elas cercam ruídos diferentes: a BASE cerca o ruído da AMOSTRA (a mediana
+ *     de uma célula pequena balança sozinha) e a DERIVA cerca o ruído do TEMPO
+ *     (o preço andou desde que o típico foi observado). Por família de
+ *     categoria — `fresco` é reprecificado toda semana, café não.
  */
 
-import { type EscopoGeo, mediana, type UnidadeBase } from '@barganha/shared';
+import {
+  type EscopoGeo,
+  type FamiliaZonaMorta,
+  FAMILIAS_ZONA_MORTA,
+  familiaDeCategoria,
+  mediana,
+  type UnidadeBase,
+  ZONA_MORTA_POR_FAMILIA,
+} from '@barganha/shared';
 
 import { DECAIMENTO, percentilPonderado, pesoTemporal } from './agregacao';
 import {
@@ -81,6 +96,41 @@ export const AMPLITUDE_RELATIVA_ALVO = 0.15;
  * recomendação — uma ferramenta de medição que oscila sozinha não é auditável.
  */
 export const SEMENTE_BOOTSTRAP = 20_260_802;
+
+/** Bases de zona morta testadas (fração da mediana). */
+export const BASES_ZONA_MORTA_CANDIDATAS: readonly number[] = [0.03, 0.05, 0.07, 0.1, 0.15];
+/** Derivas mensais testadas (fração da mediana por mês de idade do típico). */
+export const DERIVAS_MENSAIS_CANDIDATAS: readonly number[] = [0.005, 0.008, 0.012, 0.02, 0.03];
+/**
+ * Piso da base: os 5% de percepção/relevância de `LIMIARES_VEREDITO` NÃO são
+ * mensuráveis a partir do pool — vêm de quanto o ser humano percebe de
+ * diferença de preço e de quanto muda a decisão dele na gôndola (docs/06). O
+ * pool só sabe dizer se a base precisa ser MAIOR que isso por causa de ruído de
+ * amostra; nunca que pode ser menor.
+ */
+export const BASE_MINIMA_ZONA_MORTA = 0.05;
+/**
+ * Nível de escopo medido. Um só, de propósito: a mesma observação vive em
+ * loja/município/região/UF ao mesmo tempo (ver `agruparParaCalibracao`), e medir
+ * nos quatro contaria cada preço quatro vezes com a UF — que agrega todo mundo —
+ * dominando a recomendação. `municipio` é o nível principal do produto (docs/06)
+ * e o que a maioria das telas consome.
+ */
+export const ESCOPO_ZONA_MORTA: EscopoGeo = 'municipio';
+/** Tamanho de célula de referência p/ medir o balanço da mediana (célula típica servida). */
+export const N_REFERENCIA_ZONA_MORTA = 8;
+/** Piso de observações regulares no grupo p/ ele entrar na medição da base. */
+export const MIN_OBSERVACOES_ZONA_MORTA = 12;
+/**
+ * Percentil do ruído entre os grupos da família que a base precisa cobrir. p75
+ * e não a mediana: a base é uma trava de segurança, e uma trava dimensionada
+ * para o caso mediano deixa metade dos produtos da família opinando sobre ruído.
+ */
+export const PERCENTIL_RUIDO_ZONA_MORTA = 0.75;
+/** Vão mínimo (dias) entre o miolo do terço velho e o do novo p/ a deriva significar %/mês. */
+export const MIN_DIAS_VAO_DERIVA = 45;
+/** Piso de observações regulares p/ dividir o grupo em terços de tempo. */
+export const MIN_OBSERVACOES_DERIVA = 9;
 
 // ────────────────────────────────── Entrada ───────────────────────────────
 
@@ -215,6 +265,32 @@ function agregarPorGrupo(valores: readonly number[]): number {
 
 function pct(fracao: number): string {
   return `${(fracao * 100).toFixed(1)}%`;
+}
+
+/**
+ * Quanto a mediana de uma célula de `n` observações BALANÇA, em fração da
+ * mediana da população: IQR das medianas reamostradas com reposição ÷ mediana
+ * da população. Compartilhado pelas medições 3 e 4 — as duas perguntam a mesma
+ * coisa (o quanto o típico é firme com `n` pequeno), só que uma escolhe o `n` e
+ * a outra fixa o `n` e lê o balanço.
+ */
+function amplitudeRelativaBootstrap(
+  populacao: readonly AmostraCalibracao[],
+  n: number,
+  medianaPopulacao: number,
+  sortear: () => number,
+  refMs: number,
+  meiaVidaDias: number,
+): number {
+  const medianas: number[] = [];
+  for (let b = 0; b < REPETICOES_BOOTSTRAP; b++) {
+    const reamostra: AmostraCalibracao[] = [];
+    for (let i = 0; i < n; i++) {
+      reamostra.push(populacao[Math.floor(sortear() * populacao.length)]!);
+    }
+    medianas.push(percentilTemporal(reamostra, refMs, meiaVidaDias, 0.5));
+  }
+  return (percentilSimples(medianas, 0.75) - percentilSimples(medianas, 0.25)) / medianaPopulacao;
 }
 
 /** PRNG determinístico (mulberry32) — ver `SEMENTE_BOOTSTRAP`. */
@@ -358,7 +434,9 @@ export function calibrarFatorCerco(
   const maxIdadeDias = opcoes.maxIdadeDias ?? DECAIMENTO.maxIdadeDias;
   const meiaVidaDias = opcoes.meiaVidaDias ?? DECAIMENTO.meiaVidaDias;
 
-  const recalls = new Map<number, number[]>(FATORES_CERCO_CANDIDATOS.map((k) => [k, [] as number[]]));
+  const recalls = new Map<number, number[]>(
+    FATORES_CERCO_CANDIDATOS.map((k) => [k, [] as number[]]),
+  );
   const fps = new Map<number, number[]>(FATORES_CERCO_CANDIDATOS.map((k) => [k, [] as number[]]));
   let gruposAvaliados = 0;
 
@@ -366,7 +444,8 @@ export function calibrarFatorCerco(
     const amostras = prepararAmostras(grupo.observacoes, refMs, maxIdadeDias);
     const declaradas = amostras.filter((a) => a.emPromocao);
     const regulares = amostras.filter((a) => !a.emPromocao);
-    if (regulares.length < MIN_REGULARES_CERCO || declaradas.length < MIN_DECLARADAS_CERCO) continue;
+    if (regulares.length < MIN_REGULARES_CERCO || declaradas.length < MIN_DECLARADAS_CERCO)
+      continue;
 
     const q1 = percentilTemporal(regulares, refMs, meiaVidaDias, 0.25);
     const q3 = percentilTemporal(regulares, refMs, meiaVidaDias, 0.75);
@@ -378,7 +457,9 @@ export function calibrarFatorCerco(
     gruposAvaliados++;
     for (const fator of FATORES_CERCO_CANDIDATOS) {
       const cerco = q1 - fator * iqr;
-      recalls.get(fator)!.push(declaradas.filter((a) => a.valor < cerco).length / declaradas.length);
+      recalls
+        .get(fator)!
+        .push(declaradas.filter((a) => a.valor < cerco).length / declaradas.length);
       fps.get(fator)!.push(regulares.filter((a) => a.valor < cerco).length / regulares.length);
     }
   }
@@ -479,16 +560,14 @@ export function calibrarMinimoObservacoes(
 
       gruposAvaliados++;
       for (const n of NS_CANDIDATOS) {
-        const medianas: number[] = [];
-        for (let b = 0; b < REPETICOES_BOOTSTRAP; b++) {
-          const reamostra: AmostraCalibracao[] = [];
-          for (let i = 0; i < n; i++) {
-            reamostra.push(populacao[Math.floor(sortear() * populacao.length)]!);
-          }
-          medianas.push(percentilTemporal(reamostra, refMs, meiaVidaDias, 0.5));
-        }
-        const amplitude =
-          (percentilSimples(medianas, 0.75) - percentilSimples(medianas, 0.25)) / medianaPopulacao;
+        const amplitude = amplitudeRelativaBootstrap(
+          populacao,
+          n,
+          medianaPopulacao,
+          sortear,
+          refMs,
+          meiaVidaDias,
+        );
         if (Number.isFinite(amplitude)) amplitudes.get(n)!.push(amplitude);
       }
     }
@@ -534,5 +613,206 @@ export function calibrarMinimoObservacoes(
         `(alvo ≤ ${pct(AMPLITUDE_RELATIVA_ALVO)})`,
       amplitudePorCandidato,
     };
+  });
+}
+
+// ──────────────── 4) Zona morta do veredito, por categoria ────────────────
+
+export interface ResultadoZonaMorta {
+  familia: FamiliaZonaMorta;
+  /** Diferença mínima relevante com o dado de hoje (fração da mediana). */
+  base: RecomendacaoCalibravel<number>;
+  /** Crescimento da zona morta por mês de idade do típico (fração). */
+  derivaMensal: RecomendacaoCalibravel<number>;
+}
+
+export interface OpcoesZonaMorta extends OpcoesCalibracao {
+  /**
+   * `produtoCanonicoId` → categoria (texto livre do catálogo). O que falta no
+   * mapa cai na família `outros` — que é o comportamento REAL do app para esse
+   * produto, então medir junto ali é o retrato certo, não um buraco.
+   */
+  categoriaPorProduto?: ReadonlyMap<string, string>;
+}
+
+/** Menor candidato ≥ alvo; `undefined` se nem o maior alcança. */
+function menorCandidatoAcima(candidatos: readonly number[], alvo: number): number | undefined {
+  return candidatos.find((c) => c >= alvo);
+}
+
+/**
+ * Ruído de AMOSTRA do grupo, em fração da mediana: metade do balanço da mediana
+ * numa célula de `N_REFERENCIA_ZONA_MORTA` observações.
+ *
+ * Por que metade: o balanço é medido como IQR das medianas reamostradas — a
+ * largura da faixa p25–p75 da própria ESTIMATIVA. O que a zona morta precisa
+ * cobrir é o DESVIO em relação ao centro, que é metade dessa largura. Um preço
+ * de gôndola mais perto do típico do que isso não é barato nem caro: é o típico
+ * tremendo.
+ */
+function ruidoDeAmostra(
+  populacao: readonly AmostraCalibracao[],
+  sortear: () => number,
+  refMs: number,
+  meiaVidaDias: number,
+): number {
+  const medianaPopulacao = percentilTemporal(populacao, refMs, meiaVidaDias, 0.5);
+  if (!Number.isFinite(medianaPopulacao) || medianaPopulacao <= 0) return Number.NaN;
+  const amplitude = amplitudeRelativaBootstrap(
+    populacao,
+    N_REFERENCIA_ZONA_MORTA,
+    medianaPopulacao,
+    sortear,
+    refMs,
+    meiaVidaDias,
+  );
+  return amplitude / 2;
+}
+
+/**
+ * Deriva mensal ABSOLUTA do grupo: taxa geométrica entre a mediana do terço mais
+ * VELHO e a do terço mais NOVO das observações, pelo vão de tempo entre os
+ * miolos dos dois terços.
+ *
+ * Sem peso temporal aqui de propósito: o decaimento existe para dar mais voz ao
+ * preço recente DENTRO de um típico, e aplicá-lo nas duas pontas encolheria
+ * justamente o movimento que se quer medir.
+ *
+ * O sinal é descartado (valor absoluto): a zona morta não sabe se o mercado vai
+ * subir ou cair, só que ele ANDA — uma categoria que cai 3% ao mês torna o
+ * típico velho tão enganoso quanto uma que sobe 3%.
+ */
+function derivaMensalDoGrupo(populacao: readonly AmostraCalibracao[]): number {
+  if (populacao.length < MIN_OBSERVACOES_DERIVA) return Number.NaN;
+  const corte = Math.floor(populacao.length / 3);
+  const velho = populacao.slice(0, corte); // já vem ordenado no tempo
+  const novo = populacao.slice(populacao.length - corte);
+
+  const mVelho = mediana(velho.map((a) => a.valor));
+  const mNovo = mediana(novo.map((a) => a.valor));
+  if (mVelho == null || mNovo == null || mVelho <= 0 || mNovo <= 0) return Number.NaN;
+
+  const msVelho = mediana(velho.map((a) => a.observadoMs));
+  const msNovo = mediana(novo.map((a) => a.observadoMs));
+  if (msVelho == null || msNovo == null) return Number.NaN;
+  const dias = (msNovo - msVelho) / DIA_MS;
+  if (dias < MIN_DIAS_VAO_DERIVA) return Number.NaN;
+
+  const meses = dias / 30.44;
+  return Math.abs(Math.pow(mNovo / mVelho, 1 / meses) - 1);
+}
+
+/**
+ * Mede as duas metades da zona morta (docs/06, C3.6) por família de categoria.
+ *
+ * **Base** = o piso de percepção humana (`BASE_MINIMA_ZONA_MORTA`, que o pool
+ * não tem como medir) OU o ruído de amostra da família, o que for maior. Sobe
+ * acima dos 5% só quando a mediana da família comprovadamente balança mais que
+ * isso — e é por isso que a base pode acabar diferente entre famílias sem que
+ * ninguém tenha chutado: no fresco a dispersão real é maior, e com célula
+ * pequena parte dela é indistinguível de ruído.
+ *
+ * **Deriva** = quanto o preço da família realmente andou por mês, medido nos
+ * próprios grupos. É a metade que a categoria explica melhor: o fresco é
+ * reprecificado toda semana, o industrializado por tabela.
+ *
+ * Só a base REGULAR entra (promoção declarada é segregada do típico pelo
+ * `agregar()`, e deixá-la aqui inflaria os dois números com desconto pontual).
+ * Uma família sem base sai sem recomendação, sem apagar as outras.
+ */
+export function calibrarZonaMorta(
+  grupos: readonly GrupoCalibracao[],
+  opcoes: OpcoesZonaMorta = {},
+): ResultadoZonaMorta[] {
+  const refMs = (opcoes.referencia ?? new Date()).getTime();
+  const maxIdadeDias = opcoes.maxIdadeDias ?? DECAIMENTO.maxIdadeDias;
+  const meiaVidaDias = opcoes.meiaVidaDias ?? DECAIMENTO.meiaVidaDias;
+  const sortear = criarSorteio(SEMENTE_BOOTSTRAP);
+
+  const ruidos = new Map<FamiliaZonaMorta, number[]>(
+    FAMILIAS_ZONA_MORTA.map((f) => [f, [] as number[]]),
+  );
+  const derivas = new Map<FamiliaZonaMorta, number[]>(
+    FAMILIAS_ZONA_MORTA.map((f) => [f, [] as number[]]),
+  );
+
+  for (const grupo of grupos) {
+    if (grupo.escopo !== ESCOPO_ZONA_MORTA) continue;
+    const populacao = prepararAmostras(grupo.observacoes, refMs, maxIdadeDias).filter(
+      (a) => !a.emPromocao,
+    );
+    if (populacao.length < MIN_OBSERVACOES_ZONA_MORTA) continue;
+
+    const familia = familiaDeCategoria(opcoes.categoriaPorProduto?.get(grupo.produtoCanonicoId));
+
+    const ruido = ruidoDeAmostra(populacao, sortear, refMs, meiaVidaDias);
+    if (Number.isFinite(ruido)) ruidos.get(familia)!.push(ruido);
+
+    const deriva = derivaMensalDoGrupo(populacao);
+    if (Number.isFinite(deriva)) derivas.get(familia)!.push(deriva);
+  }
+
+  return FAMILIAS_ZONA_MORTA.map((familia) => {
+    const atual = ZONA_MORTA_POR_FAMILIA[familia];
+    const amostrasRuido = ruidos.get(familia)!;
+    const amostrasDeriva = derivas.get(familia)!;
+
+    // ── Base ──
+    const ruidoFamilia = percentilSimples(amostrasRuido, PERCENTIL_RUIDO_ZONA_MORTA);
+    const base: RecomendacaoCalibravel<number> =
+      amostrasRuido.length === 0 || !Number.isFinite(ruidoFamilia)
+        ? {
+            valorAtual: atual.base,
+            amostrasAvaliadas: 0,
+            detalhe:
+              `sem base: nenhum grupo desta família tem ${MIN_OBSERVACOES_ZONA_MORTA}+ ` +
+              `observações regulares em ${ESCOPO_ZONA_MORTA}`,
+          }
+        : (() => {
+            const alvo = Math.max(BASE_MINIMA_ZONA_MORTA, ruidoFamilia);
+            const escolhido = menorCandidatoAcima(BASES_ZONA_MORTA_CANDIDATAS, alvo);
+            const medido =
+              `ruído de amostra ${pct(ruidoFamilia)} ` +
+              `(p${Math.round(PERCENTIL_RUIDO_ZONA_MORTA * 100)} da família, célula de ` +
+              `${N_REFERENCIA_ZONA_MORTA}), piso de percepção ${pct(BASE_MINIMA_ZONA_MORTA)}`;
+            return escolhido == null
+              ? {
+                  valorAtual: atual.base,
+                  amostrasAvaliadas: amostrasRuido.length,
+                  detalhe:
+                    `${medido} — nem o maior candidato ` +
+                    `(${pct(BASES_ZONA_MORTA_CANDIDATAS[BASES_ZONA_MORTA_CANDIDATAS.length - 1]!)}) ` +
+                    'cobre esse ruído; o problema aqui provavelmente é casamento de produto, ' +
+                    'não veredito (docs/06)',
+                }
+              : {
+                  valorAtual: atual.base,
+                  valorRecomendado: escolhido,
+                  amostrasAvaliadas: amostrasRuido.length,
+                  detalhe: `${pct(escolhido)}: ${medido}`,
+                };
+          })();
+
+    // ── Deriva mensal ──
+    const derivaFamilia = agregarPorGrupo(amostrasDeriva);
+    const derivaMensal: RecomendacaoCalibravel<number> =
+      amostrasDeriva.length === 0 || !Number.isFinite(derivaFamilia)
+        ? {
+            valorAtual: atual.derivaMensal,
+            amostrasAvaliadas: 0,
+            detalhe:
+              `sem base: nenhum grupo desta família cobre ${MIN_DIAS_VAO_DERIVA}+ dias com ` +
+              `${MIN_OBSERVACOES_DERIVA}+ observações regulares`,
+          }
+        : {
+            valorAtual: atual.derivaMensal,
+            valorRecomendado:
+              menorCandidatoAcima(DERIVAS_MENSAIS_CANDIDATAS, derivaFamilia) ??
+              DERIVAS_MENSAIS_CANDIDATAS[DERIVAS_MENSAIS_CANDIDATAS.length - 1]!,
+            amostrasAvaliadas: amostrasDeriva.length,
+            detalhe: `preço andou ${pct(derivaFamilia)} por mês (mediana da família)`,
+          };
+
+    return { familia, base, derivaMensal };
   });
 }

@@ -40,6 +40,20 @@ export interface EntradaVeredito {
   /** Valor digitado na prateleira (R$ na unidade de venda). */
   precoPrateleira: number;
   produtoCanonicoId?: string | null;
+  /**
+   * Categoria do produto (C3.6) — escolhe a família da zona morta.
+   *
+   * Três estados, de propósito:
+   *  • string      — o chamador já tem a categoria;
+   *  • `null`      — o chamador já olhou e o produto NÃO tem categoria;
+   *  • `undefined` — o chamador não sabe: busca-se no `cache_produto` (C4.5).
+   *
+   * A diferença entre `null` e `undefined` existe pela tela Verificar: lá o
+   * efeito roda a cada dígito digitado, e sem o `null` cada tecla dispararia uma
+   * consulta ao SQLite que sempre voltaria vazia. Quem monta a entrada a partir
+   * de um `ProdutoLocal` já leu o mesmo `cache_produto` — e passa `null`.
+   */
+  categoria?: string | null;
   /** Faixa pessoal já pronta (do catálogo), se houver histórico. */
   faixaPessoal?: FaixaPreco;
   /**
@@ -96,8 +110,9 @@ function melhorEstatistica(linhas: readonly CacheEstatistica[]): CacheEstatistic
   return melhor;
 }
 
-function comoFaixa(e: CacheEstatistica): FaixaPreco {
+function comoFaixa(e: CacheEstatistica, categoria?: string): FaixaPreco {
   return {
+    ...(categoria ? { categoria } : {}),
     ...(e.mediana != null ? { mediana: e.mediana } : {}),
     ...(e.p25 != null ? { p25: e.p25 } : {}),
     ...(e.p75 != null ? { p75: e.p75 } : {}),
@@ -132,16 +147,29 @@ export async function resolverVeredito(entrada: EntradaVeredito): Promise<Result
   let regional: FaixaPreco | undefined;
   let escopoRegional: EscopoGeo | undefined;
 
+  // Categoria (C3.6) — a mesma nos dois ângulos: regional e pessoal falam do
+  // MESMO produto, então cair em famílias diferentes de zona morta faria a tela
+  // exigir evidências diferentes de cada lado sem nada explicar isso ao usuário.
+  const categoria =
+    entrada.categoria === undefined
+      ? await categoriaEmCache(entrada.produtoCanonicoId)
+      : (entrada.categoria ?? undefined);
+
   if (entrada.produtoCanonicoId) {
     const linhas = await cache.listarEstatisticasDoProduto(entrada.produtoCanonicoId);
     const melhor = melhorEstatistica(linhas);
     if (melhor) {
-      regional = comoFaixa(melhor);
+      regional = comoFaixa(melhor, categoria);
       escopoRegional = melhor.escopo;
     }
   }
 
-  const unidadeBase = regional?.unidadeBase ?? entrada.faixaPessoal?.unidadeBase;
+  const pessoal =
+    entrada.faixaPessoal && categoria
+      ? { ...entrada.faixaPessoal, categoria }
+      : entrada.faixaPessoal;
+
+  const unidadeBase = regional?.unidadeBase ?? pessoal?.unidadeBase;
   const precoNormalizado = normalizarPrateleira(
     entrada.precoPrateleira,
     unidadeBase,
@@ -152,14 +180,25 @@ export async function resolverVeredito(entrada: EntradaVeredito): Promise<Result
   const hibrido = montarVeredito({
     precoPrateleira: precoNormalizado ?? entrada.precoPrateleira,
     ...(regional ? { regional } : {}),
-    ...(entrada.faixaPessoal ? { pessoal: entrada.faixaPessoal } : {}),
+    ...(pessoal ? { pessoal } : {}),
   });
 
   return {
     hibrido,
     ...(escopoRegional ? { escopoRegional } : {}),
-    semDados: !regional && !entrada.faixaPessoal,
+    semDados: !regional && !pessoal,
   };
+}
+
+/**
+ * Categoria do `cache_produto` (C4.5). Best-effort: sem produto canônico, sem
+ * linha em cache ou sem enriquecimento, devolve `undefined` — a família `outros`
+ * é o padrão e o veredito segue igual ao de antes.
+ */
+async function categoriaEmCache(produtoCanonicoId?: string | null): Promise<string | undefined> {
+  if (!produtoCanonicoId) return undefined;
+  const resumo = await cache.obterResumo(produtoCanonicoId);
+  return resumo?.categoria ?? undefined;
 }
 
 /**

@@ -26,6 +26,13 @@ export interface TipicoRegional {
   menorVisto?: number;
   nObservacoes: number;
   /**
+   * Categoria do produto (C3.6) — escolhe a família da ZONA MORTA no veredito.
+   * Viaja junto do típico de propósito: quem classifica um preço contra esta
+   * mediana precisa da mesma família que a Verificar usaria, senão o mesmo item
+   * pelo mesmo preço sai "abaixo do típico" numa tela e "na média" na outra.
+   */
+  categoria?: string;
+  /**
    * Data da observação mais recente por trás desta mediana (ISO). Ausente = idade
    * desconhecida (linha em cache antes da v10, ou backend antigo) — a UI diz
    * "sem data", nunca assume que é de hoje.
@@ -52,6 +59,11 @@ export async function tipicosDaRegiao(
   const local = await resolverLocalizacao();
   if (!local) return resultado; // sem região não há o que comparar.
 
+  // Uma leitura só do catálogo local para a lista inteira (a alternativa era um
+  // `obterResumo` por item). Produto não enriquecido não está no mapa e fica sem
+  // categoria — família `outros`, o padrão.
+  const resumos = await cache.mapaDeResumos();
+
   for (const id of new Set(produtoCanonicoIds)) {
     const estatisticas = await cache.listarEstatisticasDoProduto(id);
     const regional = escolherEstatisticaRegional(estatisticas, local);
@@ -61,11 +73,14 @@ export async function tipicosDaRegiao(
       (v): v is number => v != null,
     );
 
+    const categoria = resumos.get(id)?.categoria;
+
     resultado.set(id, {
       mediana: regional.mediana,
       unidadeBase: regional.unidadeBase,
       ...(candidatos.length > 0 ? { menorVisto: Math.min(...candidatos) } : {}),
       nObservacoes: regional.nObservacoes,
+      ...(categoria ? { categoria } : {}),
       ...(regional.observadoEmMaisRecente
         ? { observadoEmMaisRecente: regional.observadoEmMaisRecente }
         : {}),

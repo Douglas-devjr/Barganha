@@ -18,6 +18,7 @@
 
 import type { UnidadeBase } from '../core';
 import { foraDaJanela, idadeEmMeses, MAX_IDADE_TIPICO_DIAS, dadoRecente } from './frescor';
+import { normalizarDescricao } from './normalizacao';
 
 /**
  * Mínimo de observações para um nível geográfico ser considerado CONFIÁVEL.
@@ -38,8 +39,10 @@ export const VEREDITOS = ['barato', 'na_media', 'caro', 'sem_dados'] as const;
 export type Veredito = (typeof VEREDITOS)[number];
 
 /**
- * Limiares do veredito — **a calibrar com dados reais** (docs/06; data-scientist).
- * Por categoria, no futuro; por ora, globais e conservadores.
+ * Limiares PADRÃO do veredito — **a calibrar com dados reais** (docs/06;
+ * data-scientist). A zona morta tem ainda um recorte por categoria em
+ * `ZONA_MORTA_POR_FAMILIA`; estes valores são a linha de base dela (e o que
+ * vale sozinho quando o produto não tem categoria, o caso comum).
  */
 export const LIMIARES_VEREDITO = {
   /** Abaixo disso, o veredito é exibido com ressalva de "poucos dados". */
@@ -81,14 +84,177 @@ export const LIMIARES_VEREDITO = {
    * 5% para ~7,4%; no limite da janela (6 meses), para ~9,8%. Não mata o veredito
    * em nenhum ponto da janela — só exige mais evidência conforme o dado envelhece.
    *
-   * A calibrar com dados reais (docs/06; data-scientist).
+   * Este é o valor PADRÃO (família `outros`); por família, ver
+   * `ZONA_MORTA_POR_FAMILIA`. A calibrar com dados reais (docs/06;
+   * `backend job:calibracao` mede e recomenda, o humano aplica).
    */
   derivaMensalPresumida: 0.008,
 } as const;
 
+// ─────────────────────── Zona morta POR CATEGORIA (C3.6) ───────────────────
+
 /**
- * Zona morta efetiva para esta faixa: a base ± o que a idade do dado justifica
- * (ver `derivaMensalPresumida`).
+ * Famílias de zona morta — o agrupamento de categorias por **comportamento de
+ * preço**, não pela taxonomia do supermercado.
+ *
+ * Por que família e não a categoria crua: `produto_canonico.categoria` é texto
+ * livre vindo do catálogo (`"Café"`, `"Hortifruti"`, `"Frutas"`, `"Bebidas"`…),
+ * então uma tabela indexada pela categoria teria uma linha nova a cada rótulo
+ * novo de fornecedor — e um valor calibrado sobre 4 observações de `"Frutas"`
+ * não sabe nada sobre `"Hortifruti"`, que é o mesmo mercado. A família junta o
+ * que se comporta igual e mantém a tabela pequena o bastante para ser calibrada.
+ *
+ *  • `fresco`          — vendido a peso ou feito na loja (hortifruti, açougue,
+ *    peixaria, padaria): reprecificado toda semana, com safra e perda dentro.
+ *  • `industrializado` — marca nacional, embalado, preço de tabela (mercearia,
+ *    bebida, limpeza, higiene): anda devagar e quase junto entre as lojas.
+ *  • `outros`          — categoria ausente ou desconhecida. É o caso COMUM hoje
+ *    (categoria só existe para o produto já enriquecido pelo catálogo), então
+ *    esta linha é o comportamento padrão do app — e por isso vale exatamente o
+ *    valor global de antes: nada muda para quem não tem categoria.
+ */
+export const FAMILIAS_ZONA_MORTA = ['fresco', 'industrializado', 'outros'] as const;
+export type FamiliaZonaMorta = (typeof FAMILIAS_ZONA_MORTA)[number];
+
+/** Os dois números que definem a zona morta de uma família. */
+export interface ParametrosZonaMorta {
+  /** Diferença mínima relevante com o dado de HOJE (fração da mediana). */
+  base: number;
+  /** Quanto a zona morta cresce por MÊS de idade do típico (fração). */
+  derivaMensal: number;
+}
+
+/**
+ * Tabela por família — **chute fundamentado, ainda não calibração** (mesma
+ * postura do resto do motor: `backend job:calibracao` mede sobre o pool real e
+ * recomenda; trocar o número é decisão humana, em commit separado).
+ *
+ * O que varia entre famílias e o que NÃO varia:
+ *
+ *  • A **base NÃO varia** (5% em todas). Ela cerca irrelevância e percepção
+ *    humana — "R$ 0,50 num item de R$ 10 não muda decisão" vale igual no tomate
+ *    e no refrigerante. E subir a base no `fresco` seria pior que inútil: é
+ *    justamente no produto disperso que a diferença entre lojas é sinal REAL
+ *    (docs/06 — a 5% o filtro rebaixa ~79% dos "barato" no homogêneo e só ~1%
+ *    no disperso), então uma base maior ali comeria exatamente o que o app
+ *    existe para mostrar. Se a base tiver que subir no fresco, é por ruído de
+ *    AMOSTRA (mediana de `n` pequeno balançando), e isso se mede — ver
+ *    `calibrarZonaMorta` no backend.
+ *
+ *  • A **deriva VARIA**, e é aí que a categoria realmente importa. Ela cerca o
+ *    ruído do TEMPO: quanto o preço andou desde que o típico foi observado.
+ *    Alface e picanha são reprecificadas semanalmente, com safra e perda dentro
+ *    do preço; um pacote de café não. 2%/mês contra 0,8%/mês é conservador e
+ *    erra para o lado seguro — com típico velho de fresco o app fica mais calado
+ *    em vez de cravar "caro" sobre o mercado de três meses atrás. Com dado de
+ *    HOJE as duas famílias decidem idêntico, que é o caso da maioria das telas.
+ */
+export const ZONA_MORTA_POR_FAMILIA: Record<FamiliaZonaMorta, ParametrosZonaMorta> = {
+  fresco: { base: LIMIARES_VEREDITO.diferencaMinimaRelevante, derivaMensal: 0.02 },
+  industrializado: {
+    base: LIMIARES_VEREDITO.diferencaMinimaRelevante,
+    derivaMensal: LIMIARES_VEREDITO.derivaMensalPresumida,
+  },
+  outros: {
+    base: LIMIARES_VEREDITO.diferencaMinimaRelevante,
+    derivaMensal: LIMIARES_VEREDITO.derivaMensalPresumida,
+  },
+};
+
+/**
+ * Prefixos de TOKEN por família (a categoria é comparada palavra a palavra, não
+ * por substring: `SABAO` não pode virar padaria por conter "pão" em pedaços).
+ * Casa no singular e no plural de uma vez — `FRUT` pega FRUTA/FRUTAS.
+ *
+ * Prefixo curto demais é armadilha: `AVE` casaria AVEIA e AVELA, e cereal viraria
+ * hortifruti. Onde o prefixo não separa, entra a palavra inteira (`AVES`).
+ */
+const PREFIXOS_FAMILIA: readonly (readonly [FamiliaZonaMorta, readonly string[]])[] = [
+  [
+    'fresco',
+    [
+      'HORTIFRUTI',
+      'HORTIFRUTIGRANJEIRO',
+      'FRUT',
+      'LEGUME',
+      'VERDURA',
+      'FOLHOSO',
+      'ACOUGUE',
+      'CARNE',
+      'BOVIN',
+      'SUIN',
+      'AVES',
+      'FRANGO',
+      'PEIXE',
+      'PESCADO',
+      'PEIXARIA',
+      'PADARIA',
+      'PAO',
+      'PAES',
+      'CONFEITARIA',
+      'ROTISSERIA',
+    ],
+  ],
+  [
+    'industrializado',
+    [
+      'MERCEARIA',
+      'BEBIDA',
+      'REFRIGERANTE',
+      'CERVEJA',
+      'SUCO',
+      'AGUA',
+      'CAFE',
+      'LATICINIO',
+      'LEITE',
+      'IOGURTE',
+      'BISCOITO',
+      'BOLACHA',
+      'SNACK',
+      'DOCE',
+      'CHOCOLATE',
+      'CEREAL',
+      'MASSA',
+      'ENLATADO',
+      'CONSERVA',
+      'CONGELADO',
+      'LIMPEZA',
+      'HIGIENE',
+      'PERFUMARIA',
+      'PET',
+    ],
+  ],
+];
+
+/**
+ * Categoria (texto livre do catálogo) → família. Desconhecida ou ausente cai em
+ * `outros`, que vale o padrão global — nunca inventa um comportamento novo para
+ * um rótulo que ninguém mapeou.
+ *
+ * Vive em `shared/` pelo mesmo motivo de `MIN_OBSERVACOES_CONFIAVEL`: app
+ * (offline) e backend precisam classificar IGUAL, senão o mesmo produto sai
+ * "barato" num lado e "na média" no outro sem nada no log.
+ */
+export function familiaDeCategoria(categoria?: string): FamiliaZonaMorta {
+  if (!categoria) return 'outros';
+  const tokens = normalizarDescricao(categoria)
+    .split(/[^A-Z0-9]+/)
+    .filter((t) => t.length > 0);
+  if (tokens.length === 0) return 'outros';
+  for (const [familia, prefixos] of PREFIXOS_FAMILIA) {
+    if (tokens.some((t) => prefixos.some((p) => t.startsWith(p)))) return familia;
+  }
+  return 'outros';
+}
+
+/** Parâmetros de zona morta da categoria (via família). */
+export function parametrosZonaMorta(categoria?: string): ParametrosZonaMorta {
+  return ZONA_MORTA_POR_FAMILIA[familiaDeCategoria(categoria)];
+}
+
+/**
+ * Zona morta efetiva para esta faixa: a base da família ± o que a idade do dado
+ * justifica (ver `ZONA_MORTA_POR_FAMILIA`).
  *
  * Idade DESCONHECIDA (`observadoEmMaisRecente` ausente — cache antigo, backend
  * anterior ao campo) é tratada como o limite do frescor, não como zero: uma
@@ -98,10 +264,8 @@ export const LIMIARES_VEREDITO = {
 export function zonaMortaPara(faixa: FaixaPreco, referencia: Date): number {
   const meses =
     idadeEmMeses(faixa.observadoEmMaisRecente, referencia) ?? MAX_IDADE_TIPICO_DIAS / 30.44;
-  return (
-    LIMIARES_VEREDITO.diferencaMinimaRelevante +
-    LIMIARES_VEREDITO.derivaMensalPresumida * Math.max(0, meses)
-  );
+  const { base, derivaMensal } = parametrosZonaMorta(faixa.categoria);
+  return base + derivaMensal * Math.max(0, meses);
 }
 
 /**
@@ -117,6 +281,12 @@ export interface FaixaPreco {
   menorPromocional?: number;
   nObservacoes: number;
   unidadeBase: UnidadeBase;
+  /**
+   * Categoria do produto (texto livre do catálogo) — só serve para escolher a
+   * família da ZONA MORTA (`parametrosZonaMorta`). Ausente é o caso comum e
+   * perfeitamente válido: cai na família `outros`, que vale o padrão global.
+   */
+  categoria?: string;
   /**
    * Quando esta faixa foi CALCULADA (ISO 8601). Não confundir com a idade do
    * preço: no ângulo REGIONAL isto é o carimbo do recálculo no servidor, e um

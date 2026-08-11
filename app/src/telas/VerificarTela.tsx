@@ -241,6 +241,9 @@ export function VerificarTela({ navigation }: Props) {
     void resolverVeredito({
       precoPrateleira: valor,
       produtoCanonicoId: selecionado.produtoCanonicoId,
+      // Categoria em mãos (C3.6), inclusive a ausência dela (`null`): sem isso o
+      // efeito releria o `cache_produto` a cada dígito digitado.
+      categoria: selecionado.categoria ?? null,
       ...(selecionado.faixaPessoal ? { faixaPessoal: selecionado.faixaPessoal } : {}),
     }).then((r) => {
       if (ativo && montado.current) setResultado(r);

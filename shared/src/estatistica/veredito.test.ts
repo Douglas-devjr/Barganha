@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest';
 
 import {
   classificarPreco,
+  familiaDeCategoria,
   montarVeredito,
+  parametrosZonaMorta,
   poucosDados,
   zonaMortaPara,
   type FaixaPreco,
@@ -181,6 +183,91 @@ describe('idade do típico no veredito (dado velho exige mais evidência)', () =
     delete semData.observadoEmMaisRecente;
     const v = montarVeredito({ precoPrateleira: 7.5, regional: semData, referencia: AGORA });
     expect(v.regional?.dadoVelho).toBe(true);
+  });
+});
+
+describe('zona morta por categoria (C3.6)', () => {
+  const AGORA = new Date('2026-07-29T12:00:00.000Z');
+  const DIA_MS = 86_400_000;
+
+  const comCategoria = (categoria: string | undefined, dias: number): FaixaPreco => ({
+    mediana: 10,
+    p25: 9.95,
+    p75: 10.05,
+    nObservacoes: 20,
+    unidadeBase: 'kg',
+    atualizadoEm: AGORA.toISOString(),
+    observadoEmMaisRecente: new Date(AGORA.getTime() - dias * DIA_MS).toISOString(),
+    ...(categoria ? { categoria } : {}),
+  });
+
+  it('agrupa a categoria do catálogo na família de comportamento de preço', () => {
+    expect(familiaDeCategoria('Hortifruti')).toBe('fresco');
+    expect(familiaDeCategoria('Frutas')).toBe('fresco');
+    expect(familiaDeCategoria('Carnes e Aves')).toBe('fresco');
+    expect(familiaDeCategoria('Padaria')).toBe('fresco');
+    expect(familiaDeCategoria('Bebidas')).toBe('industrializado');
+    expect(familiaDeCategoria('Café')).toBe('industrializado'); // acento não atrapalha
+    expect(familiaDeCategoria('Limpeza')).toBe('industrializado');
+  });
+
+  it('categoria ausente ou desconhecida cai no padrão, nunca num comportamento inventado', () => {
+    expect(familiaDeCategoria(undefined)).toBe('outros');
+    expect(familiaDeCategoria('')).toBe('outros');
+    expect(familiaDeCategoria('Utilidades Domésticas')).toBe('outros');
+    expect(parametrosZonaMorta(undefined)).toEqual(parametrosZonaMorta('Utilidades Domésticas'));
+  });
+
+  it('casa por PALAVRA, não por pedaço de palavra', () => {
+    // O caso que a regra existe para evitar: "sabão" contendo as letras de "pão".
+    expect(familiaDeCategoria('Sabao em po')).not.toBe('fresco');
+    expect(familiaDeCategoria('Paes')).toBe('fresco');
+    // E prefixo curto demais: cereal não é açougue por começar com "ave".
+    expect(familiaDeCategoria('Aveia e Granola')).not.toBe('fresco');
+    expect(familiaDeCategoria('Avela')).not.toBe('fresco');
+    expect(familiaDeCategoria('Carnes e Aves')).toBe('fresco');
+  });
+
+  it('com dado de HOJE toda família decide igual — a base é a mesma', () => {
+    expect(zonaMortaPara(comCategoria('Hortifruti', 0), AGORA)).toBeCloseTo(
+      zonaMortaPara(comCategoria('Bebidas', 0), AGORA),
+      4,
+    );
+    // E igual ao produto sem categoria: quem não tem categoria não muda de veredito.
+    expect(zonaMortaPara(comCategoria(undefined, 0), AGORA)).toBeCloseTo(0.05, 4);
+  });
+
+  it('com típico VELHO, o fresco exige mais evidência que o industrializado', () => {
+    // O ponto da etapa: alface é reprecificada toda semana, café não. Aos 3 meses
+    // o típico de hortifruti descreve outro mercado.
+    const fresco = zonaMortaPara(comCategoria('Hortifruti', 91), AGORA);
+    const industrializado = zonaMortaPara(comCategoria('Café', 91), AGORA);
+    expect(fresco).toBeGreaterThan(industrializado);
+    expect(fresco).toBeCloseTo(0.05 + 0.02 * 3, 2);
+    expect(industrializado).toBeCloseTo(0.05 + 0.008 * 3, 2);
+  });
+
+  it('a mesma diferença sobre dado velho: cala no fresco, crava no industrializado', () => {
+    // −9% contra um típico de 3 meses. No café isso passa da zona morta (7,4%);
+    // no hortifruti cabe dentro da deriva (11%) e o app prefere não cravar.
+    expect(classificarPreco(9.1, comCategoria('Cafe', 91), AGORA)).toBe('barato');
+    expect(classificarPreco(9.1, comCategoria('Hortifruti', 91), AGORA)).toBe('na_media');
+  });
+
+  it('nem no fresco a idade emudece o app: diferença grande segue valendo', () => {
+    expect(classificarPreco(7.0, comCategoria('Hortifruti', 150), AGORA)).toBe('barato');
+    expect(classificarPreco(14.0, comCategoria('Hortifruti', 150), AGORA)).toBe('caro');
+  });
+
+  it('montarVeredito respeita a categoria dos dois ângulos', () => {
+    const v = montarVeredito({
+      precoPrateleira: 9.1,
+      regional: comCategoria('Hortifruti', 91),
+      pessoal: comCategoria('Cafe', 91),
+      referencia: AGORA,
+    });
+    expect(v.regional?.veredito).toBe('na_media');
+    expect(v.pessoal?.veredito).toBe('barato');
   });
 });
 

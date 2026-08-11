@@ -146,6 +146,7 @@ export function ProdutoDetalheTela({ navigation, route }: Props) {
         const r = await resolverVeredito({
           precoPrateleira: p.ultimoPreco ?? p.faixaPessoal?.mediana ?? 0,
           produtoCanonicoId: id,
+          categoria: p.categoria ?? null, // C3.6 — `null` = já olhei, não tem
           ...(p.faixaPessoal ? { faixaPessoal: p.faixaPessoal } : {}),
         });
         if (ativo) setTipicoRegional(r.hibrido.regional?.faixa.mediana ?? null);

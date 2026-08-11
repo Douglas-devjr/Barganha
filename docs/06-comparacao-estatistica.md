@@ -89,8 +89,10 @@ A regra tem **dois filtros**, nesta ordem — o veredito só sai quando os dois 
 
 1. **Zona morta (magnitude).** `|preço − mediana| / mediana` precisa passar de **5%**
    (`LIMIARES_VEREDITO.diferencaMinimaRelevante`). Dentro disso é sempre **na média**.
-2. **Percentil (direção).** Passou dos 5%: abaixo de p25 → **barato**, acima de p75 →
-   **caro**, no meio → **na média**.
+   Os 5% são o piso, com o dado de hoje: a zona morta **cresce com a idade do típico**,
+   e o quanto ela cresce depende da **categoria** do produto (ver abaixo).
+2. **Percentil (direção).** Passou da zona morta: abaixo de p25 → **barato**, acima de
+   p75 → **caro**, no meio → **na média**.
 
 ### Por que a zona morta existe
 
@@ -136,6 +138,56 @@ O corte é **cirúrgico**. Fração de vereditos "barato" que a zona morta rebai
 A 5% o filtro atinge quase só os produtos homogêneos — onde o veredito era ruído — e
 deixa intactos os dispersos, onde era sinal real. A 3% é tímido demais para consertar a
 coluna de CV 3–5%; a 7–10% começa a comer sinal legítimo da faixa típica (CV 8%).
+
+### Por categoria: o que varia e o que não varia
+
+A zona morta tem **duas metades**, e só uma delas depende da categoria
+(`ZONA_MORTA_POR_FAMILIA`, em `shared/src/estatistica/veredito.ts`):
+
+| | o que cerca | varia por categoria? |
+|---|---|---|
+| **base** (5%) | irrelevância e percepção humana + ruído de amostra | **não**, por ora |
+| **deriva/mês** | quanto o preço andou desde que o típico foi observado | **sim** |
+
+A **base não varia** de propósito. Ela mede relevância — "R$ 0,50 num item de R$ 10 não
+muda decisão" vale igual no tomate e no refrigerante — e subir a base no fresco seria
+pior que inútil: pela tabela acima, é exatamente no produto disperso que a diferença
+entre lojas é **sinal real**, então uma base maior ali comeria o que o app existe para
+mostrar. O único motivo legítimo para a base subir numa família é **ruído de amostra**
+(a mediana de uma célula pequena balançando sozinha), e isso se mede — ver abaixo.
+
+A **deriva varia**, e é aí que a categoria importa. Alface e picanha são reprecificadas
+toda semana, com safra e perda dentro do preço; um pacote de café não. As famílias
+agrupam categorias por **comportamento de preço**, não pela taxonomia do mercado, porque
+`produto_canonico.categoria` é texto livre do catálogo (`"Frutas"`, `"Hortifruti"`,
+`"Bebidas"`…) e uma tabela indexada pelo rótulo cru teria uma linha nova por fornecedor:
+
+| família | o que entra | base | deriva/mês | zona morta aos 3 meses |
+|---|---|---|---|---|
+| `fresco` | hortifruti, açougue, peixaria, padaria | 5% | **2,0%** | 11,0% |
+| `industrializado` | mercearia, bebida, limpeza, higiene | 5% | 0,8% | 7,4% |
+| `outros` | categoria ausente ou desconhecida | 5% | 0,8% | 7,4% |
+
+`outros` é o **caso comum** hoje (categoria só existe para o produto já enriquecido pelo
+catálogo) e vale exatamente o valor global de antes — quem não tem categoria não muda de
+veredito. Com dado de **hoje** todas as famílias decidem idêntico; a diferença só aparece
+conforme o típico envelhece.
+
+**Como isso é medido** (`backend`, `npm run job:calibracao` → `calibrarZonaMorta`):
+
+- **base** = o maior entre o piso de percepção (5%, que o pool não tem como medir) e o
+  **ruído de amostra** da família — metade do balanço da mediana numa célula de 8
+  observações, medido por bootstrap sobre os grupos reais no nível `municipio`, agregado
+  pelo p75 (uma trava dimensionada para o caso mediano deixa metade da família opinando
+  sobre ruído). Quando nem o maior candidato cobre o ruído, o diagnóstico é **casamento
+  de produto**, não veredito — a ferramenta diz isso em vez de recomendar 20%.
+- **deriva** = taxa geométrica entre a mediana do terço mais velho e a do terço mais novo
+  das observações do grupo, em %/mês, agregada pela mediana da família. Em valor
+  absoluto: uma categoria que cai 3% ao mês torna o típico velho tão enganoso quanto uma
+  que sobe 3%.
+
+Os valores da tabela seguem sendo **chute fundamentado**; o pool do beta é raso demais
+para medi-los. O cron mensal avisa quando a medição passar a discordar deles.
 
 ### O que deliberadamente NÃO foi feito
 
@@ -272,7 +324,9 @@ a linha a `ativo`, então uma descrição estranha isolada se corrige sem humano
 - Quando entrar lançamento manual de gôndola (fase futura), reforçar moderação e detecção de anomalia.
 
 ## A calibrar com dados reais (responsável: data-scientist)
-- Zona morta por categoria (hoje global em 5%) e possível assimetria barato/caro.
+- Zona morta por família de categoria — o mecanismo existe e a medição também
+  (`calibrarZonaMorta`); faltam **observações**, não código. Assimetria
+  barato/caro segue não implementada.
 - Meia-vida do decaimento temporal.
 - Mínimo de `n_observacoes` por nível de escopo.
 - Heurística de detecção de promoção sem campo de desconto.
@@ -321,5 +375,21 @@ Método de cada medição:
 
 Enquanto o pool do beta for raso, o job reporta honestamente "dados
 insuficientes" em vez de inventar número — a calibração de verdade só
-acontece quando alguém rodar o job com volume real e decidir aplicar (ou
+acontece quando o job rodar com volume real e um humano decidir aplicar (ou
 não) o que ele recomendar.
+
+**Quem chama o job:** um cron mensal
+(`.github/workflows/calibracao-estatistica.yml`, dia 1º), além da execução
+manual. O cron existe porque o pool não avisa quando engorda: sem ele,
+destravar a calibração dependeria de alguém *lembrar* de rodar o job meses
+depois. Ele publica o relatório no resumo da execução e manda um aviso ao
+`ALERTA_WEBHOOK_URL` **só** quando a medição recomenda um valor **diferente**
+do vigente — medição que confirma o valor atual não vira alerta, porque um
+aviso mensal repetindo "continua 30 dias" é o alerta que se aprende a ignorar.
+O aviso não tem memória de propósito: enquanto ninguém decidir, ele volta no
+mês seguinte.
+
+O cron continua **não aplicando nada**. Um agendador que reescrevesse sozinho
+o parâmetro da mediana mudaria o veredito sem ninguém ter decidido — trocar
+`DECAIMENTO` ou `MIN_OBSERVACOES_FALLBACK` é commit humano, seguido de
+`job:recalculo` **completo**: o peso novo muda toda mediana já gravada.
