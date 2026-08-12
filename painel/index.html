@@ -142,6 +142,83 @@ button.ouvir svg{width:13px; height:13px}
 .fase strong{font-size:13.5px; line-height:1.3}
 .fase-dur{font-size:11.5px; color:var(--sub); margin-bottom:4px}
 
+/* ── plano (as duas metades do beta) ──────────────────────────────────── */
+.pl-legenda{display:flex; flex-wrap:wrap; gap:6px 16px; margin-top:12px; font-size:12px; color:var(--sub)}
+.pl-item span{font-weight:700; margin-right:3px}
+.pl-ok span{color:var(--ok)} .pl-bad span{color:var(--bad)} .pl-warn span{color:var(--warn-pt)}
+
+.plano-marco{
+  margin-top:16px; padding:14px 16px; border-radius:var(--r);
+  background:var(--card2); border:1px solid var(--line); border-left:3px solid var(--ink);
+}
+.pm-rot{
+  display:block; font-size:10.5px; font-weight:700; letter-spacing:.08em;
+  text-transform:uppercase; color:var(--faint); margin-bottom:3px;
+}
+.plano-marco strong{font-size:15px; display:block; margin-bottom:5px}
+.plano-marco p{font-size:13.5px; color:var(--sub); max-width:78ch}
+
+.plano-cols{display:grid; grid-template-columns:1fr 1fr; gap:14px 22px; margin-top:22px; align-items:start}
+.plano-col{min-width:0}
+.col-tag{
+  font-size:10.5px; font-weight:700; letter-spacing:.06em; text-transform:uppercase;
+  padding:2px 8px; border-radius:999px; vertical-align:middle; margin-left:7px;
+}
+.col-tag.antes{background:var(--bad-bg); border:1px solid var(--bad-line); color:var(--bad)}
+.col-tag.depois{background:var(--ok-bg); border:1px solid var(--ok-line); color:var(--ok)}
+
+.pf{
+  background:var(--card); border:1px solid var(--line); border-radius:var(--r);
+  padding:14px 16px; box-shadow:var(--sombra); margin-top:10px;
+}
+/* 2px de respiro do lado esquerdo — a faixa de lado nunca encosta no conteúdo. */
+.pf-antes{border-left:3px solid var(--bad)}
+.pf-depois{border-left:3px solid var(--ok)}
+.pf header{display:flex; align-items:baseline; gap:9px; flex-wrap:wrap; margin-bottom:7px}
+.pf-n{
+  flex:0 0 auto; width:19px; height:19px; border-radius:50%; background:var(--ink); color:var(--canvas);
+  font-size:11px; font-weight:700; display:grid; place-items:center; font-variant-numeric:tabular-nums;
+}
+.pf h4{font-size:14.5px; flex:1 1 160px}
+.pf-cont{font-size:11.5px; color:var(--sub); font-variant-numeric:tabular-nums; white-space:nowrap}
+.pf-quem,.pf-quando{
+  display:inline-block; font-size:11px; font-weight:600; padding:2px 9px;
+  border-radius:999px; border:1px solid var(--line); background:var(--line2); color:var(--sub);
+  margin-bottom:8px;
+}
+.q-voce{background:var(--warn-bg); border-color:var(--warn-line); color:var(--warn)}
+.pf-porque{font-size:13px; color:var(--sub); max-width:70ch; margin-bottom:10px}
+
+.pi-lista{display:grid; gap:2px}
+/* minmax(0,1fr) no texto + teto nos chips: sem isso um esforço longo
+   ("15 min de execução (design e implementação já prontos)") rouba a linha
+   inteira e o texto do item desce para duas palavras por linha. */
+.pi{
+  display:grid; grid-template-columns:auto minmax(0,1fr) auto auto; align-items:baseline; gap:8px;
+  padding:6px 8px; border-radius:7px; background:var(--card2); font-size:13px;
+}
+.pi-g{font-weight:700; font-size:12.5px; line-height:1}
+.pi-ok .pi-g{color:var(--ok)} .pi-bad .pi-g{color:var(--bad)} .pi-warn .pi-g{color:var(--warn-pt)}
+/* O texto usa tinta de texto, nunca a cor do estado — quem carrega o estado é
+   o glifo mais o rótulo ao lado. */
+.pi-t{color:var(--ink); min-width:0}
+.pi-ok .pi-t{color:var(--sub)}
+.pi-r{font-size:10.5px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; color:var(--faint); white-space:nowrap}
+.pi-ref{
+  font-size:10.5px; font-weight:600; color:var(--sub); text-decoration:none;
+  border:1px solid var(--line); border-radius:999px; padding:1px 7px;
+  max-width:15ch; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.pi-ref:hover{color:var(--ink); border-color:var(--faint)}
+
+.pm-gates{margin-top:11px; padding-top:10px; border-top:1px solid var(--line)}
+.pm-gates .rot{display:block; margin-bottom:5px}
+.pm-gates ul{display:grid; gap:3px}
+.pm-gates li{font-size:12.5px; color:var(--sub); padding-left:15px; position:relative}
+.pm-gates li::before{content:'✓'; position:absolute; left:0; color:var(--ok); font-weight:700}
+
+@media (max-width:860px){ .plano-cols{grid-template-columns:1fr} }
+
 /* ── bloqueadores ─────────────────────────────────────────────────────── */
 .bloqs{display:grid; gap:12px}
 .bloq{
@@ -486,13 +563,13 @@ footer{max-width:1180px; margin:0 auto; padding:0 24px 72px; font-size:12px; col
   <div class="topo-in">
     <span class="marca">Barganha <span>painel do projeto</span></span>
     <span class="topo-meta">
-      <span class="selo">commit <code>6d7ac00</code> · 11/08/2026</span>
-      <span class="selo sujo">9 arquivo(s) sem commit</span>
+      <span class="selo">commit <code>39ba238</code> · 11/08/2026</span>
+      <span class="selo sujo">3 arquivo(s) sem commit</span>
       <span class="selo">gerado em 11 de agosto de 2026</span>
     </span>
   </div>
   <nav class="abas" aria-label="Seções">
-    <a href="#placar">Onde estou</a><a href="#bloqueadores">Bloqueadores</a><a href="#como-funciona">Como funciona</a><a href="#jornadas">Jornadas</a><a href="#falta">Falta fazer</a><a href="#funcoes">Funções</a><a href="#regras">Regras</a><a href="#etapas">Etapas</a><a href="#publicar">Publicar</a><a href="#validacao">Testar no real</a><a href="#dividas">Dívidas</a><a href="#skills">Skills</a><a href="#sincronia">Sincronia</a>
+    <a href="#placar">Onde estou</a><a href="#plano">Plano até o beta</a><a href="#bloqueadores">Bloqueadores</a><a href="#como-funciona">Como funciona</a><a href="#jornadas">Jornadas</a><a href="#falta">Falta fazer</a><a href="#funcoes">Funções</a><a href="#regras">Regras</a><a href="#etapas">Etapas</a><a href="#publicar">Publicar</a><a href="#validacao">Testar no real</a><a href="#dividas">Dívidas</a><a href="#skills">Skills</a><a href="#sincronia">Sincronia</a>
   </nav>
 </div>
 
@@ -655,10 +732,431 @@ footer{max-width:1180px; margin:0 auto; padding:0 24px 72px; font-size:12px; col
     </article></div>
 </section>
 
-<section id="como-funciona" class="sec">
+<section id="plano" class="sec">
   <header class="sec-cab">
     <div>
       <span class="sec-num">03</span>
+      <h2>O plano: até o beta e depois dele</h2>
+    </div>
+    <button class="ouvir" type="button" data-fala="O beta fechado é a linha que divide o projeto em dois. Antes dele, tudo é caminho crítico: sem build publicável não há testador, e sem testador não há base de preço. Depois dele, nada é mais bloqueante — é crescimento, alcance e receita, na ordem em que cada um deixa de ser prematuro. O divisor é Beta fechado na Play — 12+ testadores por 14 dias corridos. Não é uma escolha de produto, é exigência da Google para conta pessoal nova. E cai bem: o beta é também a semeadura da base. Um app de comparação de preços com a base vazia não tem o que comparar — os 14 dias são o que transforma o app em produto. Antes do beta são 5 frentes, na ordem de ataque: Destravar o build, Provar a captura no aparelho, Fechar a ficha da loja, Backend pronto para receber gente, Rodar os 14 dias. Depois do beta, 4 frentes, nenhuma bloqueando o lançamento: Estabilizar o que foi ao ar, Afinar o veredito com dado real, Ampliar o alcance, Receita." aria-label="Ouvir o resumo desta seção">
+      <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2 4.5 5H2v6h2.5L8 14zM11 5.5a3.5 3.5 0 0 1 0 5M13 3.5a6 6 0 0 1 0 9"/></svg>
+      ouvir
+    </button>
+  </header>
+  
+  <p class="lede">O beta fechado é a linha que divide o projeto em dois. Antes dele, tudo é caminho crítico: sem build publicável não há testador, e sem testador não há base de preço. Depois dele, nada é mais bloqueante — é crescimento, alcance e receita, na ordem em que cada um deixa de ser prematuro.</p>
+
+  <div class="tiles">
+    <div class="tile t-bad"><span class="tile-n">24</span><span class="tile-r">itens até o beta</span><span class="tile-s">9 já feitos</span></div>
+    <div class="tile t-warn"><span class="tile-n">5</span><span class="tile-r">frentes antes</span><span class="tile-s">na ordem de ataque</span></div>
+    <div class="tile t-ok"><span class="tile-n">18</span><span class="tile-r">itens depois</span><span class="tile-s">nenhum bloqueia o lançamento</span></div>
+    <div class="tile t-warn"><span class="tile-n">14</span><span class="tile-r">dias de beta</span><span class="tile-s">corridos, exigidos pela Play</span></div>
+  </div>
+
+  <div class="barra" role="img" aria-label="27% do caminho até o beta concluído">
+    <span style="width:27%"></span>
+    <b>27% do caminho até o beta</b>
+  </div>
+
+  <p class="pl-legenda"><span class="pl-item pl-ok"><span aria-hidden="true">✓</span> feito</span><span class="pl-item pl-bad"><span aria-hidden="true">○</span> a fazer</span><span class="pl-item pl-warn"><span aria-hidden="true">◐</span> pela metade</span><span class="pl-item pl-bad"><span aria-hidden="true">▲</span> trava o build</span></p>
+
+  <div class="plano-marco">
+    <span class="pm-rot">O divisor</span>
+    <strong>Beta fechado na Play — 12+ testadores por 14 dias corridos</strong>
+    <p>Não é uma escolha de produto, é exigência da Google para conta pessoal nova. E cai bem: o beta é também a semeadura da base. Um app de comparação de preços com a base vazia não tem o que comparar — os 14 dias são o que transforma o app em produto.</p>
+    <div class="pm-gates"><span class="rot">Só vira produção com</span><ul><li>12+ testadores contínuos por 14 dias</li><li>Taxa de parsing acima de 90% por UF ativa</li><li>Veredito coerente nos municípios semeados, validado à mão</li><li>Zero incidentes de privacidade</li><li>Crash-free acima de 99%</li></ul></div>
+  </div>
+
+  <div class="plano-cols">
+    <section class="plano-col">
+      <h3 class="sub">Até o beta <span class="col-tag antes">caminho crítico</span></h3>
+      <p class="legenda">Em ordem. Cada frente destrava a seguinte — e quase tudo aqui é ação sua no console ou no aparelho, não código novo.</p>
+      
+    <article class="pf pf-antes">
+      <header>
+        <span class="pf-n">1</span>
+        <h4>Destravar o build</h4>
+        <span class="pf-cont">4 de 6 em aberto</span>
+      </header>
+      <span class="pf-quem q-voce" title="ação manual: console, aparelho, cartão">depende de você</span>
+      
+      <p class="pf-porque">Três linhas de configuração e uma conta. Nada aqui é engenharia — é o tipo de item que custa minutos e trava semanas se for descoberto tarde.</p>
+      <ul class="pi-lista">
+        <li class="pi pi-bad">
+    <span class="pi-g" aria-hidden="true">▲</span>
+    <span class="pi-t">A URL da API no build de produção é um domínio que não existe</span>
+    <span class="pi-r">trava o build</span>
+    <a class="pi-ref" href="#bloqueadores" title="5 min">5 min</a>
+  </li><li class="pi pi-bad">
+    <span class="pi-g" aria-hidden="true">▲</span>
+    <span class="pi-t">A versão do app ainda é 0.0.0</span>
+    <span class="pi-r">trava o build</span>
+    <a class="pi-ref" href="#bloqueadores" title="2 min">2 min</a>
+  </li><li class="pi pi-bad">
+    <span class="pi-g" aria-hidden="true">▲</span>
+    <span class="pi-t">A conta de desenvolvedor da Google Play não existe</span>
+    <span class="pi-r">trava o build</span>
+    <a class="pi-ref" href="#bloqueadores" title="1 dia">1 dia</a>
+  </li><li class="pi pi-ok">
+    <span class="pi-g" aria-hidden="true">✓</span>
+    <span class="pi-t">Cadastrar as variáveis do Supabase no EAS (<code>eas env:create</code>)</span>
+    <span class="pi-r">feito</span>
+    <a class="pi-ref" href="#publicar">fase 0</a>
+  </li><li class="pi pi-ok">
+    <span class="pi-g" aria-hidden="true">✓</span>
+    <span class="pi-t">Configurar o webhook do alerta de parsing</span>
+    <span class="pi-r">feito</span>
+    <a class="pi-ref" href="#publicar">fase 0</a>
+  </li><li class="pi pi-bad">
+    <span class="pi-g" aria-hidden="true">○</span>
+    <span class="pi-t"><strong>Build EAS + Play</strong> — Gerar o pacote e subir na faixa de teste fechado.</span>
+    <span class="pi-r">a fazer</span>
+    <a class="pi-ref" href="#etapa-C10.1">C10.1</a>
+  </li>
+      </ul>
+    </article>
+    <article class="pf pf-antes">
+      <header>
+        <span class="pf-n">2</span>
+        <h4>Provar a captura no aparelho</h4>
+        <span class="pf-cont">3 de 3 em aberto</span>
+      </header>
+      <span class="pf-quem q-voce" title="ação manual: console, aparelho, cartão">depende de você</span>
+      
+      <p class="pf-porque">O RJ é o estado semeado primeiro e o único atrás de reCAPTCHA. Se a captura falhar no beta, o testador não escaneia nada e os 14 dias queimam sem gerar base — o relógio da Google não pausa. É o pré-requisito nº 1 do gate, e o único que nenhum teste automatizado consegue dar.</p>
+      <ul class="pi-lista">
+        <li class="pi pi-bad">
+    <span class="pi-g" aria-hidden="true">▲</span>
+    <span class="pi-t">A captura do RJ nunca foi validada num aparelho de verdade</span>
+    <span class="pi-r">trava o build</span>
+    <a class="pi-ref" href="#bloqueadores" title="1 sessão de teste">1 sessão de teste</a>
+  </li><li class="pi pi-warn">
+    <span class="pi-g" aria-hidden="true">◐</span>
+    <span class="pi-t"><strong>Parser RJ</strong> — Parser do RJ com fixtures e testes, mais a WebView que vence o reCAPTCHA.</span>
+    <span class="pi-r">pela metade</span>
+    <a class="pi-ref" href="#etapa-C2.2">C2.2</a>
+  </li><li class="pi pi-warn">
+    <span class="pi-g" aria-hidden="true">◐</span>
+    <span class="pi-t"><strong>Coletor por WebView</strong> — Caminho de captura para portais com captcha (RJ).</span>
+    <span class="pi-r">pela metade</span>
+    <a class="pi-ref" href="#etapa-C2.6">C2.6</a>
+  </li>
+      </ul>
+    </article>
+    <article class="pf pf-antes">
+      <header>
+        <span class="pf-n">3</span>
+        <h4>Fechar a ficha da loja</h4>
+        <span class="pf-cont">5 de 8 em aberto</span>
+      </header>
+      <span class="pf-quem q-voce" title="ação manual: console, aparelho, cartão">depende de você</span>
+      
+      <p class="pf-porque">Data Safety, classificação, política e exclusão de conta. As respostas já estão escritas em docs/14 e docs/16; o que falta é colar no console e publicar a ponte de autenticação — sem ela, o link de confirmação de e-mail não volta para o app.</p>
+      <ul class="pi-lista">
+        <li class="pi pi-ok">
+    <span class="pi-g" aria-hidden="true">✓</span>
+    <span class="pi-t">Política de privacidade em URL pública</span>
+    <span class="pi-r">feito</span>
+    <a class="pi-ref" href="#publicar">fase 2</a>
+  </li><li class="pi pi-ok">
+    <span class="pi-g" aria-hidden="true">✓</span>
+    <span class="pi-t">Página de exclusão de conta em URL pública</span>
+    <span class="pi-r">feito</span>
+    <a class="pi-ref" href="#publicar">fase 2</a>
+  </li><li class="pi pi-bad">
+    <span class="pi-g" aria-hidden="true">○</span>
+    <span class="pi-t">Ponte de autenticação publicada e na allow-list do Supabase</span>
+    <span class="pi-r">a fazer</span>
+    <a class="pi-ref" href="#publicar">fase 2</a>
+  </li><li class="pi pi-ok">
+    <span class="pi-g" aria-hidden="true">✓</span>
+    <span class="pi-t">Respostas de Data Safety e classificação de conteúdo prontas (docs/14)</span>
+    <span class="pi-r">feito</span>
+    <a class="pi-ref" href="#publicar">fase 2</a>
+  </li><li class="pi pi-warn">
+    <span class="pi-g" aria-hidden="true">◐</span>
+    <span class="pi-t"><strong>Conformidade de loja</strong> — Política em URL pública, página de exclusão de conta, Expo SDK 54 e target API novo.</span>
+    <span class="pi-r">pela metade</span>
+    <a class="pi-ref" href="#etapa-C10.0">C10.0</a>
+  </li><li class="pi pi-warn">
+    <span class="pi-g" aria-hidden="true">◐</span>
+    <span class="pi-t"><strong>Formulário Data Safety</strong> — As respostas estão escritas e justificadas em docs/14.</span>
+    <span class="pi-r">pela metade</span>
+    <a class="pi-ref" href="#etapa-C10.0.3">C10.0.3</a>
+  </li><li class="pi pi-warn">
+    <span class="pi-g" aria-hidden="true">◐</span>
+    <span class="pi-t"><strong>Target API 36</strong> — Exigência para apps novos a partir de 31/08/2026. O upgrade para o Expo SDK 54 já foi feito.</span>
+    <span class="pi-r">pela metade</span>
+    <a class="pi-ref" href="#etapa-C10.0.4">C10.0.4</a>
+  </li><li class="pi pi-warn">
+    <span class="pi-g" aria-hidden="true">◐</span>
+    <span class="pi-t"><strong>Classificação e ficha da loja</strong> — App utilitário de compras, sem conteúdo sensível. Textos e roteiro de capturas prontos em docs/16.</span>
+    <span class="pi-r">pela metade</span>
+    <a class="pi-ref" href="#etapa-C10.0.5">C10.0.5</a>
+  </li>
+      </ul>
+    </article>
+    <article class="pf pf-antes">
+      <header>
+        <span class="pf-n">4</span>
+        <h4>Backend pronto para receber gente</h4>
+        <span class="pf-cont">5 de 9 em aberto</span>
+      </header>
+      <span class="pf-quem q-misto" title="código pronto, falta executar em produção">os dois</span>
+      
+      <p class="pf-porque">O essencial já está no ar. Sobra o recálculo completo pós-deploy (sem ele o frescor nasce vazio e o veredito fica mudo) e ligar a cifra das colunas privadas na mesma janela da migração.</p>
+      <ul class="pi-lista">
+        <li class="pi pi-bad">
+    <span class="pi-g" aria-hidden="true">▲</span>
+    <span class="pi-t">Ativar em produção a cifra das colunas privadas do Postgres (gate da Fase 3)</span>
+    <span class="pi-r">trava o build</span>
+    <a class="pi-ref" href="#bloqueadores" title="15 min de execução (design e implementação já prontos)">15 min de execução (design e implementação já prontos)</a>
+  </li><li class="pi pi-ok">
+    <span class="pi-g" aria-hidden="true">✓</span>
+    <span class="pi-t">Aplicar as migrations em produção (<code>supabase db push</code>)</span>
+    <span class="pi-r">feito</span>
+    <a class="pi-ref" href="#publicar">fase 1</a>
+  </li><li class="pi pi-ok">
+    <span class="pi-g" aria-hidden="true">✓</span>
+    <span class="pi-t">Render free pelo blueprint, com os segredos preenchidos</span>
+    <span class="pi-r">feito</span>
+    <a class="pi-ref" href="#publicar">fase 1</a>
+  </li><li class="pi pi-ok">
+    <span class="pi-g" aria-hidden="true">✓</span>
+    <span class="pi-t">Crons do GitHub Actions ativos (recálculo, republicação, alertas, keep-warm)</span>
+    <span class="pi-r">feito</span>
+    <a class="pi-ref" href="#publicar">fase 1</a>
+  </li><li class="pi pi-ok">
+    <span class="pi-g" aria-hidden="true">✓</span>
+    <span class="pi-t">Smoke test: <code>GET /saude</code> responde ok</span>
+    <span class="pi-r">feito</span>
+    <a class="pi-ref" href="#publicar">fase 1</a>
+  </li><li class="pi pi-bad">
+    <span class="pi-g" aria-hidden="true">○</span>
+    <span class="pi-t">Recálculo completo depois do deploy, para o frescor preencher todas as linhas</span>
+    <span class="pi-r">a fazer</span>
+    <a class="pi-ref" href="#publicar">fase 1</a>
+  </li><li class="pi pi-warn">
+    <span class="pi-g" aria-hidden="true">◐</span>
+    <span class="pi-t"><strong>Gate LGPD</strong> — Checagem de re-identificação, piso de exposição, saneamento do QR.</span>
+    <span class="pi-r">pela metade</span>
+    <a class="pi-ref" href="#etapa-C9.2">C9.2</a>
+  </li><li class="pi pi-warn">
+    <span class="pi-g" aria-hidden="true">◐</span>
+    <span class="pi-t"><strong>Cifra das colunas privadas</strong> — Cifra reversível por envelope (chave fora do banco) de <code>chave_acesso</code> e da descrição do item.</span>
+    <span class="pi-r">pela metade</span>
+    <a class="pi-ref" href="#etapa-C9.2.2">C9.2.2</a>
+  </li><li class="pi pi-warn">
+    <span class="pi-g" aria-hidden="true">◐</span>
+    <span class="pi-t"><strong>Observabilidade</strong> — Telemetria durável por estado, health check, métricas, rollback automático.</span>
+    <span class="pi-r">pela metade</span>
+    <a class="pi-ref" href="#etapa-C10.2">C10.2</a>
+  </li>
+      </ul>
+    </article>
+    <article class="pf pf-antes">
+      <header>
+        <span class="pf-n">5</span>
+        <h4>Rodar os 14 dias</h4>
+        <span class="pf-cont">7 de 7 em aberto</span>
+      </header>
+      <span class="pf-quem q-voce" title="ação manual: console, aparelho, cartão">depende de você</span>
+      
+      <p class="pf-porque">Recrutar 20 para garantir 12 ativos, concentrar em 1–2 municípios (duas cidades densas valem mais que dez ralas) e fazer o QA dirigido enquanto a base se povoa. É a fase mais longa e a menos técnica.</p>
+      <ul class="pi-lista">
+        <li class="pi pi-bad">
+    <span class="pi-g" aria-hidden="true">○</span>
+    <span class="pi-t">Preencher a ficha: política, exclusão de conta, Data Safety, classificação</span>
+    <span class="pi-r">a fazer</span>
+    <a class="pi-ref" href="#publicar">fase 3</a>
+  </li><li class="pi pi-bad">
+    <span class="pi-g" aria-hidden="true">○</span>
+    <span class="pi-t">Criar a faixa de teste fechado e a lista de testadores por e-mail</span>
+    <span class="pi-r">a fazer</span>
+    <a class="pi-ref" href="#publicar">fase 3</a>
+  </li><li class="pi pi-bad">
+    <span class="pi-g" aria-hidden="true">○</span>
+    <span class="pi-t">Build de produção e primeiro upload manual do .aab</span>
+    <span class="pi-r">a fazer</span>
+    <a class="pi-ref" href="#publicar">fase 3</a>
+  </li><li class="pi pi-bad">
+    <span class="pi-g" aria-hidden="true">○</span>
+    <span class="pi-t">Recrutar 20 pessoas (para garantir 12 ativos), todas na mesma semana</span>
+    <span class="pi-r">a fazer</span>
+    <a class="pi-ref" href="#publicar">fase 3</a>
+  </li><li class="pi pi-bad">
+    <span class="pi-g" aria-hidden="true">○</span>
+    <span class="pi-t">Concentrar em 1–2 municípios — 2 cidades densas valem mais que 10 ralas</span>
+    <span class="pi-r">a fazer</span>
+    <a class="pi-ref" href="#publicar">fase 3</a>
+  </li><li class="pi pi-bad">
+    <span class="pi-g" aria-hidden="true">○</span>
+    <span class="pi-t">Meta de semeadura: 2+ cupons por testador por semana</span>
+    <span class="pi-r">a fazer</span>
+    <a class="pi-ref" href="#publicar">fase 3</a>
+  </li><li class="pi pi-bad">
+    <span class="pi-g" aria-hidden="true">○</span>
+    <span class="pi-t">QA dirigido: captcha do RJ, item sem EAN, mercado sem sinal, câmera, exclusão de conta, veredito</span>
+    <span class="pi-r">a fazer</span>
+    <a class="pi-ref" href="#publicar">fase 3</a>
+  </li>
+      </ul>
+    </article>
+    </section>
+    <section class="plano-col">
+      <h3 class="sub">Depois do beta <span class="col-tag depois">sem pressa</span></h3>
+      <p class="legenda">Ordenado por quando deixa de ser prematuro, não por tamanho. Nada aqui impede lançar.</p>
+      
+    <article class="pf pf-depois">
+      <header>
+        <span class="pf-n">1</span>
+        <h4>Estabilizar o que foi ao ar</h4>
+        <span class="pf-cont">2 de 2 em aberto</span>
+      </header>
+      
+      <span class="pf-quando">Imediatamente após o gate</span>
+      <p class="pf-porque">O rollout faseado é a única rede que existe entre um bug e a base inteira de usuários. Só depois dele faz sentido tocar em qualquer coisa nova.</p>
+      <ul class="pi-lista">
+        <li class="pi pi-bad">
+    <span class="pi-g" aria-hidden="true">○</span>
+    <span class="pi-t"><strong>Lançamento faseado</strong> — Rollout 10% → 25% → 50% → 100% com gate a cada passo.</span>
+    <span class="pi-r">a fazer</span>
+    <a class="pi-ref" href="#etapa-C10.3">C10.3</a>
+  </li><li class="pi pi-bad">
+    <span class="pi-g" aria-hidden="true">○</span>
+    <span class="pi-t"><strong>Rate limit em memória</strong> — Com duas instâncias o limite efetivo dobra. A interface já permite trocar o miolo sem tocar nas rotas.</span>
+    <span class="pi-r">a fazer</span>
+    <a class="pi-ref" href="#dividas">dívida</a>
+  </li>
+      </ul>
+    </article>
+    <article class="pf pf-depois">
+      <header>
+        <span class="pf-n">2</span>
+        <h4>Afinar o veredito com dado real</h4>
+        <span class="pf-cont">6 de 6 em aberto</span>
+      </header>
+      
+      <span class="pf-quando">Quando houver volume</span>
+      <p class="pf-porque">Meia-vida, zona morta e limiares estão em valores escolhidos na mesa, não calibrados. Calibrar antes de ter distribuição real seria chutar com mais passos — por isso espera, de propósito.</p>
+      <ul class="pi-lista">
+        <li class="pi pi-warn">
+    <span class="pi-g" aria-hidden="true">◐</span>
+    <span class="pi-t"><strong>Decaimento temporal</strong> — Peso por idade, meia-vida de 30 dias, janela de 180.</span>
+    <span class="pi-r">pela metade</span>
+    <a class="pi-ref" href="#etapa-C3.2">C3.2</a>
+  </li><li class="pi pi-warn">
+    <span class="pi-g" aria-hidden="true">◐</span>
+    <span class="pi-t"><strong>Promoção + veredito híbrido</strong> — Promoção segregada, dois ângulos lado a lado, zona morta por categoria e frescor.</span>
+    <span class="pi-r">pela metade</span>
+    <a class="pi-ref" href="#etapa-C3.6">C3.6</a>
+  </li><li class="pi pi-warn">
+    <span class="pi-g" aria-hidden="true">◐</span>
+    <span class="pi-t"><strong>Identidade do produto sem EAN</strong> — Ordem única de casamento (EAN → código interno da loja → decisão da curadoria → descrição) e a junção de cadastros repetidos.</span>
+    <span class="pi-r">pela metade</span>
+    <a class="pi-ref" href="#etapa-C3.6.1">C3.6.1</a>
+  </li><li class="pi pi-warn">
+    <span class="pi-g" aria-hidden="true">◐</span>
+    <span class="pi-t"><strong>Economia real</strong> — O snapshot do típico já é gravado em cada item comprado.</span>
+    <span class="pi-r">pela metade</span>
+    <a class="pi-ref" href="#etapa-C8.4.1">C8.4.1</a>
+  </li><li class="pi pi-bad">
+    <span class="pi-g" aria-hidden="true">○</span>
+    <span class="pi-t"><strong>Constantes estatísticas não calibradas</strong> — Durante e depois do beta: meia-vida, zona morta por categoria, cerco de promoção, mínimos de n.</span>
+    <span class="pi-r">a fazer</span>
+    <a class="pi-ref" href="#dividas">dívida</a>
+  </li><li class="pi pi-bad">
+    <span class="pi-g" aria-hidden="true">○</span>
+    <span class="pi-t"><strong>Curadoria sem interface</strong> — A partir do beta: corrigir casamento errado por curl não escala, e item sem EAN é a regra no RJ.</span>
+    <span class="pi-r">a fazer</span>
+    <a class="pi-ref" href="#dividas">dívida</a>
+  </li>
+      </ul>
+    </article>
+    <article class="pf pf-depois">
+      <header>
+        <span class="pf-n">3</span>
+        <h4>Ampliar o alcance</h4>
+        <span class="pf-cont">4 de 4 em aberto</span>
+      </header>
+      
+      <span class="pf-quando">Depois de estável em uma praça</span>
+      <p class="pf-porque">Mais estados e mais produtos reconhecidos. Vem depois porque cada praça nova divide a densidade de dados: espalhar cedo é ter dez cidades sem mediana em vez de duas com veredito.</p>
+      <ul class="pi-lista">
+        <li class="pi pi-warn">
+    <span class="pi-g" aria-hidden="true">◐</span>
+    <span class="pi-t"><strong>Novos estados</strong> — MG e o parser ENCAT genérico já existem; o reprocessamento retroativo funciona.</span>
+    <span class="pi-r">pela metade</span>
+    <a class="pi-ref" href="#etapa-C11.1">C11.1</a>
+  </li><li class="pi pi-warn">
+    <span class="pi-g" aria-hidden="true">◐</span>
+    <span class="pi-t"><strong>Enriquecimento de produtos</strong> — Curadoria manual por página web (<code>/curadoria/painel</code>) e enriquecimento automático pelo catálogo VTEX.</span>
+    <span class="pi-r">pela metade</span>
+    <a class="pi-ref" href="#etapa-C11.5">C11.5</a>
+  </li><li class="pi pi-bad">
+    <span class="pi-g" aria-hidden="true">○</span>
+    <span class="pi-t"><strong>OCR de cupons antigos</strong> — Leria por foto os cupons de máquina antiga (ECF), que não têm QR.</span>
+    <span class="pi-r">a fazer</span>
+    <a class="pi-ref" href="#etapa-C11.4">C11.4</a>
+  </li><li class="pi pi-bad">
+    <span class="pi-g" aria-hidden="true">○</span>
+    <span class="pi-t"><strong>iOS / App Store</strong> — Publicar na App Store.</span>
+    <span class="pi-r">a fazer</span>
+    <a class="pi-ref" href="#etapa-C11.2">C11.2</a>
+  </li>
+      </ul>
+    </article>
+    <article class="pf pf-depois">
+      <header>
+        <span class="pf-n">4</span>
+        <h4>Receita</h4>
+        <span class="pf-cont">6 de 6 em aberto</span>
+      </header>
+      
+      <span class="pf-quando">Só com base madura</span>
+      <p class="pf-porque">Cobrar por um veredito que ainda não é confiável queima a confiança uma vez só. A oferta anunciada entra aqui e entra ROTULADA, numa camada separada — nunca na mediana (decisão travada nº 8).</p>
+      <ul class="pi-lista">
+        <li class="pi pi-bad">
+    <span class="pi-g" aria-hidden="true">○</span>
+    <span class="pi-t"><strong>Google Play Billing</strong> — Compra pela loja e webhook do Google confirmando o estado no backend.</span>
+    <span class="pi-r">a fazer</span>
+    <a class="pi-ref" href="#etapa-C13.3">C13.3</a>
+  </li><li class="pi pi-bad">
+    <span class="pi-g" aria-hidden="true">○</span>
+    <span class="pi-t"><strong>Plus por contribuição</strong> — Quem manda 4 cupons processados no mês ganha o plano pago no mês seguinte.</span>
+    <span class="pi-r">a fazer</span>
+    <a class="pi-ref" href="#etapa-C13.4">C13.4</a>
+  </li><li class="pi pi-warn">
+    <span class="pi-g" aria-hidden="true">◐</span>
+    <span class="pi-t"><strong>Limites no app</strong> — Cadeados com prévia do valor no histórico, no gráfico do produto, nos alertas e no ranking de mercados; a folha do Barganha+ abre de qualquer um deles. O app consulta <code>GET /conta/estado</code> a cada sessão e cacheia com folga de 7 dias sem rede antes de degradar pro grátis.</span>
+    <span class="pi-r">pela metade</span>
+    <a class="pi-ref" href="#etapa-C13.5">C13.5</a>
+  </li><li class="pi pi-bad">
+    <span class="pi-g" aria-hidden="true">○</span>
+    <span class="pi-t"><strong>Combustíveis e farmácia</strong> — Recortes por categoria com curadoria e UI própria.</span>
+    <span class="pi-r">a fazer</span>
+    <a class="pi-ref" href="#etapa-C12.3">C12.3</a>
+  </li><li class="pi pi-bad">
+    <span class="pi-g" aria-hidden="true">○</span>
+    <span class="pi-t"><strong>Ofertas anunciadas</strong> — Camada separada e rotulada de preço anunciado.</span>
+    <span class="pi-r">a fazer</span>
+    <a class="pi-ref" href="#etapa-C12.4">C12.4</a>
+  </li><li class="pi pi-bad">
+    <span class="pi-g" aria-hidden="true">○</span>
+    <span class="pi-t"><strong>Colunas privadas em claro</strong> — Antes de haver usuário real com histórico real — é o gate pré-beta. Rotação de chave escrita ANTES de ligar a cifra.</span>
+    <span class="pi-r">a fazer</span>
+    <a class="pi-ref" href="#dividas">dívida</a>
+  </li>
+      </ul>
+    </article>
+    </section>
+  </div>
+</section>
+
+<section id="como-funciona" class="sec">
+  <header class="sec-cab">
+    <div>
+      <span class="sec-num">04</span>
       <h2>Como o app funciona</h2>
     </div>
     <button class="ouvir" type="button" data-fala="O caminho completo do dado. A faixa do meio é onde nada mais sabe quem você é — o anonimizador é o portão, e ele não tem porta dos fundos. Duas perguntas, nesta ordem. O veredito só sai quando as duas concordam — e o preço da prateleira nunca é comparado contra a melhor promoção histórica." aria-label="Ouvir o resumo desta seção">
@@ -799,7 +1297,7 @@ footer{max-width:1180px; margin:0 auto; padding:0 24px 72px; font-size:12px; col
 <section id="jornadas" class="sec">
   <header class="sec-cab">
     <div>
-      <span class="sec-num">04</span>
+      <span class="sec-num">05</span>
       <h2>Cada função do início ao fim</h2>
     </div>
     <button class="ouvir" type="button" data-fala="São 4 jornadas completas, passo a passo, do gatilho até o fim. Cada passo diz em que máquina roda — no celular, num navegador dentro do celular, no servidor, no portal da SEFAZ ou no banco — o que ele faz, e o que acontece quando dá errado. Serve para você conferir se o app está fazendo o que deveria. Escanear um cupom fiscal: 16 passos. Verificar um preço na gôndola: 11 passos. Primeiro uso, sem nenhum cupom: 8 passos. Apagar a conta: 5 passos." aria-label="Ouvir o resumo desta seção">
@@ -1735,7 +2233,7 @@ footer{max-width:1180px; margin:0 auto; padding:0 24px 72px; font-size:12px; col
 <section id="falta" class="sec">
   <header class="sec-cab">
     <div>
-      <span class="sec-num">05</span>
+      <span class="sec-num">06</span>
       <h2>O que ainda não existe</h2>
     </div>
     <button class="ouvir" type="button" data-fala="São 4 coisas que o app não faz de jeito nenhum e 6 que existem pela metade. Cada uma diz exatamente o que falta. É desta lista que sai o próximo trabalho." aria-label="Ouvir o resumo desta seção">
@@ -1920,7 +2418,7 @@ footer{max-width:1180px; margin:0 auto; padding:0 24px 72px; font-size:12px; col
 <section id="funcoes" class="sec">
   <header class="sec-cab">
     <div>
-      <span class="sec-num">06</span>
+      <span class="sec-num">07</span>
       <h2>Cada função, em uma frase</h2>
     </div>
     <button class="ouvir" type="button" data-fala="São 98 funções mapeadas, divididas em 8 áreas. Cada uma diz o que faz, com quem conversa, que regra obedece e onde mora no código. Use os filtros para ver só as que estão pela metade." aria-label="Ouvir o resumo desta seção">
@@ -3422,7 +3920,7 @@ footer{max-width:1180px; margin:0 auto; padding:0 24px 72px; font-size:12px; col
 <section id="regras" class="sec">
   <header class="sec-cab">
     <div>
-      <span class="sec-num">07</span>
+      <span class="sec-num">08</span>
       <h2>Regras de negócio</h2>
     </div>
     <button class="ouvir" type="button" data-fala="São 8 decisões travadas, que não se negociam, e 12 regras do motor estatístico que decorrem delas." aria-label="Ouvir o resumo desta seção">
@@ -3642,7 +4140,7 @@ footer{max-width:1180px; margin:0 auto; padding:0 24px 72px; font-size:12px; col
 <section id="etapas" class="sec">
   <header class="sec-cab">
     <div>
-      <span class="sec-num">08</span>
+      <span class="sec-num">09</span>
       <h2>Etapas, do C0 ao C12</h2>
     </div>
     <button class="ouvir" type="button" data-fala="O catálogo completo com o status real de cada sub-etapa. 60 prontas, 16 pela metade — todas com o que falta escrito — e 8 que não começaram." aria-label="Ouvir o resumo desta seção">
@@ -4524,7 +5022,7 @@ footer{max-width:1180px; margin:0 auto; padding:0 24px 72px; font-size:12px; col
 <section id="publicar" class="sec">
   <header class="sec-cab">
     <div>
-      <span class="sec-num">09</span>
+      <span class="sec-num">10</span>
       <h2>Como publicar e os 14 dias de teste</h2>
     </div>
     <button class="ouvir" type="button" data-fala="A Google Play exige, para conta pessoal nova, 12+ testadores ativos por 14 dias corridos antes de liberar produção. O relógio só começa quando a faixa de teste fechado existe e as pessoas entram — então tudo que vem antes é caminho crítico. Custo: US$ 25, uma vez, na conta de desenvolvedor. Todo o resto roda em free tier." aria-label="Ouvir o resumo desta seção">
@@ -4603,7 +5101,7 @@ footer{max-width:1180px; margin:0 auto; padding:0 24px 72px; font-size:12px; col
 <section id="validacao" class="sec">
   <header class="sec-cab">
     <div>
-      <span class="sec-num">10</span>
+      <span class="sec-num">11</span>
       <h2>O que só o aparelho de verdade prova</h2>
     </div>
     <button class="ouvir" type="button" data-fala="São 6 coisas que passam no CI e ainda assim podem estar quebradas na mão do usuário: permissão do sistema, credencial de push, câmera, rede caindo, portal da SEFAZ com captcha. Teste automatizado prova decisão; nenhum deles prova entrega. Cada item tem o passo a passo e o sinal de que funcionou." aria-label="Ouvir o resumo desta seção">
@@ -4731,7 +5229,7 @@ footer{max-width:1180px; margin:0 auto; padding:0 24px 72px; font-size:12px; col
 <section id="dividas" class="sec">
   <header class="sec-cab">
     <div>
-      <span class="sec-num">11</span>
+      <span class="sec-num">12</span>
       <h2>Dívidas conscientes</h2>
     </div>
     <button class="ouvir" type="button" data-fala="Coisas que estão certas hoje e viram problema em um momento específico. Estão aqui para você não gastar tempo consertando cedo, e não ser pego de surpresa depois." aria-label="Ouvir o resumo desta seção">
@@ -4769,7 +5267,7 @@ footer{max-width:1180px; margin:0 auto; padding:0 24px 72px; font-size:12px; col
 <section id="skills" class="sec">
   <header class="sec-cab">
     <div>
-      <span class="sec-num">12</span>
+      <span class="sec-num">13</span>
       <h2>Skills e agentes que valem a pena</h2>
     </div>
     <button class="ouvir" type="button" data-fala="O que já está instalado e você deveria usar mais, o que vale criar de específico para o Barganha, e qual agente chamar para cada frente." aria-label="Ouvir o resumo desta seção">
@@ -4874,7 +5372,7 @@ footer{max-width:1180px; margin:0 auto; padding:0 24px 72px; font-size:12px; col
 <section id="sincronia" class="sec">
   <header class="sec-cab">
     <div>
-      <span class="sec-num">13</span>
+      <span class="sec-num">14</span>
       <h2>Como este painel se mantém junto com o código</h2>
     </div>
     <button class="ouvir" type="button" data-fala="Tudo em sincronia: as 376 evidências citadas existem no código e nenhuma rota ou tela ficou sem dono." aria-label="Ouvir o resumo desta seção">
@@ -4900,8 +5398,8 @@ footer{max-width:1180px; margin:0 auto; padding:0 24px 72px; font-size:12px; col
 
 <footer>
   Gerado por <code>npm run painel</code> a partir de <code>painel/mapa.mjs</code> + o estado real do repositório.
-  Último commit lido: <code>6d7ac00</code> — “chore(painel): regenera após C2.6 e C9.3.2”.
-  Havia 9 arquivo(s) modificado(s) sem commit no momento da geração.
+  Último commit lido: <code>39ba238</code> — “feat(app): impede o mesmo cupom entrar duas vezes no aparelho (C6.1)”.
+  Havia 3 arquivo(s) modificado(s) sem commit no momento da geração.
 </footer>
 
 <script>

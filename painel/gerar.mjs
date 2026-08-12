@@ -181,6 +181,62 @@ function arquivosDeCodigo() {
       if (!idsFn.has(p.funcao))
         deriva.links.push({ nome: `${j.titulo} · ${p.titulo}`, alvo: `função "${p.funcao}"` });
   }
+
+  /*
+   * O PLANO NÃO PODE ENVELHECER CALADO. Duas checagens:
+   *  a) toda referência do plano (etapa, bloqueador, dívida, fase) existe;
+   *  b) toda etapa NÃO-PRONTA cai em exatamente um lado do beta.
+   * Sem (b), etapa nova entra no catálogo e o plano segue dizendo que falta
+   * menos do que falta — que é justamente a mentira que este painel existe
+   * para impedir.
+   */
+  const frentes = [...mapa.plano.antes, ...mapa.plano.depois];
+  const idsBloq = new Set(mapa.bloqueadores.map((b) => b.id));
+  const titulosDivida = new Set(mapa.dividas.map((d) => d.titulo));
+  const nsFase = new Set(mapa.publicacao.fases.map((f) => f.n));
+  const vezes = new Map();
+
+  for (const fr of frentes) {
+    const nome = `plano · ${fr.titulo}`;
+    for (const c of fr.etapas ?? []) {
+      if (!codEtapa.has(c)) deriva.links.push({ nome, alvo: `etapa "${c}"` });
+      vezes.set(c, (vezes.get(c) ?? 0) + 1);
+    }
+    for (const b of fr.bloqueadores ?? [])
+      if (!idsBloq.has(b)) deriva.links.push({ nome, alvo: `bloqueador "${b}"` });
+    for (const d of fr.dividas ?? [])
+      if (!titulosDivida.has(d)) deriva.links.push({ nome, alvo: `dívida "${d}"` });
+    for (const n of fr.fases ?? [])
+      if (!nsFase.has(n)) deriva.links.push({ nome, alvo: `fase ${n}` });
+    // `pular` some com um passo por ser duplicata de um bloqueador. Se o texto
+    // do passo mudar na fase, o pular deixa de casar e a duplicata volta calada
+    // — daí a conferência do texto exato.
+    const textosDasFases = new Set(
+      (fr.fases ?? []).flatMap(
+        (n) => mapa.publicacao.fases.find((f) => f.n === n)?.passos.map((p) => p.t) ?? [],
+      ),
+    );
+    for (const t of fr.pular ?? [])
+      if (!textosDasFases.has(t))
+        deriva.links.push({ nome, alvo: `passo inexistente para pular: "${t}"` });
+  }
+  if (!nsFase.has(mapa.plano.marco.fase))
+    deriva.links.push({ nome: 'plano · marco', alvo: `fase ${mapa.plano.marco.fase}` });
+
+  for (const e of mapa.etapas) {
+    if (e.status === 'pronto') continue;
+    const n = vezes.get(e.codigo) ?? 0;
+    if (n === 0)
+      deriva.links.push({
+        nome: `plano · etapa ${e.codigo} ("${e.nome}")`,
+        alvo: 'nenhum lado do beta — decida se é antes ou depois',
+      });
+    else if (n > 1)
+      deriva.links.push({
+        nome: `plano · etapa ${e.codigo}`,
+        alvo: `${n} frentes ao mesmo tempo — deve estar em exatamente uma`,
+      });
+  }
 }
 
 const itensComEvidencia = [
@@ -883,6 +939,174 @@ function blocoPublicar() {
   return `<div class="fase-cards">${fases}</div>`;
 }
 
+/* ── Plano: as duas metades do beta ─────────────────────────────────────── */
+
+/*
+ * NADA DE COR SOZINHA. O validador de paleta (skill dataviz) reprovou o trio
+ * verde/âmbar/vermelho do tema como se fosse categórico: separação sob
+ * daltonismo de ΔE 6.2 (protanopia, claro) e 7.3 (escuro) — dentro da faixa
+ * 6–8, que só é permitida COM encoding secundário. Então todo estado aqui sai
+ * com glifo E rótulo em texto; a cor é o terceiro reforço, nunca o portador.
+ */
+const GLIFO = {
+  feito: { g: '✓', r: 'feito', c: 'ok' },
+  aberto: { g: '○', r: 'a fazer', c: 'bad' },
+  meio: { g: '◐', r: 'pela metade', c: 'warn' },
+  trava: { g: '▲', r: 'trava o build', c: 'bad' },
+};
+
+const itemPlano = (tipo, texto, extra = '') => {
+  const { g, r, c } = GLIFO[tipo];
+  return `<li class="pi pi-${c}">
+    <span class="pi-g" aria-hidden="true">${g}</span>
+    <span class="pi-t">${texto}</span>
+    <span class="pi-r">${r}</span>
+    ${extra}
+  </li>`;
+};
+
+/** Resolve uma frente do plano nos itens reais das outras seções do mapa. */
+function itensDaFrente(fr) {
+  const itens = [];
+  for (const id of fr.bloqueadores ?? []) {
+    const b = mapa.bloqueadores.find((x) => x.id === id);
+    if (b)
+      itens.push({
+        tipo: 'trava',
+        texto: rico(b.titulo),
+        extra: `<a class="pi-ref" href="#bloqueadores" title="${esc(b.esforco)}">${esc(b.esforco)}</a>`,
+        feito: false,
+      });
+  }
+  const pular = new Set(fr.pular ?? []);
+  for (const n of fr.fases ?? []) {
+    const fase = mapa.publicacao.fases.find((f) => f.n === n);
+    for (const p of fase?.passos ?? []) {
+      if (pular.has(p.t)) continue; // já aparece como bloqueador (ver `pular` no mapa)
+      itens.push({
+        tipo: p.feito ? 'feito' : 'aberto',
+        texto: rico(p.t),
+        extra: `<a class="pi-ref" href="#publicar">fase ${n}</a>`,
+        feito: !!p.feito,
+      });
+    }
+  }
+  for (const cod of fr.etapas ?? []) {
+    const e = mapa.etapas.find((x) => x.codigo === cod);
+    if (!e) continue;
+    const tipo = e.status === 'pronto' ? 'feito' : e.status === 'parcial' ? 'meio' : 'aberto';
+    itens.push({
+      tipo,
+      texto: `<strong>${esc(e.nome)}</strong> — ${rico(e.oque)}`,
+      extra: `<a class="pi-ref" href="#etapa-${esc(cod)}">${esc(cod)}</a>`,
+      feito: e.status === 'pronto',
+    });
+  }
+  for (const t of fr.dividas ?? []) {
+    const d = mapa.dividas.find((x) => x.titulo === t);
+    if (d)
+      itens.push({
+        tipo: 'aberto',
+        texto: `<strong>${esc(d.titulo)}</strong> — ${rico(d.quando)}`,
+        extra: `<a class="pi-ref" href="#dividas">dívida</a>`,
+        feito: false,
+      });
+  }
+  return itens;
+}
+
+const QUEM = {
+  você: { r: 'depende de você', d: 'ação manual: console, aparelho, cartão' },
+  código: { r: 'depende de código', d: 'trabalho de desenvolvimento' },
+  misto: { r: 'os dois', d: 'código pronto, falta executar em produção' },
+};
+
+function blocoPlano() {
+  const resolvido = (lado) => lado.map((fr) => ({ fr, itens: itensDaFrente(fr) }));
+  const antes = resolvido(mapa.plano.antes);
+  const depois = resolvido(mapa.plano.depois);
+
+  const todosAntes = antes.flatMap((x) => x.itens);
+  const feitosAntes = todosAntes.filter((i) => i.feito).length;
+  const restamAntes = todosAntes.length - feitosAntes;
+  const pct = todosAntes.length ? Math.round((feitosAntes / todosAntes.length) * 100) : 0;
+  const totalDepois = depois.reduce((s, x) => s + x.itens.length, 0);
+  const faseMarco = mapa.publicacao.fases.find((f) => f.n === mapa.plano.marco.fase);
+
+  const cartao = ({ fr, itens }, i, lado) => {
+    const abertos = itens.filter((x) => !x.feito).length;
+    const quem = fr.quem ? QUEM[fr.quem] : null;
+    return `
+    <article class="pf pf-${lado}">
+      <header>
+        <span class="pf-n">${i + 1}</span>
+        <h4>${esc(fr.titulo)}</h4>
+        <span class="pf-cont">${abertos} de ${itens.length} em aberto</span>
+      </header>
+      ${
+        quem
+          ? `<span class="pf-quem q-${fr.quem === 'você' ? 'voce' : fr.quem === 'código' ? 'codigo' : 'misto'}" title="${esc(quem.d)}">${esc(quem.r)}</span>`
+          : ''
+      }
+      ${fr.quando ? `<span class="pf-quando">${esc(fr.quando)}</span>` : ''}
+      <p class="pf-porque">${rico(fr.porque)}</p>
+      <ul class="pi-lista">
+        ${itens.map((x) => itemPlano(x.tipo, x.texto, x.extra)).join('')}
+      </ul>
+    </article>`;
+  };
+
+  const legenda = Object.entries(GLIFO)
+    .map(
+      ([, v]) =>
+        `<span class="pl-item pl-${v.c}"><span aria-hidden="true">${v.g}</span> ${esc(v.r)}</span>`,
+    )
+    .join('');
+
+  return `
+  <p class="lede">${rico(mapa.plano.resumo)}</p>
+
+  <div class="tiles">
+    <div class="tile t-bad"><span class="tile-n">${restamAntes}</span><span class="tile-r">itens até o beta</span><span class="tile-s">${feitosAntes} já feitos</span></div>
+    <div class="tile t-warn"><span class="tile-n">${mapa.plano.antes.length}</span><span class="tile-r">frentes antes</span><span class="tile-s">na ordem de ataque</span></div>
+    <div class="tile t-ok"><span class="tile-n">${totalDepois}</span><span class="tile-r">itens depois</span><span class="tile-s">nenhum bloqueia o lançamento</span></div>
+    <div class="tile t-warn"><span class="tile-n">14</span><span class="tile-r">dias de beta</span><span class="tile-s">corridos, exigidos pela Play</span></div>
+  </div>
+
+  <div class="barra" role="img" aria-label="${pct}% do caminho até o beta concluído">
+    <span style="width:${pct}%"></span>
+    <b>${pct}% do caminho até o beta</b>
+  </div>
+
+  <p class="pl-legenda">${legenda}</p>
+
+  <div class="plano-marco">
+    <span class="pm-rot">O divisor</span>
+    <strong>${esc(mapa.plano.marco.titulo)}</strong>
+    <p>${rico(mapa.plano.marco.porque)}</p>
+    ${
+      faseMarco?.gates
+        ? `<div class="pm-gates"><span class="rot">Só vira produção com</span><ul>${faseMarco.gates
+            .map((g) => `<li>${rico(g)}</li>`)
+            .join('')}</ul></div>`
+        : ''
+    }
+  </div>
+
+  <div class="plano-cols">
+    <section class="plano-col">
+      <h3 class="sub">Até o beta <span class="col-tag antes">caminho crítico</span></h3>
+      <p class="legenda">Em ordem. Cada frente destrava a seguinte — e quase tudo aqui é ação sua no console ou no aparelho, não código novo.</p>
+      ${antes.map((x, i) => cartao(x, i, 'antes')).join('')}
+    </section>
+    <section class="plano-col">
+      <h3 class="sub">Depois do beta <span class="col-tag depois">sem pressa</span></h3>
+      <p class="legenda">Ordenado por quando deixa de ser prematuro, não por tamanho. Nada aqui impede lançar.</p>
+      ${depois.map((x, i) => cartao(x, i, 'depois')).join('')}
+    </section>
+  </div>`;
+}
+
 /* ── Validação no real ──────────────────────────────────────────────────── */
 
 function blocoValidacao() {
@@ -1152,6 +1376,83 @@ button.ouvir svg{width:13px; height:13px}
 .fase-n{font-size:10.5px; font-weight:700; text-transform:uppercase; letter-spacing:.07em; color:var(--faint)}
 .fase strong{font-size:13.5px; line-height:1.3}
 .fase-dur{font-size:11.5px; color:var(--sub); margin-bottom:4px}
+
+/* ── plano (as duas metades do beta) ──────────────────────────────────── */
+.pl-legenda{display:flex; flex-wrap:wrap; gap:6px 16px; margin-top:12px; font-size:12px; color:var(--sub)}
+.pl-item span{font-weight:700; margin-right:3px}
+.pl-ok span{color:var(--ok)} .pl-bad span{color:var(--bad)} .pl-warn span{color:var(--warn-pt)}
+
+.plano-marco{
+  margin-top:16px; padding:14px 16px; border-radius:var(--r);
+  background:var(--card2); border:1px solid var(--line); border-left:3px solid var(--ink);
+}
+.pm-rot{
+  display:block; font-size:10.5px; font-weight:700; letter-spacing:.08em;
+  text-transform:uppercase; color:var(--faint); margin-bottom:3px;
+}
+.plano-marco strong{font-size:15px; display:block; margin-bottom:5px}
+.plano-marco p{font-size:13.5px; color:var(--sub); max-width:78ch}
+
+.plano-cols{display:grid; grid-template-columns:1fr 1fr; gap:14px 22px; margin-top:22px; align-items:start}
+.plano-col{min-width:0}
+.col-tag{
+  font-size:10.5px; font-weight:700; letter-spacing:.06em; text-transform:uppercase;
+  padding:2px 8px; border-radius:999px; vertical-align:middle; margin-left:7px;
+}
+.col-tag.antes{background:var(--bad-bg); border:1px solid var(--bad-line); color:var(--bad)}
+.col-tag.depois{background:var(--ok-bg); border:1px solid var(--ok-line); color:var(--ok)}
+
+.pf{
+  background:var(--card); border:1px solid var(--line); border-radius:var(--r);
+  padding:14px 16px; box-shadow:var(--sombra); margin-top:10px;
+}
+/* 2px de respiro do lado esquerdo — a faixa de lado nunca encosta no conteúdo. */
+.pf-antes{border-left:3px solid var(--bad)}
+.pf-depois{border-left:3px solid var(--ok)}
+.pf header{display:flex; align-items:baseline; gap:9px; flex-wrap:wrap; margin-bottom:7px}
+.pf-n{
+  flex:0 0 auto; width:19px; height:19px; border-radius:50%; background:var(--ink); color:var(--canvas);
+  font-size:11px; font-weight:700; display:grid; place-items:center; font-variant-numeric:tabular-nums;
+}
+.pf h4{font-size:14.5px; flex:1 1 160px}
+.pf-cont{font-size:11.5px; color:var(--sub); font-variant-numeric:tabular-nums; white-space:nowrap}
+.pf-quem,.pf-quando{
+  display:inline-block; font-size:11px; font-weight:600; padding:2px 9px;
+  border-radius:999px; border:1px solid var(--line); background:var(--line2); color:var(--sub);
+  margin-bottom:8px;
+}
+.q-voce{background:var(--warn-bg); border-color:var(--warn-line); color:var(--warn)}
+.pf-porque{font-size:13px; color:var(--sub); max-width:70ch; margin-bottom:10px}
+
+.pi-lista{display:grid; gap:2px}
+/* minmax(0,1fr) no texto + teto nos chips: sem isso um esforço longo
+   ("15 min de execução (design e implementação já prontos)") rouba a linha
+   inteira e o texto do item desce para duas palavras por linha. */
+.pi{
+  display:grid; grid-template-columns:auto minmax(0,1fr) auto auto; align-items:baseline; gap:8px;
+  padding:6px 8px; border-radius:7px; background:var(--card2); font-size:13px;
+}
+.pi-g{font-weight:700; font-size:12.5px; line-height:1}
+.pi-ok .pi-g{color:var(--ok)} .pi-bad .pi-g{color:var(--bad)} .pi-warn .pi-g{color:var(--warn-pt)}
+/* O texto usa tinta de texto, nunca a cor do estado — quem carrega o estado é
+   o glifo mais o rótulo ao lado. */
+.pi-t{color:var(--ink); min-width:0}
+.pi-ok .pi-t{color:var(--sub)}
+.pi-r{font-size:10.5px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; color:var(--faint); white-space:nowrap}
+.pi-ref{
+  font-size:10.5px; font-weight:600; color:var(--sub); text-decoration:none;
+  border:1px solid var(--line); border-radius:999px; padding:1px 7px;
+  max-width:15ch; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.pi-ref:hover{color:var(--ink); border-color:var(--faint)}
+
+.pm-gates{margin-top:11px; padding-top:10px; border-top:1px solid var(--line)}
+.pm-gates .rot{display:block; margin-bottom:5px}
+.pm-gates ul{display:grid; gap:3px}
+.pm-gates li{font-size:12.5px; color:var(--sub); padding-left:15px; position:relative}
+.pm-gates li::before{content:'✓'; position:absolute; left:0; color:var(--ok); font-weight:700}
+
+@media (max-width:860px){ .plano-cols{grid-template-columns:1fr} }
 
 /* ── bloqueadores ─────────────────────────────────────────────────────── */
 .bloqs{display:grid; gap:12px}
@@ -1638,6 +1939,7 @@ const js = `
 
 const abas = [
   ['placar', 'Onde estou'],
+  ['plano', 'Plano até o beta'],
   ['bloqueadores', 'Bloqueadores'],
   ['como-funciona', 'Como funciona'],
   ['jornadas', 'Jornadas'],
@@ -1687,15 +1989,22 @@ ${seccao(
   blocoBloqueadores(),
 )}
 ${seccao(
-  'como-funciona',
+  'plano',
   '03',
+  'O plano: até o beta e depois dele',
+  `${fala(mapa.plano.resumo)} O divisor é ${fala(mapa.plano.marco.titulo)}. ${fala(mapa.plano.marco.porque)} Antes do beta são ${mapa.plano.antes.length} frentes, na ordem de ataque: ${mapa.plano.antes.map((f) => fala(f.titulo)).join(', ')}. Depois do beta, ${mapa.plano.depois.length} frentes, nenhuma bloqueando o lançamento: ${mapa.plano.depois.map((f) => fala(f.titulo)).join(', ')}.`,
+  blocoPlano(),
+)}
+${seccao(
+  'como-funciona',
+  '04',
   'Como o app funciona',
   `${fala(mapa.trilha.legenda)} ${fala(mapa.funil.legenda)}`,
   blocoTrilha(),
 )}
 ${seccao(
   'jornadas',
-  '04',
+  '05',
   'Cada função do início ao fim',
   `São ${mapa.jornadas.length} jornadas completas, passo a passo, do gatilho até o fim. Cada passo diz em que máquina roda — no celular, num navegador dentro do celular, no servidor, no portal da SEFAZ ou no banco — o que ele faz, e o que acontece quando dá errado. Serve para você conferir se o app está fazendo o que deveria. ` +
     mapa.jornadas.map((j) => `${fala(j.titulo)}: ${j.passos.length} passos.`).join(' '),
@@ -1703,63 +2012,63 @@ ${seccao(
 )}
 ${seccao(
   'falta',
-  '05',
+  '06',
   'O que ainda não existe',
   `São ${mapa.funcoes.filter((f) => f.status === 'falta').length} coisas que o app não faz de jeito nenhum e ${mapa.funcoes.filter((f) => f.status === 'parcial').length} que existem pela metade. Cada uma diz exatamente o que falta. É desta lista que sai o próximo trabalho.`,
   blocoFalta(),
 )}
 ${seccao(
   'funcoes',
-  '06',
+  '07',
   'Cada função, em uma frase',
   `São ${mapa.funcoes.length} funções mapeadas, divididas em ${mapa.areas.length} áreas. Cada uma diz o que faz, com quem conversa, que regra obedece e onde mora no código. Use os filtros para ver só as que estão pela metade.`,
   blocoFuncoes(),
 )}
 ${seccao(
   'regras',
-  '07',
+  '08',
   'Regras de negócio',
   `São ${mapa.regras.filter((r) => r.travada).length} decisões travadas, que não se negociam, e ${mapa.regras.filter((r) => !r.travada).length} regras do motor estatístico que decorrem delas.`,
   blocoRegras(),
 )}
 ${seccao(
   'etapas',
-  '08',
+  '09',
   'Etapas, do C0 ao C12',
   `O catálogo completo com o status real de cada sub-etapa. ${fatos.etapas.pronto} prontas, ${fatos.etapas.parcial} pela metade — todas com o que falta escrito — e ${fatos.etapas.falta} que não começaram.`,
   blocoEtapas(),
 )}
 ${seccao(
   'publicar',
-  '09',
+  '10',
   'Como publicar e os 14 dias de teste',
   `${fala(mapa.publicacao.resumo)} Custo: ${fala(mapa.publicacao.custo)}`,
   blocoPublicar(),
 )}
 ${seccao(
   'validacao',
-  '10',
+  '11',
   'O que só o aparelho de verdade prova',
   `São ${mapa.validacaoReal.length} coisas que passam no CI e ainda assim podem estar quebradas na mão do usuário: permissão do sistema, credencial de push, câmera, rede caindo, portal da SEFAZ com captcha. Teste automatizado prova decisão; nenhum deles prova entrega. Cada item tem o passo a passo e o sinal de que funcionou.`,
   blocoValidacao(),
 )}
 ${seccao(
   'dividas',
-  '11',
+  '12',
   'Dívidas conscientes',
   'Coisas que estão certas hoje e viram problema em um momento específico. Estão aqui para você não gastar tempo consertando cedo, e não ser pego de surpresa depois.',
   blocoDividas(),
 )}
 ${seccao(
   'skills',
-  '12',
+  '13',
   'Skills e agentes que valem a pena',
   'O que já está instalado e você deveria usar mais, o que vale criar de específico para o Barganha, e qual agente chamar para cada frente.',
   blocoSkills(),
 )}
 ${seccao(
   'sincronia',
-  '13',
+  '14',
   'Como este painel se mantém junto com o código',
   totalDeriva === 0
     ? `Tudo em sincronia: as ${fatos.evidenciasOk} evidências citadas existem no código e nenhuma rota ou tela ficou sem dono.`

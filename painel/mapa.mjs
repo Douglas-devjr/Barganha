@@ -3311,6 +3311,142 @@ export const publicacao = {
 };
 
 /* ────────────────────────────────────────────────────────────────────────────
+   6.5. O PLANO — as duas metades separadas pelo beta.
+   ──────────────────────────────────────────────────────────────────────────── */
+
+/**
+ * A pergunta que esta seção responde: "o que falta para lançar, e o que vem
+ * depois?".
+ *
+ * O QUE É CURADO AQUI (e só isto): em que lado do beta cada etapa cai, e por
+ * que uma frente vem antes da outra. Isso não é derivável — o campo `fase` das
+ * etapas diz `MVP`/`Pós`, que NÃO é o mesmo corte: `C10.3` (rollout faseado) é
+ * MVP e acontece depois do beta; `C11.5` (enriquecimento) é Pós e já está meio
+ * pronto. Quem decide o corte é o gate do beta, não o número da etapa.
+ *
+ * O QUE NÃO É CURADO: os itens em si. Passos vêm de `publicacao.fases`,
+ * travas de `bloqueadores`, trabalho de código de `etapas`, e o que fica para
+ * depois de `dividas`. Nada é redigitado — se um passo virar `feito: true` lá,
+ * ele muda aqui sozinho.
+ *
+ * A REDE DE SEGURANÇA: o gerador exige que TODA etapa não-pronta esteja citada
+ * em exatamente um lado (`etapas` de alguma frente). Etapa nova sem lugar no
+ * plano reprova o `painel:conferir` — é o que impede o plano de envelhecer
+ * calado enquanto o catálogo cresce.
+ */
+export const plano = {
+  resumo:
+    'O beta fechado é a linha que divide o projeto em dois. Antes dele, tudo é caminho crítico: sem build publicável não há testador, e sem testador não há base de preço. Depois dele, nada é mais bloqueante — é crescimento, alcance e receita, na ordem em que cada um deixa de ser prematuro.',
+  marco: {
+    titulo: 'Beta fechado na Play — 12+ testadores por 14 dias corridos',
+    porque:
+      'Não é uma escolha de produto, é exigência da Google para conta pessoal nova. E cai bem: o beta é também a semeadura da base. Um app de comparação de preços com a base vazia não tem o que comparar — os 14 dias são o que transforma o app em produto.',
+    fase: 3,
+  },
+
+  antes: [
+    {
+      id: 'p1',
+      titulo: 'Destravar o build',
+      porque:
+        'Três linhas de configuração e uma conta. Nada aqui é engenharia — é o tipo de item que custa minutos e trava semanas se for descoberto tarde.',
+      quem: 'você',
+      bloqueadores: ['b1', 'b2', 'b4'],
+      fases: [0],
+      // Estes passos da fase 0 SÃO os bloqueadores b1/b2 e o b5 (que mora na
+      // frente 2), escritos curto. Mostrar os dois contaria o mesmo trabalho
+      // duas vezes e estragaria o "em aberto" e a barra. O gerador confere que
+      // cada texto aqui existe mesmo na fase — se o passo for reescrito lá, o
+      // `painel:conferir` reprova em vez de silenciosamente voltar a duplicar.
+      pular: [
+        'Trocar a URL da API no perfil `production` do EAS',
+        'Subir a versão do app para 1.0.0',
+        'Validar a captura do RJ num aparelho físico, com cupons reais',
+      ],
+      etapas: ['C10.1'],
+    },
+    {
+      id: 'p2',
+      titulo: 'Provar a captura no aparelho',
+      porque:
+        'O RJ é o estado semeado primeiro e o único atrás de reCAPTCHA. Se a captura falhar no beta, o testador não escaneia nada e os 14 dias queimam sem gerar base — o relógio da Google não pausa. É o pré-requisito nº 1 do gate, e o único que nenhum teste automatizado consegue dar.',
+      quem: 'você',
+      bloqueadores: ['b5'],
+      etapas: ['C2.2', 'C2.6'],
+    },
+    {
+      id: 'p3',
+      titulo: 'Fechar a ficha da loja',
+      porque:
+        'Data Safety, classificação, política e exclusão de conta. As respostas já estão escritas em docs/14 e docs/16; o que falta é colar no console e publicar a ponte de autenticação — sem ela, o link de confirmação de e-mail não volta para o app.',
+      quem: 'você',
+      fases: [2],
+      etapas: ['C10.0', 'C10.0.3', 'C10.0.4', 'C10.0.5'],
+    },
+    {
+      id: 'p4',
+      titulo: 'Backend pronto para receber gente',
+      porque:
+        'O essencial já está no ar. Sobra o recálculo completo pós-deploy (sem ele o frescor nasce vazio e o veredito fica mudo) e ligar a cifra das colunas privadas na mesma janela da migração.',
+      quem: 'misto',
+      bloqueadores: ['b6'],
+      fases: [1],
+      etapas: ['C9.2', 'C9.2.2', 'C10.2'],
+    },
+    {
+      id: 'p5',
+      titulo: 'Rodar os 14 dias',
+      porque:
+        'Recrutar 20 para garantir 12 ativos, concentrar em 1–2 municípios (duas cidades densas valem mais que dez ralas) e fazer o QA dirigido enquanto a base se povoa. É a fase mais longa e a menos técnica.',
+      quem: 'você',
+      fases: [3],
+      // A conta de desenvolvedor é o bloqueador b4, já mostrado na frente 1.
+      pular: ['Criar a conta de desenvolvedor (US$ 25) e o app "Barganha"'],
+      etapas: [],
+    },
+  ],
+
+  depois: [
+    {
+      id: 'd1',
+      titulo: 'Estabilizar o que foi ao ar',
+      quando: 'Imediatamente após o gate',
+      porque:
+        'O rollout faseado é a única rede que existe entre um bug e a base inteira de usuários. Só depois dele faz sentido tocar em qualquer coisa nova.',
+      etapas: ['C10.3'],
+      dividas: ['Rate limit em memória'],
+    },
+    {
+      id: 'd2',
+      titulo: 'Afinar o veredito com dado real',
+      quando: 'Quando houver volume',
+      porque:
+        'Meia-vida, zona morta e limiares estão em valores escolhidos na mesa, não calibrados. Calibrar antes de ter distribuição real seria chutar com mais passos — por isso espera, de propósito.',
+      etapas: ['C3.2', 'C3.6', 'C3.6.1', 'C8.4.1'],
+      dividas: ['Constantes estatísticas não calibradas', 'Curadoria sem interface'],
+    },
+    {
+      id: 'd3',
+      titulo: 'Ampliar o alcance',
+      quando: 'Depois de estável em uma praça',
+      porque:
+        'Mais estados e mais produtos reconhecidos. Vem depois porque cada praça nova divide a densidade de dados: espalhar cedo é ter dez cidades sem mediana em vez de duas com veredito.',
+      etapas: ['C11.1', 'C11.5', 'C11.4', 'C11.2'],
+      dividas: [],
+    },
+    {
+      id: 'd4',
+      titulo: 'Receita',
+      quando: 'Só com base madura',
+      porque:
+        'Cobrar por um veredito que ainda não é confiável queima a confiança uma vez só. A oferta anunciada entra aqui e entra ROTULADA, numa camada separada — nunca na mediana (decisão travada nº 8).',
+      etapas: ['C13.3', 'C13.4', 'C13.5', 'C12.3', 'C12.4'],
+      dividas: ['Colunas privadas em claro'],
+    },
+  ],
+};
+
+/* ────────────────────────────────────────────────────────────────────────────
    7. VALIDAÇÃO NO REAL — o que só um aparelho de verdade prova.
    ──────────────────────────────────────────────────────────────────────────── */
 
