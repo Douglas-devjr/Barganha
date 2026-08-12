@@ -46,18 +46,12 @@ export const bloqueadores = [
     prompt:
       'Resolve o bloqueador b1 do painel: troca a EXPO_PUBLIC_API_URL do perfil `production` em app/eas.json de https://api.barganha.app para https://barganha-api.onrender.com (a mesma URL do perfil preview), já que o domínio próprio ainda não existe. Depois atualiza o bloqueador b1 em painel/mapa.mjs pra refletir que foi resolvido e roda `npm run painel`.',
   },
-  {
-    id: 'b2',
-    titulo: 'A versão do app ainda é 0.0.0',
-    gravidade: 'alta',
-    porque:
-      '`version: "0.0.0"` e `versionCode: 1`. A Play aceita, mas a versão passa a ser o nome público da release e o `runtimeVersion` do EAS Update deriva dela (policy `appVersion`) — começar em 0.0.0 estraga o histórico de OTA desde o primeiro dia.',
-    resolver: 'Definir `version: "1.0.0"` no `app/app.json` antes do primeiro build de produção.',
-    arquivos: ['app/app.json'],
-    esforco: '2 min',
-    prompt:
-      'Resolve o bloqueador b2 do painel: define `version: "1.0.0"` em app/app.json antes do primeiro build de produção. Confere se o `runtimeVersion` e a policy `appVersion` do EAS continuam coerentes depois da mudança. Depois atualiza o bloqueador b2 em painel/mapa.mjs e roda `npm run painel`.',
-  },
+  // b2 (a versão do app era 0.0.0) foi resolvido em 11/08/2026: `version:
+  // "1.0.0"` em app/app.json. O `runtimeVersion` continua na policy
+  // `appVersion`, então o runtime do EAS Update passa a ser 1.0.0 — e como o
+  // `autoIncrement` do perfil `production` mexe só no versionCode/buildNumber
+  // (que o `appVersionSource: remote` administra), o runtime só muda quando
+  // alguém subir a versão de propósito. O passo da fase 0 virou `feito`.
   {
     id: 'b4',
     titulo: 'A conta de desenvolvedor da Google Play não existe',
@@ -2040,7 +2034,7 @@ export const funcoes = [
     status: 'falta',
     oque: 'Gera o pacote para a Google Play pelo EAS e envia para a faixa de teste.',
     falta:
-      'Nunca rodou. Falta a conta de desenvolvedor, a service account da Play, e as três correções de configuração (URL da API em produção, versão 1.0.0, variáveis do Supabase no EAS).',
+      'Nunca rodou. Falta a conta de desenvolvedor, a service account da Play e a URL da API do perfil `production` — das três correções de configuração, a versão 1.0.0 e as variáveis do Supabase no EAS já estão feitas.',
     ligacoes: ['ci', 'site-legal'],
     arquivos: ['app/eas.json', '.github/workflows/release.yml'],
     etapas: ['C10.1'],
@@ -3222,7 +3216,7 @@ export const publicacao = {
       status: 'parcial',
       passos: [
         { t: 'Trocar a URL da API no perfil `production` do EAS', feito: false },
-        { t: 'Subir a versão do app para 1.0.0', feito: false },
+        { t: 'Subir a versão do app para 1.0.0', feito: true },
         { t: 'Cadastrar as variáveis do Supabase no EAS (`eas env:create`)', feito: true },
         { t: 'Validar a captura do RJ num aparelho físico, com cupons reais', feito: false },
         { t: 'Configurar o webhook do alerta de parsing', feito: true },
@@ -3351,16 +3345,17 @@ export const plano = {
       porque:
         'Três linhas de configuração e uma conta. Nada aqui é engenharia — é o tipo de item que custa minutos e trava semanas se for descoberto tarde.',
       quem: 'você',
-      bloqueadores: ['b1', 'b2', 'b4'],
+      bloqueadores: ['b1', 'b4'],
       fases: [0],
-      // Estes passos da fase 0 SÃO os bloqueadores b1/b2 e o b5 (que mora na
-      // frente 2), escritos curto. Mostrar os dois contaria o mesmo trabalho
-      // duas vezes e estragaria o "em aberto" e a barra. O gerador confere que
+      // Estes passos da fase 0 SÃO o bloqueador b1 e o b5 (que mora na frente
+      // 2), escritos curto. Mostrar os dois contaria o mesmo trabalho duas
+      // vezes e estragaria o "em aberto" e a barra. O gerador confere que
       // cada texto aqui existe mesmo na fase — se o passo for reescrito lá, o
       // `painel:conferir` reprova em vez de silenciosamente voltar a duplicar.
+      // A versão 1.0.0 saiu daqui quando o b2 foi resolvido: sem bloqueador
+      // para duplicar, o passo volta a aparecer — agora como feito.
       pular: [
         'Trocar a URL da API no perfil `production` do EAS',
-        'Subir a versão do app para 1.0.0',
         'Validar a captura do RJ num aparelho físico, com cupons reais',
       ],
       etapas: ['C10.1'],
