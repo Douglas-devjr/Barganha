@@ -30,7 +30,7 @@
         "resourceClass": "m-medium"
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://api.barganha.app"
+        "EXPO_PUBLIC_API_URL": "https://barganha-api.onrender.com"
       }
     }
   },

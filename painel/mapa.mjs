@@ -33,19 +33,12 @@ export const meta = {
    ──────────────────────────────────────────────────────────────────────────── */
 
 export const bloqueadores = [
-  {
-    id: 'b1',
-    titulo: 'A URL da API no build de produção é um domínio que não existe',
-    gravidade: 'alta',
-    porque:
-      'O perfil `production` do EAS aponta para `https://api.barganha.app` — um placeholder. O perfil `preview` já aponta certo para o Render. Um build de produção feito hoje sobe na loja sem conseguir falar com o backend.',
-    resolver:
-      'Trocar `EXPO_PUBLIC_API_URL` do perfil `production` pela URL do Render (a mesma do `preview`), ou registrar o domínio próprio antes.',
-    arquivos: ['app/eas.json'],
-    esforco: '5 min',
-    prompt:
-      'Resolve o bloqueador b1 do painel: troca a EXPO_PUBLIC_API_URL do perfil `production` em app/eas.json de https://api.barganha.app para https://barganha-api.onrender.com (a mesma URL do perfil preview), já que o domínio próprio ainda não existe. Depois atualiza o bloqueador b1 em painel/mapa.mjs pra refletir que foi resolvido e roda `npm run painel`.',
-  },
+  // b1 (o `production` do EAS apontava para o placeholder `api.barganha.app`)
+  // foi resolvido em 12/08/2026: os dois perfis de build agora apontam para
+  // `https://barganha-api.onrender.com`, a URL real do Render. O domínio
+  // próprio continua não existindo — quando existir, é trocar nos DOIS perfis
+  // (docs/13 §C10.1, passo 4) e não em um só, que era exatamente o descuido
+  // que criou este bloqueador. O passo da fase 0 virou `feito`.
   // b2 (a versão do app era 0.0.0) foi resolvido em 11/08/2026: `version:
   // "1.0.0"` em app/app.json. O `runtimeVersion` continua na policy
   // `appVersion`, então o runtime do EAS Update passa a ser 1.0.0 — e como o
@@ -3215,7 +3208,7 @@ export const publicacao = {
       duracao: '1 dia',
       status: 'parcial',
       passos: [
-        { t: 'Trocar a URL da API no perfil `production` do EAS', feito: false },
+        { t: 'Trocar a URL da API no perfil `production` do EAS', feito: true },
         { t: 'Subir a versão do app para 1.0.0', feito: true },
         { t: 'Cadastrar as variáveis do Supabase no EAS (`eas env:create`)', feito: true },
         { t: 'Validar a captura do RJ num aparelho físico, com cupons reais', feito: false },
@@ -3345,19 +3338,17 @@ export const plano = {
       porque:
         'Três linhas de configuração e uma conta. Nada aqui é engenharia — é o tipo de item que custa minutos e trava semanas se for descoberto tarde.',
       quem: 'você',
-      bloqueadores: ['b1', 'b4'],
+      bloqueadores: ['b4'],
       fases: [0],
-      // Estes passos da fase 0 SÃO o bloqueador b1 e o b5 (que mora na frente
-      // 2), escritos curto. Mostrar os dois contaria o mesmo trabalho duas
-      // vezes e estragaria o "em aberto" e a barra. O gerador confere que
-      // cada texto aqui existe mesmo na fase — se o passo for reescrito lá, o
+      // Este passo da fase 0 É o bloqueador b5 (que mora na frente 2), escrito
+      // curto. Mostrar os dois contaria o mesmo trabalho duas vezes e
+      // estragaria o "em aberto" e a barra. O gerador confere que cada texto
+      // aqui existe mesmo na fase — se o passo for reescrito lá, o
       // `painel:conferir` reprova em vez de silenciosamente voltar a duplicar.
-      // A versão 1.0.0 saiu daqui quando o b2 foi resolvido: sem bloqueador
-      // para duplicar, o passo volta a aparecer — agora como feito.
-      pular: [
-        'Trocar a URL da API no perfil `production` do EAS',
-        'Validar a captura do RJ num aparelho físico, com cupons reais',
-      ],
+      // A versão 1.0.0 saiu daqui quando o b2 foi resolvido, e a URL da API
+      // quando o b1 foi: sem bloqueador para duplicar, o passo volta a
+      // aparecer — agora como feito.
+      pular: ['Validar a captura do RJ num aparelho físico, com cupons reais'],
       etapas: ['C10.1'],
     },
     {

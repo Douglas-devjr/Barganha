@@ -563,7 +563,7 @@ footer{max-width:1180px; margin:0 auto; padding:0 24px 72px; font-size:12px; col
   <div class="topo-in">
     <span class="marca">Barganha <span>painel do projeto</span></span>
     <span class="topo-meta">
-      <span class="selo">commit <code>c7f6cad</code> · 11/08/2026</span>
+      <span class="selo">commit <code>b4cdc4a</code> · 12/08/2026</span>
       <span class="selo sujo">2 arquivo(s) sem commit</span>
       <span class="selo">gerado em 12 de agosto de 2026</span>
     </span>
@@ -605,7 +605,7 @@ footer{max-width:1180px; margin:0 auto; padding:0 24px 72px; font-size:12px; col
       <span class="tile-s">quase todas pós-lançamento</span>
     </div>
     <div class="tile t-bad">
-      <span class="tile-n">3</span>
+      <span class="tile-n">2</span>
       <span class="tile-r">bloqueiam publicar</span>
       <span class="tile-s">resolvíveis em dias</span>
     </div></div>
@@ -654,7 +654,7 @@ footer{max-width:1180px; margin:0 auto; padding:0 24px 72px; font-size:12px; col
       <span class="sec-num">02</span>
       <h2>O que impede publicar hoje</h2>
     </div>
-    <button class="ouvir" type="button" data-fala="São 4 pontos, e 3 deles são de gravidade alta. Nenhum é uma feature nova: são configuração, uma validação no aparelho e a conta da loja. 1. A URL da API no build de produção é um domínio que não existe. 2. A conta de desenvolvedor da Google Play não existe. 3. A captura do RJ nunca foi validada num aparelho de verdade. 4. Ativar em produção a cifra das colunas privadas do Postgres (gate da Fase 3)." aria-label="Ouvir o resumo desta seção">
+    <button class="ouvir" type="button" data-fala="São 3 pontos, e 2 deles são de gravidade alta. Nenhum é uma feature nova: são configuração, uma validação no aparelho e a conta da loja. 1. A conta de desenvolvedor da Google Play não existe. 2. A captura do RJ nunca foi validada num aparelho de verdade. 3. Ativar em produção a cifra das colunas privadas do Postgres (gate da Fase 3)." aria-label="Ouvir o resumo desta seção">
       <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2 4.5 5H2v6h2.5L8 14zM11 5.5a3.5 3.5 0 0 1 0 5M13 3.5a6 6 0 0 1 0 9"/></svg>
       ouvir
     </button>
@@ -663,20 +663,6 @@ footer{max-width:1180px; margin:0 auto; padding:0 24px 72px; font-size:12px; col
     <article class="bloq g-alta">
       <header>
         <span class="bloq-n">1</span>
-        <h3>A URL da API no build de produção é um domínio que não existe</h3>
-        <span class="chip esforco">5 min</span>
-      </header>
-      <p class="porque"><span class="rot">Por que trava</span>O perfil <code>production</code> do EAS aponta para <code>https://api.barganha.app</code> — um placeholder. O perfil <code>preview</code> já aponta certo para o Render. Um build de produção feito hoje sobe na loja sem conseguir falar com o backend.</p>
-      <p class="fix"><span class="rot">Como resolver</span>Trocar <code>EXPO_PUBLIC_API_URL</code> do perfil <code>production</code> pela URL do Render (a mesma do <code>preview</code>), ou registrar o domínio próprio antes.</p>
-      <p class="onde"><code>app/eas.json</code></p>
-      <div class="prompt-caixa">
-        <div class="prompt-rot"><span class="rot">Cole no Claude Code</span><button type="button" class="copiar" data-copiar="prompt-b1">Copiar</button></div>
-        <pre class="prompt" id="prompt-b1">Resolve o bloqueador b1 do painel: troca a EXPO_PUBLIC_API_URL do perfil `production` em app/eas.json de https://api.barganha.app para https://barganha-api.onrender.com (a mesma URL do perfil preview), já que o domínio próprio ainda não existe. Depois atualiza o bloqueador b1 em painel/mapa.mjs pra refletir que foi resolvido e roda `npm run painel`.</pre>
-      </div>
-    </article>
-    <article class="bloq g-alta">
-      <header>
-        <span class="bloq-n">2</span>
         <h3>A conta de desenvolvedor da Google Play não existe</h3>
         <span class="chip esforco">1 dia</span>
       </header>
@@ -690,7 +676,7 @@ footer{max-width:1180px; margin:0 auto; padding:0 24px 72px; font-size:12px; col
     </article>
     <article class="bloq g-alta">
       <header>
-        <span class="bloq-n">3</span>
+        <span class="bloq-n">2</span>
         <h3>A captura do RJ nunca foi validada num aparelho de verdade</h3>
         <span class="chip esforco">1 sessão de teste</span>
       </header>
@@ -704,7 +690,7 @@ footer{max-width:1180px; margin:0 auto; padding:0 24px 72px; font-size:12px; col
     </article>
     <article class="bloq g-media">
       <header>
-        <span class="bloq-n">4</span>
+        <span class="bloq-n">3</span>
         <h3>Ativar em produção a cifra das colunas privadas do Postgres (gate da Fase 3)</h3>
         <span class="chip esforco">15 min de execução (design e implementação já prontos)</span>
       </header>
@@ -733,15 +719,15 @@ footer{max-width:1180px; margin:0 auto; padding:0 24px 72px; font-size:12px; col
   <p class="lede">O beta fechado é a linha que divide o projeto em dois. Antes dele, tudo é caminho crítico: sem build publicável não há testador, e sem testador não há base de preço. Depois dele, nada é mais bloqueante — é crescimento, alcance e receita, na ordem em que cada um deixa de ser prematuro.</p>
 
   <div class="tiles">
-    <div class="tile t-bad"><span class="tile-n">23</span><span class="tile-r">itens até o beta</span><span class="tile-s">10 já feitos</span></div>
+    <div class="tile t-bad"><span class="tile-n">22</span><span class="tile-r">itens até o beta</span><span class="tile-s">11 já feitos</span></div>
     <div class="tile t-warn"><span class="tile-n">5</span><span class="tile-r">frentes antes</span><span class="tile-s">na ordem de ataque</span></div>
     <div class="tile t-ok"><span class="tile-n">18</span><span class="tile-r">itens depois</span><span class="tile-s">nenhum bloqueia o lançamento</span></div>
     <div class="tile t-warn"><span class="tile-n">14</span><span class="tile-r">dias de beta</span><span class="tile-s">corridos, exigidos pela Play</span></div>
   </div>
 
-  <div class="barra" role="img" aria-label="30% do caminho até o beta concluído">
-    <span style="width:30%"></span>
-    <b>30% do caminho até o beta</b>
+  <div class="barra" role="img" aria-label="33% do caminho até o beta concluído">
+    <span style="width:33%"></span>
+    <b>33% do caminho até o beta</b>
   </div>
 
   <p class="pl-legenda"><span class="pl-item pl-ok"><span aria-hidden="true">✓</span> feito</span><span class="pl-item pl-bad"><span aria-hidden="true">○</span> a fazer</span><span class="pl-item pl-warn"><span aria-hidden="true">◐</span> pela metade</span><span class="pl-item pl-bad"><span aria-hidden="true">▲</span> trava o build</span></p>
@@ -762,7 +748,7 @@ footer{max-width:1180px; margin:0 auto; padding:0 24px 72px; font-size:12px; col
       <header>
         <span class="pf-n">1</span>
         <h4>Destravar o build</h4>
-        <span class="pf-cont">3 de 6 em aberto</span>
+        <span class="pf-cont">2 de 6 em aberto</span>
       </header>
       <span class="pf-quem q-voce" title="ação manual: console, aparelho, cartão">depende de você</span>
       
@@ -770,14 +756,14 @@ footer{max-width:1180px; margin:0 auto; padding:0 24px 72px; font-size:12px; col
       <ul class="pi-lista">
         <li class="pi pi-bad">
     <span class="pi-g" aria-hidden="true">▲</span>
-    <span class="pi-t">A URL da API no build de produção é um domínio que não existe</span>
-    <span class="pi-r">trava o build</span>
-    <a class="pi-ref" href="#bloqueadores" title="5 min">5 min</a>
-  </li><li class="pi pi-bad">
-    <span class="pi-g" aria-hidden="true">▲</span>
     <span class="pi-t">A conta de desenvolvedor da Google Play não existe</span>
     <span class="pi-r">trava o build</span>
     <a class="pi-ref" href="#bloqueadores" title="1 dia">1 dia</a>
+  </li><li class="pi pi-ok">
+    <span class="pi-g" aria-hidden="true">✓</span>
+    <span class="pi-t">Trocar a URL da API no perfil <code>production</code> do EAS</span>
+    <span class="pi-r">feito</span>
+    <a class="pi-ref" href="#publicar">fase 0</a>
   </li><li class="pi pi-ok">
     <span class="pi-g" aria-hidden="true">✓</span>
     <span class="pi-t">Subir a versão do app para 1.0.0</span>
@@ -5025,7 +5011,7 @@ footer{max-width:1180px; margin:0 auto; padding:0 24px 72px; font-size:12px; col
         <span class="pill p-parcial"><i></i>parcial</span>
       </header>
       <ul class="check">
-        <li class="aberto"><span class="box" aria-hidden="true"></span>Trocar a URL da API no perfil <code>production</code> do EAS</li><li class="feito"><span class="box" aria-hidden="true"></span>Subir a versão do app para 1.0.0</li><li class="feito"><span class="box" aria-hidden="true"></span>Cadastrar as variáveis do Supabase no EAS (<code>eas env:create</code>)</li><li class="aberto"><span class="box" aria-hidden="true"></span>Validar a captura do RJ num aparelho físico, com cupons reais</li><li class="feito"><span class="box" aria-hidden="true"></span>Configurar o webhook do alerta de parsing</li>
+        <li class="feito"><span class="box" aria-hidden="true"></span>Trocar a URL da API no perfil <code>production</code> do EAS</li><li class="feito"><span class="box" aria-hidden="true"></span>Subir a versão do app para 1.0.0</li><li class="feito"><span class="box" aria-hidden="true"></span>Cadastrar as variáveis do Supabase no EAS (<code>eas env:create</code>)</li><li class="aberto"><span class="box" aria-hidden="true"></span>Validar a captura do RJ num aparelho físico, com cupons reais</li><li class="feito"><span class="box" aria-hidden="true"></span>Configurar o webhook do alerta de parsing</li>
       </ul>
       
       
@@ -5361,7 +5347,7 @@ footer{max-width:1180px; margin:0 auto; padding:0 24px 72px; font-size:12px; col
       <span class="sec-num">14</span>
       <h2>Como este painel se mantém junto com o código</h2>
     </div>
-    <button class="ouvir" type="button" data-fala="Tudo em sincronia: as 375 evidências citadas existem no código e nenhuma rota ou tela ficou sem dono." aria-label="Ouvir o resumo desta seção">
+    <button class="ouvir" type="button" data-fala="Tudo em sincronia: as 374 evidências citadas existem no código e nenhuma rota ou tela ficou sem dono." aria-label="Ouvir o resumo desta seção">
       <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2 4.5 5H2v6h2.5L8 14zM11 5.5a3.5 3.5 0 0 1 0 5M13 3.5a6 6 0 0 1 0 9"/></svg>
       ouvir
     </button>
@@ -5378,13 +5364,13 @@ footer{max-width:1180px; margin:0 auto; padding:0 24px 72px; font-size:12px; col
       <li><strong>Se você esquecer</strong>, o <code>npm run check</code> (e o CI) roda <code>npm run painel:conferir</code> e reprova: evidência que sumiu e rota/tela nova sem dono aparecem por nome.</li>
     </ol>
   </div>
-  <div class="drift"><p class="ok-drift">&#10003; Tudo em sincronia — as 375 evidências citadas pelo painel existem no código, e nenhuma rota ou tela ficou sem dono.</p></div>
+  <div class="drift"><p class="ok-drift">&#10003; Tudo em sincronia — as 374 evidências citadas pelo painel existem no código, e nenhuma rota ou tela ficou sem dono.</p></div>
 </section>
 </main>
 
 <footer>
   Gerado por <code>npm run painel</code> a partir de <code>painel/mapa.mjs</code> + o estado real do repositório.
-  Último commit lido: <code>c7f6cad</code> — “feat(painel): plano visual separando o que falta antes e depois do beta”.
+  Último commit lido: <code>b4cdc4a</code> — “build(app): sobe a versão para 1.0.0 antes do build de produção”.
   Havia 2 arquivo(s) modificado(s) sem commit no momento da geração.
 </footer>
 
