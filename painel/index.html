@@ -486,8 +486,8 @@ footer{max-width:1180px; margin:0 auto; padding:0 24px 72px; font-size:12px; col
   <div class="topo-in">
     <span class="marca">Barganha <span>painel do projeto</span></span>
     <span class="topo-meta">
-      <span class="selo">commit <code>4b2a0d6</code> · 09/08/2026</span>
-      <span class="selo sujo">28 arquivo(s) sem commit</span>
+      <span class="selo">commit <code>6d7ac00</code> · 11/08/2026</span>
+      <span class="selo sujo">9 arquivo(s) sem commit</span>
       <span class="selo">gerado em 11 de agosto de 2026</span>
     </span>
   </div>
@@ -857,9 +857,9 @@ footer{max-width:1180px; margin:0 auto; padding:0 24px 72px; font-size:12px; col
             <span class="jonde o-aparelho">
               <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M5 2h6a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1zM7 12h2"/></svg>no celular
             </span>
-            <p class="joque">Assim que o QR é reconhecido, o conteúdo é gravado no banco do próprio celular — antes de qualquer acesso à internet. Uma trava impede que a câmera leia o mesmo cupom duas vezes.</p>
+            <p class="joque">Assim que o QR é reconhecido, o conteúdo é gravado no banco do próprio celular — antes de qualquer acesso à internet. Duas travas contra repetição: a câmera não lê o mesmo QR duas vezes na mesma leitura, e a chave de acesso lida do QR reconhece um cupom que já está no aparelho.</p>
             <p class="jporque"><span class="rot">Por que assim</span>Gravar cru primeiro é decisão travada: o cupom de QUALQUER estado fica guardado desde o dia 1, mesmo sem parser, para ser processado retroativamente quando o estado entrar.</p>
-            <p class="jfalhar"><span class="rot">Se der errado</span>Não conseguiu gravar → avisa e libera a câmera para escanear de novo.</p>
+            <p class="jfalhar"><span class="rot">Se der errado</span>Não conseguiu gravar → avisa e libera a câmera para escanear de novo. Cupom já escaneado → abre a nota que já existe, avisando, sem criar um cartão novo nem chamar a rede.</p>
             <div class="chips">
               <button type="button" class="chip liga" data-ir="scanner">Escanear o QR do cupom</button>
               
@@ -1946,20 +1946,20 @@ footer{max-width:1180px; margin:0 auto; padding:0 24px 72px; font-size:12px; col
   </div>
   <p class="contagem" id="contagem" aria-live="polite"></p>
   <div class="fns" id="fns">
-    <article class="fn s-pronto" id="fn-scanner" data-area="captura" data-status="pronto" data-busca="escanear o qr do cupom abre a câmera, lê o qr code da nota fiscal e grava o conteúdo cru no aparelho antes de qualquer outra coisa. gravar o qr cru primeiro é decisão travada: qualquer estado é guardado desde o dia 1, mesmo sem parser, para processar retroativamente depois. a câmera desmonta quando a tela sai de foco (no android a prop active do expo-camera não funciona e a tela ficava preta). captura do cupom c6.1">
+    <article class="fn s-pronto" id="fn-scanner" data-area="captura" data-status="pronto" data-busca="escanear o qr do cupom abre a câmera, lê o qr code da nota fiscal e grava o conteúdo cru no aparelho antes de qualquer outra coisa. escanear o mesmo cupom de novo abre o que já existe, em vez de criar um segundo. gravar o qr cru primeiro é decisão travada: qualquer estado é guardado desde o dia 1, mesmo sem parser, para processar retroativamente depois. a câmera desmonta quando a tela sai de foco (no android a prop active do expo-camera não funciona e a tela ficava preta). a chave de acesso é lida do texto do qr já na captura (não é parsing da nota — não toca a sefaz): é ela que alimenta o índice único local e impede o mesmo cupom virar dois cartões no histórico, contando em dobro no resumo. o extrator mora em shared porque o servidor precisa chegar à mesma chave para o dedup dele bater com o do aparelho. re-escanear um cupom em falha é retentativa, não duplicata: reaproveita a linha e volta para a fila. captura do cupom c6.1">
       <header>
         <h3>Escanear o QR do cupom</h3>
         <span class="pill p-pronto"><i></i>pronto</span>
       </header>
       <span class="fn-area">Captura do cupom</span>
-      <p class="oque">Abre a câmera, lê o QR code da nota fiscal e grava o conteúdo cru no aparelho antes de qualquer outra coisa.</p>
+      <p class="oque">Abre a câmera, lê o QR code da nota fiscal e grava o conteúdo cru no aparelho antes de qualquer outra coisa. Escanear o mesmo cupom de novo abre o que já existe, em vez de criar um segundo.</p>
       
-      <details class="det"><summary>Por que é assim</summary><p>Gravar o QR cru primeiro é decisão travada: qualquer estado é guardado desde o dia 1, mesmo sem parser, para processar retroativamente depois. A câmera desmonta quando a tela sai de foco (no Android a prop <code>active</code> do expo-camera não funciona e a tela ficava preta).</p></details>
+      <details class="det"><summary>Por que é assim</summary><p>Gravar o QR cru primeiro é decisão travada: qualquer estado é guardado desde o dia 1, mesmo sem parser, para processar retroativamente depois. A câmera desmonta quando a tela sai de foco (no Android a prop <code>active</code> do expo-camera não funciona e a tela ficava preta). A chave de acesso é lida do texto do QR já na captura (não é parsing da nota — não toca a SEFAZ): é ela que alimenta o índice único local e impede o mesmo cupom virar dois cartões no histórico, contando em dobro no resumo. O extrator mora em <code>shared</code> porque o servidor precisa chegar à MESMA chave para o dedup dele bater com o do aparelho. Re-escanear um cupom em falha é retentativa, não duplicata: reaproveita a linha e volta para a fila.</p></details>
       
       <div class="chips"><span class="rot">Conversa com</span><button type="button" class="chip liga" data-ir="fila-upload">Fila de upload offline</button><button type="button" class="chip liga" data-ir="ingestao-qr">Receber o cupom (ingestão)</button><button type="button" class="chip liga" data-ir="digitar-chave">Digitar a chave de acesso</button></div>
       
       <div class="chips"><span class="rot">Etapas</span><a class="chip etapa" href="#etapa-C6.1">C6.1</a></div>
-      <details class="det"><summary>Onde mora no código</summary><ul class="arqs"><li class=""><code>app/src/telas/ScannerTela.tsx</code></li><li class=""><code>app/src/nucleo/camera.ts</code></li></ul></details>
+      <details class="det"><summary>Onde mora no código</summary><ul class="arqs"><li class=""><code>app/src/telas/ScannerTela.tsx</code></li><li class=""><code>app/src/nucleo/camera.ts</code></li><li class=""><code>shared/src/dominio/chave-acesso.ts</code></li></ul></details>
     </article>
     <article class="fn s-pronto" id="fn-digitar-chave" data-area="captura" data-status="pronto" data-busca="digitar a chave de acesso plano b quando o qr está rasgado ou ilegível: o usuário digita os 44 dígitos da nota. captura do cupom c6.1">
       <header>
@@ -4877,13 +4877,13 @@ footer{max-width:1180px; margin:0 auto; padding:0 24px 72px; font-size:12px; col
       <span class="sec-num">13</span>
       <h2>Como este painel se mantém junto com o código</h2>
     </div>
-    <button class="ouvir" type="button" data-fala="Tudo em sincronia: as 375 evidências citadas existem no código e nenhuma rota ou tela ficou sem dono." aria-label="Ouvir o resumo desta seção">
+    <button class="ouvir" type="button" data-fala="Tudo em sincronia: as 376 evidências citadas existem no código e nenhuma rota ou tela ficou sem dono." aria-label="Ouvir o resumo desta seção">
       <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2 4.5 5H2v6h2.5L8 14zM11 5.5a3.5 3.5 0 0 1 0 5M13 3.5a6 6 0 0 1 0 9"/></svg>
       ouvir
     </button>
   </header>
   
-  <div class="medidos"><div class="medido"><b>36</b><span>rotas na API</span></div><div class="medido"><b>35</b><span>telas no app</span></div><div class="medido"><b>5</b><span>parsers de estado</span></div><div class="medido"><b>19</b><span>tabelas no servidor</span></div><div class="medido"><b>10</b><span>tabelas no aparelho</span></div><div class="medido"><b>40</b><span>migrações</span></div><div class="medido"><b>100</b><span>arquivos de teste</span></div><div class="medido"><b>13</b><span>rotinas agendadas</span></div></div>
+  <div class="medidos"><div class="medido"><b>36</b><span>rotas na API</span></div><div class="medido"><b>35</b><span>telas no app</span></div><div class="medido"><b>5</b><span>parsers de estado</span></div><div class="medido"><b>19</b><span>tabelas no servidor</span></div><div class="medido"><b>10</b><span>tabelas no aparelho</span></div><div class="medido"><b>40</b><span>migrações</span></div><div class="medido"><b>101</b><span>arquivos de teste</span></div><div class="medido"><b>13</b><span>rotinas agendadas</span></div></div>
   <p class="legenda">Os números acima são <strong>contados no repositório</strong> a cada geração — ninguém os digita. O que é curado à mão é só o status e o texto de cada item, em <code>painel/mapa.mjs</code>.</p>
   <div class="como">
     <h3 class="sub">Como este painel se mantém junto com o código</h3>
@@ -4894,14 +4894,14 @@ footer{max-width:1180px; margin:0 auto; padding:0 24px 72px; font-size:12px; col
       <li><strong>Se você esquecer</strong>, o <code>npm run check</code> (e o CI) roda <code>npm run painel:conferir</code> e reprova: evidência que sumiu e rota/tela nova sem dono aparecem por nome.</li>
     </ol>
   </div>
-  <div class="drift"><p class="ok-drift">&#10003; Tudo em sincronia — as 375 evidências citadas pelo painel existem no código, e nenhuma rota ou tela ficou sem dono.</p></div>
+  <div class="drift"><p class="ok-drift">&#10003; Tudo em sincronia — as 376 evidências citadas pelo painel existem no código, e nenhuma rota ou tela ficou sem dono.</p></div>
 </section>
 </main>
 
 <footer>
   Gerado por <code>npm run painel</code> a partir de <code>painel/mapa.mjs</code> + o estado real do repositório.
-  Último commit lido: <code>4b2a0d6</code> — “chore(painel): regenera após commit 0ddc31d”.
-  Havia 28 arquivo(s) modificado(s) sem commit no momento da geração.
+  Último commit lido: <code>6d7ac00</code> — “chore(painel): regenera após C2.6 e C9.3.2”.
+  Havia 9 arquivo(s) modificado(s) sem commit no momento da geração.
 </footer>
 
 <script>

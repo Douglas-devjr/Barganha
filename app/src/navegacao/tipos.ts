@@ -37,8 +37,14 @@ export type RootStackParamList = {
    * ela terminar de processar, a NotaFiscal mostra a confirmação (`CupomLido`)
    * por cima. Vindo do histórico, a flag é ausente e a tela abre direto no
    * detalhe.
+   *
+   * `jaEscaneado` é o re-scan de um cupom que JÁ estava no aparelho: a tela
+   * avisa isso e cala a confirmação de "cupom lido", que seria mentira (nada
+   * novo entrou). O aviso mora aqui, e não na tela da câmera, porque o toast
+   * tem um slot só — avisar antes do `replace` e deixar o destino falar em
+   * seguida apagaria a mensagem no meio.
    */
-  NotaFiscal: { cupomLocalId: string; recemCapturado?: boolean };
+  NotaFiscal: { cupomLocalId: string; recemCapturado?: boolean; jaEscaneado?: boolean };
   /** Histórico completo de cupons escaneados ("Ver tudo" de Últimas compras). */
   Compras: undefined;
   /** Catálogo dos produtos monitorados. Saiu da tab bar no 3a (ver TabParamList). */

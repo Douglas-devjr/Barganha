@@ -284,8 +284,9 @@ export const jornadas = [
       {
         onde: 'aparelho',
         titulo: 'Lê o QR e grava o conteúdo cru NA HORA',
-        oque: 'Assim que o QR é reconhecido, o conteúdo é gravado no banco do próprio celular — antes de qualquer acesso à internet. Uma trava impede que a câmera leia o mesmo cupom duas vezes.',
-        seFalhar: 'Não conseguiu gravar → avisa e libera a câmera para escanear de novo.',
+        oque: 'Assim que o QR é reconhecido, o conteúdo é gravado no banco do próprio celular — antes de qualquer acesso à internet. Duas travas contra repetição: a câmera não lê o mesmo QR duas vezes na mesma leitura, e a chave de acesso lida do QR reconhece um cupom que já está no aparelho.',
+        seFalhar:
+          'Não conseguiu gravar → avisa e libera a câmera para escanear de novo. Cupom já escaneado → abre a nota que já existe, avisando, sem criar um cartão novo nem chamar a rede.',
         porque:
           'Gravar cru primeiro é decisão travada: o cupom de QUALQUER estado fica guardado desde o dia 1, mesmo sem parser, para ser processado retroativamente quando o estado entrar.',
         funcao: 'scanner',
@@ -792,11 +793,15 @@ export const funcoes = [
     nome: 'Escanear o QR do cupom',
     area: 'captura',
     status: 'pronto',
-    oque: 'Abre a câmera, lê o QR code da nota fiscal e grava o conteúdo cru no aparelho antes de qualquer outra coisa.',
+    oque: 'Abre a câmera, lê o QR code da nota fiscal e grava o conteúdo cru no aparelho antes de qualquer outra coisa. Escanear o mesmo cupom de novo abre o que já existe, em vez de criar um segundo.',
     detalhe:
-      'Gravar o QR cru primeiro é decisão travada: qualquer estado é guardado desde o dia 1, mesmo sem parser, para processar retroativamente depois. A câmera desmonta quando a tela sai de foco (no Android a prop `active` do expo-camera não funciona e a tela ficava preta).',
+      'Gravar o QR cru primeiro é decisão travada: qualquer estado é guardado desde o dia 1, mesmo sem parser, para processar retroativamente depois. A câmera desmonta quando a tela sai de foco (no Android a prop `active` do expo-camera não funciona e a tela ficava preta). A chave de acesso é lida do texto do QR já na captura (não é parsing da nota — não toca a SEFAZ): é ela que alimenta o índice único local e impede o mesmo cupom virar dois cartões no histórico, contando em dobro no resumo. O extrator mora em `shared` porque o servidor precisa chegar à MESMA chave para o dedup dele bater com o do aparelho. Re-escanear um cupom em falha é retentativa, não duplicata: reaproveita a linha e volta para a fila.',
     ligacoes: ['fila-upload', 'ingestao-qr', 'digitar-chave'],
-    arquivos: ['app/src/telas/ScannerTela.tsx', 'app/src/nucleo/camera.ts'],
+    arquivos: [
+      'app/src/telas/ScannerTela.tsx',
+      'app/src/nucleo/camera.ts',
+      'shared/src/dominio/chave-acesso.ts',
+    ],
     etapas: ['C6.1'],
   },
   {

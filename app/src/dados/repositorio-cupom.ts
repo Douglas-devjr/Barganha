@@ -6,7 +6,12 @@
  * estruturada vêm do backend e chegam depois via `aplicarProcessamento`.
  */
 
-import { sanearQrPayload, type StatusCupom, type TipicoNaCompra } from '@barganha/shared';
+import {
+  extrairChaveDoQr,
+  sanearQrPayload,
+  type StatusCupom,
+  type TipicoNaCompra,
+} from '@barganha/shared';
 
 import { agoraIso, gerarIdLocal } from '@/nucleo/id';
 
@@ -67,24 +72,99 @@ export interface NovaCaptura {
   qrPayload: string;
   /** Instante da leitura do QR (ISO). Padrão: agora. */
   capturadoEm?: string;
-  /** Chave de acesso, se já extraída do QR no app (idempotência local). */
+  /**
+   * Chave de acesso, quando quem chama já a tem. Omitida, é extraída do próprio
+   * `qrPayload` (`extrairChaveDoQr`) — é o caso normal do scanner.
+   */
   chaveAcesso?: string;
 }
 
-/** Grava o QR cru local + enfileira upload, numa transação. Retorna o cupom. */
-export async function registrarCaptura(captura: NovaCaptura): Promise<CupomLocal> {
+export interface ResultadoCaptura {
+  cupom: CupomLocal;
+  /**
+   * `true` quando este cupom JÁ estava no aparelho (mesma chave de acesso) e
+   * `cupom` é o registro existente — nada foi criado nem re-enfileirado. A tela
+   * usa isto para abrir a nota que a pessoa já tem, em vez de um cartão novo.
+   */
+  duplicado: boolean;
+}
+
+/** O que o dedup precisa saber sobre uma captura anterior da mesma chave. */
+interface CapturaExistente {
+  id: string;
+  status: string;
+  cupom_id_servidor: string | null;
+}
+
+/**
+ * Grava o QR cru local + enfileira upload, numa transação.
+ *
+ * IDEMPOTÊNCIA LOCAL (docs/05): a chave de acesso é extraída do QR aqui, na
+ * captura, e não depois que o servidor responde — senão toda captura nasceria
+ * com `chave_acesso NULL`, o índice único parcial (que ignora NULL) nunca
+ * pegaria, e escanear o mesmo cupom duas vezes criaria dois cartões no
+ * histórico (contando em dobro no resumo de contribuição). Extrair a chave do
+ * texto do QR NÃO é parsing da nota (decisão travada nº2): não toca a SEFAZ nem
+ * lê item/loja/preço, e a chave que vale continua sendo a que o backend
+ * devolve. Sem chave reconhecível, a captura segue normalmente — o dedup local
+ * só não se aplica, e o do servidor ainda vale.
+ *
+ * Re-escanear um cupom em `falha` que NUNCA SUBIU é RETENTATIVA, não duplicata:
+ * a `falha` é permanente e já saiu da fila, então a única saída da pessoa seria
+ * descartar e escanear de novo. Reaproveitamos a linha existente, voltamos para
+ * `qr_capturado` e reenfileiramos com o backoff zerado.
+ *
+ * Falha DEPOIS de subir (tem `cupom_id_servidor`: quem quebrou foi o parsing no
+ * servidor) conta como duplicata. Reenfileirar ali seria teatro — `enviarCupom`
+ * vê o id de servidor e descarta o item sem fazer requisição, e o polling
+ * reescreve `falha` na sequência. Melhor dizer "já está aqui" do que prometer
+ * uma retentativa que não acontece; a saída real é excluir a compra.
+ */
+export async function registrarCaptura(captura: NovaCaptura): Promise<ResultadoCaptura> {
   const db = getBd();
   const id = gerarIdLocal();
   const agora = agoraIso();
   const capturadoEm = captura.capturadoEm ?? agora;
+  const chaveAcesso = captura.chaveAcesso ?? extrairChaveDoQr(captura.qrPayload) ?? null;
+
+  let existenteId: string | undefined;
+  let duplicado = false;
 
   // Exclusiva, não `withTransactionAsync`: ver nota em `aplicarProcessamento`.
+  // Também é o que torna o "procura e insere" atômico — dois toques rápidos no
+  // mesmo QR não passam os dois pelo SELECT antes de qualquer INSERT.
   await db.withExclusiveTransactionAsync(async (txn) => {
+    const existente = chaveAcesso
+      ? await txn.getFirstAsync<CapturaExistente>(
+          `SELECT id, status, cupom_id_servidor FROM cupom_local WHERE chave_acesso = ? LIMIT 1`,
+          [chaveAcesso],
+        )
+      : null;
+
+    if (existente) {
+      existenteId = existente.id;
+      if (existente.status === 'falha' && existente.cupom_id_servidor == null) {
+        await txn.runAsync(
+          `UPDATE cupom_local SET status = 'qr_capturado', atualizado_em = ? WHERE id = ?`,
+          [agora, existente.id],
+        );
+        // Voltou para a fila do zero: `INSERT OR REPLACE` cobre tanto o item que
+        // já não existe (falha permanente o removeu) quanto um resto de backoff.
+        await txn.runAsync(
+          `INSERT OR REPLACE INTO fila_upload (cupom_local_id, criado_em) VALUES (?, ?)`,
+          [existente.id, agora],
+        );
+      } else {
+        duplicado = true;
+      }
+      return;
+    }
+
     await txn.runAsync(
       `INSERT INTO cupom_local
          (id, qr_payload, chave_acesso, capturado_em, status, criado_em, atualizado_em)
        VALUES (?, ?, ?, ?, 'qr_capturado', ?, ?)`,
-      [id, captura.qrPayload, captura.chaveAcesso ?? null, capturadoEm, agora, agora],
+      [id, captura.qrPayload, chaveAcesso, capturadoEm, agora, agora],
     );
     await txn.runAsync(`INSERT INTO fila_upload (cupom_local_id, criado_em) VALUES (?, ?)`, [
       id,
@@ -92,9 +172,9 @@ export async function registrarCaptura(captura: NovaCaptura): Promise<CupomLocal
     ]);
   });
 
-  const cupom = await obterCupom(id);
+  const cupom = await obterCupom(existenteId ?? id);
   if (!cupom) throw new Error('Falha ao registrar a captura do cupom.');
-  return cupom;
+  return { cupom, duplicado };
 }
 
 export async function obterCupom(id: string): Promise<CupomLocal | null> {

@@ -68,10 +68,16 @@ export function DigitarChaveTela({ navigation }: Props) {
     setSalvando(true);
     try {
       // Mesmo contrato do scanner: o conteúdo cru vira `qrPayload`. Aqui o cru
-      // é a própria chave — o backend aceita payload de 44 dígitos.
-      const cupom = await cupons.registrarCaptura({ qrPayload: digitos, chaveAcesso: digitos });
-      void sincronizar();
-      navigation.replace('NotaFiscal', { cupomLocalId: cupom.id, recemCapturado: true });
+      // é a própria chave — o backend aceita payload de 44 dígitos. A chave sai
+      // do mesmo extrator do scanner (confere o dígito verificador); se não
+      // passar, a captura segue sem dedup local e o backend recusa.
+      const { cupom, duplicado } = await cupons.registrarCaptura({ qrPayload: digitos });
+      if (!duplicado) void sincronizar();
+      navigation.replace('NotaFiscal', {
+        cupomLocalId: cupom.id,
+        recemCapturado: !duplicado,
+        jaEscaneado: duplicado,
+      });
     } catch {
       setSalvando(false);
       toast('Não foi possível salvar a chave. Tente de novo.');

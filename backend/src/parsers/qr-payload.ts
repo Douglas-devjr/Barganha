@@ -10,10 +10,10 @@
  * Tolerante a variações de layout entre estados (por isso vários fallbacks).
  */
 
-import { urlConsultaConfiavel } from '@barganha/shared';
+import { extrairChaveCruaDoQr, urlConsultaConfiavel } from '@barganha/shared';
 
 import { PayloadQrInvalidoError } from '../erros';
-import { apenasDigitos, parseChaveAcesso, type ChaveAcesso } from './chave-acesso';
+import { parseChaveAcesso, type ChaveAcesso } from './chave-acesso';
 
 export interface QrNfce {
   /** Chave de acesso já validada e decomposta. */
@@ -32,39 +32,6 @@ export interface QrNfce {
   payloadCru: string;
 }
 
-/** Localiza a primeira sequência de 44 dígitos no texto (fallback robusto). */
-function primeiraChave44(texto: string): string | undefined {
-  return texto.match(/\d{44}/)?.[0];
-}
-
-/**
- * Extrai a chave de acesso do payload do QR, tentando, em ordem:
- *  1. parâmetro `p` da URL (primeiro segmento antes de `|`);
- *  2. parâmetro `chNFe`/`chave`;
- *  3. qualquer sequência de 44 dígitos no texto.
- */
-function extrairChaveCrua(payload: string): string | undefined {
-  const texto = payload.trim();
-
-  try {
-    const url = new URL(texto);
-    const p = url.searchParams.get('p');
-    if (p) {
-      const candidato = apenasDigitos(p.split('|')[0] ?? '');
-      if (candidato.length === 44) return candidato;
-    }
-    const ch = url.searchParams.get('chNFe') ?? url.searchParams.get('chave');
-    if (ch && apenasDigitos(ch).length === 44) return apenasDigitos(ch);
-  } catch {
-    // Não é uma URL — segue para os fallbacks por texto.
-  }
-
-  // Payload pode ser só a chave (com ou sem separadores) ou um texto com ela.
-  const soDigitos = apenasDigitos(texto);
-  if (soDigitos.length === 44) return soDigitos;
-  return primeiraChave44(texto);
-}
-
 /**
  * Converte o payload cru do QR num `QrNfce` com a chave validada.
  * Lança `PayloadQrInvalidoError` se não houver chave; `ChaveAcessoInvalidaError`
@@ -75,7 +42,10 @@ export function parseQrNfce(payload: string): QrNfce {
     throw new PayloadQrInvalidoError('Payload do QR vazio.');
   }
 
-  const chaveCrua = extrairChaveCrua(payload);
+  // A MESMA extração que o app usa na captura (`@barganha/shared`) — é o que
+  // garante que a chave do índice único local e a do dedup do servidor sejam
+  // sempre o mesmo texto para o mesmo QR.
+  const chaveCrua = extrairChaveCruaDoQr(payload);
   if (!chaveCrua) {
     throw new PayloadQrInvalidoError('Não foi possível localizar a chave de acesso no QR.');
   }

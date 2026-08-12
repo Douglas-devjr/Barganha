@@ -82,7 +82,7 @@ function quandoFoi(iso?: string | null): string {
 export function NotaFiscalTela({ navigation, route }: Props) {
   const { c } = useTema();
   const toast = useToast();
-  const { cupomLocalId, recemCapturado = false } = route.params;
+  const { cupomLocalId, recemCapturado = false, jaEscaneado = false } = route.params;
   const [cupom, setCupom] = useState<CupomLocal | null>(null);
   const [itens, setItens] = useState<ItemCupomLocal[]>([]);
   const [offline, setOffline] = useState(false);
@@ -169,12 +169,22 @@ export function NotaFiscalTela({ navigation, route }: Props) {
     if (cupom?.status !== 'processado' || itens.length === 0) return;
     if (avisouLido.current) return;
     avisouLido.current = true;
+    // Re-scan: nada novo entrou, então nem a comemoração nem "itens adicionados"
+    // valem — o aviso de duplicata (abaixo) é a única mensagem honesta aqui.
+    if (jaEscaneado) return;
     if (recemCapturado) {
       navigation.navigate('CupomLido', { cupomLocalId });
     } else {
       toast(`Cupom lido · ${itens.length} ${itens.length === 1 ? 'item' : 'itens'} adicionados`);
     }
-  }, [cupom?.status, itens.length, toast, recemCapturado, navigation, cupomLocalId]);
+  }, [cupom?.status, itens.length, toast, recemCapturado, jaEscaneado, navigation, cupomLocalId]);
+
+  // Aviso do re-scan, uma vez por abertura. Independe do status: o cupom
+  // duplicado pode estar `processado` (o caso comum) ou ainda em parsing.
+  useEffect(() => {
+    if (!jaEscaneado) return;
+    toast('Você já tinha escaneado este cupom');
+  }, [jaEscaneado, toast]);
 
   // Veredito por item (handoff): compara o unitário pago com o típico da região.
   // Tudo do cache local — sem rede, sem bloquear a lista; item sem base fica sem

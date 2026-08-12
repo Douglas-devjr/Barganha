@@ -12,6 +12,7 @@ export * from './dominio/nota-estruturada';
 export * from './dominio/entidades';
 export * from './dominio/alertas-regras';
 export * from './dominio/url-consulta';
+export * from './dominio/chave-acesso';
 export * from './anonimizacao/gate';
 export * from './anonimizacao/exposicao';
 export * from './anonimizacao/qr-payload';

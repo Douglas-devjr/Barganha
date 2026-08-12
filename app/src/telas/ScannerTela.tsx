@@ -38,9 +38,16 @@ export function ScannerTela({ navigation }: Props) {
     if (lido.current) return;
     lido.current = true;
     try {
-      const cupom = await cupons.registrarCaptura({ qrPayload });
-      void sincronizar();
-      navigation.replace('NotaFiscal', { cupomLocalId: cupom.id, recemCapturado: true });
+      const { cupom, duplicado } = await cupons.registrarCaptura({ qrPayload });
+      // Cupom que já está no aparelho: abre o que a pessoa já tem, sem criar um
+      // segundo cartão e sem tocar a rede. Quem avisa é a Nota fiscal (o toast
+      // tem um slot só; avisar aqui seria apagado pelo `replace` logo abaixo).
+      if (!duplicado) void sincronizar();
+      navigation.replace('NotaFiscal', {
+        cupomLocalId: cupom.id,
+        recemCapturado: !duplicado,
+        jaEscaneado: duplicado,
+      });
     } catch {
       lido.current = false;
       Alert.alert('Não foi possível salvar', 'Tente escanear o cupom novamente.');

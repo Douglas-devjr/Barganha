@@ -9,8 +9,15 @@
  * compartilhado (docs/04).
  */
 
+import { apenasDigitos, digitoVerificadorChave, DIGITOS_CHAVE_ACESSO } from '@barganha/shared';
+
 import { ChaveAcessoInvalidaError } from '../erros';
 import { ufDeCuf } from './cuf';
+
+// Reexporta a extração/validação que agora vive em `@barganha/shared` (o app
+// precisa da MESMA regra para a idempotência local). Quem já importava daqui
+// segue funcionando.
+export { apenasDigitos, digitoVerificadorChave };
 
 /** Modelo 65 = NFC-e. (55 = NF-e, fora do escopo da captura por QR.) */
 export const MODELO_NFCE = '65';
@@ -32,33 +39,13 @@ export interface ChaveAcesso {
   numero: string;
 }
 
-/** Mantém apenas dígitos (o QR às vezes traz a chave com espaços). */
-export function apenasDigitos(texto: string): string {
-  return texto.replace(/\D/g, '');
-}
-
-/**
- * Dígito verificador da chave (módulo 11 sobre os 43 primeiros dígitos,
- * pesos 2..9 cíclicos da direita para a esquerda).
- */
-export function digitoVerificadorChave(chave43: string): number {
-  let soma = 0;
-  let peso = 2;
-  for (let i = chave43.length - 1; i >= 0; i--) {
-    soma += Number(chave43[i]) * peso;
-    peso = peso === 9 ? 2 : peso + 1;
-  }
-  const resto = soma % 11;
-  return resto === 0 || resto === 1 ? 0 : 11 - resto;
-}
-
 /**
  * Valida e decompõe a chave de acesso. Lança `ChaveAcessoInvalidaError` se o
  * tamanho, o formato ou o dígito verificador não baterem.
  */
 export function parseChaveAcesso(entrada: string): ChaveAcesso {
   const valor = apenasDigitos(entrada);
-  if (valor.length !== 44) {
+  if (valor.length !== DIGITOS_CHAVE_ACESSO) {
     throw new ChaveAcessoInvalidaError(
       `Chave de acesso deve ter 44 dígitos (tem ${valor.length}).`,
     );
